@@ -12,6 +12,7 @@ class Updates(commands.Cog):
         self.bot = bot
         self.clan_updates = []
         self.player_updates = []
+        self._new_month = False
         self.bot.coc.add_events(self.on_clan_member_join, self.on_clan_member_donation,
                                 self.on_clan_member_received)
         self.bot.coc._clan_retry_interval = 60
@@ -133,6 +134,7 @@ class Updates(commands.Cog):
                 player_info.append([p for p in fetch])
             else:
                 print(n)
+        player_info.sort(key=lambda m: m[1], reverse=True)
 
         message_count = math.ceil(len(player_info) / 30)
         for result in fetch_guilds:
@@ -163,7 +165,7 @@ class Updates(commands.Cog):
 
             header = await self.get_header_message(result[1])
             await header.edit(embed=discord.Embed(colour=self.bot.colour,
-                                                  description=f'Last updated {datetime.now():%Y-%m-%d %H:%M:%S%z}'))
+                                                  description=f'Last updated {datetime.utcnow():%Y-%m-%d %H:%M:%S%z}'))
 
     async def on_clan_member_join(self, member, clan):
         query = "INSERT INTO players (player_tag, donations, received) VALUES ($1, $2) " \
@@ -193,10 +195,23 @@ class Updates(commands.Cog):
                                           f'```\n{table.render()}\n```',
                                     colour=discord.Colour.gold())
 
+    async def new_month(self):
+        query = "UPDATE players SET donations = 0, received = 0"
+        await self.bot.db.execute(query)
+
     async def on_clan_member_leave(self, member, clan):
         pass
 
     async def on_clan_member_donation(self, old_donations, new_donations, player, clan):
+        if old_donations > new_donations:
+            await self.new_month()
+            self._new_month = True
+        else:
+            self._new_month = False
+
+        if self._new_month is True:
+            return False
+
         query = "UPDATE players SET donations = donations + $1 WHERE player_tag = $2"
         await self.bot.pool.execute(query, new_donations - old_donations, player.tag)
         await self.edit_updates_for_clan(clan)
@@ -204,6 +219,14 @@ class Updates(commands.Cog):
         print(player.name)
 
     async def on_clan_member_received(self, old_received, new_received, player, clan):
+        if old_received > new_received:
+            self._new_month = True
+        else:
+            self._new_month = False
+
+        if self._new_month is True:
+            return
+
         query = "UPDATE players SET received = received + $1 WHERE player_tag = $2"
         await self.bot.pool.execute(query, new_received - old_received, player.tag)
         await self.edit_updates_for_clan(clan)
@@ -218,15 +241,15 @@ class Updates(commands.Cog):
                 await self.bot.log_info(member.guild, f'{str(member)} ({member.id}) joined '
                                                       'the guild, but no corresponding COC players were found.',
                                         colour=discord.Colour.gold())
-                pass  # no members found in clan with that name
+                return  # no members found in clan with that name
             if isinstance(results, coc.BasicPlayer):
                 await self.bot.log_info(member.guild, f'{str(member)} ({member.id}) joined '
                                                       'the guild, and was auto-claimed to '
                                                       f'{str(results)} ({results.tag}).',
                                         colour=discord.Colour.green())
-                pass  # we claimed a member
+                return  # we claimed a member
             if results is True:
-                pass  # member already claimed
+                return  # member already claimed
 
             table = TabularData()
             table.set_columns(['IGN', 'Tag'])
