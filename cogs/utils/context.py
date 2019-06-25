@@ -26,6 +26,7 @@ class Context(commands.Context):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.pool = self.bot.pool
+        self.coc = self.bot.coc
         self._db = None
 
     async def entry_to_code(self, entries):

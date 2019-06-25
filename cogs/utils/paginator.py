@@ -91,7 +91,7 @@ class Pages:
     def prepare_embed(self, entries, page, *, first=False):
         p = []
         for index, entry in enumerate(entries, 1 + ((page - 1) * self.per_page)):
-            p.append(f'{index}. {entry}')
+            p.append(f'{entry}')
 
         if self.maximum_pages > 1:
             if self.show_entry_count:
@@ -186,7 +186,7 @@ class Pages:
     async def show_help(self):
         """shows this message"""
         messages = ['Welcome to the interactive paginator!\n']
-        messages.append('This interactively allows you to see pages of text by navigating with ' \
+        messages.append('This interactively allows you to see pages of text by navigating with '
                         'reactions. They are as follows:\n')
 
         for (emoji, func) in self.reaction_emojis:

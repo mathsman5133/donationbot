@@ -26,7 +26,7 @@ CREATE TABLE messages (
     id serial PRIMARY KEY,
 
     guild_id BIGINT,
-    message_id BIGINT,
+    message_id BIGINT
 
     );
 
