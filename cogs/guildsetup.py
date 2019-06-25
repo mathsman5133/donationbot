@@ -247,7 +247,7 @@ class GuildConfiguration(commands.Cog):
         await ctx.confirm()
 
     @commands.command()
-    async def accounts(self, ctx, *, clans: ClanConverter):
+    async def accounts(self, ctx, *, clans: ClanConverter=None):
         """Get accounts and claims for all accounts in clans in a server.
 
         Parameters
@@ -263,6 +263,9 @@ class GuildConfiguration(commands.Cog):
         • `+accounts #CLAN_TAG`
         • `+accounts guild`
         """
+        if not clans:
+            clans = await ctx.get_clans()
+
         query = "SELECT user_id FROM players WHERE player_tag = $1"
         players = []
         for n in clans:
