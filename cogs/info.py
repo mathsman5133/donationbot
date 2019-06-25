@@ -15,3 +15,7 @@ class Info(commands.Cog):
     @commands.group()
     async def info(self, ctx):
         pass
+
+
+def setup(bot):
+    bot.add_cog(Info(bot))
