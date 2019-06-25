@@ -2,8 +2,8 @@ from discord.ext import commands
 import coc
 import discord
 import re
-
-
+import math
+from cogs.utils import paginator
 tag_validator = re.compile("(?P<tag>^\s*#?[PYLQGRJCUV0289]+\s*$)")
 
 
@@ -70,7 +70,7 @@ class PlayerConverter(commands.Converter):
         guild_clans = await ctx.get_clans()
         for g in guild_clans:
             if g.name == argument or g.tag == argument:
-                raise commands.BadArgument(f'You appear to be passing the clan tag for `{str(g)}`')
+                raise commands.BadArgument(f'You appear to be passing the clan tag/name for `{str(g)}`')
 
             member = g.get_member(name=argument)
             if member:
@@ -84,6 +84,9 @@ class PlayerConverter(commands.Converter):
 
 class ClanConverter(commands.Converter):
     async def convert(self, ctx, argument):
+        if argument in ['all', 'guild', 'server'] or not argument:
+            return await ctx.get_clans()
+
         if not argument:
             raise commands.BadArgument('No clan tag or name supplied.')
         if isinstance(argument, coc.BasicClan):
@@ -101,7 +104,7 @@ class ArgConverter(commands.Converter):
     async def convert(self, ctx, argument):
         if not argument:
             return ctx.author
-        if argument == 'all':
+        if argument in ['all', 'server', 'guild']:
             return await ctx.get_clans()
         try:
             return await commands.MemberConverter().convert(ctx, argument)  # finding don for a discord member
@@ -125,26 +128,93 @@ class Donations(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.group(name='donations')
-    async def _donations(self, ctx, *, arg: ArgConverter):
-        if ctx.invoked_subcommands is not None:
+    async def cog_command_error(self, ctx, error):
+        await ctx.send(str(error))
+
+    @commands.group(name='donations', aliases=['don'])
+    async def _donations(self, ctx, *, arg: ArgConverter=None):
+        """Check donations for a player, user, clan or guild.
+
+        Parameters
+        -----------
+        Pass in any of the following:
+
+            • A clan tag
+            • A clan name (clan must be claimed to the server)
+            • A discord @mention, user#discrim or user id
+            • A player tag
+            • A player name (must be in clan claimed to server)
+            • `all`, `server`, `guild` for all clans in guild
+            • None passed will divert to donations for your discord account
+
+        Example
+        ---------
+        • `+donations #CLAN_TAG`
+        • `+donations @mention`
+        • `+don #PLAYER_TAG`
+        • `+don player name`
+        • `+don all`
+        • `+don`
+
+        Aliases
+        --------
+        • `+donations` (primary)
+        • `+don`
+
+        Group Commands
+        ---------------
+        • `+donations clan`
+        • `+donations player`
+        • `+donations user`
+
+        By default, you shouldn't need to call these sub-commands as the bot will
+        parse your argument and direct it to the correct sub-command automatically.
+        """
+        if ctx.invoked_subcommand is not None:
+            print('1')
             return
+        if not arg:
+            await ctx.invoke(self._user, ctx.author)
         if isinstance(arg, discord.Member):
+            print('2')
             await ctx.invoke(self._user, arg)
         if isinstance(arg, coc.BasicClan):
-            await ctx.invoke(self._clan, [arg])
+            await ctx.invoke(self._clan, clans=[arg])
         if isinstance(arg, coc.BasicPlayer):
-            await ctx.invoke(self._player, arg)
+            await ctx.invoke(self._player, player=arg)
         if isinstance(arg, list):
             if isinstance(arg[0], coc.BasicClan):
-                await ctx.invoke(self._clan, arg)
+                await ctx.invoke(self._clan, clans=arg)
 
     @_donations.command(name='user')
     async def _user(self, ctx, user: discord.Member=None):
+        """Get donations for a discord user.
+
+        Parameters
+        -----------
+        Pass in any of the following:
+
+            • A discord @mention, user#discrim or user id
+            • None passed will divert to donations for your discord account
+
+        Example
+        ---------
+        • `+donations user @mention`
+        • `+don user USER_ID`
+        • `+don user`
+
+        Aliases
+        --------
+        • `+donations user` (primary)
+        • `+don user`
+
+        By default, you shouldn't need to call these sub-commands as the bot will
+        parse your argument and direct it to the correct sub-command automatically.
+        """
         if not user:
             user = ctx.author
 
-        query = "SELECT player_tag, donations, received FROM donations WHERE user_id = $1"
+        query = "SELECT player_tag, donations, received FROM players WHERE user_id = $1"
         fetch = await ctx.db.fetch(query, user.id)
         if not fetch:
             raise commands.BadArgument(f"{'You dont' if ctx.author == user else f'{str(user)} doesnt'} "
@@ -161,13 +231,35 @@ class Donations(commands.Cog):
         table = TabularData()
         table.set_columns(['IGN', 'Tag', 'Don', "Rec'd"])
         table.add_rows(final)
-
-        e.description = table.render()
+        e.description = f'```\n{table.render()}\n```'
         await ctx.send(embed=e)
 
     @_donations.command(name='player')
-    async def _player(self, ctx, player: PlayerConverter):
-        query = "SELECT player_tag, donations, received, user_id FROM donations WHERE tag = $1"
+    async def _player(self, ctx, *, player: PlayerConverter):
+        """Get donations for a player.
+
+        Parameters
+        -----------
+        Pass in any of the following:
+
+            • A player tag
+            • A player name (must be in a clan claimed to server)
+
+        Example
+        ---------
+        • `+donations player #PLAYER_TAG`
+        • `+don player player name`
+
+        Aliases
+        --------
+        • `+donations player` (primary)
+        • `+don player`
+
+        By default, you shouldn't need to call these sub-commands as the bot will
+        parse your argument and direct it to the correct sub-command automatically.
+        """
+
+        query = "SELECT player_tag, donations, received, user_id FROM players WHERE player_tag = $1"
         fetch = await ctx.db.fetchrow(query, player.tag)
 
         if not fetch:
@@ -188,29 +280,69 @@ class Donations(commands.Cog):
         await ctx.send(embed=e)
 
     @_donations.command(name='clan')
-    async def _clan(self, ctx, clans: ClanConverter):
-        query = f"""SELECT ign, tag, donations, user_id FROM donations 
-                WHERE clan_tag IN ({', '.join(n.tag for n in clans)})
-                """
-        fetch = await ctx.db.fetch(query)
+    async def _clan(self, ctx, *, clans: ClanConverter):
+        """Get donations for a clan.
 
-        if not fetch:
-            raise commands.BadArgument(f"No players claimed for clans `{f'{c.name} ({c.tag})' for c in clans}`")
+        Parameters
+        -----------
+        Pass in any of the following:
 
-        e = discord.Embed(colour=self.bot.colour)
+            • A clan tag
+            • A clan name (must be claimed to server)
+            • `all`, `server`, `guild`: all clans claimed to server
 
-        for n in fetch:
-            n[3] = self.bot.get_user(n[3])
+        Example
+        ---------
+        • `+donations clan #CLAN_TAG`
+        • `+don clan clan name`
+        • `+don clan all`
 
-        table = TabularData()
-        table.set_columns(['IGN', 'Tag', 'Donations', 'Claimed By'])
-        table.add_rows(fetch)
-        render = table.render()
-        if len(render) > 2040:
-            pass  # TODO: paginate
+        Aliases
+        --------
+        • `+donations clan` (primary)
+        • `+don clan`
 
-        e.description = f'```\n{table.render()}\n```'
-        await ctx.send(embed=e)
+        By default, you shouldn't need to call these sub-commands as the bot will
+        parse your argument and direct it to the correct sub-command automatically.
+        """
+
+        query = f"SELECT player_tag, donations, received, user_id FROM players WHERE player_tag  = $1"
+
+        players = []
+        for n in clans:
+            players.extend(x for x in n.members)
+
+        final = []
+
+        async for player in ctx.coc.get_players(n.tag for n in players):
+            fetch = await ctx.db.fetchrow(query, player.tag)
+            if fetch:
+                final.append([player.name, fetch[1], fetch[2], player.tag])
+
+        if not final:
+            raise commands.BadArgument(f"No players claimed for clans "
+                                       f"`{', '.join(f'{c.name} ({c.tag})' for c in clans)}`")
+
+        final.sort(key=lambda m: m[1], reverse=True)
+
+        messages = math.ceil(len(final) / 20)
+        entries = []
+
+        for i in range(messages):
+
+            results = final[i*20:(i+1)*20]
+
+            table = TabularData()
+            table.set_columns(['IGN', 'Don', "Rec'd", 'Tag'])
+            table.add_rows(results)
+
+            entries.append(f'```\n{table.render()}\n```')
+
+        p = paginator.Pages(ctx, entries=entries, per_page=1)
+        p.embed.colour = self.bot.colour
+        p.embed.title = f"Donations for {', '.join(f'{c.name}' for c in clans)}"
+
+        await p.paginate()
 
 
 def setup(bot):
