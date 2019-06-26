@@ -6,6 +6,7 @@ import math
 from .utils import paginator
 import typing
 
+
 class GuildConfiguration(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -239,8 +240,9 @@ class GuildConfiguration(commands.Cog):
         if fetch:
             if fetch[0] != ctx.author.id:
                 raise commands.BadArgument(f'Player {player.name} '
-                                           f'({player.tag}) has been claimed by {str(user)}. '
-                                           f'Please contact them to unclaim it.')
+                                           f"({player.tag}) has been claimed by "
+                                           f"{str(ctx.guild.get_member(fetch[0]) or 'Member not in guild.')}. "
+                                           f'Please contact them to un-claim it.')
 
         query = "UPDATE players SET user_id = NULL WHERE player_tag = $1"
         await ctx.db.execute(query, player.tag)
