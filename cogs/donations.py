@@ -217,6 +217,7 @@ class Donations(commands.Cog):
         final = []
         for n in fetch:
             player = await self.bot.coc.get_player(n[0])
+            print(mobile)
             if mobile:
                 final.append([player.name, n[1], n[2]])
             else:

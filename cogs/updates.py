@@ -179,12 +179,12 @@ class Updates(commands.Cog):
 
                 e = discord.Embed(colour=self.bot.colour)
                 e.description = fmt
-                await v.edit(embed=e)
+                await v.edit(embed=e, content=None)
 
             header = await self.get_header_message(result[1])
             await header.edit(embed=discord.Embed(colour=self.bot.colour,
                                                   description=f'Last updated {datetime.now():%Y-%m-%d %H:%M:%S%z}'),
-                              content='')
+                              content=None)
 
     async def on_clan_member_join(self, member, clan):
         query = "INSERT INTO players (player_tag, donations, received) VALUES ($1, $2) " \
