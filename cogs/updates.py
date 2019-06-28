@@ -187,7 +187,7 @@ class Updates(commands.Cog):
                               content=None)
 
     async def on_clan_member_join(self, member, clan):
-        query = "INSERT INTO players (player_tag, donations, received) VALUES ($1, $2) " \
+        query = "INSERT INTO players (player_tag, donations, received) VALUES ($1, $2, $3) " \
                 "ON CONFLICT (player_tag) DO NOTHING"
         await self.bot.pool.execute(query, member.tag, member.donations, member.received)
 
