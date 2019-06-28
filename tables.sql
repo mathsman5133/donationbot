@@ -19,7 +19,12 @@ CREATE TABLE guilds (
     log_toggle BOOLEAN,
     updates_channel_id BIGINT,
     updates_message_id BIGINT,
-    updates_toggle BOOLEAN
+    updates_toggle BOOLEAN,
+    updates_ign BOOLEAN,
+    updates_don BOOLEAN,
+    updates_rec BOOLEAN,
+    updates_tag BOOLEAN,
+    updates_claimed_by BOOLEAN
     );
 
 CREATE TABLE messages (
