@@ -14,6 +14,20 @@ class GuildConfiguration(commands.Cog):
     async def cog_command_error(self, ctx, error):
         await ctx.send(str(error))
 
+    @staticmethod
+    async def updates_fields_settings(ctx, *, default=False, ign=False,
+                                      don=False, rec=False, tag=False, claimed_by=False):
+        if default is True:
+            ign = True
+            don = True
+            rec = True
+            tag = False
+            claimed_by = False
+
+        query = "UPDATE guilds SET updates_ign = $1, updates_don = $2, updates_rec = $3, " \
+                "updates_tag = $4, updates_claimed_by = $5 WHERE guild_id = $6"
+        await ctx.db.execute(query, ign, don, rec, tag, claimed_by, ctx.guild.id)
+
     @commands.command()
     @commands.has_permissions(manage_guild=True)
     async def log(self, ctx, channel: discord.TextChannel=None, toggle: bool=True):
@@ -78,7 +92,43 @@ class GuildConfiguration(commands.Cog):
 
         query = "INSERT INTO messages (message_id, guild_id) VALUES ($1, $2)"
         await ctx.db.execute(query, msg2.id, ctx.guild.id)
-        await ctx.confirm()
+
+        prompt = await ctx.prompt('Would you like to set custom fields for the message? The default is '
+                                  'IGN, donations and received, in that order. This combination is mobile friendly, '
+                                  'but once you start adding fields the formatting does not work on mobile.')
+        if not prompt:
+            await ctx.send('All done. Thanks!')
+            await self.updates_fields_settings(ctx, default=True)
+            return await ctx.confirm()
+
+        ign = await ctx.prompt('Would you like an IGN (In-game name) column?')
+        if ign is None:
+            await self.updates_fields_settings(ctx, default=True)
+            return await ctx.confirm()
+
+        don = await ctx.prompt('Would you like a donations column?')
+        if don is None:
+            await self.updates_fields_settings(ctx, ign=ign, don=True, rec=True)
+            return await ctx.confirm()
+
+        rec = await ctx.prompt('Would you like a received column?')
+        if rec is None:
+            await self.updates_fields_settings(ctx, ign=ign, don=don, rec=True)
+            return await ctx.confirm()
+
+        tag = await ctx.prompt('Would you like a player tag column?')
+        if tag is None:
+            await self.updates_fields_settings(ctx, ign=ign, don=don, rec=rec)
+            return await ctx.confirm()
+
+        claimed_by = await ctx.prompt('Would you like a claimed_by column?')
+        if claimed_by is None:
+            await self.updates_fields_settings(ctx, ign=ign, don=don, rec=rec, tag=tag)
+            return await ctx.confirm()
+
+        await self.updates_fields_settings(ctx, ign=ign, don=don, rec=rec, tag=tag, claimed_by=claimed_by)
+        await ctx.send('All done. Thanks!')
+        return await ctx.confirm()
 
     @commands.command(aliases=['aclan'])
     @commands.has_permissions(manage_guild=True)
@@ -482,6 +532,9 @@ class GuildConfiguration(commands.Cog):
                 await msg.delete()
             except (discord.Forbidden, discord.HTTPException):
                 pass
+
+        await ctx.send('All done. Thanks!')
+        await ctx.confirm()
 
     @commands.group(name='toggle', hidden=True)
     async def _toggle(self, ctx):

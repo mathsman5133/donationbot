@@ -124,7 +124,7 @@ class Updates(commands.Cog):
         for n in clans:
             players.extend(p for p in n.members)
 
-        query = "SELECT player_tag, donations, received FROM players " \
+        query = "SELECT player_tag, donations, received, user_id FROM players " \
                 f"WHERE player_tag = $1"
 
         player_info = []
@@ -136,36 +136,55 @@ class Updates(commands.Cog):
                 print(n)
         player_info.sort(key=lambda m: m[1], reverse=True)
 
-        message_count = math.ceil(len(player_info) / 30)
+        message_count = math.ceil(len(player_info) / 20)
         for result in fetch_guilds:
             messages = await self.get_updates_messages(result[1], number_of_msg=message_count)
+            ign, don, rec, tag, claimed_by = await self.bot.guild_settings(result[1])
             if not messages:
                 continue
 
             for i, v in enumerate(messages):
+                settings = {'IGN': ign, 'Don': don, "Rec'd": rec, 'Player Tag': tag, 'Claimed By': claimed_by}
                 final = []
 
-                results = player_info[i*30:(i+1)*30]
+                results = player_info[i*20:(i+1)*20]
                 table = TabularData()
-                # table.set_columns(['IGN', 'Donations', 'Received', 'Claimed By', 'Clan'])
-                table.set_columns(['IGN', 'Don', "Rec'd"])
+
+                table.set_columns([n for n in settings if settings[n] is True])
 
                 for c, n in enumerate(results):
-                    # print(n, n[0])
-                    player = discord.utils.find(lambda m: m.tag == n[0], players)
-                    final.append([player.name, n[1], n[2]])
-                    # results[c][3] = str(self.bot.get_user(n[3]))
-                    # results[c][4] = str(player.clan)
+                    info = []
+                    if ign:
+                        player = discord.utils.find(lambda m: m.tag == n[0], players)
+                        info.append(player.name)
+                    if don:
+                        info.append(n[1])
+                    if rec:
+                        info.append(n[2])
+                    if tag:
+                        info.append(n[0])
+                    if claimed_by:
+                        user = self.bot.get_user(n[3])
+                        info.append(str(user) or 'None')
+                    final.append(info)
 
                 table.add_rows(final)
 
+                fmt = f'```\n{table.render()}\n```'
+                print(len([n for n in settings if settings[n] is True]))
+                print([n for n in settings if settings[n] is True])
+                if len([n for n in settings if settings[n] is True]) > 3:
+                    await v.edit(content=fmt, embed=None)
+                    continue
+
                 e = discord.Embed(colour=self.bot.colour)
-                e.description = f'```\n{table.render()}\n```'
-                await v.edit(embed=e, content='')
+                e.description = fmt
+                await v.edit(embed=e)
 
             header = await self.get_header_message(result[1])
             await header.edit(embed=discord.Embed(colour=self.bot.colour,
-                                                  description=f'Last updated {datetime.now():%Y-%m-%d %H:%M:%S%z}'))
+                                                  description=f'Last updated {datetime.now():%Y-%m-%d %H:%M:%S%z}'),
+                              content='')
 
     async def on_clan_member_join(self, member, clan):
         query = "INSERT INTO players (player_tag, donations, received) VALUES ($1, $2) " \
