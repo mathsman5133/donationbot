@@ -107,6 +107,10 @@ class DonationBot(commands.Bot):
         except:
             pass
 
+    async def on_ready(self):
+        cog = self.get_cog('Updates')
+        await cog.update_clan_tags()
+
     async def log_info(self, clan_or_guilds, message, colour):
         if isinstance(clan_or_guilds, coc.BasicClan):
             query = "SELECT guild_id FROM guilds WHERE clan_tag = $1 " \
@@ -138,6 +142,12 @@ class DonationBot(commands.Bot):
         query = "SELECT clan_tag FROM guilds WHERE guild_id = $1"
         fetch = await self.pool.fetch(query, guild_id)
         return await self.coc.get_clans(n[0] for n in fetch).flatten()
+
+    async def guild_settings(self, guild_id):
+        query = "SELECT updates_ign, updates_don, updates_rec, updates_tag, updates_claimed_by FROM guilds " \
+                "WHERE guild_id = $1"
+        fetch = await self.pool.fetchrow(query, guild_id)
+        return fetch[0], fetch[1], fetch[2], fetch[3], fetch[4]
 
 
 if __name__ == '__main__':
