@@ -34,6 +34,7 @@ class DonationBot(commands.Bot):
                                                adapter=discord.AsyncWebhookAdapter(session=self.session))
         self.uptime = datetime.datetime.utcnow()
         self.prefixes = {}
+        coc_client.add_events(self.on_event_error)
 
         for e in initial_extensions:
             try:
@@ -95,7 +96,6 @@ class DonationBot(commands.Bot):
         e.timestamp = datetime.datetime.utcnow()
         await self.webhook.send(embed=e)
 
-    @coc_client.event
     async def on_event_error(self, event_name, *args, **kwargs):
         e = discord.Embed(title='COC Event Error', colour=0xa32952)
         e.add_field(name='Event', value=event_name)
