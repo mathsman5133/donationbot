@@ -132,8 +132,10 @@ class Donations(commands.Cog):
         await ctx.send(str(error))
 
     @commands.group(name='donations', aliases=['don'])
-    async def _donations(self, ctx, *, arg: ArgConverter=None):
+    async def _donations(self, ctx, *, arg: ArgConverter=None, mobile=False):
         """Check donations for a player, user, clan or guild.
+
+        For a mobile-friendly table that is guaranteed to fit on a mobile screen, please use `+donmob`.
 
         Parameters
         -----------
@@ -160,34 +162,23 @@ class Donations(commands.Cog):
         --------
         • `+donations` (primary)
         • `+don`
-
-        Group Commands
-        ---------------
-        • `+donations clan`
-        • `+donations player`
-        • `+donations user`
-
-        By default, you shouldn't need to call these sub-commands as the bot will
-        parse your argument and direct it to the correct sub-command automatically.
         """
         if ctx.invoked_subcommand is not None:
-            print('1')
             return
         if not arg:
-            await ctx.invoke(self._user, ctx.author)
+            await ctx.invoke(self._user, ctx.author, mobile=mobile)
         if isinstance(arg, discord.Member):
-            print('2')
             await ctx.invoke(self._user, arg)
         if isinstance(arg, coc.BasicClan):
-            await ctx.invoke(self._clan, clans=[arg])
+            await ctx.invoke(self._clan, clans=[arg], mobile=mobile)
         if isinstance(arg, coc.BasicPlayer):
-            await ctx.invoke(self._player, player=arg)
+            await ctx.invoke(self._player, player=arg, mobile=mobile)
         if isinstance(arg, list):
             if isinstance(arg[0], coc.BasicClan):
-                await ctx.invoke(self._clan, clans=arg)
+                await ctx.invoke(self._clan, clans=arg, mobile=mobile)
 
     @_donations.command(name='user')
-    async def _user(self, ctx, user: discord.Member=None):
+    async def _user(self, ctx, user: discord.Member=None, mobile=False):
         """Get donations for a discord user.
 
         Parameters
@@ -226,16 +217,22 @@ class Donations(commands.Cog):
         final = []
         for n in fetch:
             player = await self.bot.coc.get_player(n[0])
-            final.append([player.name, player.tag, n[1], n[2]])
+            if mobile:
+                final.append([player.name, n[1], n[2]])
+            else:
+                final.append([player.name, player.tag, n[1], n[2]])
 
         table = TabularData()
-        table.set_columns(['IGN', 'Tag', 'Don', "Rec'd"])
+        if mobile:
+            table.set_columns(['IGN', 'Don', "Rec'd"])
+        else:
+            table.set_columns(['IGN', 'Tag', 'Don', "Rec'd"])
         table.add_rows(final)
         e.description = f'```\n{table.render()}\n```'
         await ctx.send(embed=e)
 
     @_donations.command(name='player')
-    async def _player(self, ctx, *, player: PlayerConverter):
+    async def _player(self, ctx, *, player: PlayerConverter, mobile=False):
         """Get donations for a player.
 
         Parameters
@@ -267,20 +264,25 @@ class Donations(commands.Cog):
 
         user = self.bot.get_user(fetch[3])
         player = await self.bot.coc.get_player(fetch[0])
-        final = [player.name, player.tag, fetch[1], fetch[2], str(user)]
+        if mobile:
+            final = [player.name, fetch[1], fetch[2]]
+        else:
+            final = [player.name, player.tag, fetch[1], fetch[2], str(user)]
 
         e = discord.Embed(colour=self.bot.colour)
         e.set_author(name=str(user), icon_url=user.avatar_url)
 
         table = TabularData()
-        table.set_columns(['IGN', 'Tag', 'Don', "Rec'd", 'Claimed By'])
+        if mobile:
+            table.set_columns(['IGN', 'Don', "Rec'd"])
+        else:
+            table.set_columns(['IGN', 'Tag', 'Don', "Rec'd", 'Claimed By'])
         table.add_row(final)
 
-        e.description = table.render()
-        await ctx.send(embed=e)
+        await ctx.send(f'```\n{table.render()}\n```')
 
     @_donations.command(name='clan')
-    async def _clan(self, ctx, *, clans: ClanConverter):
+    async def _clan(self, ctx, *, clans: ClanConverter, mobile=False):
         """Get donations for a clan.
 
         Parameters
@@ -317,7 +319,13 @@ class Donations(commands.Cog):
         async for player in ctx.coc.get_players(n.tag for n in players):
             fetch = await ctx.db.fetchrow(query, player.tag)
             if fetch:
-                final.append([player.name, fetch[1], fetch[2], player.tag])
+                if mobile:
+                    final.append([player.name, fetch[1], fetch[2]])
+                else:
+                    name = str(self.bot.get_user(fetch[3]))
+                    if len(name) > 20:
+                        name = name[:20] + '..'
+                    final.append([player.name, fetch[1], fetch[2], player.tag, name])
 
         if not final:
             raise commands.BadArgument(f"No players claimed for clans "
@@ -333,7 +341,10 @@ class Donations(commands.Cog):
             results = final[i*20:(i+1)*20]
 
             table = TabularData()
-            table.set_columns(['IGN', 'Don', "Rec'd", 'Tag'])
+            if mobile:
+                table.set_columns(['IGN', 'Don', "Rec'd"])
+            else:
+                table.set_columns(['IGN', 'Don', "Rec'd", 'Tag', 'Claimed By'])
             table.add_rows(results)
 
             entries.append(f'```\n{table.render()}\n```')
@@ -343,6 +354,44 @@ class Donations(commands.Cog):
         p.embed.title = f"Donations for {', '.join(f'{c.name}' for c in clans)}"
 
         await p.paginate()
+
+    @commands.command(name='donmobile', aliases=['donmob', 'mobdon', 'mdon', 'donm'])
+    async def _mobile(self, ctx, *, arg: ArgConverter=None):
+        """Get a mobile-friendly version of donations.
+
+        This command is identical in usage to `+don`. The only difference is the return of a mobile-friendly table.
+        For a complete table with #PLAYER_TAG and Claimed By columns, please use `+don`.
+
+        Parameters
+        -----------
+        Pass in any of the following:
+
+            • A clan tag
+            • A clan name (clan must be claimed to the server)
+            • A discord @mention, user#discrim or user id
+            • A player tag
+            • A player name (must be in clan claimed to server)
+            • `all`, `server`, `guild` for all clans in guild
+            • None passed will divert to donations for your discord account
+
+        Example
+        ---------
+        • `+donmobile #CLAN_TAG`
+        • `+donmob @mention`
+        • `+mdon #PLAYER_TAG`
+        • `+donm player name`
+        • `+donmobile all`
+        • `+mobdon`
+
+        Aliases
+        --------
+        • `+donmobile` (primary)
+        • `+donmob`
+        • `+mobdon`
+        • `+mdon`
+        • `+donm`
+        """
+        await ctx.invoke(self._donations, arg=arg, mobile=True)
 
 
 def setup(bot):
