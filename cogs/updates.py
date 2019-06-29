@@ -72,6 +72,11 @@ class Updates(commands.Cog):
         await self.bot.pool.execute(query, msg.id, old_message_id)
         return msg
 
+    async def delete_message_id(self, channel_id, message_id):
+        query = "DELETE FROM messages WHERE message_id = $1"
+        await self.bot.pool.execute(query, message_id)
+        msg = await self.bot.http.delete_message(channel_id, message_id)
+
     async def get_header_message(self, guild_id):
         query = "SELECT updates_channel_id, updates_message_id FROM guilds " \
                 "WHERE guild_id = $1 AND updates_toggle = True"
@@ -107,6 +112,8 @@ class Updates(commands.Cog):
                 messages.append(await self.reset_message_id(fetch[0][0]))
             return messages
         if len(messages) > number_of_msg:
+            for n in messages[number_of_msg:]:
+                await self.delete_message_id(fetch[0][0], n.id)
             return messages[:number_of_msg]
 
     async def edit_updates_for_clan(self, clan):
@@ -138,6 +145,7 @@ class Updates(commands.Cog):
 
         message_count = math.ceil(len(player_info) / 20)
         for result in fetch_guilds:
+            print(message_count)
             messages = await self.get_updates_messages(result[1], number_of_msg=message_count)
             ign, don, rec, tag, claimed_by = await self.bot.guild_settings(result[1])
             if not messages:
@@ -171,8 +179,6 @@ class Updates(commands.Cog):
                 table.add_rows(final)
 
                 fmt = f'```\n{table.render()}\n```'
-                print(len([n for n in settings if settings[n] is True]))
-                print([n for n in settings if settings[n] is True])
                 if len([n for n in settings if settings[n] is True]) > 3:
                     await v.edit(content=fmt, embed=None)
                     continue
