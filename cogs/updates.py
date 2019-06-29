@@ -1,4 +1,4 @@
-from discord.ext import commands
+from discord.ext import commands, tasks
 import discord
 from cogs.utils import fuzzy
 import coc
@@ -13,10 +13,37 @@ class Updates(commands.Cog):
         self.clan_updates = []
         self.player_updates = []
         self._new_month = False
+        self._message_cache = {}
+        self.clear_message_cache.start()
         self.bot.coc.add_events(self.on_clan_member_join, self.on_clan_member_donation,
                                 self.on_clan_member_received)
         self.bot.coc._clan_retry_interval = 60
         self.bot.coc.start_updates('clan')
+
+    def cog_unload(self):
+        self.clear_message_cache.cancel()
+
+    @tasks.loop(hours=1.0)
+    async def clear_message_cache(self):
+        self._message_cache.clear()
+
+    async def get_message(self, channel, message_id):
+        try:
+            return self._message_cache[message_id]
+        except KeyError:
+            try:
+                o = discord.Object(id=message_id + 1)
+                pred = lambda m: m.id == message_id
+                # don't wanna use get_message due to poor rate limit (1/1s) vs (50/1s)
+                msg = await channel.history(limit=1, before=o).next()
+
+                if msg.id != message_id:
+                    return None
+
+                self._message_cache[message_id] = msg
+                return msg
+            except Exception:
+                return None
 
     async def update_clan_tags(self):
         query = "SELECT DISTINCT clan_tag FROM guilds"
@@ -87,7 +114,7 @@ class Updates(commands.Cog):
         return msg
 
     async def get_updates_messages(self, guild_id, number_of_msg=None):
-        query = "SELECT guilds.updates_channel_id, messages.message_id FROM guilds INNER JOIN messages " \
+        query = "SELECT guilds.updates_channel_id, DISTINCT messages.message_id FROM guilds INNER JOIN messages " \
                 "ON guilds.guild_id = messages.guild_id WHERE guilds.guild_id = $1 AND guilds.updates_toggle = True"
         fetch = await self.bot.pool.fetch(query, guild_id)
         if not fetch:
@@ -95,13 +122,11 @@ class Updates(commands.Cog):
 
         messages = []
         for c, m in fetch:
-            try:
-                msg = await self.bot.get_channel(c).fetch_message(m)
-            except discord.NotFound:
-                msg = await self.reset_message_id(c, m)
+            msg = await self.get_message(c[0], m[0])
+            if not msg:
+                msg = await self.reset_message_id(c[0], m[0])
 
-            if msg.id not in [n.id for n in messages]:
-                messages.append(msg)
+            messages.append(msg)
 
         if not number_of_msg:
             return messages
@@ -118,7 +143,7 @@ class Updates(commands.Cog):
 
     async def edit_updates_for_clan(self, clan):
         guilds = await self.bot.get_guilds(clan.tag)
-        query = f"SELECT clan_tag, guild_id FROM guilds WHERE guild_id IN " \
+        query = f"SELECT DISTINCT clan_tag, guild_id FROM guilds WHERE guild_id IN " \
                 f"({', '.join(str(n.id) for n in guilds)}) AND updates_toggle = True"
         fetch_guilds = await self.bot.pool.fetch(query)
         if not fetch_guilds:
@@ -129,7 +154,8 @@ class Updates(commands.Cog):
         print([n.name for n in clans])
         players = []
         for n in clans:
-            players.extend(p for p in n.members)
+            players.extend(p for p in n._members)
+        print(f'{len(players)} len players')
 
         query = "SELECT player_tag, donations, received, user_id FROM players " \
                 f"WHERE player_tag = $1"
