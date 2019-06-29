@@ -47,7 +47,7 @@ class Updates(commands.Cog):
             return None
         for i, n in enumerate(matches):
             query = "SELECT user_id FROM players WHERE player_tag = $1"
-            fetch = await self.bot.pool.fetchrow(query, member.tag)
+            fetch = await self.bot.pool.fetchrow(query, n.tag)
             if fetch is None:
                 continue
             del matches[i]
@@ -200,7 +200,7 @@ class Updates(commands.Cog):
                                               f'discord names were found.',
                                         colour=discord.Colour.red())
                 # no members found in guild with that player name
-            if isinstance(results, discord.User):
+            if isinstance(results, discord.Member):
                 await self.bot.log_info(clan, f'{member.name} ({member.tag}) joined {str(clan)} ({clan.tag}) '
                                               f'and I found a singular matching discord account: {str(results)} '
                                               f'(ID {results.id}), so linked the 2 [auto]',
