@@ -143,7 +143,7 @@ class Updates(commands.Cog):
 
     async def edit_updates_for_clan(self, clan):
         guilds = await self.bot.get_guilds(clan.tag)
-        query = f"SELECT DISTINCT clan_tag, guild_id FROM guilds WHERE guild_id IN " \
+        query = f"SELECT DISTINCT clan_tag FROM guilds WHERE guild_id IN " \
                 f"({', '.join(str(n.id) for n in guilds)}) AND updates_toggle = True"
         fetch_guilds = await self.bot.pool.fetch(query)
         if not fetch_guilds:
@@ -170,7 +170,7 @@ class Updates(commands.Cog):
         player_info.sort(key=lambda m: m[1], reverse=True)
 
         message_count = math.ceil(len(player_info) / 20)
-        for result in fetch_guilds:
+        for result in guilds:
             print(message_count)
             messages = await self.get_updates_messages(result[1], number_of_msg=message_count)
             ign, don, rec, tag, claimed_by = await self.bot.guild_settings(result[1])

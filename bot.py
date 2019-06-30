@@ -110,6 +110,7 @@ class DonationBot(commands.Bot):
     async def on_ready(self):
         cog = self.get_cog('Updates')
         await cog.update_clan_tags()
+        await self.change_presence(activity=discord.Game('+help for commands'))
 
     async def log_info(self, clan_or_guilds, message, colour):
         if isinstance(clan_or_guilds, coc.BasicClan):
