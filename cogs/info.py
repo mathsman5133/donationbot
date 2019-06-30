@@ -40,6 +40,8 @@ class Info(commands.Cog):
     async def on_guild_join(self, guild):
         e = discord.Embed(colour=0x53dda4, title='New Guild') # green colour
         await self.send_guild_stats(e, guild)
+        query = "INSERT INTO guilds (guild_id) VALUES $1"
+        await self.pool.execute(query, guild.id)
 
     @commands.Cog.listener()
     async def on_guild_remove(self, guild):

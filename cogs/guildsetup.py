@@ -155,7 +155,7 @@ class GuildConfiguration(commands.Cog):
         ------------
         • `manage_server` permissions
         """
-        query = "SELECT * FROM guilds WHERE clan_tag = $1 AND guild_id = $2"
+        query = "SELECT * FROM clans WHERE clan_tag = $1 AND guild_id = $2"
         fetch = await ctx.db.fetch(query, clan_tag, ctx.guild.id)
         if fetch:
             raise commands.BadArgument('This clan has already been linked to the server.')
@@ -165,7 +165,7 @@ class GuildConfiguration(commands.Cog):
         except coc.NotFound:
             raise commands.BadArgument(f'Clan not found with `{clan_tag}` tag.')
 
-        query = "INSERT INTO guilds (clan_tag, guild_id, clan_name) VALUES ($1, $2, $3)"
+        query = "INSERT INTO clans (clan_tag, guild_id, clan_name) VALUES ($1, $2, $3)"
         await ctx.db.execute(query, clan.tag, ctx.guild.id, clan.name)
 
         query = "INSERT INTO players (player_tag, donations, received) " \
@@ -202,7 +202,7 @@ class GuildConfiguration(commands.Cog):
         ------------
         • `manage_server` permissions
         """
-        query = "DELETE FROM guilds WHERE clan_tag = $1 AND guild_id = $2"
+        query = "DELETE FROM clans WHERE clan_tag = $1 AND guild_id = $2"
         await ctx.db.execute(query, clan_tag, ctx.guild.id)
         await ctx.confirm()
 
