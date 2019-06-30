@@ -172,8 +172,8 @@ class Updates(commands.Cog):
         message_count = math.ceil(len(player_info) / 20)
         for result in guilds:
             print(message_count)
-            messages = await self.get_updates_messages(result[1], number_of_msg=message_count)
-            ign, don, rec, tag, claimed_by = await self.bot.guild_settings(result[1])
+            messages = await self.get_updates_messages(result.id, number_of_msg=message_count)
+            ign, don, rec, tag, claimed_by = await self.bot.guild_settings(result.id)
             if not messages:
                 continue
 
@@ -213,7 +213,7 @@ class Updates(commands.Cog):
                 e.description = fmt
                 await v.edit(embed=e, content=None)
 
-            header = await self.get_header_message(result[1])
+            header = await self.get_header_message(result.id)
             await header.edit(embed=discord.Embed(colour=self.bot.colour,
                                                   description=f'Last updated {datetime.now():%Y-%m-%d %H:%M:%S%z}'),
                               content=None)
