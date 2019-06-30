@@ -9,12 +9,18 @@ CREATE TABLE players (
     last_updated TIMESTAMP
     );
 
-CREATE TABLE guilds (
+CREATE TABLE clans (
     id serial PRIMARY KEY,
 
     guild_id BIGINT,
     clan_tag TEXT,
-    clan_name TEXT,
+    clan_name TEXT
+    );
+
+CREATE TABLE guilds (
+    id serial PRIMARY KEY,
+
+    guild_id BIGINT,
     log_channel_id BIGINT,
     log_toggle BOOLEAN,
     updates_channel_id BIGINT,
