@@ -117,7 +117,7 @@ class Updates(commands.Cog):
         return msg
 
     async def get_updates_messages(self, guild_id, number_of_msg=None):
-        query = "SELECT guilds.updates_channel_id, DISTINCT messages.message_id FROM guilds INNER JOIN messages " \
+        query = "SELECT guilds.updates_channel_id, messages.message_id FROM guilds INNER JOIN messages " \
                 "ON guilds.guild_id = messages.guild_id WHERE guilds.guild_id = $1 AND guilds.updates_toggle = True"
         fetch = await self.bot.pool.fetch(query, guild_id)
         if not fetch:
