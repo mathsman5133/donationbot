@@ -22,6 +22,9 @@ class Updates(commands.Cog):
 
     def cog_unload(self):
         self.clear_message_cache.cancel()
+        self.bot.coc.extra_events.pop('on_clan_member_join')
+        self.bot.coc.extra_events.pop('on_clan_member_donation')
+        self.bot.coc.extra_events.pop('on_clan_member_received')
 
     @tasks.loop(hours=1.0)
     async def clear_message_cache(self):
