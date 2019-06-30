@@ -60,14 +60,13 @@ class Updates(commands.Cog):
         self.clean_message_cache.start()
 
         self._guild_config_cache = OrderedDict()
-        self.bot.coc.add_events(self.on_clan_member_join, self.on_clan_member_donation,
+        self.bot.coc.add_events(self.on_clan_member_donation,
                                 self.on_clan_member_received)
         self.bot.coc._clan_retry_interval = 60
         self.bot.coc.start_updates('clan')
 
     def cog_unload(self):
         self.clear_message_cache.cancel()
-        self.bot.coc.extra_events.pop('on_clan_member_join')
         self.bot.coc.extra_events.pop('on_clan_member_donation')
         self.bot.coc.extra_events.pop('on_clan_member_received')
 
