@@ -4,7 +4,7 @@ import math
 from .updates import TabularData
 from datetime import datetime
 from collections import OrderedDict
-
+from .utils import fuzzy
 
 class GuildConfig:
     __slots__ = ('bot', 'guild_id', 'updates_channel_id', 'updates_header_id', 'updates_toggle',
@@ -53,6 +53,8 @@ class Updates(commands.Cog):
         self.bot = bot
 
         self._new_month = False
+        self.clan_updates = []
+        self.player_updates = []
 
         self._message_cache = {}
         self.clean_message_cache.start()
@@ -106,6 +108,48 @@ class Updates(commands.Cog):
         query = "INSERT INTO messages (guild_id, message_id) VALUES ($1, $2)"
         await self.bot.pool.execute(query, new_msg.guild.id, new_msg.id)
         return new_msg
+
+    async def update_clan_tags(self):
+        query = "SELECT DISTINCT clan_tag FROM guilds"
+        fetch = await self.bot.pool.fetch(query)
+        self.bot.coc._clan_updates = [n[0] for n in fetch]
+
+    async def match_player(self, player, guild: discord.Guild, prompt=False, ctx=None, score_cutoff=80):
+        matches = fuzzy.extract_matches(player.name, [n.name for n in guild.members], score_cutoff=20,
+                                        scorer=fuzzy.partial_ratio, limit=9)
+        if len(matches) == 0:
+            return None
+        if len(matches) == 1:
+            user = guild.get_member_named(matches[0][0])
+            if prompt:
+                m = await ctx.prompt(f'[auto-claim]: {player.name} ({player.tag}) '
+                                     f'to be claimed to {str(user)} ({user.id}).')
+                if m is True:
+                    query = "UPDATE players SET user_id = $1 WHERE player_tag = $2"
+                    await self.bot.pool.execute(query, user.id, player.tag)
+                else:
+                    return False
+            return user
+        return [guild.get_member_named(n[0]) for n in matches]
+
+    async def match_member(self, member, clan):
+        matches = fuzzy.extract_matches(member.name, [n.name for n in clan.members], score_cutoff=60)
+        if len(matches) == 0:
+            return None
+        for i, n in enumerate(matches):
+            query = "SELECT user_id FROM players WHERE player_tag = $1"
+            fetch = await self.bot.pool.fetchrow(query, n.tag)
+            if fetch is None:
+                continue
+            del matches[i]
+
+        if len(matches) == 1:
+            player = clan.get_member(name=matches[0][0])
+            query = "UPDATE players SET user_id = $1 WHERE player_tag = $2 AND user_id = NULL"
+            await self.bot.pool.execute(query, member.id, player.tag)
+            return [player]
+
+        return [clan.get_member(name=n) for n in matches]
 
     @commands.Cog.listener()
     async def on_guild_channel_delete(self, channel):
