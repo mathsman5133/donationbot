@@ -34,12 +34,12 @@ class GuildConfig:
 
     @property
     def updates_channel(self):
-        guild = self.bot.get_channel(self.guild_id)
+        guild = self.bot.get_guild(self.guild_id)
         return guild and guild.get_channel(self.updates_channel_id)
 
     @property
     def log_channel(self):
-        guild = self.bot.get_channel(self.guild_id)
+        guild = self.bot.get_guild(self.guild_id)
         return guild and guild.get_channel(self.log_channel_id)
 
     async def updates_message_ids(self):
