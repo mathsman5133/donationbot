@@ -66,7 +66,7 @@ class Updates(commands.Cog):
         self.bot.coc.start_updates('clan')
 
     def cog_unload(self):
-        self.clear_message_cache.cancel()
+        self.clean_message_cache.cancel()
         self.bot.coc.extra_events.pop('on_clan_member_donation')
         self.bot.coc.extra_events.pop('on_clan_member_received')
 
