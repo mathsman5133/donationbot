@@ -119,7 +119,7 @@ class Updates(commands.Cog):
         return new_msg
 
     async def update_clan_tags(self):
-        query = "SELECT DISTINCT clan_tag FROM guilds"
+        query = "SELECT DISTINCT clan_tag FROM clans"
         fetch = await self.bot.pool.fetch(query)
         self.bot.coc._clan_updates = [n[0] for n in fetch]
 

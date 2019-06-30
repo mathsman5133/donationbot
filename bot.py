@@ -135,12 +135,12 @@ class DonationBot(commands.Bot):
             await c.send(embed=e)
 
     async def get_guilds(self, clan_tag):
-        query = "SELECT guild_id FROM guilds WHERE clan_tag = $1"
+        query = "SELECT guild_id FROM clans WHERE clan_tag = $1"
         fetch = await self.pool.fetch(query, clan_tag)
         return [self.get_guild(n[0]) for n in fetch]
 
     async def get_clans(self, guild_id):
-        query = "SELECT clan_tag FROM guilds WHERE guild_id = $1"
+        query = "SELECT clan_tag FROM clans WHERE guild_id = $1"
         fetch = await self.pool.fetch(query, guild_id)
         return await self.coc.get_clans(n[0] for n in fetch).flatten()
 
