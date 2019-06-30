@@ -125,9 +125,9 @@ class Updates(commands.Cog):
 
         messages = []
         for c, m in fetch:
-            msg = await self.get_message(c[0], m[0])
+            msg = await self.get_message(c, m)
             if not msg:
-                msg = await self.reset_message_id(c[0], m[0])
+                msg = await self.reset_message_id(c, m)
 
             messages.append(msg)
 
