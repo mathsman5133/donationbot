@@ -104,7 +104,8 @@ class Updates(commands.Cog):
             except Exception:
                 return None
 
-    async def reset_message_id(self, guild_config, message_id=None, delete=False):
+    async def reset_message_id(self, guild_id, message_id=None, delete=False):
+        guild_config = await self.get_guild_config(guild_id)
         if message_id:
             query = "DELETE FROM messages WHERE message_id = $1"
             await self.bot.pool.execute(query, message_id)
@@ -185,7 +186,7 @@ class Updates(commands.Cog):
         if guild_config.updates_channel is None or guild_config.updates_channel.id != payload.channel_id:
             return
 
-        await self.reset_message_id(guild_config, payload.message_id)
+        await self.reset_message_id(payload.guild_id, payload.message_id)
 
     @commands.Cog.listener()
     async def on_raw_bulk_message_delete(self, payload):
@@ -194,7 +195,7 @@ class Updates(commands.Cog):
             return
 
         for n in payload.message_ids:
-            await self.reset_message_id(guild_config, n)
+            await self.reset_message_id(payload.guild_id, n)
 
     async def on_clan_member_donation(self, old_donations, new_donations, player, clan):
         if old_donations > new_donations:
@@ -232,11 +233,11 @@ class Updates(commands.Cog):
             return messages
         elif len(messages) > number_of_msg:
             for n in messages[number_of_msg:]:
-                await self.reset_message_id(guild_config.updates_channel_id, message_id=n.id, delete=True)
+                await self.reset_message_id(guild_id, message_id=n.id, delete=True)
             return messages[:number_of_msg]
         elif len(messages) < number_of_msg:
             for n in range(number_of_msg - len(messages)):
-                messages.append(await self.reset_message_id(guild_config.updates_channel_id))
+                messages.append(await self.reset_message_id(guild_id))
             return messages
 
     async def new_month(self):
