@@ -144,7 +144,7 @@ class Info(commands.Cog):
         perms.attach_files = True
         await ctx.send(f'<{discord.utils.oauth_url(self.bot.client_id, perms)}>')
 
-    @commands.group()
+    @commands.group(hidden=True)
     async def info(self, ctx):
         pass
 
@@ -172,35 +172,59 @@ class Info(commands.Cog):
     async def on_guild_join(self, guild):
         e = discord.Embed(colour=0x53dda4, title='New Guild')  # green colour
         await self.send_guild_stats(e, guild)
-        query = "INSERT INTO guilds (guild_id) VALUES ($1)"
+        query = "INSERT INTO guilds (guild_id) VALUES ($1) ON CONFLICT (guild_id) DO NOTHING"
         await self.bot.pool.execute(query, guild.id)
 
         if guild.system_channel:
-            await guild.system_channel.send('Hi There! Thanks for adding my. My prefix is `+`, '
-                                            'and all commands can be found with `+help`.'
-                                            ' To start off, you might be looking for the `+updates` command, the '
-                                            '`+log` command, the `+aclan` command and the `+auto_claim` command.\n\n'
-                                            'Feel free to join the support server if you get stuck: discord.gg/ePt8y4V,'
-                                            '\n\nHere is the invite link to share me with your friends: '
-                                            'https://discordapp.com/oauth2/authorize?client_id=427301910291415051&'
-                                            'scope=bot&permissions=388176. \n\nHave a good day!')
+            try:
+                await guild.system_channel.send('Hi There! Thanks for adding my. My prefix is `+`, '
+                                                'and all commands can be found with `+help`.'
+                                                ' To start off, you might be looking for the `+updates` command, the '
+                                                '`+log` command, the `+aclan` command and the `+auto_claim` command.\n\n'
+                                                'Feel free to join the support server if you get stuck: discord.gg/ePt8y4V,'
+                                                '\n\nHere is the invite link to share me with your friends: '
+                                                'https://discordapp.com/oauth2/authorize?client_id=427301910291415051&'
+                                                'scope=bot&permissions=388176. \n\nHave a good day!')
+            except (discord.Forbidden, discord.HTTPException):
+                pass
         else:
             for c in guild.channels:
                 if c.permissions_for(self.bot.user).send_messages:
-                    await c.send('Hi There! Thanks for adding my. My prefix is `+`, '
-                                 'and all commands can be found with `+help`.'
-                                 ' To start off, you might be looking for the `+updates` command, '
-                                 'the `+log` command, the `+aclan` command and the `+auto_claim` command. '
-                                 'Feel free to join the support server if you get stuck: discord.gg/ePt8y4V,'
-                                 ' and here is the invite link to share me with your friends: '
-                                 'https://discordapp.com/oauth2/authorize?client_id=427301910291415051&'
-                                 'scope=bot&permissions=388176. Have a good day!')
+                    try:
+                        await c.send('Hi There! Thanks for adding my. My prefix is `+`, '
+                                     'and all commands can be found with `+help`.'
+                                     ' To start off, you might be looking for the `+updates` command, the '
+                                     '`+log` command, the `+aclan` command and the `+auto_claim` command.\n\n'
+                                     'Feel free to join the support server if you get stuck: discord.gg/ePt8y4V,'
+                                     '\n\nHere is the invite link to share me with your friends: '
+                                     'https://discordapp.com/oauth2/authorize?client_id=427301910291415051&'
+                                     'scope=bot&permissions=388176. \n\nHave a good day!')
+                    except (discord.Forbidden, discord.HTTPException):
+                        pass
                     return
 
     @commands.Cog.listener()
     async def on_guild_remove(self, guild):
-        e = discord.Embed(colour=0xdd5f53, title='Left Guild') # red colour
+        e = discord.Embed(colour=0xdd5f53, title='Left Guild')  # red colour
         await self.send_guild_stats(e, guild)
+
+    @commands.Cog.listener()
+    async def on_command(self, ctx):
+        command = ctx.command.qualified_name
+        self.bot.command_stats[command] += 1
+        message = ctx.message
+        if ctx.guild is None:
+            guild_id = None
+        else:
+            guild_id = ctx.guild.id
+
+        query = """INSERT INTO commands (guild_id, channel_id, author_id, used, prefix, command)
+                           VALUES ($1, $2, $3, $4, $5, $6)
+                """
+
+        await self.bot.pool.execute(query, guild_id, ctx.channel.id, ctx.author.id, message.created_at, ctx.prefix,
+                                    command)
+
 
 
 def setup(bot):

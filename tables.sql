@@ -20,7 +20,7 @@ CREATE TABLE clans (
 CREATE TABLE guilds (
     id serial PRIMARY KEY,
 
-    guild_id BIGINT,
+    guild_id BIGINT UNIQUE,
     log_channel_id BIGINT,
     log_toggle BOOLEAN,
     updates_channel_id BIGINT,

@@ -114,8 +114,7 @@ class DonationBot(commands.Bot):
 
     async def log_info(self, clan_or_guilds, message, colour, prompt=False):
         if isinstance(clan_or_guilds, coc.BasicClan):
-            query = "SELECT guild_id FROM guilds WHERE clan_tag = $1 " \
-                    "AND log_toggle = True"
+            query = "SELECT guild_id FROM clans WHERE clan_tag = $1 "
             fetch_guilds = await self.pool.fetch(query, clan_or_guilds.tag)
             guilds = [self.get_guild(n[0]) for n in fetch_guilds if self.get_guild(n[0])]
 
@@ -125,7 +124,8 @@ class DonationBot(commands.Bot):
         if not guilds:
             return
 
-        query = f"SELECT DISTINCT log_channel_id FROM guilds WHERE guild_id IN ({', '.join(str(n.id) for n in guilds)})"
+        query = f"SELECT DISTINCT log_channel_id FROM guilds WHERE guild_id IN " \
+                f"({', '.join(str(n.id) for n in guilds)}) AND log_toggle = True"
         fetch = await self.pool.fetch(query)
         channels = [self.get_channel(n[0]) for n in fetch if self.get_channel(n[0])]
 
