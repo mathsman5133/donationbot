@@ -63,6 +63,8 @@ class Updates(commands.Cog):
         self._message_cache = {}
         self.clean_message_cache.start()
 
+        self._to_be_deleted = set()
+
         self._join_prompts = {}
 
         self._guild_config_cache = OrderedDict()
@@ -119,6 +121,7 @@ class Updates(commands.Cog):
             await self.bot.pool.execute(query, message_id)
             if delete:
                 msg = await self.get_message(guild_config.updates_channel_id, message_id)
+                self._to_be_deleted.add(msg.id)
                 try:
                     await msg.delete()
                 except (discord.Forbidden, discord.NotFound):
@@ -200,6 +203,9 @@ class Updates(commands.Cog):
         guild_config = await self.get_guild_config(payload.guild_id)
         if guild_config.updates_channel is None or guild_config.updates_channel.id != payload.channel_id:
             return
+        if payload.message_id in self._to_be_deleted:
+            self._to_be_deleted.discard(payload.message_id)
+            return
 
         await self.reset_message_id(payload.guild_id, payload.message_id)
 
@@ -210,6 +216,9 @@ class Updates(commands.Cog):
             return
 
         for n in payload.message_ids:
+            if n in self._to_be_deleted:
+                self._to_be_deleted.discard(n)
+                continue
             await self.reset_message_id(payload.guild_id, n)
 
     @commands.Cog.listener()
@@ -412,9 +421,9 @@ class Updates(commands.Cog):
 
             header = await self.get_message(guild_config.updates_channel,
                                             guild_config.updates_header_id)
-            await header.edit(embed=discord.Embed(colour=self.bot.colour,
-                                                  description=f'Last updated {datetime.now():%Y-%m-%d %H:%M:%S%z}'),
-                              content=None)
+            embed = discord.Embed(colour=self.bot.colour, timestamp=datetime.utcnow())
+            embed.set_footer(text='Last Updated')
+            await header.edit(embed=embed, content=None)
 
 
 def setup(bot):

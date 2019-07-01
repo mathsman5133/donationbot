@@ -59,7 +59,7 @@ class GuildConfiguration(commands.Cog):
         await ctx.db.execute(query, channel.id, toggle, ctx.guild.id)
         await ctx.confirm()
 
-    @commands.command()
+    @commands.group(invoke_without_command=True)
     @checks.manage_guild()
     async def updates(self, ctx, *, name='donationboard'):
         """Creates a donationboard channel for donation updates.
@@ -157,6 +157,46 @@ class GuildConfiguration(commands.Cog):
         await self.updates_fields_settings(ctx, ign=ign, don=don, rec=rec, tag=tag, claimed_by=claimed_by)
         await ctx.send('All done. Thanks!')
         return await ctx.confirm()
+
+    @updates.command(name='info')
+    async def donationboard_info(self, ctx):
+        """Gives you info about the donationboard.
+        """
+        cog = self.bot.get_cog('Updates')
+        guild_config = await cog.get_guild_config(ctx.guild.id)
+
+        channel = guild_config.updates_channel
+        data = []
+
+        if channel is None:
+            data.append('Channel: #deleted-channel')
+        else:
+            data.append(f'Channel: {channel.mention}')
+
+        query = "SELECT clan_name, clan_tag FROM clans WHERE guild_id = $1;"
+        fetch = await ctx.db.fetch(query, ctx.guild.id)
+
+        data.append(f"Clans: {', '.join('{n[0]} ({n[1})' for n in fetch)}")
+
+        message = await cog.get_message(guild_config.header_message_id)
+        timestamp = message.embeds[0].timestamp
+        if timestamp:
+            data.append(f"Last Updated: {timestamp:%Y-%m-%d %H:%M:%S%z}")
+
+        columns = []
+        if guild_config.ign:
+            columns.append("IGN")
+        if guild_config.tag:
+            columns.append("Tag")
+        if guild_config.don:
+            columns.append("Donations")
+        if guild_config.rec:
+            columns.append("Received")
+        if guild_config.claimed_by:
+            columns.append("Claimed By")
+        data.append(', '.join(columns))
+
+        await ctx.send('\n'.join(data))
 
     @commands.command(aliases=['aclan'])
     @checks.manage_guild()
