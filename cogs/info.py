@@ -186,23 +186,25 @@ class Info(commands.Cog):
                                                 '\n\nHere is the invite link to share me with your friends: '
                                                 'https://discordapp.com/oauth2/authorize?client_id=427301910291415051&'
                                                 'scope=bot&permissions=388176. \n\nHave a good day!')
+                return
             except (discord.Forbidden, discord.HTTPException):
                 pass
-        else:
-            for c in guild.channels:
-                if c.permissions_for(c.guild.get_member(self.bot.user.id)).send_messages:
-                    try:
-                        await c.send('Hi There! Thanks for adding my. My prefix is `+`, '
-                                     'and all commands can be found with `+help`.'
-                                     ' To start off, you might be looking for the `+updates` command, the '
-                                     '`+log` command, the `+aclan` command and the `+auto_claim` command.\n\n'
-                                     'Feel free to join the support server if you get stuck: discord.gg/ePt8y4V,'
-                                     '\n\nHere is the invite link to share me with your friends: '
-                                     'https://discordapp.com/oauth2/authorize?client_id=427301910291415051&'
-                                     'scope=bot&permissions=388176. \n\nHave a good day!')
-                    except (discord.Forbidden, discord.HTTPException):
-                        pass
-                    return
+        for c in guild.channels:
+            if not isinstance(c, discord.TextChannel):
+                continue
+            if c.permissions_for(c.guild.get_member(self.bot.user.id)).send_messages:
+                try:
+                    await c.send('Hi There! Thanks for adding my. My prefix is `+`, '
+                                 'and all commands can be found with `+help`.'
+                                 ' To start off, you might be looking for the `+updates` command, the '
+                                 '`+log` command, the `+aclan` command and the `+auto_claim` command.\n\n'
+                                 'Feel free to join the support server if you get stuck: discord.gg/ePt8y4V,'
+                                 '\n\nHere is the invite link to share me with your friends: '
+                                 'https://discordapp.com/oauth2/authorize?client_id=427301910291415051&'
+                                 'scope=bot&permissions=388176. \n\nHave a good day!')
+                except (discord.Forbidden, discord.HTTPException):
+                    pass
+                return
 
     @commands.Cog.listener()
     async def on_guild_remove(self, guild):

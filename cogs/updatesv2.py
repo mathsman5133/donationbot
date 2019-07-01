@@ -165,7 +165,7 @@ class Updates(commands.Cog):
             return None
         for i, n in enumerate(matches):
             query = "SELECT user_id FROM players WHERE player_tag = $1"
-            fetch = await self.bot.pool.fetchrow(query, n.tag)
+            fetch = await self.bot.pool.fetchrow(query, n[0].tag)
             if fetch is None:
                 continue
             del matches[i]
@@ -285,6 +285,7 @@ class Updates(commands.Cog):
                                               f'{str(clan)} ({clan.tag}), but no corresponding '
                                               f'discord names were found.',
                                         colour=discord.Colour.red())
+                return
                 # no members found in guild with that player name
             if isinstance(results, discord.Member):
                 msg_ids = await self.bot.log_info(clan, f'{member.name} ({member.tag}) joined {str(clan)} ({clan.tag}) '
@@ -294,6 +295,7 @@ class Updates(commands.Cog):
                                                   prompt=True)
                 for x in msg_ids:
                     self._join_prompts[x] = [member, results]
+                return
 
             table = TabularData()
             table.set_columns(['user#disrim', 'UserID'])
