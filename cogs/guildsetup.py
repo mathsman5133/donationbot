@@ -176,7 +176,7 @@ class GuildConfiguration(commands.Cog):
         query = "SELECT clan_name, clan_tag FROM clans WHERE guild_id = $1;"
         fetch = await ctx.db.fetch(query, ctx.guild.id)
 
-        data.append(f"Clans: {', '.join('{n[0]} ({n[1})' for n in fetch)}")
+        data.append(f"Clans: {', '.join(f'{n[0]} ({n[1]})' for n in fetch)}")
 
         message = await cog.get_message(channel=guild_config.updates_channel, message_id=guild_config.updates_header_id)
         timestamp = message.embeds[0].timestamp
@@ -194,7 +194,7 @@ class GuildConfiguration(commands.Cog):
             columns.append("Received")
         if guild_config.claimed_by:
             columns.append("Claimed By")
-        data.append(', '.join(columns))
+        data.append(f"Columns: {', '.join(columns)}")
 
         await ctx.send('\n'.join(data))
 
