@@ -290,3 +290,30 @@ class TextPages(Pages):
         if self.maximum_pages > 1:
             return f'{entry}\nPage {page}/{self.maximum_pages}'
         return entry
+
+
+class MessagePaginator(Pages):
+    def __init__(self, ctx, *, entries, per_page=12, show_entry_count=True, title=None):
+        """A paginator for paging regular message rather than embeds."""
+        super().__init__(ctx, entries=entries, per_page=per_page, show_entry_count=show_entry_count)
+        self.embed = None
+        self.title = title
+
+    def get_embed(self, entries, page, *, first=False):
+        return None
+
+    def get_content(self, entries, page, *, first=False):
+        p = []
+        if self.title:
+            p.append(self.title)
+
+        for index, entry in enumerate(entries, 1 + ((page - 1) * self.per_page)):
+            p.append(f'{entry}')
+
+        if self.paginating and first:
+            p.append('')
+            p.append('Confused? React with \N{INFORMATION SOURCE} for more info.')
+
+        fmt = '\n'.join(p)
+        return f'```\n{fmt}\n```'
+

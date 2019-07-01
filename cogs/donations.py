@@ -163,6 +163,7 @@ class Donations(commands.Cog):
         • `+donations` (primary)
         • `+don`
         """
+        print(arg)
         if ctx.invoked_subcommand is not None:
             return
         if not arg:
@@ -350,9 +351,8 @@ class Donations(commands.Cog):
 
             entries.append(f'```\n{table.render()}\n```')
 
-        p = paginator.Pages(ctx, entries=entries, per_page=1)
-        p.embed.colour = self.bot.colour
-        p.embed.title = f"Donations for {', '.join(f'{c.name}' for c in clans)}"
+        p = paginator.MessagePaginator(ctx, entries=entries, per_page=1,
+                                       title=f"Donations for {', '.join(f'{c.name}' for c in clans)}")
 
         await p.paginate()
 
