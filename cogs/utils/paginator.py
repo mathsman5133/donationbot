@@ -314,6 +314,5 @@ class MessagePaginator(Pages):
             p.append('')
             p.append('Confused? React with \N{INFORMATION SOURCE} for more info.')
 
-        fmt = '\n'.join(p)
-        return f'```\n{fmt}\n```'
+        return '\n'.join(p)
 
