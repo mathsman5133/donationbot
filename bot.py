@@ -14,14 +14,13 @@ from cogs.utils.db import Table
 import logging
 
 logging.basicConfig(level=logging.INFO)
-
 log = logging.getLogger(__name__)
 
 coc_client = coc.login(creds.email, creds.password, client=coc.EventsClient,
                        key_names='test', throttle_limit=40)
 
 initial_extensions = ['cogs.guildsetup', 'cogs.donations', 'cogs.updatesv2', 'cogs.admin', 'cogs.info']
-
+description = "A simple discord bot to track donations of clan families in clash of clans."
 
 class DonationBot(commands.Bot):
     def __init__(self):

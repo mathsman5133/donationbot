@@ -190,7 +190,7 @@ class Info(commands.Cog):
                 pass
         else:
             for c in guild.channels:
-                if c.permissions_for(self.bot.user).send_messages:
+                if c.permissions_for(c.guild.get_member(self.bot.user.id)).send_messages:
                     try:
                         await c.send('Hi There! Thanks for adding my. My prefix is `+`, '
                                      'and all commands can be found with `+help`.'
