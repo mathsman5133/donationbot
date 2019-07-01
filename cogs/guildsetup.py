@@ -14,6 +14,8 @@ class GuildConfiguration(commands.Cog):
         self.bot = bot
 
     async def cog_command_error(self, ctx, error):
+        if isinstance(error, commands.CheckFailure):
+            return await ctx.send('\N{WARNING SIGN} You must have `manage_server` permission to run this command.')
         await ctx.send(str(error))
 
     @staticmethod
