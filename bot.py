@@ -112,7 +112,7 @@ class DonationBot(commands.Bot):
         await cog.update_clan_tags()
         await self.change_presence(activity=discord.Game('+help for commands'))
 
-    async def log_info(self, clan_or_guilds, message, colour):
+    async def log_info(self, clan_or_guilds, message, colour, prompt=False):
         if isinstance(clan_or_guilds, coc.BasicClan):
             query = "SELECT guild_id FROM guilds WHERE clan_tag = $1 " \
                     "AND log_toggle = True"
@@ -129,10 +129,17 @@ class DonationBot(commands.Bot):
         fetch = await self.pool.fetch(query)
         channels = [self.get_channel(n[0]) for n in fetch if self.get_channel(n[0])]
 
+        ids_to_return = []
         for c in channels:
             e = discord.Embed(colour=colour or self.colour)
             e.description = message
-            await c.send(embed=e)
+            msg = await c.send(embed=e)
+            if prompt:
+                for n in ('\N{WHITE HEAVY CHECK MARK}', '\N{CROSS MARK}'):
+                    await msg.add_reaction(n)
+            ids_to_return.append(msg.id)
+
+        return ids_to_return
 
     async def get_guilds(self, clan_tag):
         query = "SELECT guild_id FROM clans WHERE clan_tag = $1"

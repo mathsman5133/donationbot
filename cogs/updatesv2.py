@@ -5,10 +5,13 @@ from .updates import TabularData
 from datetime import datetime
 from collections import OrderedDict
 from .utils import fuzzy
+import coc
+
 
 class GuildConfig:
     __slots__ = ('bot', 'guild_id', 'updates_channel_id', 'updates_header_id', 'updates_toggle',
-                 'log_channel_id', 'log_toggle', 'ign', 'don', 'rec', 'tag', 'claimed_by', 'clan')
+                 'log_channel_id', 'log_toggle', 'ign', 'don', 'rec', 'tag', 'claimed_by', 'clan',
+                 'auto_claim')
 
     def __init__(self, *, guild_id, bot, record=None):
         self.guild_id = guild_id
@@ -26,6 +29,7 @@ class GuildConfig:
             self.tag = record['updates_tag']
             self.claimed_by = record['updates_claimed_by']
             self.clan = False  # record['updates_clan']
+            self.auto_claim = record['auto_claim']
         else:
             self.updates_channel_id = None
             self.log_channel_id = None
@@ -59,9 +63,12 @@ class Updates(commands.Cog):
         self._message_cache = {}
         self.clean_message_cache.start()
 
+        self._join_prompts = {}
+
         self._guild_config_cache = OrderedDict()
         self.bot.coc.add_events(self.on_clan_member_donation,
-                                self.on_clan_member_received)
+                                self.on_clan_member_received,
+                                self.on_clan_member_join)
         self.bot.coc._clan_retry_interval = 60
         self.bot.coc.start_updates('clan')
 
@@ -69,6 +76,7 @@ class Updates(commands.Cog):
         self.clean_message_cache.cancel()
         self.bot.coc.extra_events.pop('on_clan_member_donation')
         self.bot.coc.extra_events.pop('on_clan_member_received')
+        self.bot.coc.extra_events.pop('on_clan_member_join')
 
     @tasks.loop(hours=1.0)
     async def clean_message_cache(self):
@@ -124,7 +132,7 @@ class Updates(commands.Cog):
         fetch = await self.bot.pool.fetch(query)
         self.bot.coc._clan_updates = [n[0] for n in fetch]
 
-    async def match_player(self, player, guild: discord.Guild, prompt=False, ctx=None, score_cutoff=80):
+    async def match_player(self, player, guild: discord.Guild, prompt=False, ctx=None, score_cutoff=80, claim=True):
         matches = fuzzy.extract_matches(player.name, [n.name for n in guild.members], score_cutoff=20,
                                         scorer=fuzzy.partial_ratio, limit=9)
         if len(matches) == 0:
@@ -133,16 +141,17 @@ class Updates(commands.Cog):
             user = guild.get_member_named(matches[0][0])
             if prompt:
                 m = await ctx.prompt(f'[auto-claim]: {player.name} ({player.tag}) '
-                                     f'to be claimed to {str(user)} ({user.id}).')
-                if m is True:
-                    query = "UPDATE players SET user_id = $1 WHERE player_tag = $2"
+                                     f'to be claimed to {str(user)} ({user.id}). '
+                                     f'If already claimed, this will do nothing.')
+                if m is True and claim is True:
+                    query = "UPDATE players SET user_id = $1 WHERE player_tag = $2 AND user_id = NULL"
                     await self.bot.pool.execute(query, user.id, player.tag)
                 else:
                     return False
             return user
         return [guild.get_member_named(n[0]) for n in matches]
 
-    async def match_member(self, member, clan):
+    async def match_member(self, member, clan, claim):
         matches = fuzzy.extract_matches(member.name, [n.name for n in clan.members], score_cutoff=60)
         if len(matches) == 0:
             return None
@@ -153,11 +162,13 @@ class Updates(commands.Cog):
                 continue
             del matches[i]
 
-        if len(matches) == 1:
+        if len(matches) == 1 and claim is True:
             player = clan.get_member(name=matches[0][0])
             query = "UPDATE players SET user_id = $1 WHERE player_tag = $2 AND user_id = NULL"
             await self.bot.pool.execute(query, member.id, player.tag)
-            return [player]
+            return player
+        elif len(matches) == 1:
+            return True
 
         return [clan.get_member(name=n) for n in matches]
 
@@ -196,6 +207,87 @@ class Updates(commands.Cog):
 
         for n in payload.message_ids:
             await self.reset_message_id(payload.guild_id, n)
+
+    @commands.Cog.listener()
+    async def on_raw_reaction_add(self, payload):
+        info = self._join_prompts.get(payload.message_id)
+        if not info:
+            return
+
+        query = "UPDATE players SET user_id = $1 WHERE player_tag = $2 AND user_id = NULL"
+        await self.bot.pool.execute(query, info[1].id, info[0].tag)
+
+        try:
+            await self.bot.http.delete_message(payload.channel_id, payload.message_id,
+                                               reason=f'Member {str(info[0])} '
+                                                      f'claimed by {str(self.bot.get_user(payload.user_id))}.')
+        except (discord.Forbidden, discord.HTTPException):
+            pass
+
+    @commands.Cog.listener()
+    async def on_member_join(self, member):
+        guild_config = await self.get_guild_config(member.guild.id)
+        if not (guild_config.auto_claim or guild_config.log_toggle):
+            return
+
+        for clan in await self.bot.get_clans(member.guild.id):
+            results = await self.match_member(member, clan, claim=False)
+            if not results:
+                await self.bot.log_info(member.guild, f'{str(member)} ({member.id}) joined '
+                                                      'the guild, but no corresponding COC players were found.',
+                                        colour=discord.Colour.gold())
+                return  # no members found in clan with that name
+            if isinstance(results, coc.BasicPlayer):
+                await self.bot.log_info(member.guild, f'{str(member)} ({member.id}) joined '
+                                                      'the guild, and was auto-claimed to '
+                                                      f'{str(results)} ({results.tag}).',
+                                        colour=discord.Colour.green())
+                return  # we claimed a member
+            if results is True:
+                return
+
+            table = TabularData()
+            table.set_columns(['IGN', 'Tag'])
+            table.add_rows([n.name, n.tag] for n in results)
+            await self.bot.log_info(member.guild, f'{str(member)} ({member.id}) joined the guild.\n'
+                                                  f'Corresponding clan members found, none claimed:\n'
+                                                  f'```\n{table.render()}\n```',
+                                    colour=discord.Colour.gold())
+
+    async def on_clan_member_join(self, member, clan):
+        query = "INSERT INTO players (player_tag, donations, received) VALUES ($1, $2, $3) " \
+                "ON CONFLICT (player_tag) DO NOTHING"
+        await self.bot.pool.execute(query, member.tag, member.donations, member.received)
+
+        guilds = await self.bot.get_guilds(clan.tag)
+        for n in guilds:
+            guild_config = await self.get_guild_config(n.id)
+            if not guild_config.log_toggle:
+                continue
+
+            results = await self.match_player(member, n, claim=False)
+            if not results:
+                await self.bot.log_info(clan, f'{member.name} ({member.tag}) joined '
+                                              f'{str(clan)} ({clan.tag}), but no corresponding '
+                                              f'discord names were found.',
+                                        colour=discord.Colour.red())
+                # no members found in guild with that player name
+            if isinstance(results, discord.Member):
+                msg_ids = await self.bot.log_info(clan, f'{member.name} ({member.tag}) joined {str(clan)} ({clan.tag}) '
+                                                        f'and I found a singular matching discord account: '
+                                                        f'{str(results)} (ID {results.id}). Do you wish to claim them?',
+                                                  colour=discord.Colour.green(),
+                                                  prompt=True)
+                for x in msg_ids:
+                    self._join_prompts[x] = [member, results]
+
+            table = TabularData()
+            table.set_columns(['user#disrim', 'UserID'])
+            table.add_rows([str(n), n.id] for n in results)
+            await self.bot.log_info(clan, f'{member.name} ({member.tag}) joined {str(clan)} ({clan.tag}).\n'
+                                          f'Corresponding members found, none claimed:\n'
+                                          f'```\n{table.render()}\n```',
+                                    colour=discord.Colour.gold())
 
     async def on_clan_member_donation(self, old_donations, new_donations, player, clan):
         if old_donations > new_donations:

@@ -30,7 +30,8 @@ CREATE TABLE guilds (
     updates_don BOOLEAN,
     updates_rec BOOLEAN,
     updates_tag BOOLEAN,
-    updates_claimed_by BOOLEAN
+    updates_claimed_by BOOLEAN,
+    auto_claim BOOLEAN
     );
 
 CREATE TABLE messages (

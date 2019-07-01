@@ -10,7 +10,17 @@ class Info(commands.Cog):
     async def invite(self, ctx):
         """Get an invite to add the bot to your server.
         """
-        await ctx.send(f'<{discord.utils.oauth_url(self.bot.client_id)}>')
+        perms = discord.Permissions.none()
+        perms.read_messages = True
+        perms.external_emojis = True
+        perms.send_messages = True
+        perms.manage_channels = True
+        perms.manage_messages = True
+        perms.embed_links = True
+        perms.read_message_history = True
+        perms.add_reactions = True
+        perms.attach_files = True
+        await ctx.send(f'<{discord.utils.oauth_url(self.bot.client_id, perms)}>')
 
     @commands.group()
     async def info(self, ctx):
@@ -38,10 +48,32 @@ class Info(commands.Cog):
 
     @commands.Cog.listener()
     async def on_guild_join(self, guild):
-        e = discord.Embed(colour=0x53dda4, title='New Guild') # green colour
+        e = discord.Embed(colour=0x53dda4, title='New Guild')  # green colour
         await self.send_guild_stats(e, guild)
-        query = "INSERT INTO guilds (guild_id) VALUES $1"
-        await self.pool.execute(query, guild.id)
+        query = "INSERT INTO guilds (guild_id) VALUES ($1)"
+        await self.bot.pool.execute(query, guild.id)
+
+        if guild.system_channel:
+            await guild.system_channel.send('Hi There! Thanks for adding my. My prefix is `+`, '
+                                            'and all commands can be found with `+help`.'
+                                            ' To start off, you might be looking for the `+updates` command, the '
+                                            '`+log` command, the `+aclan` command and the `+auto_claim` command.\n\n'
+                                            'Feel free to join the support server if you get stuck: discord.gg/ePt8y4V,'
+                                            '\n\nHere is the invite link to share me with your friends: '
+                                            'https://discordapp.com/oauth2/authorize?client_id=427301910291415051&'
+                                            'scope=bot&permissions=388176. \n\nHave a good day!')
+        else:
+            for c in guild.channels:
+                if c.permissions_for(self.bot.user).send_messages:
+                    await c.send('Hi There! Thanks for adding my. My prefix is `+`, '
+                                 'and all commands can be found with `+help`.'
+                                 ' To start off, you might be looking for the `+updates` command, '
+                                 'the `+log` command, the `+aclan` command and the `+auto_claim` command. '
+                                 'Feel free to join the support server if you get stuck: discord.gg/ePt8y4V,'
+                                 ' and here is the invite link to share me with your friends: '
+                                 'https://discordapp.com/oauth2/authorize?client_id=427301910291415051&'
+                                 'scope=bot&permissions=388176. Have a good day!')
+                    return
 
     @commands.Cog.listener()
     async def on_guild_remove(self, guild):

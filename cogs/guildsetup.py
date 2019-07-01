@@ -5,6 +5,7 @@ from .donations import PlayerConverter, ClanConverter, TabularData
 import math
 from .utils import paginator
 import typing
+from .utils import checks
 
 
 class GuildConfiguration(commands.Cog):
@@ -29,7 +30,7 @@ class GuildConfiguration(commands.Cog):
         await ctx.db.execute(query, ign, don, rec, tag, claimed_by, ctx.guild.id)
 
     @commands.command()
-    @commands.has_permissions(manage_guild=True)
+    @checks.manage_guild()
     async def log(self, ctx, channel: discord.TextChannel=None, toggle: bool=True):
         """Designate a channel for logs.
 
@@ -51,47 +52,74 @@ class GuildConfiguration(commands.Cog):
         """
         if not channel:
             channel = ctx.channel
+        if not (channel.permissions_for(ctx.me).send_messages or channel.permissions_for(ctx.me).read_messages):
+            return await ctx.send('I need permission to send and read messages here!')
 
         query = "UPDATE guilds SET log_channel_id = $1, log_toggle = $2 WHERE guild_id = $3"
         await ctx.db.execute(query, channel.id, toggle, ctx.guild.id)
         await ctx.confirm()
 
     @commands.command()
-    @commands.has_permissions(manage_guild=True)
-    async def updates(self, ctx, channel: discord.TextChannel=None, toggle: bool=True):
-        """Designate a channel for updates.
+    @checks.manage_guild()
+    async def updates(self, ctx, *, name='donationboard'):
+        """Creates a donationboard channel for donation updates.
 
         Parameters
         -----------
         Pass in any of the following:
 
-            • A discord channel: #channel or a channel id. This defaults to the channel you are in.
-            • Toggle: `True` or `False`: the toggle option. This defaults to `True`.
+            • A name for the channel. Defaults to `donationboard`
 
         Example
         --------
-        • `+updates #CHANNEL True`
-        • `+updates CHANNEL_ID False`
+        • `+updates`
+        • `+updates my cool donationboard name`
 
         Required Perimssions
         ------------
         • `manage_server` permissions
-        """
-        if not channel:
-            channel = ctx.channel
-        query = "UPDATE guilds SET updates_channel_id = $1, updates_toggle = $2 WHERE guild_id = $3"
-        await ctx.db.execute(query, channel.id, toggle, ctx.guild.id)
 
-        query = "DELETE FROM messages WHERE guild_id = $1"
-        await ctx.db.execute(query, ctx.guild.id)
+        Bot Required Permissions
+        -------------------------
+        • `manage_channels` permissions
+        """
+        cog = self.bot.get_cog('Updates')
+        cog._guild_config_cache[ctx.guild.id] = None
+        guild_config = await cog.get_guild_config(ctx.guild.id)
+        if guild_config.updates_channel is not None:
+            return await ctx.send(f'This server already has a donationboard ({guild_config.updates_channel.mention})')
+
+        perms = ctx.channel.permissions_for(ctx.me)
+        if not perms.manage_channels:
+            return await ctx.send('I need manage channels permission to create the donationboard!')
+
+        overwrites = {
+            ctx.me: discord.PermissionOverwrite(read_messages=True, send_messages=True, read_message_history=True,
+                                                embed_links=True, manage_messages=True),
+            ctx.guild.default_role: discord.PermissionOverwrite(read_messages=True, send_messages=False,
+                                                                read_message_history=True)
+        }
+        reason = f'{str(ctx.author)} created a donationboard channel.'
+
+        try:
+            channel = await ctx.guild.create_text_channel(name=name, overwrites=overwrites, reason=reason)
+        except discord.Forbidden:
+            return await ctx.send('I do not have permissions to create the donationboard channel.')
+        except discord.HTTPException:
+            return await ctx.send('Creating the channel failed. Try checking the name?')
+
+        header = await channel.send('Placeholder')
+
+        query = "UPDATE guilds SET updates_channel_id = $1, updates_toggle = $2, " \
+                "updates_message_id = $3 WHERE guild_id = $4"
+        await ctx.db.execute(query, channel.id, True, header.id, ctx.guild.id)
 
         msg = await channel.send('Placeholder')
-        msg2 = await channel.send('Placeholder')
-        query = "UPDATE guilds SET updates_message_id = $1 WHERE guild_id = $2"
-        await ctx.db.execute(query, msg.id, ctx.guild.id)
 
         query = "INSERT INTO messages (message_id, guild_id) VALUES ($1, $2)"
-        await ctx.db.execute(query, msg2.id, ctx.guild.id)
+        await ctx.db.execute(query, msg.id, ctx.guild.id)
+        cog._guild_config_cache[ctx.guild.id] = None
+        await ctx.send(f'Donationboard channel created: {channel.mention}')
 
         prompt = await ctx.prompt('Would you like to set custom fields for the message? The default is '
                                   'IGN, donations and received, in that order. This combination is mobile friendly, '
@@ -131,7 +159,7 @@ class GuildConfiguration(commands.Cog):
         return await ctx.confirm()
 
     @commands.command(aliases=['aclan'])
-    @commands.has_permissions(manage_guild=True)
+    @checks.manage_guild()
     async def add_clan(self, ctx, clan_tag: str):
         """Link a clan to your server. This will add all accounts in clan to the database, if not already present.
 
@@ -178,7 +206,7 @@ class GuildConfiguration(commands.Cog):
         await self.bot.get_cog('Updates').update_clan_tags()
 
     @commands.command(aliases=['rclan'])
-    @commands.has_permissions(manage_guild=True)
+    @checks.manage_guild()
     async def remove_clan(self, ctx, clan_tag: str):
         """Unlink a clan from your server.
 
@@ -256,14 +284,13 @@ class GuildConfiguration(commands.Cog):
         query = "SELECT user_id FROM players WHERE player_tag = $1"
         fetch = await ctx.db.fetchrow(query, player.tag)
         if fetch:
-            if fetch[0]:
-                user = self.bot.get_user(fetch[0])
-                raise commands.BadArgument(f'Player {player.name} '
-                                           f'({player.tag}) has already been claimed by {str(user)}')
+            user = self.bot.get_user(fetch[0])
+            raise commands.BadArgument(f'Player {player.name} '
+                                       f'({player.tag}) has already been claimed by {str(user)}')
         if not fetch:
-            query = "INSERT INTO players (player_tag, donations, received) VALUES ($1, $2, $3)"
-            await ctx.db.execute(query, player.tag, player.donations, player.received)
-            return
+            query = "INSERT INTO players (player_tag, donations, received, user_id) VALUES ($1, $2, $3, $4)"
+            await ctx.db.execute(query, player.tag, player.donations, player.received, ctx.author.id)
+            return await ctx.confirm()
 
         query = "UPDATE players SET user_id = $1 WHERE player_tag = $2"
         await ctx.db.execute(query, ctx.author.id, player.tag)
@@ -289,10 +316,10 @@ class GuildConfiguration(commands.Cog):
         fetch = await ctx.db.fetchrow(query, player.tag)
         if fetch:
             if fetch[0] != ctx.author.id:
-                raise commands.BadArgument(f'Player {player.name} '
-                                           f"({player.tag}) has been claimed by "
-                                           f"{str(ctx.guild.get_member(fetch[0]) or 'Member not in guild.')}. "
-                                           f'Please contact them to un-claim it.')
+                return await ctx.send(f'Player {player.name} '
+                                      f"({player.tag}) has been claimed by "
+                                      f"{str(ctx.guild.get_member(fetch[0]) or 'Member not in guild.')}. "
+                                      f'Please contact them to un-claim it.')
 
         query = "UPDATE players SET user_id = NULL WHERE player_tag = $1"
         await ctx.db.execute(query, player.tag)
@@ -318,13 +345,13 @@ class GuildConfiguration(commands.Cog):
         if not clans:
             clans = await ctx.get_clans()
 
-        query = "SELECT user_id FROM players WHERE player_tag = $1"
         players = []
         for n in clans:
             players.extend(x for x in n.members)
 
         final = []
 
+        query = "SELECT user_id FROM players WHERE player_tag = $1"
         for n in players:
             fetch = await ctx.db.fetchrow(query, n.tag)
             if not fetch:
@@ -343,7 +370,7 @@ class GuildConfiguration(commands.Cog):
         messages = math.ceil(len(final) / 20)
         entries = []
 
-        for i in range(messages):
+        for i in range(int(messages)):
 
             results = final[i*20:(i+1)*20]
 
@@ -418,7 +445,7 @@ class GuildConfiguration(commands.Cog):
         await ctx.send(f'```\n{table.render()}\n```')
 
     @commands.command()
-    @commands.has_permissions(manage_guild=True)
+    @checks.manage_guild()
     async def auto_claim(self, ctx, *, clan: ClanConverter=None):
         """Automatically claim all accounts in server, through an interactive process.
 
@@ -532,6 +559,13 @@ class GuildConfiguration(commands.Cog):
                 await msg.delete()
             except (discord.Forbidden, discord.HTTPException):
                 pass
+
+        prompt = await ctx.prompt('Would you like to have the bot to search for players to claim when '
+                                  'someone joins the clan/server? I will let you know what I find '
+                                  'and you must confirm/deny if you want them claimed.')
+        if prompt is True:
+            query = "UPDATE guilds SET auto_claim = True WHERE guild_id = $1;"
+            await ctx.db.execute(query, ctx.guild.id)
 
         await ctx.send('All done. Thanks!')
         await ctx.confirm()
