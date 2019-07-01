@@ -119,7 +119,11 @@ class Updates(commands.Cog):
             await self.bot.pool.execute(query, message_id)
             if delete:
                 msg = await self.get_message(guild_config.updates_channel_id, message_id)
-                await msg.delete()
+                try:
+                    await msg.delete()
+                except (discord.Forbidden, discord.NotFound):
+                    pass
+
                 return
 
         new_msg = await guild_config.updates_channel.send('Placeholder')
@@ -321,6 +325,8 @@ class Updates(commands.Cog):
         msg_ids = await guild_config.updates_message_ids()
 
         messages = [await self.get_message(guild_config.updates_channel, n) for n in msg_ids]
+        messages = [n for n in messages if n]
+
         if not number_of_msg or len(messages) == number_of_msg:
             return messages
         elif len(messages) > number_of_msg:
