@@ -178,7 +178,7 @@ class GuildConfiguration(commands.Cog):
 
         data.append(f"Clans: {', '.join('{n[0]} ({n[1})' for n in fetch)}")
 
-        message = await cog.get_message(guild_config.header_message_id)
+        message = await cog.get_message(guild_config.updates_header_id)
         timestamp = message.embeds[0].timestamp
         if timestamp:
             data.append(f"Last Updated: {timestamp:%Y-%m-%d %H:%M:%S%z}")
