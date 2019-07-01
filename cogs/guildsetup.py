@@ -9,6 +9,7 @@ from .utils import checks
 
 
 class GuildConfiguration(commands.Cog):
+    """All commands related to setting up the server for the first time, and managing configurations."""
     def __init__(self, bot):
         self.bot = bot
 
@@ -35,19 +36,19 @@ class GuildConfiguration(commands.Cog):
         """Designate a channel for logs.
 
         Parameters
-        -----------
+        ----------------
         Pass in any of the following:
 
             • A discord channel: #channel or a channel id. This defaults to the channel you are in.
             • Toggle: `True` or `False`: the toggle option. This defaults to `True`.
 
         Example
-        --------
+        -----------
         • `+log #CHANNEL True`
         • `+log CHANNEL_ID False`
 
         Required Perimssions
-        ------------
+        ----------------------------
         • `manage_server` permissions
         """
         if not channel:
@@ -65,22 +66,22 @@ class GuildConfiguration(commands.Cog):
         """Creates a donationboard channel for donation updates.
 
         Parameters
-        -----------
+        ----------------
         Pass in any of the following:
 
             • A name for the channel. Defaults to `donationboard`
 
         Example
-        --------
+        -----------
         • `+updates`
         • `+updates my cool donationboard name`
 
         Required Perimssions
-        ------------
+        ----------------------------
         • `manage_server` permissions
 
         Bot Required Permissions
-        -------------------------
+        --------------------------------
         • `manage_channels` permissions
         """
         cog = self.bot.get_cog('Updates')
@@ -204,23 +205,23 @@ class GuildConfiguration(commands.Cog):
         """Link a clan to your server. This will add all accounts in clan to the database, if not already present.
 
         Parameters
-        -----------
+        ----------------
         Pass in any of the following:
 
             • A clan tag
 
         Example
-        --------
+        -----------
         • `+add_clan #CLAN_TAG`
         • `+aclan #CLAN_TAG`
 
         Aliases
-        --------
+        -----------
         • `+add_clan` (primary)
         • `+aclan`
 
         Required Perimssions
-        ------------
+        ------------------------------
         • `manage_server` permissions
         """
         query = "SELECT * FROM clans WHERE clan_tag = $1 AND guild_id = $2"
@@ -251,23 +252,23 @@ class GuildConfiguration(commands.Cog):
         """Unlink a clan from your server.
 
         Parameters
-        -----------
+        -----------------
         Pass in any of the following:
 
             • A clan tag
 
         Example
-        --------
+        -------------
         • `+remove_clan #CLAN_TAG`
         • `+rclan #CLAN_TAG`
 
         Aliases
-        --------
+        ------------
         • `+remove_clan` (primary)
         • `+rclan`
 
         Required Perimssions
-        ------------
+        ----------------------------
         • `manage_server` permissions
         """
         query = "DELETE FROM clans WHERE clan_tag = $1 AND guild_id = $2"
@@ -279,19 +280,19 @@ class GuildConfiguration(commands.Cog):
         """Manually add a clash account to the database. This does not claim the account.
 
         Parameters
-        -----------
+        -----------------
         Pass in any of the following:
 
             • A player tag
             • A player name (must be in clan claimed in server)
 
         Example
-        --------
+        ------------
         • `+add_player #PLAYER_TAG`
         • `+aplayer my account name`
 
         Aliases
-        --------
+        -------------
         • `+add_player` (primary)
         • `+aplayer`
         """
@@ -310,14 +311,14 @@ class GuildConfiguration(commands.Cog):
         """Link a clash account to your discord account
 
         Parameters
-        -----------
+        ------------------
         Pass in any of the following:
 
             • A player tag
             • A player name (must be in clan claimed in server)
 
         Example
-        --------
+        -------------
         • `+claim #PLAYER_TAG`
         • `+claim my account name
         """
@@ -341,14 +342,14 @@ class GuildConfiguration(commands.Cog):
         """Unlink a clash account from your discord account
 
         Parameters
-        -----------
+        ----------------
         Pass in any of the following:
 
             • A player tag
             • A player name (must be in clan claimed in server)
 
         Example
-        --------
+        -------------
         • `+unclaim #PLAYER_TAG`
         • `+unclaim my account name
         """
@@ -370,7 +371,7 @@ class GuildConfiguration(commands.Cog):
         """Get accounts and claims for all accounts in clans in a server.
 
         Parameters
-        -----------
+        ------------------
         Pass in any one of the following:
             • clan tag
             • clan name (if claimed)
@@ -378,7 +379,7 @@ class GuildConfiguration(commands.Cog):
             • None: all clans in guild
 
         Example
-        --------
+        ------------
         • `+accounts #CLAN_TAG`
         • `+accounts guild`
         """
@@ -431,7 +432,7 @@ class GuildConfiguration(commands.Cog):
         """Get accounts and claims for a player or discord user.
 
         Parameters
-        -----------
+        ------------------
         Pass in any one of the following:
             • discord @mention
             • discord user#discrim combo
@@ -440,14 +441,14 @@ class GuildConfiguration(commands.Cog):
             • player name (must be in clan claimed in server)
 
         Example
-        --------
+        --------------
         • `+get_claims @my_friend`
         • `+get_claims my_friend#1208
         • `+gclaims #PLAYER_TAG`
         • `+gc player name`
 
         Aliases
-        --------
+        -------------
         • `+get_claims` (primary)
         • `+gclaims`
         • `+gc`
@@ -493,7 +494,7 @@ class GuildConfiguration(commands.Cog):
         The interactive process is easy to use, and will try to guide you through as easily as possible
 
         Parameters
-        -----------
+        -----------------
         Pass in any of the following:
 
             • A clan tag
@@ -502,19 +503,19 @@ class GuildConfiguration(commands.Cog):
             • None passed will get all clans claimed in the server
 
         Example
-        --------
+        -------------
         • `+auto_claim #CLAN_TAG`
         • `+auto_claim my clan name`
         • `+aclaim all`
         • `+aclaim`
 
         Aliases
-        --------
+        --------------
         • `+auto_claim` (primary)
         • `+aclaim`
 
         Required Perimssions
-        ------------
+        ------------------------------
         • `manage_server` permissions
         """
         failed_players = []

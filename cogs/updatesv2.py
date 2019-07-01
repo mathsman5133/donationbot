@@ -53,6 +53,7 @@ class GuildConfig:
 
 
 class Updates(commands.Cog):
+    """Commands related to the donationboard, and auto-updating of it."""
     def __init__(self, bot):
         self.bot = bot
 

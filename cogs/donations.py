@@ -125,20 +125,21 @@ class ArgConverter(commands.Converter):
 
 
 class Donations(commands.Cog):
+    """All commands related to donations of clans, players, users and servers."""
     def __init__(self, bot):
         self.bot = bot
 
     async def cog_command_error(self, ctx, error):
         await ctx.send(str(error))
 
-    @commands.group(name='donations', aliases=['don'])
+    @commands.group(name='donations', aliases=['don'],  invoke_without_command=True)
     async def _donations(self, ctx, *, arg: ArgConverter=None, mobile=False):
         """Check donations for a player, user, clan or guild.
 
         For a mobile-friendly table that is guaranteed to fit on a mobile screen, please use `+donmob`.
 
         Parameters
-        -----------
+        ----------------
         Pass in any of the following:
 
             • A clan tag
@@ -150,7 +151,7 @@ class Donations(commands.Cog):
             • None passed will divert to donations for your discord account
 
         Example
-        ---------
+        -----------
         • `+donations #CLAN_TAG`
         • `+donations @mention`
         • `+don #PLAYER_TAG`
@@ -159,7 +160,7 @@ class Donations(commands.Cog):
         • `+don`
 
         Aliases
-        --------
+        -----------
         • `+donations` (primary)
         • `+don`
         """
@@ -183,20 +184,20 @@ class Donations(commands.Cog):
         """Get donations for a discord user.
 
         Parameters
-        -----------
+        ----------------
         Pass in any of the following:
 
             • A discord @mention, user#discrim or user id
             • None passed will divert to donations for your discord account
 
         Example
-        ---------
+        ------------
         • `+donations user @mention`
         • `+don user USER_ID`
         • `+don user`
 
         Aliases
-        --------
+        -----------
         • `+donations user` (primary)
         • `+don user`
 
@@ -238,19 +239,19 @@ class Donations(commands.Cog):
         """Get donations for a player.
 
         Parameters
-        -----------
+        -----------------
         Pass in any of the following:
 
             • A player tag
             • A player name (must be in a clan claimed to server)
 
         Example
-        ---------
+        ------------
         • `+donations player #PLAYER_TAG`
         • `+don player player name`
 
         Aliases
-        --------
+        -----------
         • `+donations player` (primary)
         • `+don player`
 
@@ -288,7 +289,7 @@ class Donations(commands.Cog):
         """Get donations for a clan.
 
         Parameters
-        -----------
+        ----------------
         Pass in any of the following:
 
             • A clan tag
@@ -296,13 +297,13 @@ class Donations(commands.Cog):
             • `all`, `server`, `guild`: all clans claimed to server
 
         Example
-        ---------
+        ------------
         • `+donations clan #CLAN_TAG`
         • `+don clan clan name`
         • `+don clan all`
 
         Aliases
-        --------
+        -----------
         • `+donations clan` (primary)
         • `+don clan`
 
@@ -364,7 +365,7 @@ class Donations(commands.Cog):
         For a complete table with #PLAYER_TAG and Claimed By columns, please use `+don`.
 
         Parameters
-        -----------
+        ----------------
         Pass in any of the following:
 
             • A clan tag
@@ -376,7 +377,7 @@ class Donations(commands.Cog):
             • None passed will divert to donations for your discord account
 
         Example
-        ---------
+        ------------
         • `+donmobile #CLAN_TAG`
         • `+donmob @mention`
         • `+mdon #PLAYER_TAG`
@@ -385,7 +386,7 @@ class Donations(commands.Cog):
         • `+mobdon`
 
         Aliases
-        --------
+        -----------
         • `+donmobile` (primary)
         • `+donmob`
         • `+mobdon`

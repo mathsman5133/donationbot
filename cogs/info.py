@@ -1,10 +1,132 @@
 from discord.ext import commands
 import discord
+from .utils.paginator import Pages
+import itertools
+from datetime import datetime
+
+
+class HelpPaginator(Pages):
+    def __init__(self, help_command, ctx, entries, *, per_page=4):
+        super().__init__(ctx, entries=entries, per_page=per_page)
+        self.title = ''
+        self.description = ''
+        self.prefix = help_command.clean_prefix
+        self.total = len(entries)
+        self.help_command = help_command
+
+    def get_bot_page(self, page):
+        cog, description, commands = self.entries[page - 1]
+        self.title = f'{cog} Commands'
+        self.description = description
+        return commands
+
+    def prepare_embed(self, entries, page, *, first=False):
+        self.embed.clear_fields()
+        self.embed.description = f'{self.description}\n\u200b'
+        self.embed.title = self.title
+
+        self.embed.set_footer(text=f'Use "{self.prefix}help command" for more info on a command.')
+        self.embed.timestamp = datetime.utcnow()
+
+        for i, entry in enumerate(entries):
+            sig = f'{self.help_command.get_command_signature(command=entry)}'
+            fmt = entry.short_doc or "No help given"
+            self.embed.add_field(name=sig, value=fmt + '\n\u200b' if i == (len(entries) - 1) else fmt, inline=False)
+
+        self.embed.add_field(name='Support', value='Problem? Bug? Please join the support '
+                                                   'server for more help: https://discord.gg/ePt8y4V')
+
+        if self.maximum_pages:
+            self.embed.set_author(name=f'Page {page}/{self.maximum_pages} ({self.total} commands)')
+
+
+class HelpCommand(commands.HelpCommand):
+    def get_command_signature(self, command):
+        parent = command.full_parent_name
+        if len(command.aliases) > 0:
+            aliases = ', '.join(command.aliases)
+            fmt = f'[aliases: {aliases}]'
+            if parent:
+                fmt = f'{self.clean_prefix}{parent} {fmt}'
+            else:
+                fmt = f'{self.clean_prefix}{command.name} {fmt}'
+            alias = fmt
+        else:
+            alias = f'{self.clean_prefix}{parent} {command.name}'
+        return alias
+
+    async def send_bot_help(self, mapping):
+        def key(c):
+            return c.cog_name or '\u200bNo Category'
+
+        bot = self.context.bot
+        entries = await self.filter_commands(bot.commands, sort=True, key=key)
+        nested_pages = []
+        per_page = 9
+        total = 0
+
+        for cog, commands in itertools.groupby(entries, key=key):
+            commands = sorted(commands, key=lambda c: c.name)
+            if len(commands) == 0:
+                continue
+
+            total += len(commands)
+            actual_cog = bot.get_cog(cog)
+            # get the description if it exists (and the cog is valid) or return Empty embed.
+            description = (actual_cog and actual_cog.description) or discord.Embed.Empty
+            nested_pages.extend((cog, description, commands[i:i + per_page]) for i in range(0, len(commands), per_page))
+
+        # a value of 1 forces the pagination session
+        pages = HelpPaginator(self, self.context, entries=nested_pages, per_page=1)
+
+        # swap the get_page implementation to work with our nested pages.
+        pages.is_bot = True
+        pages.total = total
+        pages.get_page = pages.get_bot_page
+        await self.context.release()
+        await pages.paginate()
+
+    async def send_cog_help(self, cog):
+        entries = await self.filter_commands(cog.get_commands(), sort=True)
+        pages = HelpPaginator(self, self.context, entries)
+        pages.title = f'{cog.qualified_name} Commands'
+        pages.description = f'{cog.description}\n\n'
+
+        await self.context.release()
+        await pages.paginate()
+
+    def common_command_formatting(self, page_or_embed, command):
+        page_or_embed.title = self.get_command_signature(command)
+        if command.description:
+            page_or_embed.description = f'{command.description}\n\n{command.help}'
+        else:
+            page_or_embed.description = command.help or 'No help found...'
+
+    async def send_command_help(self, command):
+        # No pagination necessary for a single command.
+        embed = discord.Embed(colour=discord.Colour.blurple())
+        self.common_command_formatting(embed, command)
+        await self.context.send(embed=embed)
+
+    async def send_group_help(self, group):
+        subcommands = group.commands
+        if len(subcommands) == 0:
+            return await self.send_command_help(group)
+
+        entries = await self.filter_commands(subcommands, sort=True)
+        pages = HelpPaginator(self, self.context, entries)
+        self.common_command_formatting(pages, group)
+
+        await self.context.release()
+        await pages.paginate()
 
 
 class Info(commands.Cog):
+    """Misc commands related to the bot."""
     def __init__(self, bot):
         self.bot = bot
+        bot.help_command = HelpCommand()
+        bot.help_command.cog = self
 
     @commands.command(aliases=['join'])
     async def invite(self, ctx):
