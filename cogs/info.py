@@ -3,6 +3,7 @@ import discord
 from .utils.paginator import Pages
 import itertools
 from datetime import datetime
+from collections import Counter
 
 
 class HelpPaginator(Pages):
@@ -226,6 +227,8 @@ class Info(commands.Cog):
                                     command)
 
 
-
 def setup(bot):
+    if not hasattr(bot, 'command_stats'):
+        bot.command_stats = Counter()
+
     bot.add_cog(Info(bot))
