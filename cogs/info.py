@@ -235,6 +235,8 @@ class Info(commands.Cog):
     async def on_guild_remove(self, guild):
         e = discord.Embed(colour=0xdd5f53, title='Left Guild')  # red colour
         await self.send_guild_stats(e, guild)
+        query = "UPDATE guilds SET log_toggle = False, updates_toggle = False WHERE guild_id = $1"
+        await self.bot.pool.execute(query, guild.id)
 
     @commands.Cog.listener()
     async def on_command(self, ctx):
