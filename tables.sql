@@ -53,3 +53,13 @@ CREATE TABLE commands (
     command TEXT,
     failed BOOLEAN
 );
+
+CREATE TABLE events (
+    id serial PRIMARY KEY,
+
+    player_tag TEXT,
+    clan_tag TEXT,
+    donations INTEGER,
+    received INTEGER,
+    time TIMESTAMP
+    )

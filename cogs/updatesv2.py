@@ -71,7 +71,8 @@ class Updates(commands.Cog):
         self._guild_config_cache = OrderedDict()
         self.bot.coc.add_events(self.on_clan_member_donation,
                                 self.on_clan_member_received,
-                                self.on_clan_member_join)
+                                self.on_clan_member_join,
+                                self.on_clan_batch_updates)
         self.bot.coc._clan_retry_interval = 60
         self.bot.coc.start_updates('clan')
 
@@ -80,6 +81,7 @@ class Updates(commands.Cog):
         self.bot.coc.extra_events.pop('on_clan_member_donation')
         self.bot.coc.extra_events.pop('on_clan_member_received')
         self.bot.coc.extra_events.pop('on_clan_member_join')
+        self.bot.coc.extra_events.pop('on_clan_batch_updates')
 
     @tasks.loop(hours=1.0)
     async def clean_message_cache(self):
@@ -332,6 +334,37 @@ class Updates(commands.Cog):
         await self.bot.pool.execute(query, new_received - old_received, player.tag)
         await self.edit_updates_for_clan(clan)
 
+    async def on_clan_batch_updates(self, all_updates):
+        received_events = [n for n in all_updates if n[0] == 'on_clan_member_received']
+        donation_events = [n for n in all_updates if n[0] == 'on_clan_member_donation']
+
+        time = datetime.utcnow()
+        query = "INSERT INTO events (player_tag, clan_tag, donations, received, time) VALUES ($1, $2, $3, $4, $5)"
+        for n in received_events:
+            await self.bot.pool.execute(query, n[3].tag, n[4].tag, 0, n[2] - n[1], time)
+        for n in donation_events:
+            await self.bot.pool.execute(query, n[3].tag, n[4].tag, n[2] - n[1], 0, time)
+
+        query = "SELECT DISTINCT clan_tag FROM events WHERE time = $1"
+        fetch = await self.bot.pool.fetch(query, time)
+        clans = await self.bot.coc.get_clans((n[0] for n in fetch)).flatten()
+
+        query = "SELECT player_tag, donations, received FROM events WHERE clan_tag = $1 AND time = $2"
+        for clan in clans:
+            print(clan)
+            fetch = await self.bot.pool.fetch(query, clan.tag, time)
+            table = TabularData()
+            table.set_columns(['IGN', 'Don', "Rec'd"])
+            for n in fetch:
+                player = clan.get_member(tag=n[0])
+                table.add_row([player.name, n[1], n[2]])
+
+            fmt = f'Recent Events for {clan.name} ({clan.tag})\n```\n{table.render()}\n```'
+            print(fmt)
+            await self.bot.log_info(clan, fmt)
+
+        pass
+
     async def get_updates_messages(self, guild_id, number_of_msg=None):
         guild_config = await self.get_guild_config(guild_id)
         msg_ids = await guild_config.updates_message_ids()
@@ -351,8 +384,20 @@ class Updates(commands.Cog):
             return messages
 
     async def new_month(self):
-        query = "UPDATE players SET donations = 0, received = 0"
-        await self.bot.db.execute(query)
+        msg = await self.bot.get_channel(594286547449282587).send('Is it a new month?')
+        for n in ['\N{WHITE HEAVY CHECK MARK}', '\N{CROSS MARK}']:
+            await msg.add_reaction(n)
+
+        def check(r, u):
+            if not u.id == self.bot.owner_id:
+                return False
+            if not r.message.id == msg.id:
+                return False
+            return True
+        r, u = await self.bot.wait_for('reaction_add', check=check)
+        if str(r) == '\N{WHITE HEAVY CHECK MARK}':
+            query = "UPDATE players SET donations = 0, received = 0"
+            await self.bot.db.execute(query)
 
     async def edit_updates_for_clan(self, clan):
         guilds = await self.bot.get_guilds(clan.tag)

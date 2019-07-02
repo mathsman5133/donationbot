@@ -129,6 +129,9 @@ class Info(commands.Cog):
         bot.help_command = HelpCommand()
         bot.help_command.cog = self
 
+    async def cog_command_error(self, ctx, error):
+        await ctx.send(str(error))
+
     @commands.command(aliases=['join'])
     async def invite(self, ctx):
         """Get an invite to add the bot to your server.
@@ -144,6 +147,28 @@ class Info(commands.Cog):
         perms.add_reactions = True
         perms.attach_files = True
         await ctx.send(f'<{discord.utils.oauth_url(self.bot.client_id, perms)}>')
+
+    @commands.command()
+    async def feedback(self, ctx, *, content):
+        """Give feedback on the bot.
+        """
+        e = discord.Embed(title='Feedback', colour=discord.Colour.green())
+        channel = self.bot.get_channel(595384367573106718)
+        if channel is None:
+            return
+
+        e.set_author(name=str(ctx.author), icon_url=ctx.author.avatar_url)
+        e.description = content
+        e.timestamp = ctx.message.created_at
+
+        if ctx.guild is not None:
+            e.add_field(name='Guild', value=f'{ctx.guild.name} (ID: {ctx.guild.id})', inline=False)
+
+        e.add_field(name='Channel', value=f'{ctx.channel} (ID: {ctx.channel.id})', inline=False)
+        e.set_footer(text=f'Author ID: {ctx.author.id}')
+
+        await channel.send(embed=e)
+        await ctx.send(f'{ctx.tick(True)} Successfully sent feedback')
 
     @commands.group(hidden=True)
     async def info(self, ctx):
@@ -167,7 +192,7 @@ class Info(commands.Cog):
         if guild.me:
             e.timestamp = guild.me.joined_at
 
-        await self.bot.webhook.send(embed=e)
+        await self.bot.join_log_webhook.send(embed=e)
 
     @commands.Cog.listener()
     async def on_guild_join(self, guild):

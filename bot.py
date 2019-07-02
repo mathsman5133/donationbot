@@ -22,6 +22,7 @@ coc_client = coc.login(creds.email, creds.password, client=coc.EventsClient,
 initial_extensions = ['cogs.guildsetup', 'cogs.donations', 'cogs.updatesv2', 'cogs.admin', 'cogs.info']
 description = "A simple discord bot to track donations of clan families in clash of clans."
 
+
 class DonationBot(commands.Bot):
     def __init__(self):
         super().__init__(command_prefix=commands.when_mentioned_or('+'), case_insensitive=True)
@@ -29,8 +30,13 @@ class DonationBot(commands.Bot):
         self.coc = coc_client
         self.client_id = creds.client_id
         self.session = aiohttp.ClientSession(loop=self.loop)
-        self.webhook = discord.Webhook.partial(id=creds.hook_id, token=creds.hook_token,
-                                               adapter=discord.AsyncWebhookAdapter(session=self.session))
+        self.error_webhook = discord.Webhook.partial(id=creds.error_hook_id, token=creds.error_hook_token,
+                                                     adapter=discord.AsyncWebhookAdapter(session=self.session))
+        self.join_log_webhook = discord.Webhook.partial(id=creds.join_log_hook_id, token=creds.join_log_hook_token,
+                                                        adapter=discord.AsyncWebhookAdapter(session=self.session))
+        self.feedback_webhook = discord.Webhook.partial(id=creds.feedback_hook_id, token=creds.feedback_hook_token,
+                                                        adapter=discord.AsyncWebhookAdapter(session=self.session))
+
         self.uptime = datetime.datetime.utcnow()
         self.prefixes = {}
         coc_client.add_events(self.on_event_error)
@@ -70,7 +76,7 @@ class DonationBot(commands.Bot):
         e.timestamp = datetime.datetime.utcnow()
 
         try:
-            await self.webhook.send(embed=e)
+            await self.error_webhook.send(embed=e)
         except:
             pass
 
@@ -93,7 +99,7 @@ class DonationBot(commands.Bot):
         exc = ''.join(traceback.format_exception(type(error), error, error.__traceback__, chain=False))
         e.description = f'```py\n{exc}\n```'
         e.timestamp = datetime.datetime.utcnow()
-        await self.webhook.send(embed=e)
+        await self.error_webhook.send(embed=e)
 
     async def on_event_error(self, event_name, *args, **kwargs):
         e = discord.Embed(title='COC Event Error', colour=0xa32952)
@@ -102,7 +108,7 @@ class DonationBot(commands.Bot):
         e.timestamp = datetime.datetime.utcnow()
 
         try:
-            await self.webhook.send(embed=e)
+            await self.error_webhook.send(embed=e)
         except:
             pass
 
@@ -111,7 +117,7 @@ class DonationBot(commands.Bot):
         await cog.update_clan_tags()
         await self.change_presence(activity=discord.Game('+help for commands'))
 
-    async def log_info(self, clan_or_guilds, message, colour, prompt=False):
+    async def log_info(self, clan_or_guilds, message, colour=None, prompt=False):
         if isinstance(clan_or_guilds, coc.BasicClan):
             query = "SELECT guild_id FROM clans WHERE clan_tag = $1 "
             fetch_guilds = await self.pool.fetch(query, clan_or_guilds.tag)
@@ -130,8 +136,9 @@ class DonationBot(commands.Bot):
 
         ids_to_return = []
         for c in channels:
-            e = discord.Embed(colour=colour or self.colour)
-            e.description = message
+            e = discord.Embed(colour=colour or self.colour,
+                              description=message,
+                              timestamp=datetime.datetime.utcnow())
             msg = await c.send(embed=e)
             if prompt:
                 for n in ('\N{WHITE HEAVY CHECK MARK}', '\N{CROSS MARK}'):
