@@ -150,7 +150,7 @@ class DonationBot(commands.Bot):
     async def get_guilds(self, clan_tag):
         query = "SELECT guild_id FROM clans WHERE clan_tag = $1"
         fetch = await self.pool.fetch(query, clan_tag)
-        return [self.get_guild(n[0]) for n in fetch]
+        return [self.get_guild(n[0]) for n in fetch if self.get_guild(n[0])]
 
     async def get_clans(self, guild_id):
         query = "SELECT clan_tag FROM clans WHERE guild_id = $1"
