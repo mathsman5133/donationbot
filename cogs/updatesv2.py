@@ -401,6 +401,8 @@ class Updates(commands.Cog):
 
     async def edit_updates_for_clan(self, clan):
         guilds = await self.bot.get_guilds(clan.tag)
+        if not guilds:
+            return
 
         query = f"SELECT DISTINCT clan_tag FROM clans WHERE guild_id IN ({', '.join(str(n.id) for n in guilds)})"
         fetch = await self.bot.pool.fetch(query)
