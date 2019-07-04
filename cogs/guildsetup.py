@@ -226,6 +226,7 @@ class GuildConfiguration(commands.Cog):
         ------------------------------
         • `manage_server` permissions
         """
+        clan_tag = coc.utils.correct_tag(clan_tag)
         query = "SELECT * FROM clans WHERE clan_tag = $1 AND guild_id = $2"
         fetch = await ctx.db.fetch(query, clan_tag, ctx.guild.id)
         if fetch:
@@ -273,6 +274,7 @@ class GuildConfiguration(commands.Cog):
         ----------------------------
         • `manage_server` permissions
         """
+        clan_tag = coc.utils.correct_tag(clan_tag)
         query = "DELETE FROM clans WHERE clan_tag = $1 AND guild_id = $2"
         await ctx.db.execute(query, clan_tag, ctx.guild.id)
         await ctx.confirm()

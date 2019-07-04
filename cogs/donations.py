@@ -143,7 +143,7 @@ class Donations(commands.Cog):
         await ctx.send(str(error))
 
     @commands.group(name='donations', aliases=['don'],  invoke_without_command=True)
-    async def _donations(self, ctx, *, arg: ArgConverter=None, mobile=False):
+    async def donations(self, ctx, *, arg: ArgConverter=None, mobile=False):
         """Check donations for a player, user, clan or guild.
 
         For a mobile-friendly table that is guaranteed to fit on a mobile screen, please use `+donmob`.
@@ -189,8 +189,8 @@ class Donations(commands.Cog):
             if isinstance(arg[0], coc.BasicClan):
                 await ctx.invoke(self._clan, clans=arg, mobile=mobile)
 
-    @_donations.command(name='user')
-    async def _user(self, ctx, user: discord.Member=None, mobile=False):
+    @donations.command(name='user')
+    async def donations_user(self, ctx, user: discord.Member=None, mobile=False):
         """Get donations for a discord user.
 
         Parameters
@@ -244,8 +244,8 @@ class Donations(commands.Cog):
         e.description = f'```\n{table.render()}\n```'
         await ctx.send(embed=e)
 
-    @_donations.command(name='player')
-    async def _player(self, ctx, *, player: PlayerConverter, mobile=False):
+    @donations.command(name='player')
+    async def donations_player(self, ctx, *, player: PlayerConverter, mobile=False):
         """Get donations for a player.
 
         Parameters
@@ -295,8 +295,8 @@ class Donations(commands.Cog):
 
         await ctx.send(f'```\n{table.render()}\n```')
 
-    @_donations.command(name='clan')
-    async def _clan(self, ctx, *, clans: ClanConverter, mobile=False):
+    @donations.command(name='clan')
+    async def donations_clan(self, ctx, *, clans: ClanConverter, mobile=False):
         """Get donations for a clan.
 
         Parameters
@@ -350,7 +350,7 @@ class Donations(commands.Cog):
         messages = math.ceil(len(final) / 20)
         entries = []
 
-        for i in range(messages):
+        for i in range(int(messages)):
 
             results = final[i*20:(i+1)*20]
 
@@ -369,7 +369,7 @@ class Donations(commands.Cog):
         await p.paginate()
 
     @commands.command(name='donmobile', aliases=['donmob', 'mobdon', 'mdon', 'donm'])
-    async def _mobile(self, ctx, *, arg: ArgConverter=None):
+    async def donations_mobile(self, ctx, *, arg: ArgConverter=None):
         """Get a mobile-friendly version of donations.
 
         This command is identical in usage to `+don`. The only difference is the return of a mobile-friendly table.
@@ -421,8 +421,8 @@ class Donations(commands.Cog):
 
         return fmt.format(d=days, h=hours, m=minutes, s=seconds)
 
-    @commands.group(name='events')
-    async def _events(self, ctx, *, arg: EventsConverter = None):
+    @commands.group()
+    async def events(self, ctx, *, arg: EventsConverter = None):
         if not arg:
             arg = 20
 
@@ -438,11 +438,15 @@ class Donations(commands.Cog):
             if isinstance(arg[0], coc.Clan):
                 await ctx.invoke(self.events_clan, clans=arg)
 
-    @_events.command(name='recent')
+    @events.command(name='recent')
     async def events_recent(self, ctx, number: int = None):
         clans = await self.bot.get_clans(ctx.guild.id)
         if not clans:
             return await ctx.send('You have not claimed any clans. See `+help aclan`.')
+
+        players = []
+        for n in clans:
+            players.extend(x for x in n.members)
 
         query = f"SELECT player_tag, donations, received, time FROM events " \
                 f"WHERE clan_tag = $1 ORDER BY time DESC LIMIT $2"
@@ -463,7 +467,7 @@ class Donations(commands.Cog):
             data = results[i*20:(i+1)*20]
 
             for n in data:
-                player = await self.bot.coc.get_player(n[0])
+                player = discord.utils.get(players, tag=n[0])
                 delta = time - n[3]
                 table.add_row([player.name, n[1], n[2], self._readable_time(delta.total_seconds())])
             entries.append(f'```\n{table.render()}\n```')
@@ -473,7 +477,7 @@ class Donations(commands.Cog):
         p.embed.title = ', '.join(f'{n.name} ({n.tag})' for n in clans)
         await p.paginate()
 
-    @_events.command(name='player')
+    @events.command(name='player')
     async def events_player(self, ctx, *, player: PlayerConverter, limit=20):
         query = "SELECT events.donations, events.received, events.time, players.user_id FROM events " \
                 "INNER JOIN players ON players.player_tag = events.player_tag " \
@@ -497,7 +501,7 @@ class Donations(commands.Cog):
 
         await ctx.send(embed=e)
 
-    @_events.command(name='user')
+    @events.command(name='user')
     async def events_user(self, ctx, user: discord.Member=None, limit=20):
         if not user:
             user = ctx.author
@@ -520,32 +524,28 @@ class Donations(commands.Cog):
         e.set_author(name=str(user), icon_url=user.avatar_url)
         await ctx.send(embed=e)
 
-    @_events.command(name='clan')
+    @events.command(name='clan')
     async def events_clan(self, ctx, *, clans: ClanConverter, limit=20):
         query = f"SELECT player_tag, donations, received, time FROM events" \
                 f" WHERE clan_tag = $1 " \
                 f"ORDER BY time DESC LIMIT $2"
         results = []
+        players = []
         for n in clans:
             fetch = await ctx.db.fetch(query, n.tag, limit)
             results.extend(fetch)
+            players.extend(x for x in n.members)
 
         time = datetime.utcnow()
         table = TabularData()
         table.set_columns(['IGN', 'Don', "Rec'd", 'Time'])
         for n in results:
-            player = await self.bot.coc.get_player(n[0])
+            player = discord.utils.get(players, tag=n[0])
             table.add_row([player.name, n[1], n[2], self._readable_time((time - n[3]).total_seconds())])
         e = discord.Embed(colour=self.bot.colour,
                           description=f'```\n{table.render()}\n```',
                           )
         await ctx.send(embed=e)
-
-
-
-
-
-
 
 
 def setup(bot):
