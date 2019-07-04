@@ -420,7 +420,7 @@ class Donations(commands.Cog):
         return fmt.format(d=days, h=hours, m=minutes, s=seconds)
 
     @commands.group()
-    async def events(self, ctx, *, arg: EventsConverter = None, mobile=False):
+    async def events(self, ctx, *, arg: EventsConverter = None, mobile=False, limit=20):
         """Check recent donation events for a player, user, clan or guild.
 
         For a mobile-friendly table that is guaranteed to fit on a mobile screen, please use `+eventsmob`.
@@ -452,14 +452,14 @@ class Donations(commands.Cog):
         if isinstance(arg, int):
             await ctx.invoke(self.events_recent, number=arg, mobile=mobile)
         elif isinstance(arg, coc.Player):
-            await ctx.invoke(self.events_player, player=arg, mobile=mobile)
+            await ctx.invoke(self.events_player, player=arg, mobile=mobile, limit=limit)
         elif isinstance(arg, discord.Member):
-            await ctx.invoke(self.events_user, user=arg, mobile=mobile)
+            await ctx.invoke(self.events_user, user=arg, mobile=mobile, limit=limit)
         elif isinstance(arg, coc.Clan):
-            await ctx.invoke(self.events_clan, clan=[arg], mobile=mobile)
+            await ctx.invoke(self.events_clan, clan=[arg], mobile=mobile, limit=limit)
         elif isinstance(arg, list):
             if isinstance(arg[0], coc.Clan):
-                await ctx.invoke(self.events_clan, clans=arg, mobile=mobile)
+                await ctx.invoke(self.events_clan, clans=arg, mobile=mobile, limit=limit)
 
     @events.command(name='recent')
     async def events_recent(self, ctx, number: int = None, mobile: bool = False):
@@ -699,7 +699,7 @@ class Donations(commands.Cog):
             await ctx.send(fmt)
 
     @commands.command(name='eventsmob', aliases=['mobevents', 'mevents', 'eventsm'])
-    async def events_mobile(self, ctx, *, arg: ArgConverter, limit=20):
+    async def events_mobile(self, ctx, *, arg: ArgConverter = None, limit=20):
         """Get a mobile-friendly version of donation events/history.
 
         This command is identical in usage to `+events`. The only difference is the return of a mobile-friendly table.
@@ -736,7 +736,7 @@ class Donations(commands.Cog):
         await ctx.invoke(self.events, arg=arg, limit=limit, mobile=True)
 
     @commands.command(name='eventslim', hidden=True)
-    async def events_limit(self, ctx, limit: int = 20, *, arg: ArgConverter):
+    async def events_limit(self, ctx, limit: int = 20, *, arg: ArgConverter = None):
         """Get a specific limit of donation events/history.
 
         This command is similar in usage to `+events`. The only difference is you must specify the limit to fetch
@@ -747,7 +747,7 @@ class Donations(commands.Cog):
         Pass in any of the following, in this order:
             • First: limit: `1`, `2`, `5`, `50` etc.
 
-            Then:
+            • Then:
             • A clan tag
             • A clan name (clan must be claimed to the server)
             • A discord @mention, user#discrim or user id
