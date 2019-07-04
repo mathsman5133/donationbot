@@ -468,6 +468,9 @@ class Donations(commands.Cog):
 
             for n in data:
                 player = discord.utils.get(players, tag=n[0])
+                if not player:
+                    player = await self.bot.coc.get_player(n[0])
+
                 delta = time - n[3]
                 table.add_row([player.name, n[1], n[2], self._readable_time(delta.total_seconds())])
             entries.append(f'```\n{table.render()}\n```')
@@ -541,6 +544,9 @@ class Donations(commands.Cog):
         table.set_columns(['IGN', 'Don', "Rec'd", 'Time'])
         for n in results:
             player = discord.utils.get(players, tag=n[0])
+            if not player:
+                player.name = await self.bot.coc.get_player(n[0])
+
             table.add_row([player.name, n[1], n[2], self._readable_time((time - n[3]).total_seconds())])
         e = discord.Embed(colour=self.bot.colour,
                           description=f'```\n{table.render()}\n```',
