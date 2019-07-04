@@ -178,16 +178,16 @@ class Donations(commands.Cog):
         if ctx.invoked_subcommand is not None:
             return
         if not arg:
-            await ctx.invoke(self._user, ctx.author, mobile=mobile)
+            await ctx.invoke(self.donations_user, ctx.author, mobile=mobile)
         if isinstance(arg, discord.Member):
-            await ctx.invoke(self._user, arg)
+            await ctx.invoke(self.donations_user, arg)
         if isinstance(arg, coc.BasicClan):
-            await ctx.invoke(self._clan, clans=[arg], mobile=mobile)
+            await ctx.invoke(self.donations_clan, clans=[arg], mobile=mobile)
         if isinstance(arg, coc.BasicPlayer):
-            await ctx.invoke(self._player, player=arg, mobile=mobile)
+            await ctx.invoke(self.donations_player, player=arg, mobile=mobile)
         if isinstance(arg, list):
             if isinstance(arg[0], coc.BasicClan):
-                await ctx.invoke(self._clan, clans=arg, mobile=mobile)
+                await ctx.invoke(self.donations_clan, clans=arg, mobile=mobile)
 
     @donations.command(name='user')
     async def donations_user(self, ctx, user: discord.Member=None, mobile=False):
@@ -229,7 +229,6 @@ class Donations(commands.Cog):
         final = []
         for n in fetch:
             player = await self.bot.coc.get_player(n[0])
-            print(mobile)
             if mobile:
                 final.append([player.name, n[1], n[2]])
             else:
@@ -321,7 +320,6 @@ class Donations(commands.Cog):
         By default, you shouldn't need to call these sub-commands as the bot will
         parse your argument and direct it to the correct sub-command automatically.
         """
-
         query = f"SELECT player_tag, donations, received, user_id FROM players WHERE player_tag  = $1"
 
         players = []
@@ -404,7 +402,7 @@ class Donations(commands.Cog):
         • `+mdon`
         • `+donm`
         """
-        await ctx.invoke(self._donations, arg=arg, mobile=True)
+        await ctx.invoke(self.donations, arg=arg, mobile=True)
 
     @staticmethod
     def _readable_time(delta_seconds):
@@ -422,24 +420,49 @@ class Donations(commands.Cog):
         return fmt.format(d=days, h=hours, m=minutes, s=seconds)
 
     @commands.group()
-    async def events(self, ctx, *, arg: EventsConverter = None):
+    async def events(self, ctx, *, arg: EventsConverter = None, mobile=False):
+        """Check recent donation events for a player, user, clan or guild.
+
+        For a mobile-friendly table that is guaranteed to fit on a mobile screen, please use `+eventsmob`.
+
+        Parameters
+        ----------------
+        Pass in any of the following:
+
+            • A clan tag
+            • A clan name (clan must be claimed to the server)
+            • A discord @mention, user#discrim or user id
+            • A player tag
+            • A player name (must be in clan claimed to server)
+            • `all`, `server`, `guild` for all clans in guild
+            • None passed will divert to donations for your discord account
+
+        Example
+        -----------
+        • `+events #CLAN_TAG`
+        • `+events @mention`
+        • `+events #PLAYER_TAG`
+        • `+events player name`
+        • `+events all`
+        • `+events`
+        """
         if not arg:
             arg = 20
 
         if isinstance(arg, int):
-            await ctx.invoke(self.events_recent, number=arg)
+            await ctx.invoke(self.events_recent, number=arg, mobile=mobile)
         elif isinstance(arg, coc.Player):
-            await ctx.invoke(self.events_player, player=arg)
+            await ctx.invoke(self.events_player, player=arg, mobile=mobile)
         elif isinstance(arg, discord.Member):
-            await ctx.invoke(self.events_user, user=arg)
+            await ctx.invoke(self.events_user, user=arg, mobile=mobile)
         elif isinstance(arg, coc.Clan):
-            await ctx.invoke(self.events_clan, clan=[arg])
+            await ctx.invoke(self.events_clan, clan=[arg], mobile=mobile)
         elif isinstance(arg, list):
             if isinstance(arg[0], coc.Clan):
-                await ctx.invoke(self.events_clan, clans=arg)
+                await ctx.invoke(self.events_clan, clans=arg, mobile=mobile)
 
     @events.command(name='recent')
-    async def events_recent(self, ctx, number: int = None):
+    async def events_recent(self, ctx, number: int = None, mobile: bool = False):
         clans = await self.bot.get_clans(ctx.guild.id)
         if not clans:
             return await ctx.send('You have not claimed any clans. See `+help aclan`.')
@@ -448,7 +471,7 @@ class Donations(commands.Cog):
         for n in clans:
             players.extend(x for x in n.members)
 
-        query = f"SELECT player_tag, donations, received, time FROM events " \
+        query = f"SELECT player_tag, donations, received, time, clan_tag FROM events " \
                 f"WHERE clan_tag = $1 ORDER BY time DESC LIMIT $2"
         results = []
 
@@ -462,7 +485,10 @@ class Donations(commands.Cog):
 
         for i in range(int(no_entries)):
             table = TabularData()
-            table.set_columns(['IGN', 'Don', "Rec'd", 'Time'])
+            if mobile:
+                table.set_columns(['IGN', 'Don', "Rec'd"])
+            else:
+                table.set_columns(['IGN', 'Don', "Rec'd", 'Time', 'Clan'])
 
             data = results[i*20:(i+1)*20]
 
@@ -472,18 +498,110 @@ class Donations(commands.Cog):
                     player = await self.bot.coc.get_player(n[0])
 
                 delta = time - n[3]
-                table.add_row([player.name, n[1], n[2], self._readable_time(delta.total_seconds())])
-            entries.append(f'```\n{table.render()}\n```')
+                if mobile:
+                    table.add_row([player.name, n[1], n[2], self._readable_time(delta.total_seconds())])
+                else:
+                    clan = await self.bot.coc.get_clan(n[4])
+                    table.add_row([player.name, n[1], n[2], self._readable_time(delta.total_seconds()), clan.name])
 
-        p = paginator.Pages(ctx, entries=entries, per_page=1)
-        p.embed.colour = self.bot.colour
-        p.embed.title = ', '.join(f'{n.name} ({n.tag})' for n in clans)
+            if mobile:
+                entries.append(f'```\n{table.render()}\n```')
+            else:
+                entries.append(f"Recent Events for {', '.join(n.name for n in clans)}\n```\n{table.render()}\n```")
+
+        if mobile:
+            p = paginator.Pages(ctx, entries=entries, per_page=1)
+            p.embed.colour = self.bot.colour
+            p.embed.title = f"Recent Events for {', '.join(f'{n.name} ({n.tag})' for n in clans)}"
+        else:
+            p = paginator.MessagePaginator(ctx, entries=entries, per_page=1)
+
         await p.paginate()
 
+    @events.command(name='user')
+    async def events_user(self, ctx, user: discord.Member=None, mobile=False, limit=20):
+        """Get donation history/events for a discord user.
+
+        Parameters
+        ----------------
+        Pass in any of the following:
+
+            • A discord @mention, user#discrim or user id
+            • None passed will divert to donations for your discord account
+
+        Example
+        ------------
+        • `+events user @mention`
+        • `+events user USER_ID`
+        • `+events user`
+
+        Aliases
+        -----------
+        • `+events user` (primary)
+        • `+don user`
+
+        By default, you shouldn't need to call these sub-commands as the bot will
+        parse your argument and direct it to the correct sub-command automatically.
+        """
+        if not user:
+            user = ctx.author
+
+        query = "SELECT events.player_tag, events.donations, events.received, events.time, events.clan_tag " \
+                "FROM events INNER JOIN players ON events.player_tag = players.player_tag " \
+                "WHERE players.user_id = $1 ORDER BY time DESC LIMIT $2;"
+        fetch = await ctx.db.fetch(query, user.id, limit)
+
+        time = datetime.utcnow()
+        table = TabularData()
+        if mobile:
+            table.set_columns(['IGN', 'Don', "Rec'd"])
+        else:
+            table.set_columns(['IGN', 'Don', "Rec'd", 'Time', 'Clan'])
+
+        for n in fetch:
+            player = await self.bot.coc.get_player(n[0])
+            clan = await self.bot.coc.get_clan(n[4])
+            if mobile:
+                table.add_row([player.name, n[1], n[2]])
+            else:
+                table.add_row([player.name, n[1], n[2], self._readable_time((time - n[3]).total_seconds()), clan.name])
+
+        fmt = f'```\n{table.render()}\n```'
+        if mobile:
+            e = discord.Embed(colour=self.bot.colour,
+                              description=f'Recent Events\n{fmt}',
+                              )
+            e.set_author(name=str(user), icon_url=user.avatar_url)
+            await ctx.send(embed=e)
+        else:
+            await ctx.send(f'Recent Events for {str(user)}\n{fmt}')
+
     @events.command(name='player')
-    async def events_player(self, ctx, *, player: PlayerConverter, limit=20):
-        query = "SELECT events.donations, events.received, events.time, players.user_id FROM events " \
-                "INNER JOIN players ON players.player_tag = events.player_tag " \
+    async def events_player(self, ctx, *, player: PlayerConverter, mobile=False, limit=20):
+        """Get donation history/events for a player.
+
+        Parameters
+        -----------------
+        Pass in any of the following:
+
+            • A player tag
+            • A player name (must be in a clan claimed to server)
+
+        Example
+        ------------
+        • `+events player #PLAYER_TAG`
+        • `+events player player name`
+
+        Aliases
+        -----------
+        • `+events player` (primary)
+        • `+events player`
+
+        By default, you shouldn't need to call these sub-commands as the bot will
+        parse your argument and direct it to the correct sub-command automatically.
+        """
+        query = "SELECT events.donations, events.received, events.time, players.user_id, events.clan_tag " \
+                "FROM events INNER JOIN players ON players.player_tag = events.player_tag " \
                 "WHERE events.player_tag = $1 ORDER BY events.time DESC LIMIT $2"
         fetch = await ctx.db.fetch(query, player.tag, limit)
         if not fetch:
@@ -491,46 +609,60 @@ class Donations(commands.Cog):
 
         time = datetime.utcnow()
         table = TabularData()
-        table.set_columns(['IGN', 'Don', "Rec'd", 'Time'])
+        if mobile:
+            table.set_columns(['IGN', 'Don', "Rec'd"])
+        else:
+            table.set_columns(['IGN', 'Don', "Rec'd", 'Time', 'Clan'])
 
         for n in fetch:
-            table.add_row([player.name, n[1], n[2], self._readable_time((time - n[3]).total_seconds())])
-        e = discord.Embed(colour=self.bot.colour,
-                          description=f'```\n{table.render()}\n```',
-                          )
-        user = ctx.guild.get_member(fetch[4])
-        if user:
-            e.set_author(name=str(user), icon_url=user.avatar_url)
+            if mobile:
+                table.add_row([player.name, n[1], n[2]])
+            else:
+                clan = await self.bot.coc.get_clan(n[4])
+                table.add_row([player.name, n[1], n[2], self._readable_time((time - n[3]).total_seconds()), clan.name])
 
-        await ctx.send(embed=e)
+        fmt = f'```\n{table.render()}\n```'
+        if mobile:
+            e = discord.Embed(colour=self.bot.colour,
+                              description=f'Recent Events for {player.name}\n{fmt}',
+                              )
+            user = ctx.guild.get_member(fetch[4])
+            if user:
+                e.set_author(name=str(user), icon_url=user.avatar_url)
 
-    @events.command(name='user')
-    async def events_user(self, ctx, user: discord.Member=None, limit=20):
-        if not user:
-            user = ctx.author
-
-        query = "SELECT events.player_tag, events.donations, events.received, events.time " \
-                "FROM events INNER JOIN players ON events.player_tag = players.player_tag " \
-                "WHERE players.user_id = $1 ORDER BY time LIMIT $2;"
-        fetch = await ctx.db.fetch(query, user.id, limit)
-
-        time = datetime.utcnow()
-        table = TabularData()
-        table.set_columns(['IGN', 'Don', "Rec'd", 'Time'])
-
-        for n in fetch:
-            player = await self.bot.coc.get_player(n[0])
-            table.add_row([player.name, n[1], n[2], self._readable_time((time - n[3]).total_seconds())])
-        e = discord.Embed(colour=self.bot.colour,
-                          description=f'```\n{table.render()}\n```',
-                          )
-        e.set_author(name=str(user), icon_url=user.avatar_url)
-        await ctx.send(embed=e)
+            return await ctx.send(embed=e)
+        else:
+            return await ctx.send(f'Recent Events for {player.name}\n{fmt}')
 
     @events.command(name='clan')
-    async def events_clan(self, ctx, *, clans: ClanConverter, limit=20):
-        query = f"SELECT player_tag, donations, received, time FROM events" \
-                f" WHERE clan_tag = $1 " \
+    async def events_clan(self, ctx, *, clans: ClanConverter, mobile=False, limit=20):
+        """Get donation history/events for a clan.
+
+        Parameters
+        ----------------
+        Pass in any of the following:
+
+            • A clan tag
+            • A clan name (must be claimed to server)
+            • `all`, `server`, `guild`: all clans claimed to server
+
+        Example
+        ------------
+        • `+events clan #CLAN_TAG`
+        • `+events clan clan name`
+        • `+events clan all`
+
+        Aliases
+        -----------
+        • `+events clan` (primary)
+        • `+events clan`
+
+        By default, you shouldn't need to call these sub-commands as the bot will
+        parse your argument and direct it to the correct sub-command automatically.
+        """
+
+        query = f"SELECT player_tag, donations, received, time, clan_tag FROM events " \
+                f"WHERE clan_tag = $1 " \
                 f"ORDER BY time DESC LIMIT $2"
         results = []
         players = []
@@ -541,17 +673,106 @@ class Donations(commands.Cog):
 
         time = datetime.utcnow()
         table = TabularData()
-        table.set_columns(['IGN', 'Don', "Rec'd", 'Time'])
+        if mobile:
+            table.set_columns(['IGN', 'Don', "Rec'd"])
+        else:
+            table.set_columns(['IGN', 'Don', "Rec'd", 'Time', 'Clan'])
+
         for n in results:
             player = discord.utils.get(players, tag=n[0])
             if not player:
-                player.name = await self.bot.coc.get_player(n[0])
+                player = await self.bot.coc.get_player(n[0])
 
-            table.add_row([player.name, n[1], n[2], self._readable_time((time - n[3]).total_seconds())])
-        e = discord.Embed(colour=self.bot.colour,
-                          description=f'```\n{table.render()}\n```',
-                          )
-        await ctx.send(embed=e)
+            if mobile:
+                table.add_row([player.name, n[1], n[2]])
+            else:
+                clan = await self.bot.coc.get_clan(n[4])
+                table.add_row([player.name, n[1], n[2], self._readable_time((time - n[3]).total_seconds()), clan.name])
+
+        fmt = f"Recent Events for {', '.join(n.name for n in clans)}\n```\n{table.render()}\n```"
+        if mobile:
+            e = discord.Embed(colour=self.bot.colour,
+                              description=fmt,
+                              )
+            await ctx.send(embed=e)
+        else:
+            await ctx.send(fmt)
+
+    @events.command(name='eventsmob', aliases=['mobevents', 'mevents', 'eventsm'])
+    async def events_mobile(self, ctx, *, arg: ArgConverter, limit=20):
+        """Get a mobile-friendly version of donation events/history.
+
+        This command is identical in usage to `+events`. The only difference is the return of a mobile-friendly table.
+        For a complete table with time and clan name columns, please use `+events`.
+
+        Parameters
+        ----------------
+        Pass in any of the following:
+
+            • A clan tag
+            • A clan name (clan must be claimed to the server)
+            • A discord @mention, user#discrim or user id
+            • A player tag
+            • A player name (must be in clan claimed to server)
+            • `all`, `server`, `guild` for all clans in guild
+            • None passed will divert to donations for your discord account
+
+        Example
+        ------------
+        • `+eventsmob #CLAN_TAG`
+        • `+mobevents @mention`
+        • `+mevents #PLAYER_TAG`
+        • `+eventsm player name`
+        • `+eventsmob all`
+        • `+mobevents`
+
+        Aliases
+        -----------
+        • `+eventsmob` (primary)
+        • `+mobevents`
+        • `+mevents`
+        • `+eventsm`
+        """
+        await ctx.invoke(self.events, arg=arg, limit=limit, mobile=True)
+
+    @events.command(name='eventslim', hidden=True)
+    async def events_limit(self, ctx, limit: int = 20, *, arg: ArgConverter):
+        """Get a specific limit of donation events/history.
+
+        This command is similar in usage to `+events`. The only difference is you must specify the limit to fetch
+        before your clan/player/user argument.
+
+        Parameters
+        ----------------
+        Pass in any of the following, in this order:
+            • First: limit: `1`, `2`, `5`, `50` etc.
+
+            Then:
+            • A clan tag
+            • A clan name (clan must be claimed to the server)
+            • A discord @mention, user#discrim or user id
+            • A player tag
+            • A player name (must be in clan claimed to server)
+            • `all`, `server`, `guild` for all clans in guild
+            • None passed will divert to donations for your discord account
+
+        Example
+        ------------
+        • `+eventsmob #CLAN_TAG`
+        • `+mobevents @mention`
+        • `+mevents #PLAYER_TAG`
+        • `+eventsm player name`
+        • `+eventsmob all`
+        • `+mobevents`
+
+        Aliases
+        -----------
+        • `+eventsmob` (primary)
+        • `+mobevents`
+        • `+mevents`
+        • `+eventsm`
+        """
+        await ctx.invoke(self.events, arg=arg, limit=limit)
 
 
 def setup(bot):
