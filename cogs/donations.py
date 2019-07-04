@@ -698,7 +698,7 @@ class Donations(commands.Cog):
         else:
             await ctx.send(fmt)
 
-    @events.command(name='eventsmob', aliases=['mobevents', 'mevents', 'eventsm'])
+    @commands.command(name='eventsmob', aliases=['mobevents', 'mevents', 'eventsm'])
     async def events_mobile(self, ctx, *, arg: ArgConverter, limit=20):
         """Get a mobile-friendly version of donation events/history.
 
@@ -735,7 +735,7 @@ class Donations(commands.Cog):
         """
         await ctx.invoke(self.events, arg=arg, limit=limit, mobile=True)
 
-    @events.command(name='eventslim', hidden=True)
+    @commands.command(name='eventslim', hidden=True)
     async def events_limit(self, ctx, limit: int = 20, *, arg: ArgConverter):
         """Get a specific limit of donation events/history.
 
