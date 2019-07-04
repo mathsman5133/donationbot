@@ -1,6 +1,7 @@
 from discord.ext import commands
 import coc
 import discord
+from datetime import datetime
 import re
 import math
 from cogs.utils import paginator
@@ -122,6 +123,15 @@ class ArgConverter(commands.Converter):
             if member_by_tag:
                 return member
         return ctx.author
+
+
+class EventsConverter(commands.Converter):
+    async def convert(self, ctx, argument):
+        try:
+            to_fetch = int(argument)
+        except ValueError:
+            to_fetch = await ArgConverter().convert(ctx, argument)
+        return to_fetch
 
 
 class Donations(commands.Cog):
@@ -273,7 +283,8 @@ class Donations(commands.Cog):
             final = [player.name, player.tag, fetch[1], fetch[2], str(user)]
 
         e = discord.Embed(colour=self.bot.colour)
-        e.set_author(name=str(user), icon_url=user.avatar_url)
+        if user:
+            e.set_author(name=str(user), icon_url=user.avatar_url)
 
         table = TabularData()
         if mobile:
@@ -394,6 +405,147 @@ class Donations(commands.Cog):
         • `+donm`
         """
         await ctx.invoke(self._donations, arg=arg, mobile=True)
+
+    @staticmethod
+    def _readable_time(delta_seconds):
+        hours, remainder = divmod(int(delta_seconds), 3600)
+        minutes, seconds = divmod(remainder, 60)
+        days, hours = divmod(hours, 24)
+
+        if days:
+            fmt = '{d}d {h}h {m}m {s}s ago'
+        elif hours:
+            fmt = '{h}h {m}m {s}s ago'
+        else:
+            fmt = '{m}m {s}s ago'
+
+        return fmt.format(d=days, h=hours, m=minutes, s=seconds)
+
+    @commands.group(name='events')
+    async def _events(self, ctx, *, arg: EventsConverter = None):
+        if not arg:
+            arg = 20
+
+        if isinstance(arg, int):
+            await ctx.invoke(self.events_recent, number=arg)
+        elif isinstance(arg, coc.Player):
+            await ctx.invoke(self.events_player, player=arg)
+        elif isinstance(arg, discord.Member):
+            await ctx.invoke(self.events_user, user=arg)
+        elif isinstance(arg, coc.Clan):
+            await ctx.invoke(self.events_clan, clan=[arg])
+        elif isinstance(arg, list):
+            if isinstance(arg[0], coc.Clan):
+                await ctx.invoke(self.events_clan, clans=arg)
+
+    @_events.command(name='recent')
+    async def events_recent(self, ctx, number: int = None):
+        clans = await self.bot.get_clans(ctx.guild.id)
+        if not clans:
+            return await ctx.send('You have not claimed any clans. See `+help aclan`.')
+
+        query = f"SELECT player_tag, donations, received, time FROM events " \
+                f"WHERE clan_tag = $1 ORDER BY time DESC LIMIT $2"
+        results = []
+
+        for n in clans:
+            fetch = await ctx.db.fetch(query, n.tag, number)
+            results.extend(fetch)
+
+        no_entries = math.ceil(len(results) / 20)
+        entries = []
+        time = datetime.utcnow()
+
+        for i in range(int(no_entries)):
+            table = TabularData()
+            table.set_columns(['IGN', 'Don', "Rec'd", 'Time'])
+
+            data = results[i*20:(i+1)*20]
+
+            for n in data:
+                player = await self.bot.coc.get_player(n[0])
+                delta = time - n[3]
+                table.add_row([player.name, n[1], n[2], self._readable_time(delta.total_seconds())])
+            entries.append(f'```\n{table.render()}\n```')
+
+        p = paginator.Pages(ctx, entries=entries, per_page=1)
+        p.embed.colour = self.bot.colour
+        p.embed.title = ', '.join(f'{n.name} ({n.tag})' for n in clans)
+        await p.paginate()
+
+    @_events.command(name='player')
+    async def events_player(self, ctx, *, player: PlayerConverter, limit=20):
+        query = "SELECT events.donations, events.received, events.time, players.user_id FROM events " \
+                "INNER JOIN players ON players.player_tag = events.player_tag " \
+                "WHERE events.player_tag = $1 ORDER BY events.time DESC LIMIT $2"
+        fetch = await ctx.db.fetch(query, player.tag, limit)
+        if not fetch:
+            return await ctx.send('No accounts added/claimed. Please see `+help claim` or `+help aplayer`')
+
+        time = datetime.utcnow()
+        table = TabularData()
+        table.set_columns(['IGN', 'Don', "Rec'd", 'Time'])
+
+        for n in fetch:
+            table.add_row([player.name, n[1], n[2], self._readable_time((time - n[3]).total_seconds())])
+        e = discord.Embed(colour=self.bot.colour,
+                          description=f'```\n{table.render()}\n```',
+                          )
+        user = ctx.guild.get_member(fetch[4])
+        if user:
+            e.set_author(name=str(user), icon_url=user.avatar_url)
+
+        await ctx.send(embed=e)
+
+    @_events.command(name='user')
+    async def events_user(self, ctx, user: discord.Member=None, limit=20):
+        if not user:
+            user = ctx.author
+
+        query = "SELECT events.player_tag, events.donations, events.received, events.time " \
+                "FROM events INNER JOIN players ON events.player_tag = players.player_tag " \
+                "WHERE players.user_id = $1 ORDER BY time LIMIT $2;"
+        fetch = await ctx.db.fetch(query, user.id, limit)
+
+        time = datetime.utcnow()
+        table = TabularData()
+        table.set_columns(['IGN', 'Don', "Rec'd", 'Time'])
+
+        for n in fetch:
+            player = await self.bot.coc.get_player(n[0])
+            table.add_row([player.name, n[1], n[2], self._readable_time((time - n[3]).total_seconds())])
+        e = discord.Embed(colour=self.bot.colour,
+                          description=f'```\n{table.render()}\n```',
+                          )
+        e.set_author(name=str(user), icon_url=user.avatar_url)
+        await ctx.send(embed=e)
+
+    @_events.command(name='clan')
+    async def events_clan(self, ctx, *, clans: ClanConverter, limit=20):
+        query = f"SELECT player_tag, donations, received, time FROM events" \
+                f" WHERE clan_tag = $1 " \
+                f"ORDER BY time DESC LIMIT $2"
+        results = []
+        for n in clans:
+            fetch = await ctx.db.fetch(query, n.tag, limit)
+            results.extend(fetch)
+
+        time = datetime.utcnow()
+        table = TabularData()
+        table.set_columns(['IGN', 'Don', "Rec'd", 'Time'])
+        for n in results:
+            player = await self.bot.coc.get_player(n[0])
+            table.add_row([player.name, n[1], n[2], self._readable_time((time - n[3]).total_seconds())])
+        e = discord.Embed(colour=self.bot.colour,
+                          description=f'```\n{table.render()}\n```',
+                          )
+        await ctx.send(embed=e)
+
+
+
+
+
+
 
 
 def setup(bot):
