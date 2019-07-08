@@ -470,6 +470,7 @@ class Donations(commands.Cog):
         if not clans:
             return await ctx.send('You have not claimed any clans. See `+help aclan`.')
 
+        await ctx.send('This may take a while. Please be patient.')
         players = []
         for n in clans:
             players.extend(x for x in n.members)
