@@ -419,7 +419,7 @@ class Donations(commands.Cog):
 
         return fmt.format(d=days, h=hours, m=minutes, s=seconds)
 
-    @commands.group()
+    @commands.group(invoke_without_command=True)
     async def events(self, ctx, *, arg: EventsConverter = None, mobile=False, limit=20):
         """Check recent donation events for a player, user, clan or guild.
 
@@ -446,6 +446,9 @@ class Donations(commands.Cog):
         • `+events all`
         • `+events`
         """
+        if ctx.invoked_subcommand is not None:
+            return
+
         if not arg:
             arg = 20
 
@@ -766,7 +769,7 @@ class Donations(commands.Cog):
 
         Example
         ------------
-        • `+eventsmob #CLAN_TAG`
+        • `+eventslim #CLAN_TAG`
         • `+mobevents @mention`
         • `+mevents #PLAYER_TAG`
         • `+eventsm player name`
