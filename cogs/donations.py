@@ -479,6 +479,9 @@ class Donations(commands.Cog):
             fetch = await ctx.db.fetch(query, n.tag, number)
             results.extend(fetch)
 
+        if not results:
+            return await ctx.send('Your clan doesn\'t have any events recorded yet.')
+
         no_entries = math.ceil(len(results) / 20)
         entries = []
         time = datetime.utcnow()
@@ -496,18 +499,23 @@ class Donations(commands.Cog):
                 player = discord.utils.get(players, tag=n[0])
                 if not player:
                     player = await self.bot.coc.get_player(n[0])
+                    print('fetch')
+                else:
+                    print('ok')
 
                 delta = time - n[3]
                 if mobile:
-                    table.add_row([player.name, n[1], n[2], self._readable_time(delta.total_seconds())])
+                    table.add_row([player.name, n[1], n[2]])
                 else:
                     clan = await self.bot.coc.get_clan(n[4])
-                    table.add_row([player.name, n[1], n[2], self._readable_time(delta.total_seconds()), clan.name])
+                    table.add_row([player.name, n[1], n[2],
+                                   self._readable_time(delta.total_seconds()), clan.name])
 
             if mobile:
                 entries.append(f'```\n{table.render()}\n```')
             else:
-                entries.append(f"Recent Events for {', '.join(n.name for n in clans)}\n```\n{table.render()}\n```")
+                entries.append(f"Recent Events for {', '.join(n.name for n in clans)}\n"
+                               f"```\n{table.render()}\n```")
 
         if mobile:
             p = paginator.Pages(ctx, entries=entries, per_page=1)
@@ -699,7 +707,7 @@ class Donations(commands.Cog):
             await ctx.send(fmt)
 
     @commands.command(name='eventsmob', aliases=['mobevents', 'mevents', 'eventsm'])
-    async def events_mobile(self, ctx, *, arg: ArgConverter = None, limit=20):
+    async def events_mobile(self, ctx, *, arg: EventsConverter = None, limit=20):
         """Get a mobile-friendly version of donation events/history.
 
         This command is identical in usage to `+events`. The only difference is the return of a mobile-friendly table.
@@ -736,7 +744,7 @@ class Donations(commands.Cog):
         await ctx.invoke(self.events, arg=arg, limit=limit, mobile=True)
 
     @commands.command(name='eventslim', hidden=True)
-    async def events_limit(self, ctx, limit: int = 20, *, arg: ArgConverter = None):
+    async def events_limit(self, ctx, limit: int = 20, *, arg: EventsConverter = None):
         """Get a specific limit of donation events/history.
 
         This command is similar in usage to `+events`. The only difference is you must specify the limit to fetch

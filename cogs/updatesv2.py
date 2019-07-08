@@ -162,12 +162,14 @@ class Updates(commands.Cog):
         return [guild.get_member_named(n[0]) for n in matches]
 
     async def match_member(self, member, clan, claim):
-        matches = fuzzy.extract_matches(member.name, [n.name for n in clan.members], score_cutoff=60)
+        matches = fuzzy.extract_matches(member.name, [n.name for n in clan.members],
+                                        score_cutoff=60)
         if len(matches) == 0:
             return None
         for i, n in enumerate(matches):
             query = "SELECT user_id FROM players WHERE player_tag = $1"
-            fetch = await self.bot.pool.fetchrow(query, n[0].tag)
+            m = clan.get_member(name=n[0])
+            fetch = await self.bot.pool.fetchrow(query, m.tag)
             if fetch is None:
                 continue
             del matches[i]
@@ -192,19 +194,22 @@ class Updates(commands.Cog):
             if guild_config.log_channel is None or guild_config.log_channel.id != channel.id:
                 return
             # the log channel got deleted, remove it from the database.
-            query = "UPDATE guilds SET log_channel_id = NULL, log_toggle = False WHERE guild_id = $1"
+            query = "UPDATE guilds SET log_channel_id = NULL, " \
+                    "log_toggle = False WHERE guild_id = $1"
             await self.bot.pool.execute(query, channel.guild.id)
 
         query = "DELETE FROM messages WHERE guild_id = $1;"
         await self.bot.pool.execute(query, channel.guild.id)
-        query = "UPDATE guilds SET updates_channel_id = NULL, updates_message_id = NULL, updates_toggle = False WHERE" \
+        query = "UPDATE guilds SET updates_channel_id = NULL, " \
+                "updates_message_id = NULL, updates_toggle = False WHERE" \
                 " guild_id = $1"
         await self.bot.pool.execute(query, channel.guild.id)
 
     @commands.Cog.listener()
     async def on_raw_message_delete(self, payload):
         guild_config = await self.get_guild_config(payload.guild_id)
-        if guild_config.updates_channel is None or guild_config.updates_channel.id != payload.channel_id:
+        if guild_config.updates_channel is None or \
+                guild_config.updates_channel.id != payload.channel_id:
             return
         if payload.message_id in self._to_be_deleted:
             self._to_be_deleted.discard(payload.message_id)
@@ -215,7 +220,8 @@ class Updates(commands.Cog):
     @commands.Cog.listener()
     async def on_raw_bulk_message_delete(self, payload):
         guild_config = await self.get_guild_config(payload.guild_id)
-        if guild_config.updates_channel is None or guild_config.updates_channel.id != payload.channel_id:
+        if guild_config.updates_channel is None or \
+                guild_config.updates_channel.id != payload.channel_id:
             return
 
         for n in payload.message_ids:
@@ -236,7 +242,8 @@ class Updates(commands.Cog):
         try:
             await self.bot.http.delete_message(payload.channel_id, payload.message_id,
                                                reason=f'Member {str(info[0])} '
-                                                      f'claimed by {str(self.bot.get_user(payload.user_id))}.')
+                                                      f'claimed by '
+                                                      f'{str(self.bot.get_user(payload.user_id))}.')
         except (discord.Forbidden, discord.HTTPException):
             pass
 
@@ -250,7 +257,8 @@ class Updates(commands.Cog):
             results = await self.match_member(member, clan, claim=False)
             if not results:
                 await self.bot.log_info(member.guild, f'{str(member)} ({member.id}) joined '
-                                                      'the guild, but no corresponding COC players were found.',
+                                                      'the guild, but no corresponding '
+                                                      'COC players were found.',
                                         colour=discord.Colour.gold())
                 return  # no members found in clan with that name
             if isinstance(results, coc.BasicPlayer):
@@ -266,8 +274,8 @@ class Updates(commands.Cog):
             table.set_columns(['IGN', 'Tag'])
             table.add_rows([n.name, n.tag] for n in results)
             await self.bot.log_info(member.guild, f'{str(member)} ({member.id}) joined the guild.\n'
-                                                  f'Corresponding clan members found, none claimed:\n'
-                                                  f'```\n{table.render()}\n```',
+                                                  f'Corresponding clan members found, none claimed:'
+                                                  f'\n```\n{table.render()}\n```',
                                     colour=discord.Colour.gold())
 
     async def on_clan_member_join(self, member, clan):
@@ -290,9 +298,12 @@ class Updates(commands.Cog):
                 return
                 # no members found in guild with that player name
             if isinstance(results, discord.Member):
-                msg_ids = await self.bot.log_info(clan, f'{member.name} ({member.tag}) joined {str(clan)} ({clan.tag}) '
-                                                        f'and I found a singular matching discord account: '
-                                                        f'{str(results)} (ID {results.id}). Do you wish to claim them?',
+                msg_ids = await self.bot.log_info(clan, f'{member.name} ({member.tag}) '
+                                                        f'joined {str(clan)} ({clan.tag}) '
+                                                        f'and I found a singular '
+                                                        f'matching discord account: '
+                                                        f'{str(results)} (ID {results.id}). '
+                                                        f'Do you wish to claim them?',
                                                   colour=discord.Colour.green(),
                                                   prompt=True)
                 for x in msg_ids:
@@ -302,7 +313,8 @@ class Updates(commands.Cog):
             table = TabularData()
             table.set_columns(['user#disrim', 'UserID'])
             table.add_rows([str(n), n.id] for n in results)
-            await self.bot.log_info(clan, f'{member.name} ({member.tag}) joined {str(clan)} ({clan.tag}).\n'
+            await self.bot.log_info(clan, f'{member.name} ({member.tag}) '
+                                          f'joined {str(clan)} ({clan.tag}).\n'
                                           f'Corresponding members found, none claimed:\n'
                                           f'```\n{table.render()}\n```',
                                     colour=discord.Colour.gold())
@@ -339,7 +351,8 @@ class Updates(commands.Cog):
         donation_events = [n for n in all_updates if n[0] == 'on_clan_member_donation']
 
         time = datetime.utcnow()
-        query = "INSERT INTO events (player_tag, clan_tag, donations, received, time) VALUES ($1, $2, $3, $4, $5)"
+        query = "INSERT INTO events (player_tag, clan_tag, donations, received, time) " \
+                "VALUES ($1, $2, $3, $4, $5)"
         for n in received_events:
             await self.bot.pool.execute(query, n[3].tag, n[4].tag, 0, n[2] - n[1], time)
         for n in donation_events:
@@ -349,7 +362,8 @@ class Updates(commands.Cog):
         fetch = await self.bot.pool.fetch(query, time)
         clans = await self.bot.coc.get_clans((n[0] for n in fetch)).flatten()
 
-        query = "SELECT player_tag, donations, received FROM events WHERE clan_tag = $1 AND time = $2"
+        query = "SELECT player_tag, donations, received FROM events " \
+                "WHERE clan_tag = $1 AND time = $2"
         for clan in clans:
             print(clan)
             fetch = await self.bot.pool.fetch(query, clan.tag, time)
@@ -404,7 +418,8 @@ class Updates(commands.Cog):
         if not guilds:
             return
 
-        query = f"SELECT DISTINCT clan_tag FROM clans WHERE guild_id IN ({', '.join(str(n.id) for n in guilds)})"
+        query = f"SELECT DISTINCT clan_tag FROM clans " \
+                f"WHERE guild_id IN ({', '.join(str(n.id) for n in guilds)})"
         fetch = await self.bot.pool.fetch(query)
         clans = await self.bot.coc.get_clans((n[0] for n in fetch)).flatten()
 
