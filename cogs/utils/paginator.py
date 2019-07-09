@@ -192,7 +192,7 @@ class Pages:
         for (emoji, func) in self.reaction_emojis:
             messages.append(f'{emoji} {func.__doc__}')
 
-        embed = self.embed.copy()
+        embed = self.embed.copy() if self.embed else discord.Embed(colour=self.bot.colour)
         embed.clear_fields()
         embed.description = '\n'.join(messages)
         embed.set_footer(text=f'We were on page {self.current_page} before this message.')
