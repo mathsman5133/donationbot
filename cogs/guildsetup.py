@@ -280,7 +280,7 @@ class GuildConfiguration(commands.Cog):
         await ctx.confirm()
 
     @commands.command(aliases=['aplayer'])
-    async def add_player(self, ctx, *, player_tag: PlayerConverter):
+    async def add_player(self, ctx, *, player: PlayerConverter):
         """Manually add a clash account to the database. This does not claim the account.
 
         Parameters
@@ -302,10 +302,6 @@ class GuildConfiguration(commands.Cog):
         """
         query = "INSERT INTO players (player_tag, donations, received) " \
                 "VALUES ($1, $2, $3, $4) ON CONFLICT (tag) DO NOTHING"
-        try:
-            player = await ctx.bot.coc.get_player(player_tag)
-        except coc.NotFound:
-            raise commands.BadArgument('Player tag not found')
 
         await ctx.db.execute(query, player.tag, player.donations, player.received)
         await ctx.confirm()
