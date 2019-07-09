@@ -301,8 +301,7 @@ class GuildConfiguration(commands.Cog):
         • `+aplayer`
         """
         query = "INSERT INTO players (player_tag, donations, received) " \
-                "VALUES ($1, $2, $3, $4) ON CONFLICT (tag) DO NOTHING"
-
+                "VALUES ($1, $2, $3) ON CONFLICT (tag) DO NOTHING"
         await ctx.db.execute(query, player.tag, player.donations, player.received)
         await ctx.confirm()
 
