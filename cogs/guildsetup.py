@@ -241,7 +241,7 @@ class GuildConfiguration(commands.Cog):
 
         query = "INSERT INTO players (player_tag, donations, received) " \
                 "VALUES ($1, $2, $3) ON CONFLICT (player_tag) DO NOTHING"
-        for member in clan._members:
+        for member in clan.itermembers:
             await ctx.db.execute(query, member.tag, member.donations, member.received)
 
         await ctx.confirm()
@@ -327,7 +327,8 @@ class GuildConfiguration(commands.Cog):
             raise commands.BadArgument(f'Player {player.name} '
                                        f'({player.tag}) has already been claimed by {str(user)}')
         if not fetch:
-            query = "INSERT INTO players (player_tag, donations, received, user_id) VALUES ($1, $2, $3, $4)"
+            query = "INSERT INTO players (player_tag, donations, received, user_id) " \
+                    "VALUES ($1, $2, $3, $4)"
             await ctx.db.execute(query, player.tag, player.donations, player.received, ctx.author.id)
             return await ctx.confirm()
 
