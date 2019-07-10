@@ -1,11 +1,10 @@
 import discord
 from discord.ext import commands
 import coc
-from .donations import PlayerConverter, ClanConverter, TabularData
+from .donations import PlayerConverter, ClanConverter
 import math
-from .utils import paginator
+from .utils import paginator, checks, formatters
 import typing
-from .utils import checks
 
 
 class GuildConfiguration(commands.Cog):
@@ -403,7 +402,7 @@ class GuildConfiguration(commands.Cog):
                 name = name[:20] + '..'
             final.append([n.name, n.tag, name])
 
-        table = TabularData()
+        table = formatters.TabularData()
         table.set_columns(['IGN', 'Tag', 'Claimed By'])
         table.add_rows(final)
 
@@ -414,7 +413,7 @@ class GuildConfiguration(commands.Cog):
 
             results = final[i*20:(i+1)*20]
 
-            table = TabularData()
+            table = formatters.TabularData()
             table.set_columns(['IGN', 'Tag', "Claimed By"])
             table.add_rows(results)
 
@@ -479,7 +478,7 @@ class GuildConfiguration(commands.Cog):
                 name = name[:20] + '..'
             final.append([n.name, n.tag, name])
 
-        table = TabularData()
+        table = formatters.TabularData()
         table.set_columns(['IGN', 'Tag', 'Claimed By'])
         table.add_rows(final)
         await ctx.send(f'```\n{table.render()}\n```')
@@ -551,7 +550,7 @@ class GuildConfiguration(commands.Cog):
                                             colour=discord.Colour.green())
                     continue
 
-                table = TabularData()
+                table = formatters.TabularData()
                 table.set_columns(['Option', 'user#disrim', 'UserID'])
                 table.add_rows([i + 1, str(n), n.id] for i, n in enumerate(results))
                 result = await ctx.prompt(f'[auto-claim]: For player {member.name} ({member.tag})\n'

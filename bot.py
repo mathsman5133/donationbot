@@ -7,6 +7,7 @@ import discord
 import aiohttp
 import traceback
 import creds
+import textwrap
 
 from discord.ext import commands
 from cogs.utils import context
@@ -19,7 +20,14 @@ log = logging.getLogger(__name__)
 coc_client = coc.login(creds.email, creds.password, client=coc.EventsClient,
                        key_names='test', throttle_limit=40)
 
-initial_extensions = ['cogs.guildsetup', 'cogs.donations', 'cogs.updatesv2', 'cogs.admin', 'cogs.info']
+initial_extensions = [
+    'cogs.guildsetup',
+    'cogs.donations',
+    'cogs.events',
+    'cogs.updatesv2',
+    'cogs.admin',
+    'cogs.info'
+]
 description = "A simple discord bot to track donations of clan families in clash of clans."
 
 
@@ -30,12 +38,21 @@ class DonationBot(commands.Bot):
         self.coc = coc_client
         self.client_id = creds.client_id
         self.session = aiohttp.ClientSession(loop=self.loop)
-        self.error_webhook = discord.Webhook.partial(id=creds.error_hook_id, token=creds.error_hook_token,
-                                                     adapter=discord.AsyncWebhookAdapter(session=self.session))
-        self.join_log_webhook = discord.Webhook.partial(id=creds.join_log_hook_id, token=creds.join_log_hook_token,
-                                                        adapter=discord.AsyncWebhookAdapter(session=self.session))
-        self.feedback_webhook = discord.Webhook.partial(id=creds.feedback_hook_id, token=creds.feedback_hook_token,
-                                                        adapter=discord.AsyncWebhookAdapter(session=self.session))
+        self.error_webhook = discord.Webhook.partial(id=creds.error_hook_id,
+                                                     token=creds.error_hook_token,
+                                                     adapter=discord.AsyncWebhookAdapter(
+                                                         session=self.session)
+                                                     )
+        self.join_log_webhook = discord.Webhook.partial(id=creds.join_log_hook_id,
+                                                        token=creds.join_log_hook_token,
+                                                        adapter=discord.AsyncWebhookAdapter(
+                                                            session=self.session)
+                                                        )
+        self.feedback_webhook = discord.Webhook.partial(id=creds.feedback_hook_id,
+                                                        token=creds.feedback_hook_token,
+                                                        adapter=discord.AsyncWebhookAdapter(
+                                                            session=self.session)
+                                                        )
 
         self.uptime = datetime.datetime.utcnow()
         self.prefixes = {}
@@ -45,7 +62,8 @@ class DonationBot(commands.Bot):
             try:
                 self.load_extension(e)  # load cogs
             except Exception as er:
-                exc = ''.join(traceback.format_exception(type(er), er, er.__traceback__, chain=False))
+                exc = ''.join(traceback.format_exception(type(er),
+                                                         er, er.__traceback__, chain=False))
                 print(exc)
                 print(f'Failed to load extension {e}: {er}.', file=sys.stderr)
 
@@ -56,7 +74,8 @@ class DonationBot(commands.Bot):
         await self.process_commands(message)
 
     async def on_command(self, ctx):
-        # make bot 'type' so impatient people know we have received the command, if it is a long computation
+        # make bot 'type' so impatient people know
+        # we have received the command, if it is a long computation
         await ctx.message.channel.trigger_typing()
 
     async def process_commands(self, message):
@@ -74,6 +93,12 @@ class DonationBot(commands.Bot):
         e.add_field(name='Event', value=event_method)
         e.description = f'```py\n{traceback.format_exc()}\n```'
         e.timestamp = datetime.datetime.utcnow()
+
+        args_str = ['```py']
+        for index, arg in enumerate(args):
+            args_str.append(f'[{index}]: {arg!r}')
+        args_str.append('```')
+        e.add_field(name='Args', value='\n'.join(args_str), inline=False)
 
         try:
             await self.error_webhook.send(embed=e)
@@ -93,19 +118,32 @@ class DonationBot(commands.Bot):
         e.add_field(name='Author', value=f'{ctx.author} (ID: {ctx.author.id})')
 
         fmt = f'Channel: {ctx.channel} (ID: {ctx.channel.id})'
+        if ctx.guild:
+            fmt = f'{fmt}\nGuild: {ctx.guild} (ID: {ctx.guild.id})'
 
         e.add_field(name='Location', value=fmt, inline=False)
+        e.add_field(name='Content', value=textwrap.shorten(ctx.message.content, width=512))
 
-        exc = ''.join(traceback.format_exception(type(error), error, error.__traceback__, chain=False))
+        exc = ''.join(
+            traceback.format_exception(type(error), error, error.__traceback__, chain=False))
         e.description = f'```py\n{exc}\n```'
         e.timestamp = datetime.datetime.utcnow()
         await self.error_webhook.send(embed=e)
+        await ctx.send('Uh oh! Something broke. This error has been reported; '
+                       'the owner is working on it. Please join the support server: '
+                       'https://discord.gg/ePt8y4V to stay updated!')
 
     async def on_event_error(self, event_name, *args, **kwargs):
         e = discord.Embed(title='COC Event Error', colour=0xa32952)
         e.add_field(name='Event', value=event_name)
         e.description = f'```py\n{traceback.format_exc()}\n```'
         e.timestamp = datetime.datetime.utcnow()
+
+        args_str = ['```py']
+        for index, arg in enumerate(args):
+            args_str.append(f'[{index}]: {arg!r}')
+        args_str.append('```')
+        e.add_field(name='Args', value='\n'.join(args_str), inline=False)
 
         try:
             await self.error_webhook.send(embed=e)
@@ -155,10 +193,12 @@ class DonationBot(commands.Bot):
     async def get_clans(self, guild_id):
         query = "SELECT clan_tag FROM clans WHERE guild_id = $1"
         fetch = await self.pool.fetch(query, guild_id)
-        return await self.coc.get_clans(n[0] for n in fetch).flatten()
+        print(fetch)
+        return await self.coc.get_clans(n[0].strip() for n in fetch).flatten()
 
     async def guild_settings(self, guild_id):
-        query = "SELECT updates_ign, updates_don, updates_rec, updates_tag, updates_claimed_by FROM guilds " \
+        query = "SELECT updates_ign, updates_don, updates_rec, " \
+                "updates_tag, updates_claimed_by FROM guilds " \
                 "WHERE guild_id = $1"
         fetch = await self.pool.fetchrow(query, guild_id)
         return fetch[0], fetch[1], fetch[2], fetch[3], fetch[4]
@@ -175,5 +215,5 @@ if __name__ == '__main__':
         bot.pool = pool  # add db as attribute
         bot.run(creds.bot_token)  # run bot
 
-    except Exception as e:
-        print(traceback.format_exc())
+    except Exception:
+        traceback.print_exc()

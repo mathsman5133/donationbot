@@ -14,8 +14,7 @@ import copy
 import time
 import subprocess
 from typing import Union, Optional
-from .donations import TabularData
-from cogs.utils.paginator import TextPages
+from cogs.utils.formatters import TabularData
 # to expose to the eval command
 import datetime
 from collections import Counter

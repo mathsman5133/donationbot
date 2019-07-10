@@ -1,10 +1,10 @@
 from discord.ext import commands, tasks
 import discord
 import math
-from .updates import TabularData
 from datetime import datetime
 from collections import OrderedDict
 from .utils import fuzzy
+from .utils.formatters import TabularData
 import coc
 
 
@@ -142,9 +142,11 @@ class Updates(commands.Cog):
         fetch = await self.bot.pool.fetch(query)
         self.bot.coc._clan_updates = [n[0] for n in fetch]
 
-    async def match_player(self, player, guild: discord.Guild, prompt=False, ctx=None, score_cutoff=80, claim=True):
-        matches = fuzzy.extract_matches(player.name, [n.name for n in guild.members], score_cutoff=20,
-                                        scorer=fuzzy.partial_ratio, limit=9)
+    async def match_player(self, player, guild: discord.Guild, prompt=False, ctx=None,
+                           score_cutoff=20, claim=True):
+        matches = fuzzy.extract_matches(player.name, [n.name for n in guild.members],
+                                        score_cutoff=score_cutoff, scorer=fuzzy.partial_ratio,
+                                        limit=9)
         if len(matches) == 0:
             return None
         if len(matches) == 1:
@@ -154,7 +156,8 @@ class Updates(commands.Cog):
                                      f'to be claimed to {str(user)} ({user.id}). '
                                      f'If already claimed, this will do nothing.')
                 if m is True and claim is True:
-                    query = "UPDATE players SET user_id = $1 WHERE player_tag = $2 AND user_id = NULL"
+                    query = "UPDATE players SET user_id = $1 " \
+                            "WHERE player_tag = $2 AND user_id = NULL"
                     await self.bot.pool.execute(query, user.id, player.tag)
                 else:
                     return False
@@ -425,7 +428,7 @@ class Updates(commands.Cog):
 
         players = []
         for n in clans:
-            players.extend(p for p in n._members)
+            players.extend(p for p in n.itermembers)
 
         query = "SELECT player_tag, donations, received, user_id FROM players WHERE player_tag = $1"
 
