@@ -159,7 +159,7 @@ class Donations(commands.Cog):
         if not user:
             user = ctx.author
 
-        query = "SELECT player_tag, donations, received FROM players WHERE user_id = $1"
+        query = "SELECT player_tag, donations, received, user_id FROM players WHERE user_id = $1"
         fetch = await ctx.db.fetch(query, user.id)
         if not fetch:
             return await ctx.send(f"{'You dont' if ctx.author == user else f'{str(user)} doesnt'} "
