@@ -1,4 +1,5 @@
 from datetime import datetime
+from discord.utils import _string_width, escape_markdown
 
 from cogs.utils.paginator import Pages
 
@@ -26,7 +27,7 @@ class TabularData:
 
     def set_columns(self, columns):
         self._columns = columns
-        self._widths = [len(c) + 2 for c in columns]
+        self._widths = [_string_width(c) + 2 for c in columns]
 
     def add_row(self, row):
         rows = [str(r) for r in row]
@@ -81,7 +82,7 @@ class TablePaginator(Pages):
         self.mobile = mobile
         self.entries = [None for _ in range(page_count)]
         self.rows_per_table = rows_per_table
-        self.title = title
+        self.title = escape_markdown(title)
         self.message = None
 
     async def get_page(self, page):
