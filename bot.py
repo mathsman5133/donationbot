@@ -12,6 +12,7 @@ import textwrap
 from discord.ext import commands
 from cogs.utils import context
 from cogs.utils.db import Table
+from cogs.utils.paginator import CannotPaginate
 import logging
 
 logging.basicConfig(level=logging.INFO)
@@ -110,7 +111,7 @@ class DonationBot(commands.Bot):
             return
 
         error = error.original
-        if isinstance(error, (discord.Forbidden, discord.NotFound)):
+        if isinstance(error, (discord.Forbidden, discord.NotFound, CannotPaginate)):
             return
 
         e = discord.Embed(title='Command Error', colour=0xcc3366)
@@ -129,9 +130,12 @@ class DonationBot(commands.Bot):
         e.description = f'```py\n{exc}\n```'
         e.timestamp = datetime.datetime.utcnow()
         await self.error_webhook.send(embed=e)
-        await ctx.send('Uh oh! Something broke. This error has been reported; '
-                       'the owner is working on it. Please join the support server: '
-                       'https://discord.gg/ePt8y4V to stay updated!')
+        try:
+            await ctx.send('Uh oh! Something broke. This error has been reported; '
+                           'the owner is working on it. Please join the support server: '
+                           'https://discord.gg/ePt8y4V to stay updated!')
+        except discord.Forbidden:
+            pass
 
     async def on_event_error(self, event_name, *args, **kwargs):
         e = discord.Embed(title='COC Event Error', colour=0xa32952)
