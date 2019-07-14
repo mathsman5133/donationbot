@@ -35,6 +35,7 @@ class GuildConfig:
             self.log_channel_id = None
             self.updates_toggle = False
             self.log_toggle = False
+            self.auto_claim = False
 
     @property
     def updates_channel(self):
