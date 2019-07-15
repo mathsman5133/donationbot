@@ -202,7 +202,7 @@ class Donations(commands.Cog):
         """
 
         query = "SELECT player_tag, donations, received, user_id FROM players WHERE player_tag = $1"
-        fetch = await ctx.db.fetchrow(query, player.tag)
+        fetch = await ctx.db.fetch(query, player.tag)
 
         if not fetch:
             raise commands.BadArgument(f"{str(player)} ({player.tag}) has not been claimed.")
