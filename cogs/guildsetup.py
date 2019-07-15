@@ -322,15 +322,17 @@ class GuildConfiguration(commands.Cog):
         """
         query = "SELECT user_id FROM players WHERE player_tag = $1"
         fetch = await ctx.db.fetchrow(query, player.tag)
-        if fetch:
-            user = self.bot.get_user(fetch[0])
-            raise commands.BadArgument(f'Player {player.name} '
-                                       f'({player.tag}) has already been claimed by {str(user)}')
+
         if not fetch:
             query = "INSERT INTO players (player_tag, donations, received, user_id) " \
                     "VALUES ($1, $2, $3, $4)"
             await ctx.db.execute(query, player.tag, player.donations, player.received, ctx.author.id)
             return await ctx.confirm()
+
+        if fetch[0]:
+            user = self.bot.get_user(fetch[0])
+            raise commands.BadArgument(f'Player {player.name} '
+                                       f'({player.tag}) has already been claimed by {str(user)}')
 
         query = "UPDATE players SET user_id = $1 WHERE player_tag = $2"
         await ctx.db.execute(query, ctx.author.id, player.tag)
