@@ -8,6 +8,12 @@ from .utils.formatters import TabularData
 import coc
 
 
+class MockPlayer:
+    def __init__(self):
+        MockPlayer.name = 'Unknown'
+        MockPlayer.clan = 'Unknown'
+
+
 class GuildConfig:
     __slots__ = ('bot', 'guild_id', 'updates_channel_id', 'updates_header_id', 'updates_toggle',
                  'log_channel_id', 'log_toggle', 'ign', 'don', 'rec', 'tag', 'claimed_by', 'clan',
@@ -28,7 +34,7 @@ class GuildConfig:
             self.rec = record['updates_rec']
             self.tag = record['updates_tag']
             self.claimed_by = record['updates_claimed_by']
-            self.clan = False  # record['updates_clan']
+            self.clan = record['updates_clan']  # record['updates_clan']
             self.auto_claim = record['auto_claim']
         else:
             self.updates_channel_id = None
@@ -440,7 +446,10 @@ class Updates(commands.Cog):
                 player_info.append([p for p in fetch])
 
         player_info.sort(key=lambda m: m[1], reverse=True)
+        player_info = player_info[:100]
         message_count = math.ceil(len(player_info) / 20)
+
+        players = {n.tag: n for n in players if n.tag in set(n[0] for n in player_info)}
 
         for guild in guilds:
             guild_config = await self.get_guild_config(guild.id)
@@ -456,7 +465,8 @@ class Updates(commands.Cog):
                            'Don': guild_config.don,
                            "Rec'd": guild_config.rec,
                            'Player Tag': guild_config.tag,
-                           'Claimed By': guild_config.claimed_by
+                           'Claimed By': guild_config.claimed_by,
+                           'Clan': guild_config.clan
                            }
                 player_data = player_info[i*20:(i+1)*20]
 
@@ -466,8 +476,7 @@ class Updates(commands.Cog):
                 for n in player_data:
                     info = []
                     if guild_config.ign:
-                        player = discord.utils.find(lambda m: m.tag == n[0], players)
-                        info.append(player.name)
+                        info.append(players.get(n[0], MockPlayer()).name)
                     if guild_config.don:
                         info.append(n[1])
                     if guild_config.rec:
@@ -477,6 +486,9 @@ class Updates(commands.Cog):
                     if guild_config.claimed_by:
                         user = guild.get_member(n[3])
                         info.append(str(user) or 'None')
+                    if guild_config.clan:
+                        info.append(str(players.get(n[4], MockPlayer()).clan))
+
                     table.add_row(info)
                 fmt = f'```\n{table.render()}\n```'
 

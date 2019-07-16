@@ -31,6 +31,7 @@ CREATE TABLE guilds (
     updates_rec BOOLEAN,
     updates_tag BOOLEAN,
     updates_claimed_by BOOLEAN,
+    updates_clan BOOLEAN,
     auto_claim BOOLEAN
     );
 

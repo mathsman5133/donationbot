@@ -19,21 +19,23 @@ class GuildConfiguration(commands.Cog):
 
     @staticmethod
     async def updates_fields_settings(ctx, *, default=False, ign=False,
-                                      don=False, rec=False, tag=False, claimed_by=False):
+                                      don=False, rec=False, tag=False,
+                                      claimed_by=False, clan_name=False):
         if default is True:
             ign = True
             don = True
             rec = True
             tag = False
             claimed_by = False
+            clan_name = False
 
         query = "UPDATE guilds SET updates_ign = $1, updates_don = $2, updates_rec = $3, " \
-                "updates_tag = $4, updates_claimed_by = $5 WHERE guild_id = $6"
-        await ctx.db.execute(query, ign, don, rec, tag, claimed_by, ctx.guild.id)
+                "updates_tag = $4, updates_claimed_by = $5, updates_clan = $6 WHERE guild_id = $7"
+        await ctx.db.execute(query, ign, don, rec, tag, claimed_by, clan_name, ctx.guild.id)
 
     @commands.command()
     @checks.manage_guild()
-    async def log(self, ctx, channel: discord.TextChannel=None, toggle: bool=True):
+    async def log(self, ctx, channel: discord.TextChannel = None, toggle: bool = True):
         """Designate a channel for logs.
 
         Parameters
@@ -96,9 +98,11 @@ class GuildConfiguration(commands.Cog):
             return await ctx.send('I need manage channels permission to create the donationboard!')
 
         overwrites = {
-            ctx.me: discord.PermissionOverwrite(read_messages=True, send_messages=True, read_message_history=True,
-                                                embed_links=True, manage_messages=True),
-            ctx.guild.default_role: discord.PermissionOverwrite(read_messages=True, send_messages=False,
+            ctx.me: discord.PermissionOverwrite(read_messages=True, send_messages=True,
+                                                read_message_history=True, embed_links=True,
+                                                manage_messages=True),
+            ctx.guild.default_role: discord.PermissionOverwrite(read_messages=True,
+                                                                send_messages=False,
                                                                 read_message_history=True)
         }
         reason = f'{str(ctx.author)} created a donationboard channel.'
@@ -156,7 +160,14 @@ class GuildConfiguration(commands.Cog):
             await self.updates_fields_settings(ctx, ign=ign, don=don, rec=rec, tag=tag)
             return await ctx.confirm()
 
-        await self.updates_fields_settings(ctx, ign=ign, don=don, rec=rec, tag=tag, claimed_by=claimed_by)
+        clan_name = await ctx.prompt('Would you like a clan name column?')
+        if clan_name is None:
+            await self.updates_fields_settings(ctx, ign=ign, don=don, rec=rec,
+                                               tag=tag, claimed_by=claimed_by)
+            return await ctx.confirm()
+
+        await self.updates_fields_settings(ctx, ign=ign, don=don, rec=rec, tag=tag,
+                                           claimed_by=claimed_by, clan_name=clan_name)
         await ctx.send('All done. Thanks!')
         return await ctx.confirm()
 
@@ -203,7 +214,8 @@ class GuildConfiguration(commands.Cog):
     @commands.command(aliases=['aclan'])
     @checks.manage_guild()
     async def add_clan(self, ctx, clan_tag: str):
-        """Link a clan to your server. This will add all accounts in clan to the database, if not already present.
+        """Link a clan to your server.
+        This will add all accounts in clan to the database, if not already present.
 
         Parameters
         ----------------
