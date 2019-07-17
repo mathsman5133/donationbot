@@ -537,8 +537,12 @@ class Updates(commands.Cog):
             header = await self.get_message(guild_config.updates_channel,
                                             guild_config.updates_header_id)
             embed = discord.Embed(colour=self.bot.colour, timestamp=datetime.utcnow())
-            fmt = '\n'.join(f"{n.name} "
-                            f"{f' ({await self.get_clan_name(n.tag)} )' if await self.get_clan_name(n.tag) != n.name else ''}" for n in clans)
+            fmt = '\n'
+            for n in clans:
+                fmt += n.name
+                if await self.get_clan_name(n.tag) != n.name:
+                    fmt += f' ({await self.get_clan_name(n.tag)})'
+                fmt += ',\n'
             embed.description = f"**Tracking Updates for:**\n{fmt}"
             embed.set_footer(text='Last Updated')
             await header.edit(embed=embed, content=None)
