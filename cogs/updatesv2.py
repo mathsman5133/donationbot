@@ -341,7 +341,12 @@ class Updates(commands.Cog):
 
         query = "UPDATE players SET donations = donations + $1 WHERE player_tag = $2"
         await self.bot.pool.execute(query, new_donations - old_donations, player.tag)
-        await self.edit_updates_for_clan(clan)
+        # await self.edit_updates_for_clan(clan)
+        # technically received gets dispatched after donations so hopefully this query will be made
+        # before received triggers. When a clan is just claimed and both these trigger before other
+        # has finished, it ends up sending double rounds of messages. hopefully this will fix that,
+        # and if donations/received havent updated this time round they will be added next time.
+        # nobody will know any different.
 
     async def on_clan_member_received(self, old_received, new_received, player, clan):
         if old_received > new_received:
