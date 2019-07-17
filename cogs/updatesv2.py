@@ -540,8 +540,9 @@ class Updates(commands.Cog):
             fmt = '\n'
             for n in clans:
                 fmt += n.name
-                if await self.get_clan_name(n.tag) != n.name:
-                    fmt += f' ({await self.get_clan_name(n.tag)})'
+                new_name = await self.get_clan_name(n.tag)
+                if new_name != n.name:
+                    fmt += f' ({new_name})'
                 fmt += ',\n'
             embed.description = f"**Tracking Updates for:**\n{fmt}"
             embed.set_footer(text='Last Updated')
