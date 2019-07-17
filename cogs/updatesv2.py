@@ -8,6 +8,12 @@ from .utils.formatters import TabularData
 import coc
 
 
+def clean_name(name):
+    if len(name) > 20:
+        name = name[:20] + '..'
+    return discord.utils.escape_markdown(name)
+
+
 class MockPlayer:
     def __init__(self):
         MockPlayer.name = 'Unknown'
@@ -68,6 +74,8 @@ class Updates(commands.Cog):
         self.clan_updates = []
         self.player_updates = []
 
+        self._clan_names = {}
+
         self._message_cache = {}
         self.clean_message_cache.start()
 
@@ -105,6 +113,20 @@ class Updates(commands.Cog):
         config = GuildConfig(guild_id=guild_id, bot=self.bot, record=fetch)
         self._guild_config_cache[guild_id] = config
         return config
+
+    async def get_clan_name(self, tag):
+        try:
+            name = self._clan_names[tag]
+            if name:
+                return name
+        except KeyError:
+            pass
+
+        query = "SELECT clan_name FROM clans WHERE clan_tag = $1"
+        fetch = await self.bot.pool.fetchrow(query, tag)
+
+        self._clan_names[tag] = fetch[0]
+        return fetch[0]
 
     async def get_message(self, channel, message_id):
         try:
@@ -483,8 +505,9 @@ class Updates(commands.Cog):
                     info = []
                     if guild_config.ign:
                         if guild_config.clan:
-                            info.append(f'{players.get(n[0], MockPlayer()).name} '
-                                        f'({str(players.get(n[0], MockPlayer()).clan)})')
+                            clan_name = await self.get_clan_name(players.get(n[0]).clan.tag)
+                            info.append(f'{clean_name(players.get(n[0], MockPlayer()).name)} '
+                                        f'({clean_name(clan_name)})')
                         else:
                             info.append(players.get(n[0], MockPlayer()).name)
 
