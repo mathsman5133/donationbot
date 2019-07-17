@@ -493,7 +493,7 @@ class Updates(commands.Cog):
                         user = guild.get_member(n[3])
                         info.append(str(user) or 'None')
                     if guild_config.clan:
-                        info.append(str(players.get(n[4], MockPlayer()).clan))
+                        info.append(str(players.get(n[0], MockPlayer()).clan))
 
                     table.add_row(info)
                 fmt = f'```\n{table.render()}\n```'
@@ -510,7 +510,7 @@ class Updates(commands.Cog):
                                             guild_config.updates_header_id)
             embed = discord.Embed(colour=self.bot.colour, timestamp=datetime.utcnow())
             fmt = '\n'.join(n.name for n in clans)
-            embed.description = f"Tracking Updates for:\n{fmt}"
+            embed.description = f"**Tracking Updates for:**\n{fmt}"
             embed.set_footer(text='Last Updated')
             await header.edit(embed=embed, content=None)
 
