@@ -9,9 +9,9 @@ import coc
 
 
 def clean_name(name):
-    if len(name) > 10:
-        name = name[:10] + '..'
-    return discord.utils.escape_markdown(name)
+    if len(name) > 15:
+        name = name[:15] + '..'
+    return name
 
 
 class MockPlayer:
