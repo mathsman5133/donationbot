@@ -9,8 +9,8 @@ import coc
 
 
 def clean_name(name):
-    if len(name) > 20:
-        name = name[:20] + '..'
+    if len(name) > 10:
+        name = name[:10] + '..'
     return discord.utils.escape_markdown(name)
 
 
