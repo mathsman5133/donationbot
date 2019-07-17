@@ -471,8 +471,8 @@ class Updates(commands.Cog):
                            'Don': guild_config.don,
                            "Rec'd": guild_config.rec,
                            'Player Tag': guild_config.tag,
-                           'Claimed By': guild_config.claimed_by,
-                           'Clan': guild_config.clan
+                           'Claimed By': guild_config.claimed_by
+                           #'Clan': guild_config.clan
                            }
                 player_data = player_info[i*20:(i+1)*20]
 
@@ -482,7 +482,12 @@ class Updates(commands.Cog):
                 for n in player_data:
                     info = []
                     if guild_config.ign:
-                        info.append(players.get(n[0], MockPlayer()).name)
+                        if guild_config.clan:
+                            info.append(f'{players.get(n[0], MockPlayer()).name} '
+                                        f'({str(players.get(n[0], MockPlayer()).clan)})')
+                        else:
+                            info.append(players.get(n[0], MockPlayer()).name)
+
                     if guild_config.don:
                         info.append(n[1])
                     if guild_config.rec:
@@ -492,8 +497,8 @@ class Updates(commands.Cog):
                     if guild_config.claimed_by:
                         user = guild.get_member(n[3])
                         info.append(str(user) or 'None')
-                    if guild_config.clan:
-                        info.append(str(players.get(n[0], MockPlayer()).clan))
+                    # if guild_config.clan:
+                    #     info.append(str(players.get(n[0], MockPlayer()).clan))
 
                     table.add_row(info)
                 fmt = f'```\n{table.render()}\n```'
