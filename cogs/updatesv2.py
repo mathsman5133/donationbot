@@ -359,7 +359,7 @@ class Updates(commands.Cog):
 
         query = "UPDATE players SET received = received + $1 WHERE player_tag = $2"
         await self.bot.pool.execute(query, new_received - old_received, player.tag)
-        await self.edit_updates_for_clan(clan)
+        # await self.edit_updates_for_clan(clan)
 
     async def on_clan_batch_updates(self, all_updates):
         received_events = [n for n in all_updates if n[0] == 'on_clan_member_received']
@@ -391,6 +391,7 @@ class Updates(commands.Cog):
             fmt = f'Recent Events for {clan.name} ({clan.tag})\n```\n{table.render()}\n```'
             print(fmt)
             await self.bot.log_info(clan, fmt)
+            await self.edit_updates_for_clan(clan)
 
         pass
 
