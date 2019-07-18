@@ -246,6 +246,7 @@ class Updates(commands.Cog):
         if payload.message_id in self._to_be_deleted:
             self._to_be_deleted.discard(payload.message_id)
             return
+        self._message_cache[payload.message_id] = None
 
         await self.reset_message_id(payload.guild_id, payload.message_id)
 
@@ -536,6 +537,8 @@ class Updates(commands.Cog):
 
             header = await self.get_message(guild_config.updates_channel,
                                             guild_config.updates_header_id)
+            if not header:
+                return
             embed = discord.Embed(colour=self.bot.colour, timestamp=datetime.utcnow())
             fmt = '\n\n'
             for n in clans:
