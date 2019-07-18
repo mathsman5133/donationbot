@@ -74,11 +74,6 @@ class DonationBot(commands.Bot):
 
         await self.process_commands(message)
 
-    async def on_command(self, ctx):
-        # make bot 'type' so impatient people know
-        # we have received the command, if it is a long computation
-        await ctx.message.channel.trigger_typing()
-
     async def process_commands(self, message):
         # we have a couple attributes to add to context, lets add them now (easy db connection etc.)
         ctx = await self.get_context(message, cls=context.Context)
@@ -87,7 +82,9 @@ class DonationBot(commands.Bot):
             return  # if there's no command invoked return
 
         async with ctx.acquire():
-            await self.invoke(ctx)  # invoke command with our database connection
+            async with message.channel.typing():
+                await self.invoke(ctx)
+                # invoke command with our database connection and while typing.
 
     async def on_error(self, event_method, *args, **kwargs):
         e = discord.Embed(title='Discord Event Error', colour=0xa32952)
@@ -199,6 +196,21 @@ class DonationBot(commands.Bot):
         fetch = await self.pool.fetch(query, guild_id)
         print(fetch)
         return await self.coc.get_clans(n[0].strip() for n in fetch).flatten()
+
+    async def get_guild_cache(self, guild_id):
+        cog = self.bot.get_cog('Updates')
+        if not cog:
+            self.load_extension('cogs.updatesv2')
+            cog = self.bot.get_cog('Updates')
+
+        return await cog.get_guild_config(guild_id)
+
+    def invalidate_guild_cache(self, guild_id):
+        cog = self.get_cog('Updates')
+        if not cog:
+            self.load_extension('cogs.updatesv2')
+            cog = self.get_cog('Updates')
+        cog._guild_config_cache[guild_id] = None
 
 
 if __name__ == '__main__':

@@ -87,9 +87,10 @@ class GuildConfiguration(commands.Cog):
         --------------------------------
         • `manage_channels` permissions
         """
-        cog = self.bot.get_cog('Updates')
-        cog._guild_config_cache[ctx.guild.id] = None
-        guild_config = await cog.get_guild_config(ctx.guild.id)
+        guild_id = ctx.guild.id
+        self.bot.invalidate_guild_cache(guild_id)
+        guild_config = await self.bot.get_guild_config(guild_id)
+
         if guild_config.updates_channel is not None:
             return await ctx.send(f'This server already has a donationboard ({guild_config.updates_channel.mention})')
 
@@ -124,51 +125,58 @@ class GuildConfiguration(commands.Cog):
 
         query = "INSERT INTO messages (message_id, guild_id) VALUES ($1, $2)"
         await ctx.db.execute(query, msg.id, ctx.guild.id)
-        cog._guild_config_cache[ctx.guild.id] = None
         await ctx.send(f'Donationboard channel created: {channel.mention}')
 
-        prompt = await ctx.prompt('Would you like to set custom fields for the message? The default is '
+        prompt = await ctx.prompt('Would you like to use the default fields for the message? The default is '
                                   'IGN, donations and received, in that order. This combination is mobile friendly, '
                                   'but once you start adding fields the formatting does not work on mobile.')
-        if not prompt:
+        if prompt is True or prompt is None:
             await ctx.send('All done. Thanks!')
             await self.updates_fields_settings(ctx, default=True)
+            self.bot.invalidate_guild_cache(guild_id)
             return await ctx.confirm()
 
         ign = await ctx.prompt('Would you like an IGN (In-game name) column?')
         if ign is None:
             await self.updates_fields_settings(ctx, default=True)
+            self.bot.invalidate_guild_cache(guild_id)
             return await ctx.confirm()
 
         don = await ctx.prompt('Would you like a donations column?')
         if don is None:
             await self.updates_fields_settings(ctx, ign=ign, don=True, rec=True)
+            self.bot.invalidate_guild_cache(guild_id)
             return await ctx.confirm()
 
         rec = await ctx.prompt('Would you like a received column?')
         if rec is None:
             await self.updates_fields_settings(ctx, ign=ign, don=don, rec=True)
+            self.bot.invalidate_guild_cache(guild_id)
             return await ctx.confirm()
 
         tag = await ctx.prompt('Would you like a player tag column?')
         if tag is None:
             await self.updates_fields_settings(ctx, ign=ign, don=don, rec=rec)
+            self.bot.invalidate_guild_cache(guild_id)
             return await ctx.confirm()
 
         claimed_by = await ctx.prompt('Would you like a claimed_by column?')
         if claimed_by is None:
             await self.updates_fields_settings(ctx, ign=ign, don=don, rec=rec, tag=tag)
+            self.bot.invalidate_guild_cache(guild_id)
             return await ctx.confirm()
 
         clan_name = await ctx.prompt('Would you like a clan name column?')
         if clan_name is None:
             await self.updates_fields_settings(ctx, ign=ign, don=don, rec=rec,
                                                tag=tag, claimed_by=claimed_by)
+            self.bot.invalidate_guild_cache(guild_id)
             return await ctx.confirm()
 
         await self.updates_fields_settings(ctx, ign=ign, don=don, rec=rec, tag=tag,
                                            claimed_by=claimed_by, clan_name=clan_name)
         await ctx.send('All done. Thanks!')
+        self.bot.invalidate_guild_cache(guild_id)
         return await ctx.confirm()
 
     @updates.command(name='info')
@@ -193,8 +201,11 @@ class GuildConfiguration(commands.Cog):
 
         message = await cog.get_message(channel=guild_config.updates_channel, message_id=guild_config.updates_header_id)
         if message:
-            timestamp = message.embeds[0].timestamp
-            data.append(f"Last Updated: {timestamp:%Y-%m-%d %H:%M:%S%z}")
+            if not message.embeds:
+                data.append('Donations never updated.')
+            else:
+                timestamp = message.embeds[0].timestamp
+                data.append(f"Last Updated: {timestamp:%Y-%m-%d %H:%M:%S%z}")
 
         columns = []
         if guild_config.ign:
