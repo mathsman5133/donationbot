@@ -197,11 +197,11 @@ class DonationBot(commands.Bot):
         print(fetch)
         return await self.coc.get_clans(n[0].strip() for n in fetch).flatten()
 
-    async def get_guild_cache(self, guild_id):
-        cog = self.bot.get_cog('Updates')
+    async def get_guild_config(self, guild_id):
+        cog = self.get_cog('Updates')
         if not cog:
             self.load_extension('cogs.updatesv2')
-            cog = self.bot.get_cog('Updates')
+            cog = self.get_cog('Updates')
 
         return await cog.get_guild_config(guild_id)
 
