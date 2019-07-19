@@ -381,10 +381,11 @@ class GuildConfiguration(commands.Cog):
         fetch = await ctx.db.fetchrow(query, player.tag)
         if fetch:
             if fetch[0] != ctx.author.id:
-                return await ctx.send(f'Player {player.name} '
-                                      f"({player.tag}) has been claimed by "
-                                      f"{str(ctx.guild.get_member(fetch[0]) or 'Member not in guild.')}. "
-                                      f'Please contact them to un-claim it.')
+                if not ctx.channel.permissions_for(ctx.author).manage_guild:
+                    return await ctx.send(f'Player {player.name} '
+                                          f"({player.tag}) has been claimed by "
+                                          f"{str(ctx.guild.get_member(fetch[0]) or 'Member not in guild.')}. "
+                                          f'Please contact them to un-claim it.')
 
         query = "UPDATE players SET user_id = NULL WHERE player_tag = $1"
         await ctx.db.execute(query, player.tag)
