@@ -186,7 +186,7 @@ class Updates(commands.Cog):
                                      f'If already claimed, this will do nothing.')
                 if m is True and claim is True:
                     query = "UPDATE players SET user_id = $1 " \
-                            "WHERE player_tag = $2 AND user_id = NULL"
+                            "WHERE player_tag = $2 AND user_id IS NULL"
                     await self.bot.pool.execute(query, user.id, player.tag)
                 else:
                     return False
@@ -208,7 +208,7 @@ class Updates(commands.Cog):
 
         if len(matches) == 1 and claim is True:
             player = clan.get_member(name=matches[0][0])
-            query = "UPDATE players SET user_id = $1 WHERE player_tag = $2 AND user_id = NULL"
+            query = "UPDATE players SET user_id = $1 WHERE player_tag = $2 AND user_id IS NULL"
             await self.bot.pool.execute(query, member.id, player.tag)
             return player
         elif len(matches) == 1:
@@ -269,7 +269,7 @@ class Updates(commands.Cog):
         if not info:
             return
 
-        query = "UPDATE players SET user_id = $1 WHERE player_tag = $2 AND user_id = NULL"
+        query = "UPDATE players SET user_id = $1 WHERE player_tag = $2 AND user_id IS NULL"
         await self.bot.pool.execute(query, info[1].id, info[0].tag)
 
         try:
@@ -554,3 +554,19 @@ class Updates(commands.Cog):
 
 def setup(bot):
     bot.add_cog(Updates(bot))
+
+
+async def say_permissions(ctx, member, channel):
+    permissions = channel.permissions_for(member)
+    e = discord.Embed(colour=member.colour)
+    allowed, denied = [], []
+    for name, value in permissions:
+        name = name.replace('_', ' ').replace('guild', 'server').title()
+        if value:
+            allowed.append(name)
+        else:
+            denied.append(name)
+
+    e.add_field(name='Allowed', value='\n'.join(allowed))
+    e.add_field(name='Denied', value='\n'.join(denied))
+    await ctx.send(embed=e)
