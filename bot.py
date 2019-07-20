@@ -172,10 +172,16 @@ class DonationBot(commands.Bot):
         e = discord.Embed(colour=colour or self.colour,
                           description=message,
                           timestamp=datetime.datetime.utcnow())
-        msg = await guild_config.log_channel.send(embed=e)
+        try:
+            msg = await guild_config.log_channel.send(embed=e)
+        except (discord.Forbidden, discord.HTTPException):
+            return
         if prompt:
             for n in (misc['greentick'], misc['redtick']):
-                await msg.add_reaction(n)
+                try:
+                    await msg.add_reaction(n)
+                except (discord.Forbidden, discord.HTTPException):
+                    return msg.id
         return msg.id
 
     async def get_guilds(self, clan_tag):
