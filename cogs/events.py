@@ -148,7 +148,7 @@ class Events(commands.Cog):
         ----------------------------
         • `manage_server` permissions
         """
-        query = """"UPDATE guilds SET log_interval = ($1 ||' minutes')::interval
+        query = """UPDATE guilds SET log_interval = ($1 ||' minutes')::interval
                         WHERE guild_id=$2"""
         await ctx.db.execute(query, str(minutes), ctx.guild.id)
         await ctx.confirm()
