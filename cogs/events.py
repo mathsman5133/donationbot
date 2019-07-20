@@ -150,7 +150,7 @@ class Events(commands.Cog):
         """
         query = """"UPDATE guilds SET log_interval = ($1 ||' minutes')::interval
                         WHERE guild_id=$2"""
-        await ctx.db.execute(query, minutes, ctx.guild.id)
+        await ctx.db.execute(query, str(minutes), ctx.guild.id)
         await ctx.confirm()
         await ctx.send(f'Set log interval to {minutes}minutes.')
 
