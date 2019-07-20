@@ -278,6 +278,7 @@ class EventsPaginator(TablePaginator):
         base = (page - 1) * self.rows_per_table
         data = self.data[base:base + self.rows_per_table]
         for player_data in data:
+            player_data = player_data[1]
             time = events_time((datetime.utcnow() - player_data[3]).total_seconds())
             self.table.add_row([
                 misc['donated'] if player_data[1] else misc['received'],
