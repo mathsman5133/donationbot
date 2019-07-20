@@ -125,7 +125,7 @@ class CLYTable:
         for v in self._rows:
             index = int(v[0]) + 1
             index = number_emojis[index] if index <= 60 else misc['idle']
-            fmt += f"{number_emojis[index]}⠀`⠀{str(v[1]):\u00A0>5.5}⠀`⠀`⠀{str(v[2]):\u00A0<24.24}⠀`\n"
+            fmt += f"{index}⠀`⠀{str(v[1]):\u00A0>5.5}⠀`⠀`⠀{str(v[2]):\u00A0<24.24}⠀`\n"
         return fmt
 
     def render_events_log(self):
