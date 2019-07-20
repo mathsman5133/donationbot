@@ -336,7 +336,7 @@ class DonationBoard(commands.Cog):
             table = CLYTable()
 
             for x, y in enumerate(player_data):
-                index = i*20 + x+1
+                index = i*20 + x
                 if guild_config.donationboard_render == 2:
                     clan_name = await self.bot.donationboard.get_clan_name(guild_id,
                                                                            players[y.player_tag].clan.tag
