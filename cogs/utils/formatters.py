@@ -113,23 +113,23 @@ class CLYTable:
         self._rows = []
 
     def render_option_1(self):
-        fmt = f"{misc['number']}⠀`⠀{'Dons':\u00A0>5.5}⠀`  `⠀{'Rec':\u00A0>5.5}⠀`  `⠀{'Name':\u00A0<14.14}⠀`\n"
+        fmt = f"{misc['number']} `⠀{'Dons':\u00A0>5.5}⠀`  `⠀{'Rec':\u00A0>5.5}⠀`  `⠀{'Name':\u00A0<12.12}⠀`\n"
         for v in self._rows:
             index = int(v[0]) + 1
             index = number_emojis[index] if index <= 60 else misc['idle']
-            fmt += f"{index}⠀`⠀{str(v[1]):\u00A0>5.5}⠀`  `⠀{str(v[2]):\u00A0>5.5}⠀`  `⠀{str(v[3]):\u00A0<14.14}⠀`\n"
+            fmt += f"{index} `⠀{str(v[1]):\u00A0>5.5}⠀`  `⠀{str(v[2]):\u00A0>5.5}⠀`  `⠀{str(v[3]):\u00A0<12.12}⠀`\n"
         return fmt
 
     def render_option_2(self):
-        fmt = f"{misc['number']}⠀`⠀{'Dons':\u00A0>5.5}⠀`  `⠀{'Name':\u00A0<24.24}⠀`\n"
+        fmt = f"{misc['number']} `⠀{'Dons':\u00A0>5.5}⠀`  `⠀{'Name':\u00A0<20.20}⠀`\n"
         for v in self._rows:
             index = int(v[0]) + 1
             index = number_emojis[index] if index <= 60 else misc['idle']
-            fmt += f"{index}⠀`⠀{str(v[1]):\u00A0>5.5}⠀`⠀`⠀{str(v[2]):\u00A0<24.24}⠀`\n"
+            fmt += f"{index} `⠀{str(v[1]):\u00A0>5.5}⠀`⠀`⠀{str(v[2]):\u00A0<20.20}⠀`\n"
         return fmt
 
     def render_events_log(self):
-        fmt = f"{misc['legendcup']}⠀⠀⠀{misc['number']}⠀`⠀{'Name':\u00A0<10.10}⠀`  `⠀{'Clan':\u00A0<12.12}⠀`\n"
+        fmt = f"{misc['legendcup']}   {misc['number']}⠀`⠀{'Name':\u00A0<10.10}⠀`  `⠀{'Clan':\u00A0<12.12}⠀`\n"
         for v in self._rows:
             fmt += f"{v[0]}⠀`⠀{str(v[1]):\u00A0>3.3}⠀`  `⠀{str(v[2]):\u00A0<10.10}⠀`  `⠀{str(v[3]):\u00A0<12.12}⠀`\n"
         return fmt
