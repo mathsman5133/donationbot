@@ -504,7 +504,7 @@ class DonationBoard(commands.Cog):
         ----------------------------
         • `manage_server` permissions
         """
-        if not url:
+        if not url or not url.startswith('https://'):
             attachments = ctx.message.attachments
             if not attachments:
                 return await ctx.send('You must pass in a url or upload an attachment.')
