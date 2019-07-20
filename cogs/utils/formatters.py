@@ -277,20 +277,14 @@ class EventsPaginator(TablePaginator):
         self.table.clear_rows()
         base = (page - 1) * self.rows_per_table
         data = self.data[base:base + self.rows_per_table]
-        data_by_tag = {n[1][0]: n[1] for n in data}
-
-        tags = (n[1][0] for n in data)
-        async for player in self.bot.coc.get_players(tags):
-            player_data = data_by_tag[player.tag]
+        for player_data in data:
             time = events_time((datetime.utcnow() - player_data[3]).total_seconds())
-            print(datetime.utcnow(), player_data[3], time, (datetime.utcnow() - player_data[3]).total_seconds())
-
             self.table.add_row([
                 misc['donated'] if player_data[1] else misc['received'],
                 player_data[1] if player_data[1] else player_data[2],
-                player.name,
+                player_data[4],
                 time
                 ]
                 )
         return f"{self.table.render_events_command()}\nKey: {misc['donated']} - Donated," \
-                    f" {misc['received']} - Received"
+               f" {misc['received']} - Received"

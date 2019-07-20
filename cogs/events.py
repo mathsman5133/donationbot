@@ -305,7 +305,7 @@ class Events(commands.Cog):
 
     @events.command(name='recent')
     async def events_recent(self, ctx, limit: int = None):
-        query = """SELECT player_tag, donations, received, time
+        query = """SELECT player_tag, donations, received, time, player_name
                     FROM events
                             INNER JOIN clans
                             ON clans.clan_tag = events.clan_tag
@@ -352,7 +352,7 @@ class Events(commands.Cog):
         if not user:
             user = ctx.author
 
-        query = """SELECT events.player_tag, events.donations, events.received, events.time 
+        query = """SELECT events.player_tag, events.donations, events.received, events.time, events.player_name
                     FROM events 
                         INNER JOIN players
                         ON events.player_tag = players.player_tag 
@@ -391,7 +391,7 @@ class Events(commands.Cog):
         By default, you shouldn't need to call these sub-commands as the bot will
         parse your argument and direct it to the correct sub-command automatically.
         """
-        query = """SELECT events.player_tag, events.donations, events.received, events.time
+        query = """SELECT events.player_tag, events.donations, events.received, events.time, events.player_name
                     FROM events 
                         INNER JOIN players 
                         ON players.player_tag = events.player_tag 
@@ -437,7 +437,7 @@ class Events(commands.Cog):
         parse your argument and direct it to the correct sub-command automatically.
         """
 
-        query = """SELECT player_tag, donations, received, time 
+        query = """SELECT player_tag, donations, received, time, player_name
                         FROM events
                     WHERE clan_tag = ANY($1::TEXT[])
                     ORDER BY time DESC 
