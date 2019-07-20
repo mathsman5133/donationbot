@@ -255,6 +255,7 @@ class DonationBoard(commands.Cog):
         async with self.bot.events._batch_lock:
             self.bot.events._batch_data.append({
                 'player_tag': player.tag,
+                'player_name': player.name,
                 'clan_tag': clan.tag,
                 'donations': donations,
                 'received': 0,
@@ -277,6 +278,7 @@ class DonationBoard(commands.Cog):
         async with self.bot.events._batch_lock:
             self.bot.events._batch_data.append({
                 'player_tag': player.tag,
+                'player_name': player.name,
                 'clan_tag': clan.tag,
                 'donations': 0,
                 'received': received,

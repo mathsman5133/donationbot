@@ -43,7 +43,7 @@ class Events(commands.Cog):
             await self.bulk_insert()
 
     async def bulk_insert(self):
-        query = """INSERT INTO events (player_tag, clan_tag, donations, received, time)
+        query = """INSERT INTO events (player_tag, player_name, clan_tag, donations, received, time)
                         SELECT x.player_tag, x.clan_tag, x.donations, x.received, x.time
                            FROM jsonb_to_recordset($1::jsonb) 
                         AS x(player_tag TEXT, clan_tag TEXT, 
@@ -84,17 +84,15 @@ class Events(commands.Cog):
             events = [DatabaseEvent(bot=self.bot, record=n) for
                       n in await self.bot.pool.fetch(query, n[0])
                       ]
-            players = await self.bot.coc.get_players((n.player_tag for n in events)).flatten()
             # we just wanna load up + cache all players now for fast access later
             table = formatters.CLYTable()
             for x in events:
-                player = await self.bot.coc.get_player(x.player_tag)
                 emoji = emoji_lookup.misc['donated'] \
                     if x.donations else emoji_lookup.misc['received']
                 table.add_row([
                     emoji,
                     x.donations if x.donations else x.received,
-                    player.name,
+                    x.player_name,
                     await self.bot.donationboard.get_clan_name(n[0], x.clan_tag)
                 ]
                 )

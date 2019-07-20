@@ -63,6 +63,7 @@ CREATE TABLE events (
     id serial PRIMARY KEY,
 
     player_tag TEXT,
+    player_name TEXT,
     clan_tag TEXT,
     donations INTEGER,
     received INTEGER,

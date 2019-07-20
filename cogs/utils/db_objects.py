@@ -127,6 +127,7 @@ class DatabaseEvent:
         if record:
             self.id = record['id']
             self.player_tag = record['player_tag']
+            self.player_name = record['player_name']
             self.clan_tag = record['clan_tag']
             self.donations = record['donations']
             self.received = record['received']
