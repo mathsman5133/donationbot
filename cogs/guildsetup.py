@@ -420,13 +420,13 @@ class GuildConfiguration(commands.Cog):
 
                 results = await match_player(member, ctx.guild, prompt, ctx)
                 if not results:
-                    await self.bot.log_info(c, f'[auto-claim]: No members found for {member.name} ({member.tag})',
+                    await self.bot.log_info(ctx.guild.id, f'[auto-claim]: No members found for {member.name} ({member.tag})',
                                             colour=discord.Colour.red())
                     failed_players.append(member)
                     continue
                     # no members found in guild with that player name
                 if isinstance(results, discord.abc.User):
-                    await self.bot.log_info(c, f'[auto-claim]: {member.name} ({member.tag}) '
+                    await self.bot.log_info(ctx.guild.id, f'[auto-claim]: {member.name} ({member.tag}) '
                                                f'has been claimed to {str(results)} ({results.id})',
                                             colour=discord.Colour.green())
                     continue
@@ -441,14 +441,14 @@ class GuildConfiguration(commands.Cog):
                     query = "UPDATE players SET user_id = $1 WHERE player_tag = $2"
                     await self.bot.pool.execute(query, results[result].id, member.tag)
                 if result is None or result is False:
-                    await self.bot.log_info(c, f'[auto-claim]: For player {member.name} ({member.tag})\n'
+                    await self.bot.log_info(ctx.guild.id, f'[auto-claim]: For player {member.name} ({member.tag})\n'
                                                f'Corresponding members found, none claimed:\n'
                                                f'```\n{table.render()}\n```',
                                             colour=discord.Colour.gold())
                     failed_players.append(member)
                     continue
 
-                await self.bot.log_info(c, f'[auto-claim]: {member.name} ({member.tag}) '
+                await self.bot.log_info(ctx.guild.id, f'[auto-claim]: {member.name} ({member.tag}) '
                                            f'has been claimed to {str(results[result])} ({results[result].id})',
                                         colour=discord.Colour.green())
         prompt = await ctx.prompt("Would you like to go through a list of players who weren't claimed and "
@@ -471,7 +471,7 @@ class GuildConfiguration(commands.Cog):
                 continue
             query = "UPDATE players SET user_id = $1 WHERE player_tag = $2"
             await self.bot.pool.execute(query, member.id, fail.tag)
-            await self.bot.log_info(fail.clan, f'[auto-claim]: {fail.name} ({fail.tag}) '
+            await self.bot.log_info(ctx.guild.id, f'[auto-claim]: {fail.name} ({fail.tag}) '
                                                f'has been claimed to {str(member)} ({member.id})',
                                     colour=discord.Colour.green())
             try:
