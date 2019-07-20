@@ -307,10 +307,6 @@ class Events(commands.Cog):
     async def events_recent(self, ctx, limit: int = None):
         query = """SELECT player_tag, donations, received, time, player_name
                     FROM events
-                            INNER JOIN clans
-                            ON clans.clan_tag = events.clan_tag
-                            INNER JOIN guilds
-                            ON guilds.guild_id = clans.guild_id
                     WHERE events.clan_tag = ANY(
                                 SELECT DISTINCT clan_tag FROM clans
                                 WHERE guild_id=$1
