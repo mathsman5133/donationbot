@@ -117,6 +117,7 @@ class Events(commands.Cog):
                 WHERE events.clan_tag=x.clan_tag
                 """
         await self.bot.pool.execute(query, [n[0] for n in fetch])
+        log.info('Reported donations for %s guilds', len(fetch))
 
     @commands.group(invoke_without_subcommand=True)
     @checks.manage_guild()
