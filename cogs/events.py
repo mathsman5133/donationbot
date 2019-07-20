@@ -77,7 +77,7 @@ class Events(commands.Cog):
                 log.info('Registered %s events to the database.', total)
             self._batch_data.clear()
 
-    @tasks.loop(seconds=60.0)
+    @tasks.loop(seconds=10.0)
     async def bulk_report(self):
         query = """SELECT DISTINCT clans.guild_id FROM clans 
                         INNER JOIN events 
