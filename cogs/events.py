@@ -361,6 +361,9 @@ class Events(commands.Cog):
                     LIMIT $2;
                 """
         fetch = await ctx.db.fetch(query, user.id, limit)
+        if not fetch:
+            return await ctx.send(f'No events found.')
+
         title = f'Recent Events for {str(user)}'
         no_pages = math.ceil(len(fetch) / 20)
 
@@ -443,7 +446,7 @@ class Events(commands.Cog):
                     ORDER BY time DESC 
                     LIMIT $2
                 """
-        fetch = await ctx.db.fetch(query, [n.tag for n in clans], limit)
+        fetch = await ctx.db.fetch(query, list(set(n.tag for n in clans)), limit)
         if not fetch:
             return await ctx.send('No events found.')
 
