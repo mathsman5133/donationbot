@@ -77,7 +77,7 @@ class Events(commands.Cog):
                 log.info('Registered %s events to the database.', total)
             self._batch_data.clear()
 
-    @tasks.loop(seconds=10.0)
+    @tasks.loop(seconds=30.0)
     async def bulk_report(self):
         query = """SELECT DISTINCT clans.guild_id FROM clans 
                         INNER JOIN events 
@@ -135,6 +135,7 @@ class Events(commands.Cog):
                 """
         await self.bot.pool.execute(query, [n[0] for n in fetch])
         log.info('Reported donations for %s guilds', len(fetch))
+        await self.bot.error_webhook.send(f'Reported donations for {len(fetch)} guilds')
 
     async def on_clan_member_donation(self, old_donations, new_donations, player, clan):
         if old_donations > new_donations:
