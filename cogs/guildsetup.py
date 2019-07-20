@@ -3,7 +3,7 @@ from discord.ext import commands
 import coc
 from .donations import PlayerConverter, ClanConverter
 import math
-from .utils import paginator, checks, formatters
+from .utils import paginator, checks, formatters, fuzzy
 import typing
 
 
@@ -16,6 +16,52 @@ class GuildConfiguration(commands.Cog):
         if isinstance(error, commands.CheckFailure):
             return await ctx.send('\N{WARNING SIGN} You must have `manage_server` permission to run this command.')
         await ctx.send(str(error))
+
+    async def match_player(self, player, guild: discord.Guild, prompt=False, ctx=None,
+                           score_cutoff=20, claim=True):
+        matches = fuzzy.extract_matches(player.name, [n.name for n in guild.members],
+                                        score_cutoff=score_cutoff, scorer=fuzzy.partial_ratio,
+                                        limit=9)
+        if len(matches) == 0:
+            return None
+        if len(matches) == 1:
+            user = guild.get_member_named(matches[0][0])
+            if prompt:
+                m = await ctx.prompt(f'[auto-claim]: {player.name} ({player.tag}) '
+                                     f'to be claimed to {str(user)} ({user.id}). '
+                                     f'If already claimed, this will do nothing.')
+                if m is True and claim is True:
+                    query = "UPDATE players SET user_id = $1 " \
+                            "WHERE player_tag = $2 AND user_id IS NULL"
+                    await self.bot.pool.execute(query, user.id, player.tag)
+                else:
+                    return False
+            return user
+        return [guild.get_member_named(n[0]) for n in matches]
+
+    async def match_member(self, member, clan, claim):
+        matches = fuzzy.extract_matches(member.name, [n.name for n in clan.members],
+                                        score_cutoff=60)
+        if len(matches) == 0:
+            return None
+        for i, n in enumerate(matches):
+            query = "SELECT user_id FROM players WHERE player_tag = $1"
+            m = clan.get_member(name=n[0])
+            fetch = await self.bot.pool.fetchrow(query, m.tag)
+            if fetch is None:
+                continue
+            del matches[i]
+
+        if len(matches) == 1 and claim is True:
+            player = clan.get_member(name=matches[0][0])
+            query = "UPDATE players SET user_id = $1 WHERE player_tag = $2 AND user_id IS NULL"
+            await self.bot.pool.execute(query, member.id, player.tag)
+            return player
+        elif len(matches) == 1:
+            return True
+
+        return [clan.get_member(name=n) for n in matches]
+
 
     @commands.command(aliases=['aclan'])
     @checks.manage_guild()
@@ -363,7 +409,7 @@ class GuildConfiguration(commands.Cog):
         if prompt is None:
             return
 
-        match_player = self.bot.get_cog('Updates').match_player
+        match_player = self.match_player
 
         for c in clan:
             for member in c.members:
