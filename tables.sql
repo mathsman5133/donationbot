@@ -24,7 +24,9 @@ CREATE TABLE guilds (
     log_channel_id BIGINT,
     log_toggle BOOLEAN,
     updates_channel_id BIGINT,
-    updates_message_id BIGINT,
+    icon_url TEXT,
+    donationboard_title TEXT,
+    donationboard_render INTEGER,
     updates_toggle BOOLEAN,
     updates_ign BOOLEAN,
     updates_don BOOLEAN,
@@ -32,14 +34,16 @@ CREATE TABLE guilds (
     updates_tag BOOLEAN,
     updates_claimed_by BOOLEAN,
     updates_clan BOOLEAN,
-    auto_claim BOOLEAN
+    auto_claim BOOLEAN,
+    log_interval INTERVAL DEFAULT (0 ||' minutes')::interval
     );
 
 CREATE TABLE messages (
     id serial PRIMARY KEY,
 
     guild_id BIGINT,
-    message_id BIGINT
+    message_id BIGINT,
+    channel_id BIGINT
 
     );
 
@@ -62,5 +66,6 @@ CREATE TABLE events (
     clan_tag TEXT,
     donations INTEGER,
     received INTEGER,
-    time TIMESTAMP
+    time TIMESTAMP,
+    reported BOOLEAN DEFAULT False
     )

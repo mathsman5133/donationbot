@@ -57,7 +57,7 @@ class HelpCommand(commands.HelpCommand):
                 fmt = f'{self.clean_prefix}{command.name} {fmt}'
             alias = fmt
         else:
-            alias = f'{self.clean_prefix}{parent} {command.name}'
+            alias = f'{self.clean_prefix}{parent}{command.name}'
         return alias
 
     async def send_bot_help(self, mapping):
@@ -207,14 +207,7 @@ class Info(commands.Cog):
         await self.send_guild_stats(e, guild)
         query = "INSERT INTO guilds (guild_id) VALUES ($1) ON CONFLICT (guild_id) DO NOTHING"
         await self.bot.pool.execute(query, guild.id)
-        fmt = 'Hi There! Thanks for adding my. My prefix is `+`, ' \
-              'and all commands can be found with `+help`.' \
-              ' To start off, you might be looking for the `+updates` command, the ' \
-              '`+log` command, the `+aclan` command and the `+auto_claim` command.\n\n' \
-              'Feel free to join the support server if you get stuck: discord.gg/ePt8y4V,' \
-              '\n\nHere is the invite link to share me with your friends: ' \
-              'https://discordapp.com/oauth2/authorize?client_id=427301910291415051&' \
-              'scope=bot&permissions=388176. \n\nHave a good day!'
+        fmt = 'Hello! I\'m a clash of clans donation tracker! My prefix is `+`'
 
         if guild.system_channel:
             try:

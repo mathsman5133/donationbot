@@ -13,6 +13,7 @@ from discord.ext import commands
 from cogs.utils import context
 from cogs.utils.db import Table
 from cogs.utils.paginator import CannotPaginate
+from cogs.utils.emoji_lookup import misc
 import logging
 
 logging.basicConfig(level=logging.INFO)
@@ -25,7 +26,7 @@ initial_extensions = [
     'cogs.guildsetup',
     'cogs.donations',
     'cogs.events',
-    'cogs.updatesv2',
+    'cogs.donationboard',
     'cogs.admin',
     'cogs.info'
 ]
@@ -38,6 +39,7 @@ class DonationBot(commands.Bot):
         self.colour = 0x36393E
         self.coc = coc_client
         self.client_id = creds.client_id
+        self.owner_id = 230214242618441728
         self.session = aiohttp.ClientSession(loop=self.loop)
         self.error_webhook = discord.Webhook.partial(id=creds.error_hook_id,
                                                      token=creds.error_hook_token,
@@ -68,6 +70,14 @@ class DonationBot(commands.Bot):
                 print(exc)
                 print(f'Failed to load extension {e}: {er}.', file=sys.stderr)
 
+    @property
+    def donationboard(self):
+        return self.get_cog('DonationBoard')
+
+    @property
+    def events(self):
+        return self.get_cog('Events')
+
     async def on_message(self, message):
         if message.author.bot:
             return  # ignore bot messages
@@ -82,9 +92,7 @@ class DonationBot(commands.Bot):
             return  # if there's no command invoked return
 
         async with ctx.acquire():
-            async with message.channel.typing():
-                await self.invoke(ctx)
-                # invoke command with our database connection and while typing.
+            await self.invoke(ctx)
 
     async def on_error(self, event_method, *args, **kwargs):
         e = discord.Embed(title='Discord Event Error', colour=0xa32952)
@@ -152,39 +160,23 @@ class DonationBot(commands.Bot):
             pass
 
     async def on_ready(self):
-        cog = self.get_cog('Updates')
+        cog = self.get_cog('DonationBoard')
         await cog.update_clan_tags()
         await self.change_presence(activity=discord.Game('+help for commands'))
 
-    async def log_info(self, clan_or_guilds, message, colour=None, prompt=False):
-        if isinstance(clan_or_guilds, coc.BasicClan):
-            query = "SELECT guild_id FROM clans WHERE clan_tag = $1 "
-            fetch_guilds = await self.pool.fetch(query, clan_or_guilds.tag)
-            guilds = [self.get_guild(n[0]) for n in fetch_guilds if self.get_guild(n[0])]
-
-        if isinstance(clan_or_guilds, discord.Guild):
-            guilds = [clan_or_guilds]
-
-        if not guilds:
+    async def log_info(self, guild_id, message, colour=None, prompt=False):
+        guild_config = await self.get_guild_config(guild_id)
+        if not guild_config.log_channel or not guild_config.log_toggle:
             return
 
-        query = f"SELECT DISTINCT log_channel_id FROM guilds WHERE guild_id IN " \
-                f"({', '.join(str(n.id) for n in guilds)}) AND log_toggle = True"
-        fetch = await self.pool.fetch(query)
-        channels = [self.get_channel(n[0]) for n in fetch if self.get_channel(n[0])]
-
-        ids_to_return = []
-        for c in channels:
-            e = discord.Embed(colour=colour or self.colour,
-                              description=message,
-                              timestamp=datetime.datetime.utcnow())
-            msg = await c.send(embed=e)
-            if prompt:
-                for n in ('\N{WHITE HEAVY CHECK MARK}', '\N{CROSS MARK}'):
-                    await msg.add_reaction(n)
-            ids_to_return.append(msg.id)
-
-        return ids_to_return
+        e = discord.Embed(colour=colour or self.colour,
+                          description=message,
+                          timestamp=datetime.datetime.utcnow())
+        msg = await guild_config.log_channel.send(embed=e)
+        if prompt:
+            for n in (misc['greentick'], misc['redtick']):
+                await msg.add_reaction(n)
+        return msg.id
 
     async def get_guilds(self, clan_tag):
         query = "SELECT guild_id FROM clans WHERE clan_tag = $1"
@@ -194,22 +186,21 @@ class DonationBot(commands.Bot):
     async def get_clans(self, guild_id):
         query = "SELECT clan_tag FROM clans WHERE guild_id = $1"
         fetch = await self.pool.fetch(query, guild_id)
-        print(fetch)
         return await self.coc.get_clans(n[0].strip() for n in fetch).flatten()
 
     async def get_guild_config(self, guild_id):
-        cog = self.get_cog('Updates')
+        cog = self.get_cog('DonationBoard')
         if not cog:
-            self.load_extension('cogs.updatesv2')
-            cog = self.get_cog('Updates')
+            self.load_extension('cogs.donationboard')
+            cog = self.get_cog('DonationBoard')
 
         return await cog.get_guild_config(guild_id)
 
     def invalidate_guild_cache(self, guild_id):
-        cog = self.get_cog('Updates')
+        cog = self.get_cog('DonationBoard')
         if not cog:
-            self.load_extension('cogs.updatesv2')
-            cog = self.get_cog('Updates')
+            self.load_extension('cogs.donationboard')
+            cog = self.get_cog('DonationBoard')
         cog._guild_config_cache[guild_id] = None
 
 

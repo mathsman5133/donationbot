@@ -3,7 +3,8 @@ import coc
 import discord
 import re
 import math
-from cogs.utils import formatters
+from cogs.utils import formatters, db_objects
+
 
 tag_validator = re.compile("(?P<tag>^\s*#?[PYLQGRJCUV0289]+\s*$)")
 
@@ -85,7 +86,7 @@ class Donations(commands.Cog):
         await ctx.send(str(error))
 
     @commands.group(name='donations', aliases=['don'],  invoke_without_command=True)
-    async def donations(self, ctx, *, arg: ArgConverter = None, mobile=False):
+    async def donations(self, ctx, *, arg: ArgConverter = None):
         """Check donations for a player, user, clan or guild.
 
         For a mobile-friendly table that is guaranteed to fit on a mobile screen,
@@ -120,19 +121,19 @@ class Donations(commands.Cog):
         if ctx.invoked_subcommand is not None:
             return
         if not arg:
-            await ctx.invoke(self.donations_user, ctx.author, mobile=mobile)
+            await ctx.invoke(self.donations_user, ctx.author)
         elif isinstance(arg, discord.Member):
             await ctx.invoke(self.donations_user, arg)
         elif isinstance(arg, coc.BasicClan):
-            await ctx.invoke(self.donations_clan, clans=[arg], mobile=mobile)
+            await ctx.invoke(self.donations_clan, clans=[arg])
         elif isinstance(arg, coc.BasicPlayer):
-            await ctx.invoke(self.donations_player, player=arg, mobile=mobile)
+            await ctx.invoke(self.donations_player, player=arg)
         elif isinstance(arg, list):
             if isinstance(arg[0], coc.BasicClan):
-                await ctx.invoke(self.donations_clan, clans=arg, mobile=mobile)
+                await ctx.invoke(self.donations_clan, clans=arg)
 
     @donations.command(name='user')
-    async def donations_user(self, ctx, user: discord.Member = None, mobile=False):
+    async def donations_user(self, ctx, user: discord.Member = None):
         """Get donations for a discord user.
 
         Parameters
@@ -159,7 +160,11 @@ class Donations(commands.Cog):
         if not user:
             user = ctx.author
 
-        query = "SELECT player_tag, donations, received, user_id FROM players WHERE user_id = $1"
+        query = """SELECT player_tag, donations, received, user_id 
+                        FROM players 
+                    WHERE user_id = $1 
+                    ORDER BY donations DESC
+                """
         fetch = await ctx.db.fetch(query, user.id)
         if not fetch:
             return await ctx.send(f"{'You dont' if ctx.author == user else f'{str(user)} doesnt'} "
@@ -168,16 +173,12 @@ class Donations(commands.Cog):
         page_count = math.ceil(len(fetch) / 20)
         title = f'Donations for {str(user)}'
 
-        if mobile:
-            p = formatters.MobilePaginator(ctx, data=fetch, page_count=page_count, title=title)
-            p.embed.set_author(name=str(user), icon_url=user.avatar_url)
-        else:
-            p = formatters.DonationsPaginator(ctx, data=fetch, page_count=page_count, title=title)
+        p = formatters.DonationsPaginator(ctx, data=fetch, page_count=page_count, title=title)
 
         await p.paginate()
 
     @donations.command(name='player')
-    async def donations_player(self, ctx, *, player: PlayerConverter, mobile=False):
+    async def donations_player(self, ctx, *, player: PlayerConverter):
         """Get donations for a player.
 
         Parameters
@@ -201,7 +202,11 @@ class Donations(commands.Cog):
         parse your argument and direct it to the correct sub-command automatically.
         """
 
-        query = "SELECT player_tag, donations, received, user_id FROM players WHERE player_tag = $1"
+        query = """SELECT player_tag, donations, received, user_id 
+                        FROM players 
+                    WHERE player_tag = $1 
+                    ORDER BY donations DESC
+                """
         fetch = await ctx.db.fetch(query, player.tag)
 
         if not fetch:
@@ -210,15 +215,12 @@ class Donations(commands.Cog):
         page_count = math.ceil(len(fetch) / 20)
         title = f'Donations for {player.name}'
 
-        if mobile:
-            p = formatters.MobilePaginator(ctx, data=fetch, title=title, page_count=page_count)
-        else:
-            p = formatters.DonationsPaginator(ctx, data=fetch, title=title, page_count=page_count)
+        p = formatters.DonationsPaginator(ctx, data=fetch, title=title, page_count=page_count)
 
         await p.paginate()
 
     @donations.command(name='clan')
-    async def donations_clan(self, ctx, *, clans: ClanConverter, mobile=False):
+    async def donations_clan(self, ctx, *, clans: ClanConverter):
         """Get donations for a clan.
 
         Parameters
@@ -243,71 +245,28 @@ class Donations(commands.Cog):
         By default, you shouldn't need to call these sub-commands as the bot will
         parse your argument and direct it to the correct sub-command automatically.
         """
-        query = f"SELECT player_tag, donations, received, user_id " \
-                f"FROM players WHERE player_tag  = $1"
-
-        data = []
+        query = """SELECT player_tag, donations, received, user_id 
+                        FROM players 
+                    WHERE player_tag=ANY($1::TEXT[])
+                    ORDER BY donations DESC
+                """
+        tags = []
         for n in clans:
-            for player in n.members:
-                fetch = await ctx.db.fetchrow(query, player.tag)
-                if fetch:
-                    data.append(fetch)
+            tags.extend(x.tag for x in n.itermembers)
 
-        if not data:
+        fetch = await ctx.db.fetch(query, tags)
+
+        if not fetch:
             return await ctx.send(f"No players claimed for clans "
                                   f"`{', '.join(f'{c.name} ({c.tag})' for c in clans)}`"
                                   )
 
-        data.sort(key=lambda m: m[1], reverse=True)
-        print(data)
-
-        page_count = math.ceil(len(data) / 20)
+        page_count = math.ceil(len(fetch) / 20)
         title = f"Donations for {', '.join(f'{c.name}' for c in clans)}"
 
-        if mobile:
-            p = formatters.MobilePaginator(ctx, data=data, title=title, page_count=page_count)
-        else:
-            p = formatters.DonationsPaginator(ctx, data=data, title=title, page_count=page_count)
+        p = formatters.DonationsPaginator(ctx, data=fetch, title=title, page_count=page_count)
 
         await p.paginate()
-
-    @commands.command(name='donmobile', aliases=['donmob', 'mobdon', 'mdon', 'donm'])
-    async def donations_mobile(self, ctx, *, arg: ArgConverter=None):
-        """Get a mobile-friendly version of donations.
-
-        This command is identical in usage to `+don`. The only difference is the return of a mobile-friendly table.
-        For a complete table with #PLAYER_TAG and Claimed By columns, please use `+don`.
-
-        Parameters
-        ----------------
-        Pass in any of the following:
-
-            • A clan tag
-            • A clan name (clan must be claimed to the server)
-            • A discord @mention, user#discrim or user id
-            • A player tag
-            • A player name (must be in clan claimed to server)
-            • `all`, `server`, `guild` for all clans in guild
-            • None passed will divert to donations for your discord account
-
-        Example
-        ------------
-        • `+donmobile #CLAN_TAG`
-        • `+donmob @mention`
-        • `+mdon #PLAYER_TAG`
-        • `+donm player name`
-        • `+donmobile all`
-        • `+mobdon`
-
-        Aliases
-        -----------
-        • `+donmobile` (primary)
-        • `+donmob`
-        • `+mobdon`
-        • `+mdon`
-        • `+donm`
-        """
-        await ctx.invoke(self.donations, arg=arg, mobile=True)
 
 
 def setup(bot):
