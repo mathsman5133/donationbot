@@ -274,11 +274,9 @@ class EventsPaginator(TablePaginator):
                          rows_per_table=rows_per_table)
 
     async def prepare_entry(self, page):
-        print(self.data)
         self.table.clear_rows()
         base = (page - 1) * self.rows_per_table
         data = self.data[base:base + self.rows_per_table]
-        print(data)
         for player_data in data:
             player_data = player_data[1]
             time = events_time((datetime.utcnow() - player_data[3]).total_seconds())
