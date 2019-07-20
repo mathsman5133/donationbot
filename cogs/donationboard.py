@@ -60,8 +60,13 @@ class DonationBoard(commands.Cog):
         self.clean_message_cache.cancel()
         self.bulk_insert_loop.cancel()
         self.update_donationboard_loop.cancel()
-        self.bot.coc.extra_events.pop('on_clan_member_donation')
-        self.bot.coc.extra_events.pop('on_clan_member_received')
+        try:
+            self.bot.coc.extra_events['on_clan_member_donation'].remove(
+                self.on_clan_member_donation)
+            self.bot.coc.extra_events['on_clan_member_received'].remove(
+                self.on_clan_member_received)
+        except ValueError:
+            pass
 
     @tasks.loop(hours=1.0)
     async def clean_message_cache(self):
@@ -252,15 +257,6 @@ class DonationBoard(commands.Cog):
                 'received': 0
             })
             self._clan_events.add(clan.tag)
-        async with self.bot.events._batch_lock:
-            self.bot.events._batch_data.append({
-                'player_tag': player.tag,
-                'player_name': player.name,
-                'clan_tag': clan.tag,
-                'donations': donations,
-                'received': 0,
-                'time': datetime.utcnow().isoformat()
-            })
 
     async def on_clan_member_received(self, old_received, new_received, player, clan):
         if old_received > new_received:
@@ -275,15 +271,6 @@ class DonationBoard(commands.Cog):
                 'received': received
             })
             self._clan_events.add(clan.tag)
-        async with self.bot.events._batch_lock:
-            self.bot.events._batch_data.append({
-                'player_tag': player.tag,
-                'player_name': player.name,
-                'clan_tag': clan.tag,
-                'donations': 0,
-                'received': received,
-                'time': datetime.utcnow().isoformat()
-            })
 
     async def get_updates_messages(self, guild_id, number_of_msg=None):
         guild_config = await self.get_guild_config(guild_id)

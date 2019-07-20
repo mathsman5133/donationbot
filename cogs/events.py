@@ -5,6 +5,7 @@ import discord
 import logging
 import math
 
+from datetime import datetime
 from discord.ext import commands, tasks
 from cogs.donations import ArgConverter, ClanConverter, PlayerConverter
 from cogs.utils import formatters, checks, emoji_lookup
@@ -34,8 +35,26 @@ class Events(commands.Cog):
         self.bulk_report.add_exception_type(asyncpg.PostgresConnectionError)
         self.bulk_report.start()
 
+        self.bot.coc.add_events(
+            self.on_clan_member_donation,
+            self.on_clan_member_received
+        )
+        self.bot.coc._clan_retry_interval = 60
+        self.bot.coc.start_updates('clan')
+
     async def cog_command_error(self, ctx, error):
         await ctx.send(str(error))
+
+    def cog_unload(self):
+        self.bulk_report.cancel()
+        self.batch_insert_loop.cancel()
+        try:
+            self.bot.coc.extra_events['on_clan_member_donation'].remove(
+                self.on_clan_member_donation)
+            self.bot.coc.extra_events['on_clan_member_received'].remove(
+                self.on_clan_member_received)
+        except ValueError:
+            pass
 
     @tasks.loop(seconds=60.0)
     async def batch_insert_loop(self):
@@ -84,7 +103,7 @@ class Events(commands.Cog):
             events = [DatabaseEvent(bot=self.bot, record=n) for
                       n in await self.bot.pool.fetch(query, n[0])
                       ]
-            # we just wanna load up + cache all players now for fast access later
+
             table = formatters.CLYTable()
             for x in events:
                 emoji = emoji_lookup.misc['donated'] \
@@ -116,6 +135,38 @@ class Events(commands.Cog):
                 """
         await self.bot.pool.execute(query, [n[0] for n in fetch])
         log.info('Reported donations for %s guilds', len(fetch))
+
+    async def on_clan_member_donation(self, old_donations, new_donations, player, clan):
+        if old_donations > new_donations:
+            donations = new_donations
+        else:
+            donations = new_donations - old_donations
+
+        async with self._batch_lock:
+            self._batch_data.append({
+                'player_tag': player.tag,
+                'player_name': player.name,
+                'clan_tag': clan.tag,
+                'donations': donations,
+                'received': 0,
+                'time': datetime.utcnow().isoformat()
+            })
+
+    async def on_clan_member_received(self, old_received, new_received, player, clan):
+        if old_received > new_received:
+            received = new_received
+        else:
+            received = new_received - old_received
+
+        async with self._batch_lock:
+            self._batch_data.append({
+                'player_tag': player.tag,
+                'player_name': player.name,
+                'clan_tag': clan.tag,
+                'donations': 0,
+                'received': received,
+                'time': datetime.utcnow().isoformat()
+            })
 
     @commands.group(invoke_without_subcommand=True)
     @checks.manage_guild()
