@@ -39,7 +39,7 @@ class GuildConfiguration(commands.Cog):
         • `+add_clan` (primary)
         • `+aclan`
 
-        Required Perimssions
+        Required Permissions
         ------------------------------
         • `manage_server` permissions
         """
@@ -87,7 +87,7 @@ class GuildConfiguration(commands.Cog):
         • `+remove_clan` (primary)
         • `+rclan`
 
-        Required Perimssions
+        Required Permissions
         ----------------------------
         • `manage_server` permissions
         """
@@ -347,7 +347,7 @@ class GuildConfiguration(commands.Cog):
         • `+auto_claim` (primary)
         • `+aclaim`
 
-        Required Perimssions
+        Required Permissions
         ------------------------------
         • `manage_server` permissions
         """
