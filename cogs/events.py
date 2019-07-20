@@ -135,8 +135,6 @@ class Events(commands.Cog):
                 """
         await self.bot.pool.execute(query, [n[0] for n in fetch])
         log.info('Reported donations for %s guilds', len(fetch))
-        if fetch:
-            await self.bot.error_webhook.send(f'Reported donations for {len(fetch)} guilds')
 
     async def on_clan_member_donation(self, old_donations, new_donations, player, clan):
         if old_donations > new_donations:
