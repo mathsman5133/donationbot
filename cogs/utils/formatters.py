@@ -1,7 +1,13 @@
 from datetime import datetime
 from discord.utils import _string_width, escape_markdown
-
+import discord
 from cogs.utils.paginator import Pages
+from cogs.utils.emoji_lookup import number_emojis, misc, townhall_emojis
+
+def clean_name(name):
+    if len(name) > 15:
+        name = name[:15] + '..'
+    return name
 
 
 def readable_time(delta_seconds):
@@ -17,6 +23,22 @@ def readable_time(delta_seconds):
         fmt = '{m}m {s}s ago'
 
     return fmt.format(d=days, h=hours, m=minutes, s=seconds)
+
+
+def events_time(delta_seconds):
+    hours, remainder = divmod(int(delta_seconds), 3600)
+    minutes, seconds = divmod(remainder, 60)
+    days, hours = divmod(hours, 24)
+
+    if days > 0:
+        return f"{days}days"
+    if hours > 0:
+        return f"{hours}hr"
+    if minutes > 0:
+        return f"{minutes}min"
+    return f"{seconds}sec"
+
+
 
 
 class TabularData:
@@ -74,22 +96,85 @@ class TabularData:
         return '\n'.join(to_draw)
 
 
+class CLYTable:
+    def __init__(self):
+        self._widths = []
+        self._rows = []
+
+    def add_row(self, row):
+        rows = [str(r) for r in row]
+        self._rows.append(rows)
+
+    def add_rows(self, rows):
+        for row in rows:
+            self.add_row(row)
+
+    def clear_rows(self):
+        self._rows = []
+
+    def render_option_1(self):
+        fmt = f"{misc['number']}⠀`⠀{'Dons':\u00A0>5.5}⠀`⠀`⠀{'Rec':\u00A0>5.5}⠀`⠀`⠀{'Name':\u00A0<14.14}⠀`\n"
+        for v in self._rows:
+            index = int(v[0]) + 1
+            index = number_emojis[index] if index <= 60 else misc['idle']
+            fmt += f"{index}⠀`⠀{str(v[1]):\u00A0>5.5}⠀`⠀`⠀{str(v[2]):\u00A0>5.5}⠀`⠀`⠀{str(v[3]):\u00A0<14.14}⠀`\n"
+        return fmt
+
+    def render_option_2(self):
+        fmt = f"{misc['number']}⠀`⠀{'Dons':\u00A0>5.5}⠀`⠀`⠀{'Name':\u00A0<24.24}⠀`\n"
+        for v in self._rows:
+            index = int(v[0]) + 1
+            index = number_emojis[index] if index <= 60 else misc['idle']
+            fmt += f"{number_emojis[index]}⠀`⠀{str(v[1]):\u00A0>5.5}⠀`⠀`⠀{str(v[2]):\u00A0<24.24}⠀`\n"
+        return fmt
+
+    def render_events_log(self):
+        fmt = f"{misc['legendcup']}⠀⠀⠀{misc['number']}⠀`⠀{'Name':\u00A0<10.10}⠀`⠀`⠀{'Clan':\u00A0<12.12}⠀`\n"
+        for v in self._rows:
+            fmt += f"{v[0]}⠀`⠀{str(v[1]):\u00A0>3.3}⠀`⠀`⠀{str(v[2]):\u00A0<10.10}⠀`⠀`⠀{str(v[3]):\u00A0<12.12}⠀`\n"
+        return fmt
+
+    def render_events_command(self):
+        fmt = f"{misc['number']}⠀`⠀{'Don/Rec':\u00A0>7.7}⠀`⠀`⠀{'Name':\u00A0<12.12}⠀`⠀`⠀{'Age':\u00A0<5.5}⠀`\n"
+        for v in self._rows:
+            fmt += f"{v[0]}⠀`⠀{str(v[1]):\u00A0>7.7}⠀`⠀`⠀{str(v[2]):\u00A0<12.12}⠀`⠀`⠀{str(v[3]):\u00A0<5.5}⠀`\n"
+        return fmt
+
+    def render(self):
+        sep = '+'.join('-' * w for w in self._widths)
+        sep = f'+{sep}+'
+
+        to_draw = [sep]
+
+        def get_entry(d):
+            elem = '|'.join(f'{e:^{self._widths[i]}}' for i, e in enumerate(d))
+            return f'|{elem}|'
+
+        to_draw.append(get_entry(self._columns))
+        to_draw.append(sep)
+
+        for row in self._rows:
+            to_draw.append(get_entry(row))
+
+        to_draw.append(sep)
+        return '\n'.join(to_draw)
+
+
 class TablePaginator(Pages):
     def __init__(self, ctx, data, title='', page_count=1, rows_per_table=20, mobile=False):
         super().__init__(ctx, entries=[i for i in range(page_count)], per_page=1)
-        self.table = TabularData()
-        self.data = data
+        self.table = CLYTable()
+        self.data = [(i, v) for (i, v) in enumerate(data)]
         self.mobile = mobile
         self.entries = [None for _ in range(page_count)]
         self.rows_per_table = rows_per_table
-        self.title = escape_markdown(title)
+        self.title = title
         self.message = None
+        self.ctx = ctx
 
     async def get_page(self, page):
         entry = self.entries[page - 1]
-        print(self.entries)
         if entry:
-            print('ok')
             return entry
 
         if not self.message:
@@ -99,34 +184,21 @@ class TablePaginator(Pages):
 
         entry = await self.prepare_entry(page)
         self.entries[page - 1] = entry
-        print(entry)
         return self.entries[page - 1]
 
     async def prepare_entry(self, page):
-        print(page)
         self.table.clear_rows()
-        print(page)
         base = (page - 1) * self.rows_per_table
         data = self.data[base:base + self.rows_per_table]
-        print(data)
         for n in data:
             self.table.add_row(n)
-        print(self.table.render())
 
-        return f'{self.title}```\n{self.table.render()}\n```'
-
-    async def get_content(self, entries, page, *, first=False):
-        if self.mobile:
-            return None
-        if first and self.paginating:
-            return f'{entries}\nConfused? React with \N{INFORMATION SOURCE} for more info.'
-
-        return entries
+        if self.guild_config.donationboard_render == 2:
+            return self.table.render_option_2()
+        else:
+            return self.table.render_option_1()
 
     async def get_embed(self, entries, page, *, first=False):
-        if not self.mobile:
-            return None
-
         if self.maximum_pages > 1:
             if self.show_entry_count:
                 text = f'Page {page}/{self.maximum_pages} ({len(self.entries)} entries)'
@@ -136,24 +208,22 @@ class TablePaginator(Pages):
             self.embed.set_footer(text=text)
 
         self.embed.description = entries
-        if self.paginating and first:
-            self.embed.description += 'Confused? React with \N{INFORMATION SOURCE} for more info.'
+
+        self.embed.set_author(name=self.guild_config.donationboard_title or self.title,
+                              icon_url=self.guild_config.icon_url or 'https://cdn.discordapp.com/emojis/592028799768592405.png?v=1')
+
         return self.embed
 
     async def show_page(self, page, *, first=False):
-        print(page, first)
+        self.guild_config = await self.bot.get_guild_config(self.ctx.guild.id)
         self.current_page = page
         entries = await self.get_page(page)
-        print(entries)
-        content = await self.get_content(entries, page, first=first)
-        print(content)
         embed = await self.get_embed(entries, page, first=first)
-        print(embed)
-        print('got')
-        if not self.paginating:
-            return await self.channel.send(content=content, embed=embed)
 
-        await self.message.edit(content=content, embed=embed)
+        if not self.paginating:
+            return await self.message.edit(content=None, embed=embed)
+
+        await self.message.edit(content=None, embed=embed)
 
         if not first:
             return
@@ -172,74 +242,55 @@ class DonationsPaginator(TablePaginator):
     def __init__(self, ctx, data, title, page_count=1, rows_per_table=20):
         super().__init__(ctx, data, title=title, page_count=page_count,
                          rows_per_table=rows_per_table)
-        self.table.set_columns(['IGN', 'Don', "Rec'd", 'Tag', 'Claimed By'])
 
     async def prepare_entry(self, page):
+        guild_config = await self.bot.get_guild_config(self.ctx.guild.id)
         self.table.clear_rows()
         base = (page - 1) * self.rows_per_table
         data = self.data[base:base + self.rows_per_table]
-        data_by_tag = {n[0]: n for n in data}
+        data_by_tag = {n[1]['player_tag']: n for n in data}
 
-        tags = [n[0] for n in data]
+        tags = [n[1]['player_tag'] for n in data]
         async for player in self.bot.coc.get_players(tags):
             player_data = data_by_tag[player.tag]
-            name = str(self.bot.get_user(player_data[3]))
-            if len(name) > 20:
-                name = name[:20] + '..'
-            self.table.add_row([player.name, player_data[1], player_data[2], player.tag, name])
+            if guild_config.donationboard_render == 2:
+                clan_name = await self.bot.donationboard.get_clan_name(self.ctx.guild.id,
+                                                                       player.clan.tag)
+                name = f'{player.name} ({clan_name})'
+                self.table.add_row([player_data[0], player_data[1]['donations'], name])
+            else:
+                self.table.add_row([player_data[0], player_data[1]['donations'],
+                                    player_data[1]['received'], player.name])
 
-        return f'{self.title}\n```\n{self.table.render()}\n```'
+        if guild_config.donationboard_render == 2:
+            return self.table.render_option_2()
+        else:
+            return self.table.render_option_1()
 
 
 class EventsPaginator(TablePaginator):
     def __init__(self, ctx, data, title, page_count=1, rows_per_table=20):
         super().__init__(ctx, data, title=title, page_count=page_count,
                          rows_per_table=rows_per_table)
-        self.table.set_columns(['IGN', 'Don', "Rec'd", 'Time', 'Clan'])
 
     async def prepare_entry(self, page):
         self.table.clear_rows()
         base = (page - 1) * self.rows_per_table
         data = self.data[base:base + self.rows_per_table]
-        data_by_tag = {n[0]: n for n in data}
-        time = datetime.utcnow()
+        data_by_tag = {n[1][0]: n[1] for n in data}
 
-        tags = (n[0] for n in data)
+        tags = (n[1][0] for n in data)
         async for player in self.bot.coc.get_players(tags):
             player_data = data_by_tag[player.tag]
+            time = events_time((datetime.utcnow() - player_data[3]).total_seconds())
+            print(datetime.utcnow(), player_data[3], time, (datetime.utcnow() - player_data[3]).total_seconds())
 
-            delta = time - player_data[3]
-            if not player.clan:
-                clan_name = 'None'
-            else:
-                clan_name = player.clan.name
-
-            self.table.add_row([player.name,
-                                player_data[1],
-                                player_data[2],
-                                readable_time(delta.total_seconds()),
-                                clan_name
-                                ]
-                                )
-        return f'{self.title}```\n{self.table.render()}\n```'
-
-
-class MobilePaginator(TablePaginator):
-    def __init__(self, ctx, data, title, page_count=1, rows_per_table=20):
-        super().__init__(ctx, data, title=title, page_count=page_count,
-                         rows_per_table=rows_per_table, mobile=True)
-        self.embed.title = title
-        self.table.set_columns(['IGN', 'Don', "Rec'd"])
-
-    async def prepare_entry(self, page):
-        self.table.clear_rows()
-        base = (page - 1) * self.rows_per_table
-        data = self.data[base:base + self.rows_per_table]
-        data_by_tag = {n[0]: n for n in data}
-
-        tags = (n[0] for n in data)
-        async for player in self.bot.coc.get_players(tags):
-            player_data = data_by_tag[player.tag]
-            self.table.add_row([player.name, player_data[1], player_data[2]])  # IGN, don, rec
-
-        return f'```\n{self.table.render()}\n```'
+            self.table.add_row([
+                misc['donated'] if player_data[1] else misc['received'],
+                player_data[1] if player_data[1] else player_data[2],
+                player.name,
+                time
+                ]
+                )
+        return f"{self.table.render_events_command()}\nKey: {misc['donated']} - Donated," \
+                    f" {misc['received']} - Received"
