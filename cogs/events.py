@@ -46,7 +46,7 @@ class Events(commands.Cog):
         query = """INSERT INTO events (player_tag, player_name, clan_tag, donations, received, time)
                         SELECT x.player_tag, x.clan_tag, x.donations, x.received, x.time
                            FROM jsonb_to_recordset($1::jsonb) 
-                        AS x(player_tag TEXT, clan_tag TEXT, 
+                        AS x(player_tag TEXT, player_name TEXT, clan_tag TEXT, 
                              donations INTEGER, received INTEGER, time TIMESTAMP
                              )
                 """
