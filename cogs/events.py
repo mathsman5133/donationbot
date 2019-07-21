@@ -103,8 +103,6 @@ class Events(commands.Cog):
             channel_config = await self.bot.get_channel_config(n[0])
             if not channel_config:
                 continue
-            if not channel_config.log_toggle:
-                continue
 
             events = [DatabaseEvent(bot=self.bot, record=n) for
                       n in await self.bot.pool.fetch(query, n[0])
