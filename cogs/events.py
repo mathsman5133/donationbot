@@ -312,8 +312,8 @@ class Events(commands.Cog):
         await ctx.send(f'Set log interval to {minutes} minutes for {fmt}.')
 
     @log.command(name='create')
-    async def log_create(self, ctx, channel: typing.Optional[discord.TextChannel],
-                         * clan: ClanConverter):
+    async def log_create(self, ctx, channel: typing.Optional[discord.TextChannel], *,
+                         clan: ClanConverter):
         """Create a donation log for your server.
 
         Parameters
