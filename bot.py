@@ -184,6 +184,19 @@ class DonationBot(commands.Bot):
                     return msg.id
         return msg.id
 
+    async def channel_log(self, channel_id, message, colour=None):
+        channel_config = await self.events.get_channel_config(channel_id)
+        if not channel_config.log_channel or not channel_config.log_toggle:
+            return
+
+        e = discord.Embed(colour=colour or self.colour,
+                          description=message,
+                          timestamp=datetime.datetime.utcnow())
+        try:
+            await channel_config.channel.send(embed=e)
+        except (discord.Forbidden, discord.HTTPException):
+            return
+
     async def get_guilds(self, clan_tag):
         query = "SELECT guild_id FROM clans WHERE clan_tag = $1"
         fetch = await self.pool.fetch(query, clan_tag)

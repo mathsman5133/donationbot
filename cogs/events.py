@@ -142,7 +142,7 @@ class Events(commands.Cog):
                                                     datetime.utcnow() + interval
                                                     )
                 else:
-                    await self.bot.log_info(n[0], fmt)
+                    await self.bot.channel_log(n[0], fmt)
 
         query = """UPDATE events
                         SET reported=True
@@ -154,7 +154,7 @@ class Events(commands.Cog):
 
     async def short_timer(self, seconds, channel_id, fmt):
         await asyncio.sleep(seconds)
-        await self.bot.log_info(channel_id, fmt)
+        await self.bot.channel_log(channel_id, fmt)
         log.info('Sent a log to channel ID: %s after sleeping for %s', channel_id, seconds)
 
     async def check_for_timers(self):
@@ -170,7 +170,7 @@ class Events(commands.Cog):
                     to_sleep = (fetch['expires'] - now).total_seconds()
                     await asyncio.sleep(to_sleep)
 
-                await self.bot.log_info(fetch['channel_id'], fetch['fmt'])
+                await self.bot.channel_log(fetch['channel_id'], fetch['fmt'])
                 log.info('Sent a log to channel ID: %s which had been saved to DB.',
                          fetch['channel_id'])
 
