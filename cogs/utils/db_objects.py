@@ -6,7 +6,7 @@ from cogs.utils.formatters import readable_time
 class DatabaseGuild:
     __slots__ = ('bot', 'guild_id', 'id', 'updates_channel_id', 'updates_header_id', 'updates_toggle',
                  'log_channel_id', 'log_toggle', 'ign', 'don', 'rec', 'tag', 'claimed_by', 'clan',
-                 'auto_claim', 'donationboard_title', 'icon_url', 'donationboard_render')
+                 'auto_claim', 'donationboard_title', 'icon_url', 'donationboard_render', 'log_interval')
 
     def __init__(self, *, guild_id, bot, record=None):
         self.guild_id = guild_id
@@ -28,6 +28,7 @@ class DatabaseGuild:
             self.donationboard_title = record['donationboard_title']
             self.icon_url = record['icon_url']
             self.donationboard_render = record['donationboard_render']
+            self.log_interval = record['log_interval']
         else:
             self.updates_channel_id = None
             self.log_channel_id = None
@@ -139,4 +140,8 @@ class DatabaseEvent:
     @property
     def readable_time(self):
         return readable_time((datetime.utcnow() - self.time).total_seconds())
+
+    @property
+    def delta_since(self):
+        return datetime.utcnow() - self.time
 

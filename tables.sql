@@ -70,3 +70,11 @@ CREATE TABLE events (
     time TIMESTAMP,
     reported BOOLEAN DEFAULT False
     )
+
+CREATE TABLE log_timers (
+    id serial primary key,
+
+    guild_id bigint,
+    fmt text,
+    expires timestamp
+)

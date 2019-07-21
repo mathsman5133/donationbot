@@ -34,6 +34,7 @@ class Events(commands.Cog):
         self.batch_insert_loop.start()
         self.bulk_report.add_exception_type(asyncpg.PostgresConnectionError)
         self.bulk_report.start()
+        self.check_for_timers_task = self.bot.loop.create_task(self.check_for_timers())
 
         self.bot.coc.add_events(
             self.on_clan_member_donation,
@@ -48,6 +49,7 @@ class Events(commands.Cog):
     def cog_unload(self):
         self.bulk_report.cancel()
         self.batch_insert_loop.cancel()
+        self.check_for_timers_task.cancel()
         try:
             self.bot.coc.extra_events['on_clan_member_donation'].remove(
                 self.on_clan_member_donation)
@@ -85,7 +87,6 @@ class Events(commands.Cog):
                         INNER JOIN guilds
                         ON guilds.guild_id = clans.guild_id 
                     WHERE events.reported=False
-                    AND (CURRENT_TIMESTAMP - events.time) >= guilds.log_interval
                 """
         fetch = await self.bot.pool.fetch(query)
         query = """SELECT * FROM events 
@@ -124,7 +125,17 @@ class Events(commands.Cog):
                 fmt += f"\nKey: {emoji_lookup.misc['donated']} - Donated," \
                     f" {emoji_lookup.misc['received']} - Received," \
                     f" {emoji_lookup.misc['number']} - Number of troops."
-                await self.bot.log_info(n[0], fmt)
+
+                interval = guild_config.log_interval - events[0].delta_since
+                if interval.total_seconds() > 0:
+                    if interval < 600:
+                        await self.short_timer(interval.total_seconds(), n[0], fmt)
+                    else:
+                        await self.create_new_timer(n[0], fmt,
+                                                    (datetime.utcnow() + interval).isoformat()
+                                                    )
+                else:
+                    await self.bot.log_info(n[0], fmt)
 
         query = """UPDATE events
                         SET reported=True
@@ -132,7 +143,37 @@ class Events(commands.Cog):
                 WHERE events.clan_tag=x.clan_tag
                 """
         await self.bot.pool.execute(query, [n[0] for n in fetch])
-        log.info('Reported donations for %s guilds', len(fetch))
+
+    async def short_timer(self, seconds, guild_id, fmt):
+        await asyncio.sleep(seconds)
+        await self.bot.log_info(guild_id, fmt)
+
+    async def check_for_timers(self):
+        try:
+            while not self.bot.is_closed():
+                query = "SELECT * FROM log_timers ORDER BY expires LIMIT 1;"
+                fetch = await self.bot.pool.fetchrow(query)
+                if not fetch:
+                    return
+
+                now = datetime.utcnow()
+                if fetch['expires'] >= now:
+                    to_sleep = (fetch['expires'] - now).total_seconds()
+                    await asyncio.sleep(to_sleep)
+
+                await self.bot.log_info(fetch['guild_id'], fetch['fmt'])
+
+                query = "DELETE FROM log_timers WHERE id=$1;"
+                await self.bot.pool.execute(query, fetch['id'])
+        except asyncio.CancelledError:
+            raise
+        except (OSError, discord.ConnectionClosed, asyncpg.PostgresConnectionError):
+            self.create_new_timer_task.cancel()
+            self.create_new_timer_task = self.bot.loop.create_task(self.check_for_timers())
+
+    async def create_new_timer(self, guild_id, fmt, expires):
+        query = "INSERT INTO log_timers (guild_id, fmt, expires) VALUES ($1, $2, $3)"
+        await self.bot.pool.execute(query, guild_id, fmt, expires)
 
     async def on_clan_member_donation(self, old_donations, new_donations, player, clan):
         if old_donations > new_donations:
