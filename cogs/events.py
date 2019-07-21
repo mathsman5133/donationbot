@@ -143,6 +143,7 @@ class Events(commands.Cog):
                 WHERE events.clan_tag=x.clan_tag
                 """
         await self.bot.pool.execute(query, [n[0] for n in fetch])
+        log.info('Dispatched %s logs to various places.', len(fetch))
 
     async def short_timer(self, seconds, guild_id, fmt):
         await asyncio.sleep(seconds)
@@ -154,7 +155,7 @@ class Events(commands.Cog):
                 query = "SELECT * FROM log_timers ORDER BY expires LIMIT 1;"
                 fetch = await self.bot.pool.fetchrow(query)
                 if not fetch:
-                    return
+                    continue
 
                 now = datetime.utcnow()
                 if fetch['expires'] >= now:
