@@ -186,7 +186,7 @@ class DonationBot(commands.Bot):
 
     async def channel_log(self, channel_id, message, colour=None):
         channel_config = await self.events.get_channel_config(channel_id)
-        if not channel_config.log_channel or not channel_config.log_toggle:
+        if not channel_config.channel or not channel_config.log_toggle:
             return
 
         e = discord.Embed(colour=colour or self.colour,
