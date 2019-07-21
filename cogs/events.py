@@ -82,7 +82,7 @@ class Events(commands.Cog):
                 log.info('Registered %s events to the database.', total)
             self._batch_data.clear()
 
-    @tasks.loop(seconds=60.0)
+    @tasks.loop(seconds=30.0)
     async def bulk_report(self):
         query = """SELECT DISTINCT clans.channel_id 
                    FROM clans 
@@ -102,6 +102,8 @@ class Events(commands.Cog):
         for n in fetch:
             channel_config = await self.bot.get_channel_config(n[0])
             if not channel_config:
+                continue
+            if not channel_config.log_toggle:
                 continue
 
             events = [DatabaseEvent(bot=self.bot, record=n) for
@@ -232,6 +234,9 @@ class Events(commands.Cog):
 
         return clan
 
+    def invalidate_channel_config(self, channel_id):
+        self.channel_config_cache.pop(channel_id, None)
+
     @commands.group(invoke_without_subcommand=True)
     @checks.manage_guild()
     async def log(self, ctx):
@@ -316,6 +321,7 @@ class Events(commands.Cog):
         await ctx.confirm()
         fmt = '\n'.join(n[0] for n in fetch)
         await ctx.send(f'Set log interval to {minutes} minutes for {fmt}.')
+        self.invalidate_channel_config(channel.id)
 
     @log.command(name='create')
     async def log_create(self, ctx, channel: typing.Optional[discord.TextChannel], *,
@@ -348,6 +354,7 @@ class Events(commands.Cog):
         await ctx.send(f'Events log channel has been set to {channel.mention} for {clan[0].name} '
                        f'and logging is enabled.')
         await ctx.confirm()
+        self.invalidate_channel_config(channel.id)
 
     @log.command(name='toggle')
     async def log_toggle(self, ctx, channel: typing.Optional[discord.TextChannel],
@@ -382,6 +389,7 @@ class Events(commands.Cog):
         fmt = '\n'.join(n[0] for n in fetch)
         await ctx.send(f'Events logging has been {"enabled" if toggle else "disabled"} for {fmt}')
         await ctx.confirm()
+        self.invalidate_channel_config(channel.id)
 
     @commands.group(invoke_without_command=True)
     async def events(self, ctx, *, arg: EventsConverter = None, limit=20):
