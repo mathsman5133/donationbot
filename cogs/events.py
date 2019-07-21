@@ -101,6 +101,9 @@ class Events(commands.Cog):
                 """
         for n in fetch:
             channel_config = await self.bot.get_channel_config(n[0])
+            if not channel_config:
+                continue
+
             events = [DatabaseEvent(bot=self.bot, record=n) for
                       n in await self.bot.pool.fetch(query, n[0])
                       ]
@@ -224,7 +227,10 @@ class Events(commands.Cog):
         if not fetch:
             return None
 
-        return DatabaseClan(bot=self.bot, record=fetch)
+        clan = DatabaseClan(bot=self.bot, record=fetch)
+        self.channel_config_cache[channel_id] = clan
+
+        return clan
 
     @commands.group(invoke_without_subcommand=True)
     @checks.manage_guild()
