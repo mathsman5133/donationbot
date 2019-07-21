@@ -415,7 +415,7 @@ class DonationBoard(commands.Cog):
 
         query = "INSERT INTO messages (message_id, guild_id, channel_id) VALUES ($1, $2, $3)"
         await ctx.db.execute(query, msg.id, ctx.guild.id, channel.id)
-        query = "UPDATE guilds SET updates_channel_id=$1 WHERE guild_id=$2"
+        query = "UPDATE guilds SET updates_channel_id=$1, updates_toggle=True WHERE guild_id=$2"
         await ctx.db.execute(query, channel.id, ctx.guild.id)
         await ctx.send(f'Donationboard channel created: {channel.mention}')
 
@@ -438,13 +438,13 @@ class DonationBoard(commands.Cog):
                         [2, 321, 444, 'Yet Another'], [3, 0, 2, 'The Worst Donator']
                         ])
         table.title = '**Option 1 Example**'
-        option_1_render = table.render_option_1()
+        option_1_render = f'**Option 1 Example**\n{table.render_option_1()}'
         table.clear_rows()
         table.add_rows([[0, 6532, 'Member (Awesome Clan)'], [1, 4453, 'Nearly #1 (Bad Clan)'],
                         [2, 5589, 'Another Member (Awesome Clan)'], [3, 0, 'Winner (Bad Clan)']
                         ])
-        table.title = '**Option 2 Example**'
-        option_2_render = table.render_option_2()
+
+        option_2_render = f'**Option 2 Example**\n{table.render_option_2()}'
 
         embed = discord.Embed(colour=self.bot.colour)
         fmt = f'{option_1_render}\n\n\n{option_2_render}\n\n\n' \
