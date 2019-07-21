@@ -148,6 +148,7 @@ class Events(commands.Cog):
     async def short_timer(self, seconds, guild_id, fmt):
         await asyncio.sleep(seconds)
         await self.bot.log_info(guild_id, fmt)
+        log.info('Sent a log to guild ID: %s after sleeping for %s', guild_id, seconds)
 
     async def check_for_timers(self):
         try:
@@ -163,6 +164,7 @@ class Events(commands.Cog):
                     await asyncio.sleep(to_sleep)
 
                 await self.bot.log_info(fetch['guild_id'], fetch['fmt'])
+                log.info('Sent a log to guild ID: %s which had been saved to DB.', fetch['guild_id'])
 
                 query = "DELETE FROM log_timers WHERE id=$1;"
                 await self.bot.pool.execute(query, fetch['id'])
