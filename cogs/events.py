@@ -4,12 +4,13 @@ import coc
 import discord
 import logging
 import math
+import typing
 
 from datetime import datetime
 from discord.ext import commands, tasks
 from cogs.donations import ArgConverter, ClanConverter, PlayerConverter
 from cogs.utils import formatters, checks, emoji_lookup
-from cogs.utils.db_objects import DatabaseEvent
+from cogs.utils.db_objects import DatabaseEvent, DatabaseClan
 
 log = logging.getLogger(__name__)
 
@@ -42,6 +43,8 @@ class Events(commands.Cog):
         )
         self.bot.coc._clan_retry_interval = 60
         self.bot.coc.start_updates('clan')
+
+        self.channel_config_cache = {}
 
     async def cog_command_error(self, ctx, error):
         await ctx.send(str(error))
@@ -81,24 +84,23 @@ class Events(commands.Cog):
 
     @tasks.loop(seconds=60.0)
     async def bulk_report(self):
-        query = """SELECT DISTINCT clans.guild_id FROM clans 
+        query = """SELECT DISTINCT clans.channel_id 
+                   FROM clans 
                         INNER JOIN events 
-                        ON clans.clan_tag = events.clan_tag
-                        INNER JOIN guilds
-                        ON guilds.guild_id = clans.guild_id 
+                        ON clans.clan_tag = events.clan_tag 
                     WHERE events.reported=False
                 """
         fetch = await self.bot.pool.fetch(query)
         query = """SELECT * FROM events 
                         INNER JOIN clans 
                         ON clans.clan_tag = events.clan_tag 
-                    WHERE clans.guild_id=$1 
+                    WHERE clans.channel_id=$1 
                     AND events.reported=False
                     ORDER BY events.clan_tag, 
                              time DESC;
                 """
         for n in fetch:
-            guild_config = await self.bot.get_guild_config(n[0])
+            channel_config = await self.bot.get_channel_config(n[0])
             events = [DatabaseEvent(bot=self.bot, record=n) for
                       n in await self.bot.pool.fetch(query, n[0])
                       ]
@@ -111,7 +113,7 @@ class Events(commands.Cog):
                     emoji,
                     x.donations if x.donations else x.received,
                     x.player_name,
-                    await self.bot.donationboard.get_clan_name(n[0], x.clan_tag)
+                    channel_config.clan_name
                 ]
                 )
             split = table.render_events_log().split('\n')
@@ -119,14 +121,14 @@ class Events(commands.Cog):
             for i in range(math.ceil(len(split) / 21)):
                 new_table_renders.append(split[i*21:(i+1)*21])
 
-            fmt = f"Recent Events{f' for {guild_config.donationboard_title}' if guild_config.donationboard_title else ''}\n"
+            fmt = f"Recent Events for {channel_config.clan_name}\n"
             for x in new_table_renders:
                 fmt += '\n'.join(x)
                 fmt += f"\nKey: {emoji_lookup.misc['donated']} - Donated," \
                     f" {emoji_lookup.misc['received']} - Received," \
                     f" {emoji_lookup.misc['number']} - Number of troops."
 
-                interval = guild_config.log_interval - events[0].delta_since
+                interval = channel_config.log_interval - events[0].delta_since
                 if interval.total_seconds() > 0:
                     if interval.total_seconds() < 600:
                         await self.short_timer(interval.total_seconds(), n[0], fmt)
@@ -139,16 +141,16 @@ class Events(commands.Cog):
 
         query = """UPDATE events
                         SET reported=True
-                    FROM (SELECT clans.clan_tag FROM clans WHERE guild_id=ANY($1::BIGINT[])) AS x
+                    FROM (SELECT clans.clan_tag FROM clans WHERE channel_id=ANY($1::BIGINT[])) AS x
                 WHERE events.clan_tag=x.clan_tag
                 """
         await self.bot.pool.execute(query, [n[0] for n in fetch])
         log.info('Dispatched %s logs to various places.', len(fetch))
 
-    async def short_timer(self, seconds, guild_id, fmt):
+    async def short_timer(self, seconds, channel_id, fmt):
         await asyncio.sleep(seconds)
-        await self.bot.log_info(guild_id, fmt)
-        log.info('Sent a log to guild ID: %s after sleeping for %s', guild_id, seconds)
+        await self.bot.log_info(channel_id, fmt)
+        log.info('Sent a log to channel ID: %s after sleeping for %s', channel_id, seconds)
 
     async def check_for_timers(self):
         try:
@@ -163,8 +165,9 @@ class Events(commands.Cog):
                     to_sleep = (fetch['expires'] - now).total_seconds()
                     await asyncio.sleep(to_sleep)
 
-                await self.bot.log_info(fetch['guild_id'], fetch['fmt'])
-                log.info('Sent a log to guild ID: %s which had been saved to DB.', fetch['guild_id'])
+                await self.bot.log_info(fetch['channel_id'], fetch['fmt'])
+                log.info('Sent a log to channel ID: %s which had been saved to DB.',
+                         fetch['channel_id'])
 
                 query = "DELETE FROM log_timers WHERE id=$1;"
                 await self.bot.pool.execute(query, fetch['id'])
@@ -174,9 +177,9 @@ class Events(commands.Cog):
             self.create_new_timer_task.cancel()
             self.create_new_timer_task = self.bot.loop.create_task(self.check_for_timers())
 
-    async def create_new_timer(self, guild_id, fmt, expires):
-        query = "INSERT INTO log_timers (guild_id, fmt, expires) VALUES ($1, $2, $3)"
-        await self.bot.pool.execute(query, guild_id, fmt, expires)
+    async def create_new_timer(self, channel_id, fmt, expires):
+        query = "INSERT INTO log_timers (channel_id, fmt, expires) VALUES ($1, $2, $3)"
+        await self.bot.pool.execute(query, channel_id, fmt, expires)
 
     async def on_clan_member_donation(self, old_donations, new_donations, player, clan):
         if old_donations > new_donations:
@@ -210,6 +213,19 @@ class Events(commands.Cog):
                 'time': datetime.utcnow().isoformat()
             })
 
+    async def get_channel_config(self, channel_id):
+        config = self.channel_config_cache.get(channel_id)
+        if config:
+            return config
+
+        query = "SELECT * FROM clans WHERE channel_id=$1"
+        fetch = await self.bot.pool.fetchrow(query)
+
+        if not fetch:
+            return None
+
+        return DatabaseClan(bot=self.bot, record=fetch)
+
     @commands.group(invoke_without_subcommand=True)
     @checks.manage_guild()
     async def log(self, ctx):
@@ -222,45 +238,93 @@ class Events(commands.Cog):
         if ctx.invoked_subcommand is None:
             await ctx.send_help(ctx.command)
 
+    @log.command(name='info')
+    async def log_info(self, ctx, channel: typing.Optional[discord.TextChannel]):
+        """Get information about log channels for the guild.
+
+        Parameters
+        ----------------
+            • Channel: Optional, the channel to get log info for.
+                       Defaults to all channels in the server.
+
+        Example
+        -----------
+        • `+log info #channel`
+        • `+log info`
+
+        Required Perimssions
+        ----------------------------
+        • `manage_server` permissions
+        """
+        if channel:
+            query = "SELECT * FROM clans WHERE channel_id=$1"
+            fetch = await ctx.db.fetch(query, channel.id)
+        else:
+            query = "SELECT * from clans WHERE guild_id=$1"
+            fetch = await ctx.db.fetch(query, ctx.guild.id)
+
+        e = discord.Embed(color=self.bot.colour,
+                          description=f'Log info for {channel.mention if channel else ctx.guild.name}')
+
+        for n in fetch:
+            config = DatabaseClan(bot=self.bot, record=n)
+            fmt = f"Tag: {config.clan_tag}\n"
+            fmt += f"Channel: {config.channel.mention}\n"
+            fmt += f"Log Toggle: {'enabled' if config.log_toggle else 'disabled'}\n"
+            fmt += f"Log Interval: {config.interval_seconds} seconds\n"
+            e.add_field(name=n['clan_name'],
+                        value=fmt)
+
     @log.command(name='interval')
-    async def log_interval(self, ctx, minutes: int = 1):
+    async def log_interval(self, ctx, channel: typing.Optional[discord.TextChannel],
+                           minutes: int = 1):
         """Update the interval (in minutes) for which the bot will log your donations.
 
         Parameters
         ----------------
-        Pass in any of the following:
-
+            • Channel: Optional, the channel to change log interval for.
+                       Defaults to the one you're in.
             • Minutes: the number of minutes between logs. Defaults to 1.
 
         Example
         -----------
-        • `+log interval 2`
+        • `+log interval #channel 2`
         • `+log interval 1440`
 
         Required Perimssions
         ----------------------------
         • `manage_server` permissions
         """
-        query = """UPDATE guilds SET log_interval = ($1 ||' minutes')::interval
-                        WHERE guild_id=$2"""
-        await ctx.db.execute(query, str(minutes), ctx.guild.id)
+        if not channel:
+            channel = ctx.channel
+
+        query = """UPDATE clans SET log_interval = ($1 ||' minutes')::interval
+                        WHERE channel_id=$2
+                        RETURNING clan_name"""
+        fetch = await ctx.db.fetch(query, str(minutes), channel.id)
+
+        if not fetch:
+            return await ctx.send('Please add a clan.')
+
         await ctx.confirm()
-        await ctx.send(f'Set log interval to {minutes}minutes.')
+        fmt = '\n'.join(n[0] for n in fetch)
+        await ctx.send(f'Set log interval to {minutes} minutes for {fmt}.')
 
     @log.command(name='create')
-    async def log_create(self, ctx, channel: discord.TextChannel = None):
+    async def log_create(self, ctx, channel: typing.Optional[discord.TextChannel],
+                         * clan: ClanConverter):
         """Create a donation log for your server.
 
         Parameters
         ----------------
-        Pass in any of the following:
 
-            • A discord channel: #channel or a channel id. This defaults to the channel you are in.
+            • Channel: #channel or a channel id. This defaults to the channel you are in.
+            • Clan: clan tag or name to set logs for.
 
         Example
         -----------
-        • `+log create #CHANNEL`
-        • `+log create CHANNEL_ID`
+        • `+log create #CHANNEL #P0LYJC8C`
+        • `+log create #P0LYJC8C`
 
         Required Perimssions
         ----------------------------
@@ -272,34 +336,44 @@ class Events(commands.Cog):
                 ctx.me).read_messages):
             return await ctx.send('I need permission to send and read messages here!')
 
-        query = "UPDATE guilds SET log_channel_id=$1, log_toggle=True WHERE guild_id=$2"
-        await ctx.db.execute(query, channel.id, ctx.guild.id)
-        await ctx.send(f'Events log channel has been set to {channel.mention}, '
+        query = "UPDATE clans SET channel_id=$1, log_toggle=True WHERE clan_tag=$2 AND guild_id=$3"
+        await ctx.db.execute(query, channel.id, clan[0].tag, ctx.guild.id)
+        await ctx.send(f'Events log channel has been set to {channel.mention} for {clan[0].name} '
                        f'and logging is enabled.')
         await ctx.confirm()
 
     @log.command(name='toggle')
-    async def log_toggle(self, ctx, toggle: bool = True):
+    async def log_toggle(self, ctx, channel: typing.Optional[discord.TextChannel],
+                         toggle: bool = True):
         """Toggle the donation log on/off for your server.
 
         Parameters
         ----------------
         Pass in any of the following:
 
-            • A toggle - `True` or `False`
+            • Channel: #channel or a channel id. This defaults to the channel you are in.
+            • Toggle - `True` or `False`
 
         Example
         -----------
-        • `+log toggle True`
+        • `+log toggle #CHANNEL True`
         • `+log toggle False`
 
         Required Perimssions
         ----------------------------
         • `manage_server` permissions
         """
-        query = "UPDATE guilds SET log_toggle=$1 WHERE guild_id=$2"
-        await ctx.db.execute(query, toggle, ctx.guild.id)
-        await ctx.send(f'Events logging has been {"enabled" if toggle else "disabled"}.')
+        if not channel:
+            channel = ctx.channel
+
+        query = "UPDATE clans SET log_toggle=$1 WHERE channel_id=$2 RETURNING clan_name"
+        fetch = await ctx.db.fetch(query, toggle, channel.id)
+
+        if not fetch:
+            return await ctx.send('Please add a clan.')
+
+        fmt = '\n'.join(n[0] for n in fetch)
+        await ctx.send(f'Events logging has been {"enabled" if toggle else "disabled"} for {fmt}')
         await ctx.confirm()
 
     @commands.group(invoke_without_command=True)

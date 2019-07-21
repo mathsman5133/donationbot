@@ -14,7 +14,10 @@ CREATE TABLE clans (
 
     guild_id BIGINT,
     clan_tag TEXT,
-    clan_name TEXT
+    clan_name TEXT,
+    channel_id bigint,
+    log_interval interval DEFAULT (0 ||' minutes')::interval,
+    log_toggle boolean
     );
 
 CREATE TABLE guilds (

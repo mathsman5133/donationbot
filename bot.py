@@ -194,6 +194,14 @@ class DonationBot(commands.Bot):
         fetch = await self.pool.fetch(query, guild_id)
         return await self.coc.get_clans(n[0].strip() for n in fetch).flatten()
 
+    async def get_channel_config(self, channel_id):
+        cog = self.events
+        if not cog:
+            self.load_extension('cogs.events')
+            cog = self.get_cog('Events')
+
+        return await cog.get_channel_config(channel_id)
+
     async def get_guild_config(self, guild_id):
         cog = self.get_cog('DonationBoard')
         if not cog:

@@ -82,6 +82,9 @@ class DatabaseClan:
             self.guild_id = record['guild_id']
             self.clan_tag = record['clan_tag']
             self.clan_name = record['clan_name']
+            self.channel_id = record['channel_id']
+            self.log_interval = record['log_interval']
+            self.log_toggle = record['log_toggle']
         else:
             self.guild_id = None
             self.clan_tag = clan_tag
@@ -89,6 +92,14 @@ class DatabaseClan:
     @property
     def guild(self):
         return self.bot.get_guild(self.guild_id)
+
+    @property
+    def channel(self):
+        return self.bot.get_channel(self.channel_id)
+
+    @property
+    def interval_seconds(self):
+        return self.log_interval.total_seconds()
 
     async def full_clan(self):
         return await self.bot.coc.get_clan(self.clan_tag)
