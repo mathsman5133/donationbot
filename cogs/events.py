@@ -219,7 +219,7 @@ class Events(commands.Cog):
             return config
 
         query = "SELECT * FROM clans WHERE channel_id=$1"
-        fetch = await self.bot.pool.fetchrow(query)
+        fetch = await self.bot.pool.fetchrow(query, channel_id)
 
         if not fetch:
             return None
