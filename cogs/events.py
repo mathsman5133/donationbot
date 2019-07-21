@@ -77,16 +77,14 @@ class Events(commands.Cog):
                 log.info('Registered %s events to the database.', total)
             self._batch_data.clear()
 
-    @tasks.loop(seconds=30.0)
+    @tasks.loop(seconds=60.0)
     async def bulk_report(self):
         query = """SELECT DISTINCT clans.guild_id FROM clans 
                         INNER JOIN events 
                         ON clans.clan_tag = events.clan_tag
                         INNER JOIN guilds
                         ON guilds.guild_id = clans.guild_id 
-                    WHERE events.clan_tag = ANY(
-                                SELECT DISTINCT clan_tag FROM events WHERE reported=False
-                                )
+                    WHERE events.reported=False
                     AND (CURRENT_TIMESTAMP - events.time) >= guilds.log_interval
                 """
         fetch = await self.bot.pool.fetch(query)
