@@ -132,7 +132,7 @@ class Events(commands.Cog):
                         await self.short_timer(interval.total_seconds(), n[0], fmt)
                     else:
                         await self.create_new_timer(n[0], fmt,
-                                                    (datetime.utcnow() + interval).isoformat()
+                                                    datetime.utcnow() + interval
                                                     )
                 else:
                     await self.bot.log_info(n[0], fmt)
