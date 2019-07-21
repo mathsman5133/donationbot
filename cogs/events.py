@@ -128,7 +128,7 @@ class Events(commands.Cog):
 
                 interval = guild_config.log_interval - events[0].delta_since
                 if interval.total_seconds() > 0:
-                    if interval < 600:
+                    if interval.total_seconds() < 600:
                         await self.short_timer(interval.total_seconds(), n[0], fmt)
                     else:
                         await self.create_new_timer(n[0], fmt,
