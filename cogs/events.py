@@ -239,7 +239,7 @@ class Events(commands.Cog):
             await ctx.send_help(ctx.command)
 
     @log.command(name='info')
-    async def log_info(self, ctx, channel: typing.Optional[discord.TextChannel]):
+    async def log_info(self, ctx, channel: typing.Optional[discord.TextChannel] = None):
         """Get information about log channels for the guild.
 
         Parameters
@@ -274,6 +274,7 @@ class Events(commands.Cog):
             fmt += f"Log Interval: {config.interval_seconds} seconds\n"
             e.add_field(name=n['clan_name'],
                         value=fmt)
+        await ctx.send(embed=e)
 
     @log.command(name='interval')
     async def log_interval(self, ctx, channel: typing.Optional[discord.TextChannel],
