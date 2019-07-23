@@ -62,7 +62,6 @@ class GuildConfiguration(commands.Cog):
 
         return [clan.get_member(name=n) for n in matches]
 
-
     @commands.command(aliases=['aclan'])
     @checks.manage_guild()
     async def add_clan(self, ctx, clan_tag: str):
@@ -246,6 +245,39 @@ class GuildConfiguration(commands.Cog):
         await ctx.confirm()
 
     @commands.command()
+    @commands.cooldown(1, 43200, commands.BucketType.guild)
+    async def refresh(self, ctx, *, clans: ClanConverter):
+        """Manually refresh all players in the database with current donations and received.
+
+        Note: it will only update their donations if the
+              amount recorded in-game is more than in the database.
+              Ie. if they have left and re-joined it won't update them, usually.
+
+        Parameters
+        --------------------
+        Pass in any one of the following:
+            • clan tag
+            • clan name (if claimed)
+            • `all`, `server`, `guild` for all clans in guild
+            • None: all clans in guild
+
+        Example
+        ---------------
+        `+refresh all`
+        `+refresh`
+        `+refresh #CLAN_TAG`
+        """
+        query = """UPDATE players 
+                        SET donations=$1, received=$2
+                    WHERE player_tag=$3
+                    AND donations<$1
+                    AND received<$2
+                """
+        for clan in clans:
+            for member in clan.members:
+                await ctx.db.execute(query, member.donations, member.received, member.tag)
+
+    @commands.command()
     async def accounts(self, ctx, *, clans: ClanConverter = None):
         """Get accounts and claims for all accounts in clans in a server.
 
@@ -427,7 +459,7 @@ class GuildConfiguration(commands.Cog):
                     # no members found in guild with that player name
                 if isinstance(results, discord.abc.User):
                     await self.bot.log_info(ctx.guild.id, f'[auto-claim]: {member.name} ({member.tag}) '
-                                               f'has been claimed to {str(results)} ({results.id})',
+                                            f'has been claimed to {str(results)} ({results.id})',
                                             colour=discord.Colour.green())
                     continue
 
