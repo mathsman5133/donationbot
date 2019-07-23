@@ -253,6 +253,11 @@ class GuildConfiguration(commands.Cog):
               amount recorded in-game is more than in the database.
               Ie. if they have left and re-joined it won't update them, usually.
 
+        Cool-downs
+        ----------------
+        You can only call this command once every **12 hours** due to the
+        amount of resources it requires to run, and to prevent future abuse.
+
         Parameters
         --------------------
         Pass in any one of the following:
@@ -276,6 +281,7 @@ class GuildConfiguration(commands.Cog):
         for clan in clans:
             for member in clan.members:
                 await ctx.db.execute(query, member.donations, member.received, member.tag)
+        await ctx.confirm()
 
     @commands.command()
     async def accounts(self, ctx, *, clans: ClanConverter = None):
