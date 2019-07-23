@@ -16,11 +16,11 @@ def readable_time(delta_seconds):
     days, hours = divmod(hours, 24)
 
     if days:
-        fmt = '{d}d {h}h {m}m {s}s ago'
+        fmt = '{d}d {h}h {m}m {s}s'
     elif hours:
-        fmt = '{h}h {m}m {s}s ago'
+        fmt = '{h}h {m}m {s}s'
     else:
-        fmt = '{m}m {s}s ago'
+        fmt = '{m}m {s}s'
 
     return fmt.format(d=days, h=hours, m=minutes, s=seconds)
 

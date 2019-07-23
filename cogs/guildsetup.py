@@ -15,6 +15,16 @@ class GuildConfiguration(commands.Cog):
     async def cog_command_error(self, ctx, error):
         if isinstance(error, commands.CheckFailure):
             return await ctx.send('\N{WARNING SIGN} You must have `manage_server` permission to run this command.')
+        if not isinstance(error, commands.CommandError):
+            return
+        error = error.original
+        if isinstance(error, commands.CommandOnCooldown):
+            if await self.bot.is_owner(ctx.author):
+                await ctx.reinvoke()
+                return
+            time = formatters.readable_time(error.retry_after)
+            await ctx.send(f'You\'re on cooldown. Please try again in: {time}')
+
         await ctx.send(str(error))
 
     async def match_player(self, player, guild: discord.Guild, prompt=False, ctx=None,
@@ -246,7 +256,7 @@ class GuildConfiguration(commands.Cog):
 
     @commands.command()
     @commands.cooldown(1, 43200, commands.BucketType.guild)
-    async def refresh(self, ctx, *, clans: ClanConverter):
+    async def refresh(self, ctx, *, clans: ClanConverter = None):
         """Manually refresh all players in the database with current donations and received.
 
         Note: it will only update their donations if the
@@ -272,6 +282,8 @@ class GuildConfiguration(commands.Cog):
         `+refresh`
         `+refresh #CLAN_TAG`
         """
+        if not clans:
+            clans = await ctx.get_clans()
         query = """UPDATE players 
                         SET donations=$1, received=$2
                     WHERE player_tag=$3
