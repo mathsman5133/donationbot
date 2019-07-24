@@ -179,7 +179,8 @@ class GuildConfiguration(commands.Cog):
         await ctx.confirm()
 
     @commands.command()
-    async def claim(self, ctx, user: typing.Optional[discord.Member], *, player: PlayerConverter):
+    async def claim(self, ctx, user: typing.Optional[discord.Member] = None, *,
+                    player: PlayerConverter):
         """Link a clash account to your discord account
 
         Parameters

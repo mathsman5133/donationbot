@@ -43,7 +43,8 @@ class DonationBoard(commands.Cog):
 
         self.bot.coc.add_events(
             self.on_clan_member_donation,
-            self.on_clan_member_received
+            self.on_clan_member_received,
+            self.on_clan_member_join
                                 )
         self.bot.coc._clan_retry_interval = 60
         self.bot.coc.start_updates('clan')
@@ -65,6 +66,8 @@ class DonationBoard(commands.Cog):
                 self.on_clan_member_donation)
             self.bot.coc.extra_events['on_clan_member_received'].remove(
                 self.on_clan_member_received)
+            self.bot.coc.extra_events['on_clan_member_join'].remove(
+                self.on_clan_member_join)
         except ValueError:
             pass
 
@@ -271,6 +274,11 @@ class DonationBoard(commands.Cog):
                 'received': received
             })
             self._clan_events.add(clan.tag)
+
+    async def on_clan_member_join(self, member, clan):
+        query = "INSERT INTO players (player_tag, donations, received VALUES ($1,$2,$3) " \
+                "ON CONFLICT (player_tag) DO NOTHING"
+        await self.bot.pool.execute(query, member.tag, member.donations, member.received)
 
     async def get_updates_messages(self, guild_id, number_of_msg=None):
         guild_config = await self.get_guild_config(guild_id)
