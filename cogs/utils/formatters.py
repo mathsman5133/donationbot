@@ -39,8 +39,6 @@ def events_time(delta_seconds):
     return f"{seconds}sec"
 
 
-
-
 class TabularData:
     def __init__(self):
         self._widths = []
@@ -116,7 +114,7 @@ class CLYTable:
         fmt = f"{misc['number']}`⠀{'Dons':\u00A0>6.6}⠀` `⠀{'Rec':\u00A0>5.5}⠀` `⠀{'Name':\u00A0<10.10}⠀`\n"
         for v in self._rows:
             index = int(v[0]) + 1
-            index = number_emojis[index] if index <= 60 else misc['idle']
+            index = number_emojis[index] if index <= 100 else misc['idle']
             fmt += f"{index}`⠀{str(v[1]):\u00A0>6.6}⠀` `⠀{str(v[2]):\u00A0>5.5}⠀` `⠀{str(v[3]):\u00A0<10.10}⠀`\n"
         return fmt
 
@@ -124,7 +122,7 @@ class CLYTable:
         fmt = f"{misc['number']}`⠀{'Dons':\u00A0>6.6}⠀` `⠀{'Name':\u00A0<16.16}⠀`\n"
         for v in self._rows:
             index = int(v[0]) + 1
-            index = number_emojis[index] if index <= 60 else misc['idle']
+            index = number_emojis[index] if index <= 100 else misc['idle']
             fmt += f"{index}`⠀{str(v[1]):\u00A0>6.6}⠀` `⠀{str(v[2]):\u00A0<16.16}⠀`\n"
         return fmt
 
@@ -254,10 +252,7 @@ class DonationsPaginator(TablePaginator):
         async for player in self.bot.coc.get_players(tags):
             player_data = data_by_tag[player.tag]
             if guild_config.donationboard_render == 2:
-                clan_name = await self.bot.donationboard.get_clan_name(self.ctx.guild.id,
-                                                                       player.clan.tag)
-                name = f'{player.name} ({clan_name})'
-                self.table.add_row([player_data[0], player_data[1]['donations'], name])
+                self.table.add_row([player_data[0], player_data[1]['donations'], player.name])
             else:
                 self.table.add_row([player_data[0], player_data[1]['donations'],
                                     player_data[1]['received'], player.name])
