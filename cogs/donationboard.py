@@ -304,6 +304,8 @@ class DonationBoard(commands.Cog):
         guild_config = await self.get_guild_config(guild_id)
         if not guild_config.updates_toggle:
             return
+        if not guild_config.donationboard:
+            return
 
         query = "SELECT DISTINCT clan_tag FROM clans WHERE guild_id=$1"
         fetch = await self.bot.pool.fetch(query, guild_id)
@@ -335,14 +337,14 @@ class DonationBoard(commands.Cog):
             for x, y in enumerate(player_data):
                 index = i*20 + x
                 if guild_config.donationboard_render == 2:
-                    clan_name = await self.bot.donationboard.get_clan_name(guild_id,
-                                                                           players[y.player_tag].clan.tag
-                                                                           )
-                    name = f'{players.get(y.player_tag, MockPlayer()).name} ({clan_name})'
-                    table.add_row([index, y.donations, name])
+                    table.add_row([index,
+                                   y.donations,
+                                   players.get(y.player_tag, MockPlayer()).name])
                 else:
-                    table.add_row([index, y.donations,
-                                   y.received, players.get(y.player_tag, MockPlayer()).name
+                    table.add_row([index,
+                                   y.donations,
+                                   y.received,
+                                   players.get(y.player_tag, MockPlayer()).name
                                    ]
                                   )
 
@@ -352,7 +354,8 @@ class DonationBoard(commands.Cog):
                               description=fmt,
                               timestamp=datetime.utcnow())
             e.set_author(name=guild_config.donationboard_title or 'DonationBoard',
-                         icon_url=guild_config.icon_url or 'https://cdn.discordapp.com/emojis/592028799768592405.png?v=1')
+                         icon_url=guild_config.icon_url or 'https://cdn.discordapp.com/'
+                                                           'emojis/592028799768592405.png?v=1')
             e.set_footer(text='Last Updated')
             await v.edit(embed=e, content=None)
 

@@ -357,8 +357,7 @@ class Events(commands.Cog):
         self.invalidate_channel_config(channel.id)
 
     @log.command(name='toggle')
-    async def log_toggle(self, ctx, channel: typing.Optional[discord.TextChannel],
-                         toggle: bool = True):
+    async def log_toggle(self, ctx, channel: typing.Optional[discord.TextChannel]):
         """Toggle the donation log on/off for your server.
 
         Parameters
@@ -366,12 +365,11 @@ class Events(commands.Cog):
         Pass in any of the following:
 
             • Channel: #channel or a channel id. This defaults to the channel you are in.
-            • Toggle - `True` or `False`
 
         Example
         -----------
-        • `+log toggle #CHANNEL True`
-        • `+log toggle False`
+        • `+log toggle #CHANNEL`
+        • `+log toggle`
 
         Required Perimssions
         ----------------------------
@@ -379,6 +377,8 @@ class Events(commands.Cog):
         """
         if not channel:
             channel = ctx.channel
+        config = await self.get_channel_config(channel.id)
+        toggle = not config.log_toggle  # false if true else false - opposite to what it is now.
 
         query = "UPDATE clans SET log_toggle=$1 WHERE channel_id=$2 RETURNING clan_name"
         fetch = await ctx.db.fetch(query, toggle, channel.id)
