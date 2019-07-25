@@ -275,7 +275,7 @@ class Events(commands.Cog):
             fetch = await ctx.db.fetch(query, ctx.guild.id)
 
         e = discord.Embed(color=self.bot.colour,
-                          description=f'Log info for {channel.mention if channel else ctx.guild.name}')
+                          description=f'Log info for {ctx.guild.name}')
 
         for n in fetch:
             config = DatabaseClan(bot=self.bot, record=n)
@@ -378,6 +378,9 @@ class Events(commands.Cog):
         if not channel:
             channel = ctx.channel
         config = await self.get_channel_config(channel.id)
+        if not config:
+            return await ctx.send('Please setup a log channel with `+help log create` first.')
+
         toggle = not config.log_toggle  # false if true else false - opposite to what it is now.
 
         query = "UPDATE clans SET log_toggle=$1 WHERE channel_id=$2 RETURNING clan_name"
