@@ -274,8 +274,13 @@ class Events(commands.Cog):
             query = "SELECT * from clans WHERE guild_id=$1"
             fetch = await ctx.db.fetch(query, ctx.guild.id)
 
+        if channel:
+            fmt = channel.mention
+        else:
+            fmt = ctx.guild.name
+
         e = discord.Embed(color=self.bot.colour,
-                          description=f'Log info for {ctx.guild.name}')
+                          description=f'Log info for {fmt}')
 
         for n in fetch:
             config = DatabaseClan(bot=self.bot, record=n)
