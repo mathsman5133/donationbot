@@ -238,7 +238,6 @@ class Events(commands.Cog):
         self.channel_config_cache.pop(channel_id, None)
 
     @commands.group(invoke_without_subcommand=True)
-    @checks.manage_guild()
     async def log(self, ctx):
         """Manage the donation log for the server.
 
@@ -248,6 +247,9 @@ class Events(commands.Cog):
         """
         if ctx.invoked_subcommand is None:
             await ctx.send_help(ctx.command)
+        if not ctx.channel.permissions_for(ctx.author).manage_channels \
+                or not await self.bot.is_owner(ctx.author):
+            return
 
     @log.command(name='info')
     async def log_info(self, ctx, channel: typing.Optional[discord.TextChannel] = None):
