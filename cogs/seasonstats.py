@@ -230,7 +230,7 @@ class Season(commands.Cog):
         query = """SELECT command,
                           COUNT(*) as "uses"
                    FROM commands
-                   WHERE user_id=$1
+                   WHERE author_id=$1
                    GROUP BY command
                    ORDER BY "uses" DESC
                    LIMIT 5;
