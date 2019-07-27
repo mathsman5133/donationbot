@@ -94,7 +94,7 @@ class Season(commands.Cog):
                    ORDER BY "donations" DESC
                    LIMIT 5;
                 """
-        fetch = await ctx.db.fetch(query, clan_tags)
+        fetch = await ctx.db.fetch(query, clan_tags, season_id)
         value = '\n'.join(f'{number_emojis[i + 1]}: {name} ({don} donations)'
                           for (i, (name, don)) in enumerate(fetch))
         e.add_field(name='Top Clan Donations',
