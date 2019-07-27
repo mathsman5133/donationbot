@@ -36,7 +36,7 @@ description = "A simple discord bot to track donations of clan families in clash
 
 class DonationBot(commands.Bot):
     def __init__(self):
-        super().__init__(command_prefix=commands.when_mentioned_or('?'), case_insensitive=True,
+        super().__init__(command_prefix=commands.when_mentioned_or('+'), case_insensitive=True,
                          description=description, pm_help=None, help_attrs=dict(hidden=True),
                          fetch_offline_members=True)
 
@@ -139,7 +139,7 @@ class DonationBot(commands.Bot):
             traceback.format_exception(type(error), error, error.__traceback__, chain=False))
         e.description = f'```py\n{exc}\n```'
         e.timestamp = datetime.datetime.utcnow()
-        #await self.error_webhook.send(embed=e)
+        await self.error_webhook.send(embed=e)
         try:
             await ctx.send('Uh oh! Something broke. This error has been reported; '
                            'the owner is working on it. Please join the support server: '
