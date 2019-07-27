@@ -13,18 +13,19 @@ class GuildConfiguration(commands.Cog):
         self.bot = bot
 
     async def cog_command_error(self, ctx, error):
+        error = getattr(error, 'original', error)
+
         if isinstance(error, commands.CheckFailure):
-            return await ctx.send('\N{WARNING SIGN} You must have `manage_server` permission to run this command.')
+            await ctx.send('\N{WARNING SIGN} You must have `manage_server` permission to run this command.')
         if not isinstance(error, commands.CommandError):
             return
-        await ctx.send(str(error))
-        error = error.original
         if isinstance(error, commands.CommandOnCooldown):
-            if await self.bot.is_owner(ctx.author):
-                await ctx.reinvoke()
-                return
+            if ctx.author.id == self.bot.owner_id:
+                return await ctx.reinvoke()
             time = formatters.readable_time(error.retry_after)
-            await ctx.send(f'You\'re on cooldown. Please try again in: {time}')
+            return await ctx.send(f'You\'re on cooldown. Please try again in: {time}')
+        else:
+            await ctx.command.reset_cooldown(ctx)
 
     async def match_player(self, player, guild: discord.Guild, prompt=False, ctx=None,
                            score_cutoff=20, claim=True):
