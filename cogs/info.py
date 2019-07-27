@@ -234,7 +234,7 @@ class Info(commands.Cog):
 
     @commands.Cog.listener()
     async def on_command(self, ctx):
-        command = ctx.message.clean_content
+        command = ctx.command
         self.bot.command_stats[command] += 1
         message = ctx.message
         if ctx.guild is None:

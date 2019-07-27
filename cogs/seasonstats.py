@@ -35,7 +35,7 @@ class Season(commands.Cog):
         fmt = f'{count[0]} events\n{count[2]} donations\n{count[3]} received'
         e.add_field(name='Total Stats',
                     value=fmt,
-                    inline=True)
+                    inline=False)
         e.set_footer(text='First event tracked').timestamp = count[1] or datetime.utcnow()
 
         query = """SELECT command,
@@ -49,8 +49,8 @@ class Season(commands.Cog):
         fetch = await ctx.db.fetch(query, ctx.guild.id)
         value = '\n'.join(f'{number_emojis[i+1]}: {command} ({uses} uses)'
                           for i, (command, uses) in enumerate(fetch))
-        # e.add_field(name='Top Commands',
-        #             value=value)
+        e.add_field(name='Top Commands',
+                    value=value)
         return e
 
     async def build_season_clan_event_stats(self, ctx, clans):
@@ -74,7 +74,7 @@ class Season(commands.Cog):
                           for (i, (name, events)) in enumerate(fetch))
         e.add_field(name='Top Clan Events',
                     value=value,
-                    inline=True
+                    inline=False
                     )
 
         query = """SELECT clans.clan_name,
@@ -92,7 +92,7 @@ class Season(commands.Cog):
                           for (i, (name, don)) in enumerate(fetch))
         e.add_field(name='Top Clan Donations',
                     value=value,
-                    inline=True
+                    inline=False
                     )
 
         query = """SELECT clans.clan_name,
@@ -110,7 +110,7 @@ class Season(commands.Cog):
                           for (i, (name, rec)) in enumerate(fetch))
         e.add_field(name='Top Clan Received',
                     value=value,
-                    inline=True
+                    inline=False
                     )
 
         query = """SELECT player_name,
@@ -127,7 +127,7 @@ class Season(commands.Cog):
                           for (i, (name, events)) in enumerate(fetch))
         e.add_field(name='Top Player Events',
                     value=value,
-                    inline=True
+                    inline=False
                     )
         return e
 
@@ -150,7 +150,7 @@ class Season(commands.Cog):
                           for (i, (name, events)) in enumerate(fetch))
         e.add_field(name='Top 5 Players - By Events',
                     value=value,
-                    inline=True
+                    inline=False
                     )
 
         query = """SELECT player_name,
@@ -166,7 +166,7 @@ class Season(commands.Cog):
                           for (i, (name, don)) in enumerate(fetch))
         e.add_field(name='Top 5 Players - By Donations',
                     value=value,
-                    inline=True
+                    inline=False
                     )
 
         query = """SELECT player_name,
@@ -182,7 +182,7 @@ class Season(commands.Cog):
                           for (i, (name, rec)) in enumerate(fetch))
         e.add_field(name='Top 5 Players - By Received',
                     value=value,
-                    inline=True
+                    inline=False
                     )
         return e
 
