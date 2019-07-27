@@ -25,7 +25,7 @@ class GuildConfiguration(commands.Cog):
             time = formatters.readable_time(error.retry_after)
             return await ctx.send(f'You\'re on cooldown. Please try again in: {time}')
         else:
-            await ctx.command.reset_cooldown(ctx)
+            ctx.command.reset_cooldown(ctx)
 
     async def match_player(self, player, guild: discord.Guild, prompt=False, ctx=None,
                            score_cutoff=20, claim=True):
@@ -299,7 +299,7 @@ class GuildConfiguration(commands.Cog):
     @commands.command()
     @commands.is_owner()
     async def reset_cooldown(self, ctx):
-        await self.refresh.reset_cooldown(ctx)
+        self.refresh.reset_cooldown(ctx)
         await ctx.confirm()
 
     @commands.command()
