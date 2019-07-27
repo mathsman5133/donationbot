@@ -309,8 +309,9 @@ class Season(commands.Cog):
 
     @commands.group(invoke_without_subcommand=True)
     async def season(self, ctx):
+        """:x: This command is under construction!"""
         if ctx.invoked_subcommand is None:
-            await ctx.show_help(ctx.command)
+            await ctx.send_help(ctx.command)
 
     @season.group(name='stats')
     async def season_stats(self, ctx, season: typing.Optional[int] = None,
@@ -330,7 +331,7 @@ class Season(commands.Cog):
         season = season or await self.bot.seasonconfig.get_season_id()
 
         query = "SELECT player_tag FROM players WHERE user_id=$1"
-        fetch = await ctx.db.fetch(query, user.id)
+        fetch = await ctx.db.fetchrow(query, user.id)
         if not fetch:
             return await ctx.send(f'{user} doesn\'t have any claimed accounts.')
 
