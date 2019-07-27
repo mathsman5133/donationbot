@@ -246,7 +246,7 @@ class Events(commands.Cog):
         • `manage_server` permissions
         """
         if ctx.invoked_subcommand is None:
-            await ctx.send_help(ctx.command)
+            return await ctx.send_help(ctx.command)
         if not ctx.channel.permissions_for(ctx.author).manage_channels \
                 or not await self.bot.is_owner(ctx.author):
             return

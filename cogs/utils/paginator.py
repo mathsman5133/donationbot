@@ -2,8 +2,10 @@ import asyncio
 import discord
 from discord.ext.commands import Paginator as CommandPaginator
 
+
 class CannotPaginate(Exception):
     pass
+
 
 class Pages:
     """Implements a paginator that queries the user for the
@@ -316,3 +318,10 @@ class MessagePaginator(Pages):
 
         return '\n'.join(p)
 
+
+class SeasonStatsPaginator(Pages):
+    def __init__(self, ctx, entries):
+        super().__init__(ctx, entries=entries, per_page=1)
+
+    def get_embed(self, entries, page, *, first=False):
+        return self.entries[page - 1]
