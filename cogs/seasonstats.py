@@ -330,7 +330,7 @@ class Season(commands.Cog):
         user = user or ctx.author
         season = season or await self.bot.seasonconfig.get_season_id()
 
-        query = "SELECT player_tag FROM players WHERE user_id=$1"
+        query = "SELECT * FROM players WHERE user_id=$1"
         fetch = await ctx.db.fetchrow(query, user.id)
         if not fetch:
             return await ctx.send(f'{user} doesn\'t have any claimed accounts.')

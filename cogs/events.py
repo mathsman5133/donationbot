@@ -287,7 +287,7 @@ class Events(commands.Cog):
         for n in fetch:
             config = DatabaseClan(bot=self.bot, record=n)
             fmt = f"Tag: {config.clan_tag}\n"
-            fmt += f"Channel: {config.channel.mention}\n"
+            fmt += f"Channel: {config.channel.mention if config.channel else 'None'}\n"
             fmt += f"Log Toggle: {'enabled' if config.log_toggle else 'disabled'}\n"
             fmt += f"Log Interval: {config.interval_seconds} seconds\n"
             e.add_field(name=n['clan_name'],
