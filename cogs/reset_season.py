@@ -6,7 +6,7 @@ from dateutil import relativedelta
 from discord.ext import commands
 
 
-class SeasonSettings(commands.Cog):
+class SeasonConfig(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.season_id = 0

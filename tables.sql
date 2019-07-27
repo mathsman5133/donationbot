@@ -6,7 +6,8 @@ CREATE TABLE players (
     received INTEGER,
     user_id BIGINT,
     clan_tag TEXT,
-    last_updated TIMESTAMP
+    last_updated TIMESTAMP,
+    season integer
     );
 
 CREATE TABLE clans (
@@ -24,21 +25,12 @@ CREATE TABLE guilds (
     id serial PRIMARY KEY,
 
     guild_id BIGINT UNIQUE,
-    log_channel_id BIGINT,
-    log_toggle BOOLEAN,
     updates_channel_id BIGINT,
     icon_url TEXT,
     donationboard_title TEXT,
     donationboard_render INTEGER,
     updates_toggle BOOLEAN,
-    updates_ign BOOLEAN,
-    updates_don BOOLEAN,
-    updates_rec BOOLEAN,
-    updates_tag BOOLEAN,
-    updates_claimed_by BOOLEAN,
-    updates_clan BOOLEAN,
-    auto_claim BOOLEAN,
-    log_interval INTERVAL DEFAULT (0 ||' minutes')::interval
+    auto_claim BOOLEAN
     );
 
 CREATE TABLE messages (
@@ -71,13 +63,20 @@ CREATE TABLE events (
     donations INTEGER,
     received INTEGER,
     time TIMESTAMP,
-    reported BOOLEAN DEFAULT False
-    )
+    reported BOOLEAN DEFAULT False,
+    season integer
+);
 
 CREATE TABLE log_timers (
     id serial primary key,
 
-    guild_id bigint,
     fmt text,
-    expires timestamp
-)
+    expires timestamp,
+    channel_id bigint
+);
+
+CREATE TABLE seasons (
+    id serial primary key,
+    start timestamp,
+    finish timestamp
+);

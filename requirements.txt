@@ -1,3 +1,4 @@
-discord.py>=1.1
+discord.py
 coc.py==0.2.1
 asyncpg
+python-datetutil

@@ -22,20 +22,21 @@ log = logging.getLogger(__name__)
 coc_client = coc.login(creds.email, creds.password, client=coc.EventsClient,
                        key_names='test', throttle_limit=40)
 
-initial_extensions = [
+initial_extensions = (
     'cogs.guildsetup',
     'cogs.donations',
     'cogs.events',
     'cogs.donationboard',
     'cogs.admin',
-    'cogs.info'
-]
+    'cogs.info',
+    'cogs.seasonstats'
+)
 description = "A simple discord bot to track donations of clan families in clash of clans."
 
 
 class DonationBot(commands.Bot):
     def __init__(self):
-        super().__init__(command_prefix=commands.when_mentioned_or('+'), case_insensitive=True,
+        super().__init__(command_prefix=commands.when_mentioned_or('?'), case_insensitive=True,
                          description=description, pm_help=None, help_attrs=dict(hidden=True),
                          fetch_offline_members=True)
 
@@ -67,11 +68,8 @@ class DonationBot(commands.Bot):
         for e in initial_extensions:
             try:
                 self.load_extension(e)  # load cogs
-            except Exception as er:
-                exc = ''.join(traceback.format_exception(type(er),
-                                                         er, er.__traceback__, chain=False))
-                print(exc)
-                print(f'Failed to load extension {e}: {er}.', file=sys.stderr)
+            except Exception:
+                traceback.print_exc()
 
     @property
     def donationboard(self):
@@ -80,6 +78,10 @@ class DonationBot(commands.Bot):
     @property
     def events(self):
         return self.get_cog('Events')
+
+    @property
+    def seasonconfig(self):
+        return self.get_cog('SeasonConfig')
 
     async def on_message(self, message):
         if message.author.bot:
@@ -137,7 +139,7 @@ class DonationBot(commands.Bot):
             traceback.format_exception(type(error), error, error.__traceback__, chain=False))
         e.description = f'```py\n{exc}\n```'
         e.timestamp = datetime.datetime.utcnow()
-        await self.error_webhook.send(embed=e)
+        #await self.error_webhook.send(embed=e)
         try:
             await ctx.send('Uh oh! Something broke. This error has been reported; '
                            'the owner is working on it. Please join the support server: '

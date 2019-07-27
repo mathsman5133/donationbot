@@ -329,7 +329,7 @@ class Season(commands.Cog):
     async def season_stats_user(self, ctx, season: typing.Optional[int] = None,
                                 *, user: discord.Member = None):
         user = user or ctx.author
-        season = season or await self.bot.reset_season.get_season_id()
+        season = season or await self.bot.seasonconfig.get_season_id()
 
         entries = self.season_stats_user_entries.get(user.id)
         if not entries:
@@ -346,7 +346,7 @@ class Season(commands.Cog):
     @season_stats.command(name='guild', aliases=['server'])
     async def season_stats_guild(self, ctx, season: typing.Optional[int] = None,
                                  *, clan: ClanConverter):
-        season = season or await self.bot.reset_season.get_season_id()
+        season = season or await self.bot.seasonconfig.get_season_id()
         entries = self.season_stats_guild_entries.get(ctx.guild.id)
         if not entries:
             entries = [
