@@ -27,4 +27,4 @@ class SeasonConfig(commands.Cog):
 
 
 def setup(bot):
-    bot.add_cog(SeasonSettings(bot))
+    bot.add_cog(SeasonConfig(bot))
