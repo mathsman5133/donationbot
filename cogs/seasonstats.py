@@ -88,7 +88,6 @@ class Season(commands.Cog):
                    FROM events
                    INNER JOIN clans
                         ON events.clan_tag=clans.clan_tag
-                        AND events.season_id=players.season_id
                    WHERE events.clan_tag=ANY($1::TEXT[])
                    AND events.season_id=$2
                    GROUP BY clans.clan_name
@@ -108,7 +107,6 @@ class Season(commands.Cog):
                    FROM events
                    INNER JOIN clans
                         ON events.clan_tag=clans.clan_tag
-                        AND events.season_id=players.season_id
                    WHERE events.clan_tag=ANY($1::TEXT[])
                    AND events.season_id=$2
                    GROUP BY clans.clan_name
