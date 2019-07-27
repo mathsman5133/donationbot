@@ -329,6 +329,11 @@ class Season(commands.Cog):
         user = user or ctx.author
         season = season or await self.bot.seasonconfig.get_season_id()
 
+        query = "SELECT player_tag FROM players WHERE user_id=$1"
+        fetch = await ctx.db.fetch(query, user.id)
+        if not fetch:
+            return await ctx.send(f'{user} doesn\'t have any claimed accounts.')
+
         entries = self.season_stats_user_entries.get(user.id)
         if not entries:
             entries = [
@@ -343,6 +348,8 @@ class Season(commands.Cog):
     @season_stats.command(name='guild', aliases=['server'])
     async def season_stats_guild(self, ctx, season: typing.Optional[int] = None,
                                  *, clan: ClanConverter):
+        if not clan:
+            return await ctx.send('No claimed clans.')
         season = season or await self.bot.seasonconfig.get_season_id()
         entries = self.season_stats_guild_entries.get(ctx.guild.id)
         if not entries:
