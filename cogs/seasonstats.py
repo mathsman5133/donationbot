@@ -53,7 +53,7 @@ class Season(commands.Cog):
                 """
         fetch = await ctx.db.fetch(query, ctx.guild.id)
         value = '\n'.join(f'{number_emojis[i+1]}: {command} ({uses} uses)'
-                          for i, (command, uses) in enumerate(fetch))
+                          for i, (command, uses) in enumerate(fetch)) or 'No Commands.'
         e.add_field(name='Top Commands',
                     value=value)
         return e
@@ -77,7 +77,7 @@ class Season(commands.Cog):
         fetch = await ctx.db.fetch(query, clan_tags, season_id)
 
         value = '\n'.join(f'{number_emojis[i + 1]}: {name} ({events} events)'
-                          for (i, (name, events)) in enumerate(fetch))
+                          for (i, (name, events)) in enumerate(fetch)) or 'No Clans'
         e.add_field(name='Top Clan Events',
                     value=value,
                     inline=False
@@ -96,7 +96,7 @@ class Season(commands.Cog):
                 """
         fetch = await ctx.db.fetch(query, clan_tags, season_id)
         value = '\n'.join(f'{number_emojis[i + 1]}: {name} ({don} donations)'
-                          for (i, (name, don)) in enumerate(fetch))
+                          for (i, (name, don)) in enumerate(fetch)) or 'No Clans'
         e.add_field(name='Top Clan Donations',
                     value=value,
                     inline=False
@@ -115,7 +115,7 @@ class Season(commands.Cog):
                 """
         fetch = await ctx.db.fetch(query, clan_tags, season_id)
         value = '\n'.join(f'{number_emojis[i + 1]}: {name} ({rec} received)'
-                          for (i, (name, rec)) in enumerate(fetch))
+                          for (i, (name, rec)) in enumerate(fetch)) or 'No Clans'
         e.add_field(name='Top Clan Received',
                     value=value,
                     inline=False
@@ -133,7 +133,7 @@ class Season(commands.Cog):
         fetch = await ctx.db.fetch(query, clan_tags, season_id)
 
         value = '\n'.join(f'{number_emojis[i + 1]}: {name} ({events} events)'
-                          for (i, (name, events)) in enumerate(fetch))
+                          for (i, (name, events)) in enumerate(fetch)) or 'No Players'
         e.add_field(name='Top Player Events',
                     value=value,
                     inline=False
@@ -157,7 +157,7 @@ class Season(commands.Cog):
         fetch = await ctx.db.fetch(query, clan_tags, season_id)
 
         value = '\n'.join(f'{number_emojis[i + 1]}: {name} ({events} events)'
-                          for (i, (name, events)) in enumerate(fetch))
+                          for (i, (name, events)) in enumerate(fetch)) or 'No Players'
         e.add_field(name='Top 5 Players - By Events',
                     value=value,
                     inline=False
@@ -177,7 +177,7 @@ class Season(commands.Cog):
                 """
         fetch = await ctx.db.fetch(query, clan_tags, season_id)
         value = '\n'.join(f'{number_emojis[i + 1]}: {name} ({don} donations)'
-                          for (i, (name, don)) in enumerate(fetch))
+                          for (i, (name, don)) in enumerate(fetch)) or 'No Players'
         e.add_field(name='Top 5 Players - By Donations',
                     value=value,
                     inline=False
@@ -197,7 +197,7 @@ class Season(commands.Cog):
                 """
         fetch = await ctx.db.fetch(query, clan_tags, season_id)
         value = '\n'.join(f'{number_emojis[i + 1]}: {name} ({rec} received)'
-                          for (i, (name, rec)) in enumerate(fetch))
+                          for (i, (name, rec)) in enumerate(fetch)) or 'No Players'
         e.add_field(name='Top 5 Players - By Received',
                     value=value,
                     inline=False
@@ -237,7 +237,7 @@ class Season(commands.Cog):
                 """
         fetch = await ctx.db.fetch(query, ctx.guild.id)
         value = '\n'.join(f'{number_emojis[i+1]}: {command} ({uses} uses)'
-                          for i, (command, uses) in enumerate(fetch))
+                          for i, (command, uses) in enumerate(fetch)) or 'No Commands.'
         e.add_field(name='Top Commands',
                     value=value)
         return e
@@ -260,7 +260,7 @@ class Season(commands.Cog):
         fetch = await ctx.db.fetch(query, user.id, season_id)
 
         value = '\n'.join(f'{number_emojis[i + 1]}: {name} ({events} events)'
-                          for (i, (name, events)) in enumerate(fetch))
+                          for (i, (name, events)) in enumerate(fetch)) or 'No Players.'
         e.add_field(name='Top 5 Players - By Events',
                     value=value,
                     inline=False
@@ -280,7 +280,7 @@ class Season(commands.Cog):
                 """
         fetch = await ctx.db.fetch(query, user.id, season_id)
         value = '\n'.join(f'{number_emojis[i + 1]}: {name} ({don} donations)'
-                          for (i, (name, don)) in enumerate(fetch))
+                          for (i, (name, don)) in enumerate(fetch)) or 'No Players'
         e.add_field(name='Top 5 Players - By Donations',
                     value=value,
                     inline=False
@@ -300,7 +300,7 @@ class Season(commands.Cog):
                 """
         fetch = await ctx.db.fetch(query, user.id, season_id)
         value = '\n'.join(f'{number_emojis[i + 1]}: {name} ({rec} received)'
-                          for (i, (name, rec)) in enumerate(fetch))
+                          for (i, (name, rec)) in enumerate(fetch)) or 'No Players'
         e.add_field(name='Top 5 Players - By Received',
                     value=value,
                     inline=False
