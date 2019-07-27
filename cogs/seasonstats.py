@@ -321,7 +321,7 @@ class Season(commands.Cog):
         if isinstance(arg, list):
             await ctx.invoke(self.season_stats_guild, clan=arg, season=season)
         if isinstance(arg, discord.Member):
-            await ctx.invoked(self.season_stats_user, user=arg, season=season)
+            await ctx.invoke(self.season_stats_user, user=arg, season=season)
 
     @season_stats.command(name='user')
     async def season_stats_user(self, ctx, season: typing.Optional[int] = None,
