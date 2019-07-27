@@ -153,12 +153,14 @@ class Season(commands.Cog):
                     inline=False
                     )
 
-        query = """SELECT player_name,
-                          SUM(donations) AS "donations"
-                   FROM events
-                   WHERE clan_tag=ANY($1::TEXT[])
-                   GROUP BY player_name
-                   ORDER BY "donations" DESC
+        query = """SELECT events.player_name,
+                          players.donations
+                   FROM players
+                   INNER JOIN events 
+                        ON events.player_tag=players.player_tag
+                   WHERE events.clan_tag=ANY($1::TEXT[])
+                   GROUP BY players.player_tag
+                   ORDER BY players.donations DESC
                    LIMIT 5;
                 """
         fetch = await ctx.db.fetch(query, clan_tags)
@@ -169,12 +171,14 @@ class Season(commands.Cog):
                     inline=False
                     )
 
-        query = """SELECT player_name,
-                          SUM(received) AS "received"
-                   FROM events
-                   WHERE clan_tag=ANY($1::TEXT[])
-                   GROUP BY player_name
-                   ORDER BY "received" DESC
+        query = """SELECT events.player_name,
+                          players.received
+                   FROM players
+                   INNER JOIN events 
+                        ON events.player_tag=players.player_tag
+                   WHERE events.clan_tag=ANY($1::TEXT[])
+                   GROUP BY players.player_tag
+                   ORDER BY players.received DESC
                    LIMIT 5;
                 """
         fetch = await ctx.db.fetch(query, clan_tags)
