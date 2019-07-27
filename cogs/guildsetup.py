@@ -297,6 +297,12 @@ class GuildConfiguration(commands.Cog):
         await ctx.confirm()
 
     @commands.command()
+    @commands.is_owner()
+    async def reset_cooldown(self, ctx):
+        await self.refresh.reset_cooldown(ctx)
+        await ctx.confirm()
+
+    @commands.command()
     async def accounts(self, ctx, *, clans: ClanConverter = None):
         """Get accounts and claims for all accounts in clans in a server.
 
