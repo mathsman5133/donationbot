@@ -14,7 +14,7 @@ class Season(commands.Cog):
         self.bot = bot
 
     async def cog_command_error(self, ctx, error):
-        await ctx.send(error)
+        await ctx.send(str(error))
         traceback.print_exc()
 
     async def build_season_clan_misc_stats(self, ctx, clans):
@@ -49,8 +49,8 @@ class Season(commands.Cog):
         fetch = await ctx.db.fetch(query, ctx.guild.id)
         value = '\n'.join(f'{number_emojis[i+1]}: {command} ({uses} uses)'
                           for i, (command, uses) in enumerate(fetch))
-        e.add_field(name='Top Commands',
-                    value=value)
+        # e.add_field(name='Top Commands',
+        #             value=value)
         return e
 
     async def build_season_clan_event_stats(self, ctx, clans):
