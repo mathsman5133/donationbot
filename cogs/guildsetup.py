@@ -288,8 +288,8 @@ class GuildConfiguration(commands.Cog):
         query = """UPDATE players 
                         SET donations=$1, received=$2
                     WHERE player_tag=$3
-                    AND donations<$1
-                    AND received<$2
+                    AND donations<=$1
+                    AND received<=$2
                 """
         for clan in clans:
             for member in clan.members:
