@@ -164,7 +164,7 @@ class Season(commands.Cog):
                     )
 
         query = """SELECT events.player_name,
-                          SUM(players.donations)
+                          SUM(players.donations) as "donations"
                    FROM players
                    INNER JOIN events 
                         ON events.player_tag=players.player_tag
@@ -172,7 +172,7 @@ class Season(commands.Cog):
                    WHERE events.clan_tag=ANY($1::TEXT[])
                    AND events.season_id=$2
                    GROUP BY events.player_name
-                   ORDER BY players.donations DESC
+                   ORDER BY "donations" DESC
                    LIMIT 5;
                 """
         fetch = await ctx.db.fetch(query, clan_tags, season_id)
@@ -184,7 +184,7 @@ class Season(commands.Cog):
                     )
 
         query = """SELECT events.player_name,
-                          SUM(players.received)
+                          SUM(players.received) as "received"
                    FROM players
                    INNER JOIN events 
                         ON events.player_tag=players.player_tag
@@ -192,7 +192,7 @@ class Season(commands.Cog):
                    WHERE events.clan_tag=ANY($1::TEXT[])
                    AND events.season_id=$2
                    GROUP BY events.player_name
-                   ORDER BY players.received DESC
+                   ORDER BY "received" DESC
                    LIMIT 5;
                 """
         fetch = await ctx.db.fetch(query, clan_tags, season_id)
@@ -267,7 +267,7 @@ class Season(commands.Cog):
                     )
 
         query = """SELECT events.player_name,
-                          SUM(players.donations)
+                          SUM(players.donations) as "donations"
                    FROM players
                    INNER JOIN events 
                         ON events.player_tag=players.player_tag
@@ -275,7 +275,7 @@ class Season(commands.Cog):
                    WHERE players.user_id=$1
                    AND events.season_id=$2
                    GROUP BY events.player_name
-                   ORDER BY players.donations DESC
+                   ORDER BY "donations" DESC
                    LIMIT 5;
                 """
         fetch = await ctx.db.fetch(query, user.id, season_id)
@@ -287,7 +287,7 @@ class Season(commands.Cog):
                     )
 
         query = """SELECT events.player_name,
-                          SUM(players.received)
+                          SUM(players.received) as "received"
                    FROM players
                    INNER JOIN events 
                         ON events.player_tag=players.player_tag
@@ -295,7 +295,7 @@ class Season(commands.Cog):
                    WHERE players.user_id=$1
                    AND events.season_id=$2
                    GROUP BY events.player_name
-                   ORDER BY players.received DESC
+                   ORDER BY "received" DESC
                    LIMIT 5;
                 """
         fetch = await ctx.db.fetch(query, user.id, season_id)
