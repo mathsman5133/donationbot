@@ -164,7 +164,7 @@ class Season(commands.Cog):
                     )
 
         query = """SELECT events.player_name,
-                          SUM(players.donations) as "donations"
+                          SUM(DISTINCT players.donations) as "donations"
                    FROM players
                    INNER JOIN events 
                         ON events.player_tag=players.player_tag
@@ -184,7 +184,7 @@ class Season(commands.Cog):
                     )
 
         query = """SELECT events.player_name,
-                          SUM(players.received) as "received"
+                          SUM(DISTINCT players.received) as "received"
                    FROM players
                    INNER JOIN events 
                         ON events.player_tag=players.player_tag
@@ -267,7 +267,7 @@ class Season(commands.Cog):
                     )
 
         query = """SELECT events.player_name,
-                          SUM(players.donations) as "donations"
+                          SUM(DISTINCT players.donations) as "donations"
                    FROM players
                    INNER JOIN events 
                         ON events.player_tag=players.player_tag
@@ -287,7 +287,7 @@ class Season(commands.Cog):
                     )
 
         query = """SELECT events.player_name,
-                          SUM(players.received) as "received"
+                          SUM(DISTINCT players.received) as "received"
                    FROM players
                    INNER JOIN events 
                         ON events.player_tag=players.player_tag
