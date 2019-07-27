@@ -252,7 +252,7 @@ class Season(commands.Cog):
                         ON players.player_tag=events.player_tag
                         AND players.season_id=events.season_id
                    WHERE players.user_id=$1
-                   AND season_id=$2
+                   AND events.season_id=$2
                    GROUP BY player_name
                    ORDER BY "uses" DESC
                    LIMIT 5;
