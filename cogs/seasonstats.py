@@ -332,9 +332,8 @@ class Season(commands.Cog):
         entries = self.season_stats_user_entries.get(user.id)
         if not entries:
             entries = [
-                await self.build_season_clan_misc_stats(ctx, user, season),
-                await self.build_season_clan_event_stats(ctx, user, season),
-                await self.build_season_clan_player_stats(ctx, user, season)
+                await self.build_season_user_misc_stats(ctx, user, season),
+                await self.build_season_user_player_stats(ctx, user, season),
             ]
             self.season_stats_user_entries[user.id] = entries
 
