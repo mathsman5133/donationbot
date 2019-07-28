@@ -9,7 +9,7 @@ import typing
 from datetime import datetime
 from discord.ext import commands, tasks
 from cogs.donations import ArgConverter, ClanConverter, PlayerConverter
-from cogs.utils import formatters, checks, emoji_lookup
+from cogs.utils import formatters, emoji_lookup
 from cogs.utils.db_objects import DatabaseEvent, DatabaseClan
 
 log = logging.getLogger(__name__)
@@ -110,28 +110,33 @@ class Events(commands.Cog):
                       n in await self.bot.pool.fetch(query, n[0])
                       ]
 
-            table = formatters.CLYTable()
+            messages = []
             for x in events:
-                emoji = emoji_lookup.misc['donated'] \
-                    if x.donations else emoji_lookup.misc['received']
-                table.add_row([
-                    emoji,
-                    x.donations if x.donations else x.received,
-                    x.player_name,
-                    channel_config.clan_name
-                ]
-                )
-            split = table.render_events_log().split('\n')
-            new_table_renders = []
-            for i in range(math.ceil(len(split) / 21)):
-                new_table_renders.append(split[i*21:(i+1)*21])
+                if x.donations:
+                    emoji = emoji_lookup.misc['donated']
+                    if x.donations <= 100:
+                        number = emoji_lookup.number_emojis[x.donations]
+                    else:
+                        number = str(x.donations)
+                else:
+                    emoji = emoji_lookup.misc['received']
+                    if x.received <= 100:
+                        number = emoji_lookup.number_emojis[x.received]
+                    else:
+                        number = str(x.received)
+                clan_name = await self.bot.donationboard.get_clan_name(channel_config.guild_id,
+                                                                       x.clan_tag)
+                fmt = f'{x.player_name} {emoji} {number} ({clan_name})'
+                messages.append(fmt)
 
-            fmt = f"Recent Events for {channel_config.clan_name}\n"
-            for x in new_table_renders:
-                fmt += '\n'.join(x)
+            group_batch = []
+            for i in range(math.ceil(len(messages) / 20)):
+                group_batch.append(group_batch[i*20:(i+1)*20])
+
+            for x in group_batch:
+                fmt = '\n'.join(x)
                 fmt += f"\nKey: {emoji_lookup.misc['donated']} - Donated," \
-                    f" {emoji_lookup.misc['received']} - Received," \
-                    f" {emoji_lookup.misc['number']} - Number of troops."
+                    f" {emoji_lookup.misc['received']} - Received,"
 
                 interval = channel_config.log_interval - events[0].delta_since
                 if interval.total_seconds() > 0:
@@ -142,7 +147,7 @@ class Events(commands.Cog):
                                                     datetime.utcnow() + interval
                                                     )
                 else:
-                    await self.bot.channel_log(n[0], fmt)
+                    await self.bot.channel_log(n[0], fmt, embed=False)
 
         query = """UPDATE events
                         SET reported=True
@@ -154,7 +159,7 @@ class Events(commands.Cog):
 
     async def short_timer(self, seconds, channel_id, fmt):
         await asyncio.sleep(seconds)
-        await self.bot.channel_log(channel_id, fmt)
+        await self.bot.channel_log(channel_id, fmt, embed=False)
         log.info('Sent a log to channel ID: %s after sleeping for %s', channel_id, seconds)
 
     async def check_for_timers(self):
@@ -170,7 +175,7 @@ class Events(commands.Cog):
                     to_sleep = (fetch['expires'] - now).total_seconds()
                     await asyncio.sleep(to_sleep)
 
-                await self.bot.channel_log(fetch['channel_id'], fetch['fmt'])
+                await self.bot.channel_log(fetch['channel_id'], fetch['fmt'], embed=False)
                 log.info('Sent a log to channel ID: %s which had been saved to DB.',
                          fetch['channel_id'])
 

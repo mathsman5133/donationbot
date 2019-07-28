@@ -1,5 +1,6 @@
 import asyncio
 import discord
+import inspect
 from discord.ext.commands import Paginator as CommandPaginator
 
 
@@ -224,6 +225,9 @@ class Pages:
                 return True
         return False
 
+    async def callback(self):
+        pass
+
     async def paginate(self):
         """Actually paginate the entries and run the interactive loop if necessary."""
         first_page = self.show_page(1, first=True)
@@ -251,6 +255,9 @@ class Pages:
                 pass # can't remove it so don't bother doing so
 
             await self.match()
+
+        await self.callback()
+        return
 
 class FieldPages(Pages):
     """Similar to Pages except entries should be a list of
@@ -324,4 +331,13 @@ class SeasonStatsPaginator(Pages):
         super().__init__(ctx, entries=entries, per_page=1)
 
     def get_embed(self, entries, page, *, first=False):
+        entry = self.entries[page - 1]
+        if inspect.isawaitable(entry):
+            self.entries[page - 1] = await entry
+
         return self.entries[page - 1]
+
+    async def callback(self):
+        for i, v in enumerate(self.entries):
+            if inspect.isawaitable(v):
+                self.entries[i] = await v

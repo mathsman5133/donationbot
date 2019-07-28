@@ -338,13 +338,13 @@ class Season(commands.Cog):
         entries = self.season_stats_user_entries.get(user.id)
         if not entries:
             entries = [
-                await self.build_season_user_misc_stats(ctx, user, season),
-                await self.build_season_user_player_stats(ctx, user, season),
+                self.build_season_user_misc_stats(ctx, user, season),
+                self.build_season_user_player_stats(ctx, user, season),
             ]
-            self.season_stats_user_entries[user.id] = entries
 
         p = SeasonStatsPaginator(ctx, entries=entries)
         await p.paginate()
+        self.season_stats_guild_entries[ctx.guild.id] = p.entries
 
     @season_stats.command(name='guild', aliases=['server'])
     async def season_stats_guild(self, ctx, season: typing.Optional[int] = None,
@@ -353,16 +353,17 @@ class Season(commands.Cog):
             return await ctx.send('No claimed clans.')
         season = season or await self.bot.seasonconfig.get_season_id()
         entries = self.season_stats_guild_entries.get(ctx.guild.id)
+
         if not entries:
             entries = [
-                await self.build_season_clan_misc_stats(ctx, clan, season),
-                await self.build_season_clan_event_stats(ctx, clan, season),
-                await self.build_season_clan_player_stats(ctx, clan, season)
+                self.build_season_clan_misc_stats(ctx, clan, season),
+                self.build_season_clan_event_stats(ctx, clan, season),
+                self.build_season_clan_player_stats(ctx, clan, season)
             ]
-            self.season_stats_guild_entries[ctx.guild.id] = entries
 
         p = SeasonStatsPaginator(ctx, entries=entries)
         await p.paginate()
+        self.season_stats_guild_entries[ctx.guild.id] = p.entries
 
 
 def setup(bot):

@@ -189,16 +189,22 @@ class DonationBot(commands.Bot):
                     return msg.id
         return msg.id
 
-    async def channel_log(self, channel_id, message, colour=None):
+    async def channel_log(self, channel_id, message, colour=None, embed=True):
         channel_config = await self.events.get_channel_config(channel_id)
         if not channel_config.channel or not channel_config.log_toggle:
             return
 
-        e = discord.Embed(colour=colour or self.colour,
-                          description=message,
-                          timestamp=datetime.datetime.utcnow())
+        if embed:
+            e = discord.Embed(colour=colour or self.colour,
+                              description=message,
+                              timestamp=datetime.datetime.utcnow())
+            c = None
+        else:
+            e = None
+            c = message
+
         try:
-            await channel_config.channel.send(embed=e)
+            await channel_config.channel.send(content=c, embed=e)
         except (discord.Forbidden, discord.HTTPException):
             return
 

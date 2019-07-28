@@ -7,8 +7,11 @@ CREATE TABLE players (
     user_id BIGINT,
     clan_tag TEXT,
     last_updated TIMESTAMP,
-    season integer
+    season_id integer
     );
+create index player_tag_idx on players (player_tag);
+create index user_id_idx on players (user_id);
+create index season_idx on players (season_id)
 
 CREATE TABLE clans (
     id serial PRIMARY KEY,
@@ -32,6 +35,7 @@ CREATE TABLE guilds (
     updates_toggle BOOLEAN,
     auto_claim BOOLEAN
     );
+create index guild_id_idx on guilds (guild_id);
 
 CREATE TABLE messages (
     id serial PRIMARY KEY,
@@ -41,6 +45,7 @@ CREATE TABLE messages (
     channel_id BIGINT
 
     );
+create index guild_id_idx on messages (guild_id);
 
 CREATE TABLE commands (
     id serial PRIMARY KEY,
@@ -53,6 +58,8 @@ CREATE TABLE commands (
     command TEXT,
     failed BOOLEAN
 );
+create index author_id_idx on commands (author_id);
+create index guild_id_idx on commands (guild_id);
 
 CREATE TABLE events (
     id serial PRIMARY KEY,
@@ -64,8 +71,12 @@ CREATE TABLE events (
     received INTEGER,
     time TIMESTAMP,
     reported BOOLEAN DEFAULT False,
-    season integer
+    season_id integer
 );
+create index player_tag_idx on events (player_tag);
+create index clan_tag_idx on events (clan_tag);
+create index reported_idx on events (reported);
+create index season_id_idx on events (season_id);
 
 CREATE TABLE log_timers (
     id serial primary key,
@@ -80,3 +91,4 @@ CREATE TABLE seasons (
     start timestamp,
     finish timestamp
 );
+create index start_idx on seasons (start);
