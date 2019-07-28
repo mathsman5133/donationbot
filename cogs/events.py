@@ -126,7 +126,7 @@ class Events(commands.Cog):
                         number = str(x.received)
                 clan_name = await self.bot.donationboard.get_clan_name(channel_config.guild_id,
                                                                        x.clan_tag)
-                fmt = f'{x.player_name} {emoji} {number} ({clan_name})\n'
+                fmt = f'{emoji_lookup.misc["idle"]}{x.player_name} {emoji} {number} ({clan_name})'
                 messages.append(fmt)
 
             group_batch = []
