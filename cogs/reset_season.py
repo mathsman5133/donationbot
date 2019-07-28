@@ -14,7 +14,7 @@ class SeasonConfig(commands.Cog):
 
     async def get_season_id(self):
         if not self.season_id:
-            query = "SELECT id FROM seasons WHERE start < CURRENT_TIMESTAMP < finish " \
+            query = "SELECT id FROM seasons WHERE start < CURRENT_TIMESTAMP " \
                     "ORDER BY start DESC LIMIT 1;"
             fetch = await self.bot.pool.fetchrow(query)
             if not fetch:
