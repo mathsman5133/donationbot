@@ -8,6 +8,7 @@ from discord.ext import commands
 from cogs.donations import ClanConverter
 from cogs.utils.emoji_lookup import number_emojis
 from cogs.utils.paginator import SeasonStatsPaginator
+from cogs.utils.formatters import TabularData, readable_time
 
 
 class Season(commands.Cog):
@@ -312,6 +313,25 @@ class Season(commands.Cog):
         """:x: This command is under construction!"""
         if ctx.invoked_subcommand is None:
             await ctx.send_help(ctx.command)
+
+    @season.command(name='info')
+    async def season_info(self, ctx):
+        query = "SELECT id, start, finish FROM seasons ORDER BY id DESC"
+        fetch = await ctx.db.fetch(query)
+        table = TabularData()
+        table.set_columns(['ID', 'Start', 'Finish'])
+        for n in fetch:
+            table.add_row([n[0], n[1].strftime('%d-%b-%Y'), n[2].strftime('%d-%b-%Y')])
+
+        e = discord.Embed(colour=self.bot.colour,
+                          description=table.render(),
+                          title='Season Info',
+                          timestamp=datetime.utcnow()
+                          )
+        e.add_field(name='Current Season',
+                    value=readable_time(fetch[0][2] - fetch[0][1]),
+                    inline=False)
+        await ctx.send(embed=e)
 
     @season.group(name='stats')
     async def season_stats(self, ctx, season: typing.Optional[int] = None,
