@@ -80,14 +80,14 @@ class Pages:
             if not self.permissions.read_message_history:
                 raise CannotPaginate('Bot does not have Read Message History permission.')
 
-    def get_page(self, page):
+    async def get_page(self, page):
         base = (page - 1) * self.per_page
         return self.entries[base:base + self.per_page]
 
-    def get_content(self, entries, page, *, first=False):
+    async def get_content(self, entries, page, *, first=False):
         return None
 
-    def get_embed(self, entries, page, *, first=False):
+    async def get_embed(self, entries, page, *, first=False):
         self.prepare_embed(entries, page, first=first)
         return self.embed
 
@@ -113,8 +113,8 @@ class Pages:
     async def show_page(self, page, *, first=False):
         self.current_page = page
         entries = self.get_page(page)
-        content = self.get_content(entries, page, first=first)
-        embed = self.get_embed(entries, page, first=first)
+        content = await self.get_content(entries, page, first=first)
+        embed = await self.get_embed(entries, page, first=first)
 
         if not self.paginating:
             return await self.channel.send(content=content, embed=embed)
@@ -289,13 +289,13 @@ class TextPages(Pages):
 
         super().__init__(ctx, entries=paginator.pages, per_page=1, show_entry_count=False)
 
-    def get_page(self, page):
+    async def get_page(self, page):
         return self.entries[page - 1]
 
-    def get_embed(self, entries, page, *, first=False):
+    async def get_embed(self, entries, page, *, first=False):
         return None
 
-    def get_content(self, entry, page, *, first=False):
+    async def get_content(self, entry, page, *, first=False):
         if self.maximum_pages > 1:
             return f'{entry}\nPage {page}/{self.maximum_pages}'
         return entry
@@ -308,10 +308,10 @@ class MessagePaginator(Pages):
         self.embed = None
         self.title = title
 
-    def get_embed(self, entries, page, *, first=False):
+    async def get_embed(self, entries, page, *, first=False):
         return None
 
-    def get_content(self, entries, page, *, first=False):
+    async def get_content(self, entries, page, *, first=False):
         p = []
         if self.title:
             p.append(self.title)
@@ -330,10 +330,10 @@ class SeasonStatsPaginator(Pages):
     def __init__(self, ctx, entries):
         super().__init__(ctx, entries=entries, per_page=1)
 
-    def get_embed(self, entries, page, *, first=False):
+    async def get_embed(self, entries, page, *, first=False):
         entry = self.entries[page - 1]
-        # if inspect.isawaitable(entry):
-        #     self.entries[page - 1] =
+        if inspect.isawaitable(entry):
+            self.entries[page - 1] = await entry
 
         return self.entries[page - 1]
 
