@@ -329,7 +329,7 @@ class Season(commands.Cog):
                           timestamp=datetime.utcnow()
                           )
         e.add_field(name='Current Season',
-                    value=readable_time(fetch[0][2] - fetch[0][1]),
+                    value=readable_time((fetch[0][2] - fetch[0][1]).total_seconds()) + ' left',
                     inline=False)
         await ctx.send(embed=e)
 
