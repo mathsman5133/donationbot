@@ -76,6 +76,7 @@ class SeasonConfig(commands.Cog):
             self.season_sleeper_task = self.bot.loop.create_task(self.next_season_sleeper())
 
     @commands.command()
+    @commands.is_owner()
     async def resetseason(self, ctx):
         prompt = await ctx.prompt('Are you sure?')
         if not prompt:
@@ -94,6 +95,7 @@ class SeasonConfig(commands.Cog):
         await ctx.confirm()
 
     @commands.command()
+    @commands.is_owner()
     async def refreshfin(self, ctx):
         await self.update_fin_sic()
         await ctx.confirm()
