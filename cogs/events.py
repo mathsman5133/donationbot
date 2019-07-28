@@ -67,11 +67,11 @@ class Events(commands.Cog):
             await self.bulk_insert()
 
     async def bulk_insert(self):
-        query = """INSERT INTO events (player_tag, player_name, clan_tag, donations, received, time)
-                        SELECT x.player_tag, x.player_name, x.clan_tag, x.donations, x.received, x.time
+        query = """INSERT INTO events (player_tag, player_name, clan_tag, donations, received, time, season_id)
+                        SELECT x.player_tag, x.player_name, x.clan_tag, x.donations, x.received, x.time, x.season_id
                            FROM jsonb_to_recordset($1::jsonb) 
                         AS x(player_tag TEXT, player_name TEXT, clan_tag TEXT, 
-                             donations INTEGER, received INTEGER, time TIMESTAMP
+                             donations INTEGER, received INTEGER, time TIMESTAMP, season_id INTEGER
                              )
                 """
 
@@ -203,7 +203,8 @@ class Events(commands.Cog):
                 'clan_tag': clan.tag,
                 'donations': donations,
                 'received': 0,
-                'time': datetime.utcnow().isoformat()
+                'time': datetime.utcnow().isoformat(),
+                'season_id': await self.bot.seasonconfig.get_season_id()
             })
 
     async def on_clan_member_received(self, old_received, new_received, player, clan):
@@ -219,7 +220,8 @@ class Events(commands.Cog):
                 'clan_tag': clan.tag,
                 'donations': 0,
                 'received': received,
-                'time': datetime.utcnow().isoformat()
+                'time': datetime.utcnow().isoformat(),
+                'season_id': await self.bot.seasonconfig.get_season_id()
             })
 
     async def get_channel_config(self, channel_id):

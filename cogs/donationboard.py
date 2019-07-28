@@ -102,10 +102,12 @@ class DonationBoard(commands.Cog):
                             )
                     AS x
                     WHERE players.player_tag = x.player_tag
+                    AND players.season_id=$2
                 """
 
         if self._data_batch:
-            await self.bot.pool.execute(query, self._data_batch)
+            await self.bot.pool.execute(query, self._data_batch,
+                                        await self.bot.seasonconfig.get_season_id())
             total = len(self._data_batch)
             if total > 1:
                 log.info('Registered %s donations/received to the database.', total)
@@ -318,9 +320,11 @@ class DonationBoard(commands.Cog):
         query = """SELECT *
                         FROM players 
                     WHERE player_tag=ANY($1::TEXT[])
+                    AND season_id=$2
                     ORDER BY donations DESC
                 """
-        fetch = await self.bot.pool.fetch(query, [n.tag for n in players])
+        fetch = await self.bot.pool.fetch(query, [n.tag for n in players],
+                                          await self.bot.seasonconfig.get_season_id())
         db_players = [DatabasePlayer(bot=self.bot, record=n) for n in fetch][:100]
         players = {n.tag: n for n in players if n.tag in set(x.player_tag for x in db_players)}
 

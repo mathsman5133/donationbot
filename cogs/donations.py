@@ -163,9 +163,10 @@ class Donations(commands.Cog):
         query = """SELECT player_tag, donations, received, user_id 
                         FROM players 
                     WHERE user_id = $1 
+                    AND season_id=$2
                     ORDER BY donations DESC
                 """
-        fetch = await ctx.db.fetch(query, user.id)
+        fetch = await ctx.db.fetch(query, user.id, await self.bot.seasonconfig.get_season_id())
         if not fetch:
             return await ctx.send(f"{'You dont' if ctx.author == user else f'{str(user)} doesnt'} "
                                   f"have any accounts claimed")
@@ -205,9 +206,10 @@ class Donations(commands.Cog):
         query = """SELECT player_tag, donations, received, user_id 
                         FROM players 
                     WHERE player_tag = $1 
+                    AND season_id=$2
                     ORDER BY donations DESC
                 """
-        fetch = await ctx.db.fetch(query, player.tag)
+        fetch = await ctx.db.fetch(query, player.tag, await self.bot.seasonconfig.get_season_id())
 
         if not fetch:
             raise commands.BadArgument(f"{str(player)} ({player.tag}) has not been claimed.")
@@ -248,13 +250,14 @@ class Donations(commands.Cog):
         query = """SELECT player_tag, donations, received, user_id 
                         FROM players 
                     WHERE player_tag=ANY($1::TEXT[])
+                    AND season_id=$2
                     ORDER BY donations DESC
                 """
         tags = []
         for n in clans:
             tags.extend(x.tag for x in n.itermembers)
 
-        fetch = await ctx.db.fetch(query, tags)
+        fetch = await ctx.db.fetch(query, tags, await self.bot.seasonconfig.get_season_id())
 
         if not fetch:
             return await ctx.send(f"No players claimed for clans "

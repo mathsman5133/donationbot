@@ -42,8 +42,9 @@ class GuildConfiguration(commands.Cog):
                                      f'If already claimed, this will do nothing.')
                 if m is True and claim is True:
                     query = "UPDATE players SET user_id = $1 " \
-                            "WHERE player_tag = $2 AND user_id IS NULL"
-                    await self.bot.pool.execute(query, user.id, player.tag)
+                            "WHERE player_tag = $2 AND user_id IS NULL AND season_id=$3"
+                    await self.bot.pool.execute(query, user.id, player.tag,
+                                                await self.bot.seasonconfig.get_season_id())
                 else:
                     return False
             return user
@@ -55,17 +56,20 @@ class GuildConfiguration(commands.Cog):
         if len(matches) == 0:
             return None
         for i, n in enumerate(matches):
-            query = "SELECT user_id FROM players WHERE player_tag = $1"
+            query = "SELECT user_id FROM players WHERE player_tag = $1 AND season_id=$2"
             m = clan.get_member(name=n[0])
-            fetch = await self.bot.pool.fetchrow(query, m.tag)
+            fetch = await self.bot.pool.fetchrow(query, m.tag,
+                                                 await self.bot.seasonconfig.get_season_id())
             if fetch is None:
                 continue
             del matches[i]
 
         if len(matches) == 1 and claim is True:
             player = clan.get_member(name=matches[0][0])
-            query = "UPDATE players SET user_id = $1 WHERE player_tag = $2 AND user_id IS NULL"
-            await self.bot.pool.execute(query, member.id, player.tag)
+            query = "UPDATE players SET user_id = $1 WHERE player_tag = $2 " \
+                    "AND user_id IS NULL AND season_id=$3"
+            await self.bot.pool.execute(query, member.id, player.tag,
+                                        await self.bot.seasonconfig.get_season_id())
             return player
         elif len(matches) == 1:
             return True
@@ -112,10 +116,12 @@ class GuildConfiguration(commands.Cog):
         query = "INSERT INTO clans (clan_tag, guild_id, clan_name) VALUES ($1, $2, $3)"
         await ctx.db.execute(query, clan.tag, ctx.guild.id, clan.name)
 
-        query = "INSERT INTO players (player_tag, donations, received) " \
-                "VALUES ($1, $2, $3) ON CONFLICT (player_tag) DO NOTHING"
+        query = "INSERT INTO players (player_tag, donations, received, season_id) " \
+                "VALUES ($1, $2, $3, $4) ON CONFLICT (player_tag, season_id) DO NOTHING"
+        season_id = await self.bot.seasonconfig.get_season_id()
         for member in clan.itermembers:
-            await ctx.db.execute(query, member.tag, member.donations, member.received)
+            await ctx.db.execute(query, member.tag, member.donations, member.received, season_id
+                                 )
 
         await ctx.confirm()
         await ctx.send('Clan and all members have been added to the database (if not already added)')
@@ -173,9 +179,10 @@ class GuildConfiguration(commands.Cog):
         • `+add_player` (primary)
         • `+aplayer`
         """
-        query = "INSERT INTO players (player_tag, donations, received) " \
-                "VALUES ($1, $2, $3) ON CONFLICT (player_tag) DO NOTHING"
-        await ctx.db.execute(query, player.tag, player.donations, player.received)
+        query = "INSERT INTO players (player_tag, donations, received, season_id) " \
+                "VALUES ($1, $2, $3, $4) ON CONFLICT (player_tag, season_id) DO NOTHING"
+        await ctx.db.execute(query, player.tag, player.donations, player.received,
+                             await self.bot.seasonconfig.get_season_id())
         await ctx.confirm()
 
     @commands.command()
@@ -198,13 +205,15 @@ class GuildConfiguration(commands.Cog):
         if not user:
             user = ctx.author
 
-        query = "SELECT user_id FROM players WHERE player_tag = $1"
-        fetch = await ctx.db.fetchrow(query, player.tag)
+        season_id = await self.bot.seasonconfig.get_season_id()
+        query = "SELECT user_id FROM players WHERE player_tag = $1 AND season_id=$2"
+        fetch = await ctx.db.fetchrow(query, player.tag, season_id)
 
         if not fetch:
-            query = "INSERT INTO players (player_tag, donations, received, user_id) " \
-                    "VALUES ($1, $2, $3, $4)"
-            await ctx.db.execute(query, player.tag, player.donations, player.received, user.id)
+            query = "INSERT INTO players (player_tag, donations, received, user_id, season_id) " \
+                    "VALUES ($1, $2, $3, $4, $5)"
+            await ctx.db.execute(query, player.tag, player.donations, player.received, user.id,
+                                 season_id)
             return await ctx.confirm()
 
         if fetch[0]:
@@ -212,8 +221,8 @@ class GuildConfiguration(commands.Cog):
             raise commands.BadArgument(f'Player {player.name} '
                                        f'({player.tag}) has already been claimed by {str(user)}')
 
-        query = "UPDATE players SET user_id = $1 WHERE player_tag = $2"
-        await ctx.db.execute(query, user.id, player.tag)
+        query = "UPDATE players SET user_id = $1 WHERE player_tag = $2 AND season_id=$3"
+        await ctx.db.execute(query, user.id, player.tag, season_id)
         await ctx.confirm()
 
     @commands.command()
@@ -232,17 +241,18 @@ class GuildConfiguration(commands.Cog):
         • `+unclaim #PLAYER_TAG`
         • `+unclaim my account name
         """
+        season_id = await self.bot.seasonconfig.get_season_id()
         if ctx.channel.permissions_for(ctx.author).manage_guild \
                 or await self.bot.is_owner(ctx.author):
-            query = "UPDATE players SET user_id = NULL WHERE player_tag = $1"
-            await ctx.db.execute(query, player.tag)
+            query = "UPDATE players SET user_id = NULL WHERE player_tag = $1 AND season_id=$2"
+            await ctx.db.execute(query, player.tag, season_id)
             return await ctx.confirm()
 
-        query = "SELECT user_id FROM players WHERE player_tag = $1"
-        fetch = await ctx.db.fetchrow(query, player.tag)
+        query = "SELECT user_id FROM players WHERE player_tag = $1 AND season_id=$2"
+        fetch = await ctx.db.fetchrow(query, player.tag, season_id)
         if not fetch:
-            query = "UPDATE players SET user_id = NULL WHERE player_tag = $1"
-            await ctx.db.execute(query, player.tag)
+            query = "UPDATE players SET user_id = NULL WHERE player_tag = $1 AND season_id=$2"
+            await ctx.db.execute(query, player.tag, season_id)
             return await ctx.confirm()
 
         if fetch[0] != ctx.author.id:
@@ -251,8 +261,8 @@ class GuildConfiguration(commands.Cog):
                                   f'Please contact them, or someone '
                                   f'with `manage_guild` permissions to unclaim it.')
 
-        query = "UPDATE players SET user_id = NULL WHERE player_tag = $1"
-        await ctx.db.execute(query, player.tag)
+        query = "UPDATE players SET user_id = NULL WHERE player_tag = $1 AND season_id=$2"
+        await ctx.db.execute(query, player.tag, season_id)
         await ctx.confirm()
 
     @commands.command()
@@ -328,9 +338,10 @@ class GuildConfiguration(commands.Cog):
 
         final = []
 
-        query = "SELECT user_id FROM players WHERE player_tag = $1"
+        season_id = await self.bot.seasonconfig.get_season_id()
+        query = "SELECT user_id FROM players WHERE player_tag = $1 AND season_id=$2"
         for n in players:
-            fetch = await ctx.db.fetchrow(query, n.tag)
+            fetch = await ctx.db.fetchrow(query, n.tag, season_id)
             if not fetch:
                 final.append([n.name, n.tag, 'None'])
                 continue
@@ -389,23 +400,24 @@ class GuildConfiguration(commands.Cog):
         • `+gclaims`
         • `+gc`
         """
+        season_id = await self.bot.seasonconfig.get_season_id()
         if not player:
             player = ctx.author
 
         if isinstance(player, discord.Member):
-            query = "SELECT player_tag FROM players WHERE user_id = $1"
-            fetch = await ctx.db.fetch(query, player.id)
+            query = "SELECT player_tag FROM players WHERE user_id = $1 AND season_id=$2"
+            fetch = await ctx.db.fetch(query, player.id, season_id)
             if not fetch:
                 return await ctx.send(f'{str(player)} has no claimed accounts.')
             player = await ctx.coc.get_players(n[0] for n in fetch).flatten()
         else:
             player = [player]
 
-        query = "SELECT user_id FROM players WHERE player_tag = $1"
+        query = "SELECT user_id FROM players WHERE player_tag = $1 AND season_id=$2"
 
         final = []
         for n in player:
-            fetch = await ctx.db.fetch(query, n.tag)
+            fetch = await ctx.db.fetch(query, n.tag, season_id)
             if not fetch:
                 final.append([n.name, n.tag, 'None'])
                 continue
@@ -454,6 +466,7 @@ class GuildConfiguration(commands.Cog):
         ------------------------------
         • `manage_server` permissions
         """
+        season_id = await self.bot.seasonconfig.get_season_id()
         failed_players = []
 
         if not clan:
@@ -470,8 +483,9 @@ class GuildConfiguration(commands.Cog):
 
         for c in clan:
             for member in c.members:
-                query = "SELECT * FROM players WHERE player_tag = $1 AND user_id IS NOT NULL;"
-                fetch = await ctx.db.fetchrow(query, member.tag)
+                query = "SELECT * FROM players WHERE player_tag = $1 AND user_id IS NOT NULL " \
+                        "AND season_id=$2;"
+                fetch = await ctx.db.fetchrow(query, member.tag, season_id)
                 if fetch:
                     continue
 
@@ -495,8 +509,8 @@ class GuildConfiguration(commands.Cog):
                                           f'Corresponding members found:\n'
                                           f'```\n{table.render()}\n```', additional_options=len(results))
                 if isinstance(result, int):
-                    query = "UPDATE players SET user_id = $1 WHERE player_tag = $2"
-                    await self.bot.pool.execute(query, results[result].id, member.tag)
+                    query = "UPDATE players SET user_id = $1 WHERE player_tag = $2 AND season_id=$3"
+                    await self.bot.pool.execute(query, results[result].id, member.tag, season_id)
                 if result is None or result is False:
                     await self.bot.log_info(ctx.guild.id, f'[auto-claim]: For player {member.name} ({member.tag})\n'
                                                f'Corresponding members found, none claimed:\n'
@@ -526,8 +540,8 @@ class GuildConfiguration(commands.Cog):
             except commands.BadArgument:
                 await ctx.send('Discord user not found. Moving on to next clan member. Please claim them manually.')
                 continue
-            query = "UPDATE players SET user_id = $1 WHERE player_tag = $2"
-            await self.bot.pool.execute(query, member.id, fail.tag)
+            query = "UPDATE players SET user_id = $1 WHERE player_tag = $2 AND season_id=$3"
+            await self.bot.pool.execute(query, member.id, fail.tag, season_id)
             await self.bot.log_info(ctx.guild.id, f'[auto-claim]: {fail.name} ({fail.tag}) '
                                                f'has been claimed to {str(member)} ({member.id})',
                                     colour=discord.Colour.green())
