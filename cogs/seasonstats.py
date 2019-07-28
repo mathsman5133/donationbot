@@ -324,7 +324,7 @@ class Season(commands.Cog):
             table.add_row([n[0], n[1].strftime('%d-%b-%Y'), n[2].strftime('%d-%b-%Y')])
 
         e = discord.Embed(colour=self.bot.colour,
-                          description=table.render(),
+                          description=f'```\n{table.render()}\n```',
                           title='Season Info',
                           timestamp=datetime.utcnow()
                           )
