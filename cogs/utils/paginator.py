@@ -332,8 +332,8 @@ class SeasonStatsPaginator(Pages):
 
     def get_embed(self, entries, page, *, first=False):
         entry = self.entries[page - 1]
-        if inspect.isawaitable(entry):
-            self.entries[page - 1] = await entry()
+        # if inspect.isawaitable(entry):
+        #     self.entries[page - 1] =
 
         return self.entries[page - 1]
 
