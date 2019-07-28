@@ -40,7 +40,7 @@ class SeasonConfig(commands.Cog):
 
     async def update_fin_sic(self):
         query = "SELECT DISTINCT player_tag FROM players WHERE season_id=$1"
-        fetch = await self.bot.pool.execute(query, await self.get_season_id())
+        fetch = await self.bot.pool.fetch(query, await self.get_season_id())
         data = []
         async for player in self.bot.coc.get_players((n[0] for n in fetch)):
             data.append({
