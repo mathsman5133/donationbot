@@ -114,19 +114,21 @@ class Events(commands.Cog):
             for x in events:
                 if x.donations:
                     emoji = emoji_lookup.misc['donated']
+                    emoji2 = emoji_lookup.misc['online']
                     if x.donations <= 100:
                         number = emoji_lookup.number_emojis[x.donations]
                     else:
                         number = str(x.donations)
                 else:
                     emoji = emoji_lookup.misc['received']
+                    emoji2 = emoji_lookup.misc['offline']
                     if x.received <= 100:
                         number = emoji_lookup.number_emojis[x.received]
                     else:
                         number = str(x.received)
                 clan_name = await self.bot.donationboard.get_clan_name(channel_config.guild_id,
                                                                        x.clan_tag)
-                fmt = f'{emoji_lookup.misc["idle"]}{x.player_name} {emoji} {number} ({clan_name})'
+                fmt = f'{emoji2}{x.player_name} {emoji} {number} ({clan_name})'
                 messages.append(fmt)
 
             group_batch = []
@@ -135,9 +137,6 @@ class Events(commands.Cog):
 
             for x in group_batch:
                 fmt = '\n'.join(x)
-                fmt += f"\nKey: {emoji_lookup.misc['donated']} - Donated," \
-                    f" {emoji_lookup.misc['received']} - Received,"
-
                 interval = channel_config.log_interval - events[0].delta_since
                 if interval.total_seconds() > 0:
                     if interval.total_seconds() < 600:

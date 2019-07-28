@@ -214,8 +214,10 @@ troop_emojis = \
     }
 misc = \
     {
-        "donated": "<:donated:601989473491877899>",
-        "received": "<:received:601989473613512736>",
+        "donated": "<:donated:601622865451941896>",
+        "received": "<:received:601622788515692552>",
+        "offline": "<:offline:604943449241681950>",
+        "online": "<:online:604943467982094347>",
         "number": "<:number:601623596070338598>",
         "idle": "<:idle:601626135306043452>",
         "rcsgap": "<:rcsgap:506646497149059074>",
