@@ -29,7 +29,8 @@ initial_extensions = (
     'cogs.donationboard',
     'cogs.admin',
     'cogs.info',
-    'cogs.seasonstats'
+    'cogs.seasonstats',
+    'cogs.reset_season'
 )
 description = "A simple discord bot to track donations of clan families in clash of clans."
 

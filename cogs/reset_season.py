@@ -35,7 +35,31 @@ class SeasonConfig(commands.Cog):
         self.season_id = await self.get_season_id()
         query = "INSERT INTO players (player_tag, donations, received, user_id, season_id) " \
                 "SELECT player_tag, 0, 0, user_id, season_id+1 FROM players WHERE season_id=$1"
-        await self.bot.pool.execute(query, self.get_season_id())
+        await self.bot.pool.execute(query, await self.get_season_id())
+        await self.update_fin_sic()
+
+    async def update_fin_sic(self):
+        query = "SELECT DISTINCT player_tag FROM players WHERE season_id=$1"
+        fetch = await self.bot.pool.execute(query, await self.get_season_id())
+        data = []
+        async for player in self.bot.coc.get_players((n[0] for n in fetch)):
+            data.append({
+                'player_tag': player.tag,
+                'friend_in_need': player.achievement_dict['Friend in Need'].value,
+                'sharing_is_caring': player.achievement_dict['Sharing is caring'].value
+            })
+        query = """UPDATE players SET friend_in_need = x.friend_in_need, 
+                                      sharing_is_caring = x.sharing_is_caring 
+                        FROM(
+                            SELECT x.player_tag, x.friend_in_need, x.sharing_is_caring
+                                FROM jsonb_to_recordset($1::jsonb)
+                            AS x(player_tag TEXT, friend_in_need INTEGER, sharing_is_caring INTEGER)
+                            )
+                    AS x
+                    WHERE players.player_tag = x.player_tag
+                    AND players.season_id=$2
+                """
+        await self.bot.pool.execute(query, data, await self.get_season_id())
 
     async def next_season_sleeper(self):
         try:
@@ -67,6 +91,11 @@ class SeasonConfig(commands.Cog):
         await self.new_season()
         self.season_id = 0
         await self.get_season_id()
+        await ctx.confirm()
+
+    @commands.command()
+    async def refreshfin(self, ctx):
+        await self.update_fin_sic()
         await ctx.confirm()
 
 
