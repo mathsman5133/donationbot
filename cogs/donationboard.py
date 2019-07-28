@@ -278,9 +278,11 @@ class DonationBoard(commands.Cog):
             self._clan_events.add(clan.tag)
 
     async def on_clan_member_join(self, member, clan):
-        query = "INSERT INTO players (player_tag, donations, received) VALUES ($1,$2,$3) " \
-                "ON CONFLICT (player_tag) DO NOTHING"
-        await self.bot.pool.execute(query, member.tag, member.donations, member.received)
+        query = "INSERT INTO players (player_tag, donations, received, season_id) " \
+                "VALUES ($1,$2,$3, $4) " \
+                "ON CONFLICT (player_tag, season_id) DO NOTHING"
+        await self.bot.pool.execute(query, member.tag, member.donations, member.received,
+                                    await self.bot.seasonconfig.get_season_id())
 
     async def get_updates_messages(self, guild_id, number_of_msg=None):
         guild_config = await self.get_guild_config(guild_id)
