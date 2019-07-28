@@ -45,8 +45,8 @@ class SeasonConfig(commands.Cog):
         async for player in self.bot.coc.get_players((n[0] for n in fetch)):
             data.append({
                 'player_tag': player.tag,
-                'friend_in_need': player.achievement_dict['Friend in Need'].value,
-                'sharing_is_caring': player.achievement_dict['Sharing is caring'].value
+                'friend_in_need': player.achievements_dict['Friend in Need'].value,
+                'sharing_is_caring': player.achievements_dict['Sharing is caring'].value
             })
         query = """UPDATE players SET friend_in_need = x.friend_in_need, 
                                       sharing_is_caring = x.sharing_is_caring 
