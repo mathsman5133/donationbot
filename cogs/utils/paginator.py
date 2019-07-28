@@ -80,7 +80,7 @@ class Pages:
             if not self.permissions.read_message_history:
                 raise CannotPaginate('Bot does not have Read Message History permission.')
 
-    async def get_page(self, page):
+    def get_page(self, page):
         base = (page - 1) * self.per_page
         return self.entries[base:base + self.per_page]
 
@@ -289,7 +289,7 @@ class TextPages(Pages):
 
         super().__init__(ctx, entries=paginator.pages, per_page=1, show_entry_count=False)
 
-    async def get_page(self, page):
+    def get_page(self, page):
         return self.entries[page - 1]
 
     async def get_embed(self, entries, page, *, first=False):
