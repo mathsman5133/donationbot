@@ -310,12 +310,13 @@ class Season(commands.Cog):
 
     @commands.group(invoke_without_subcommand=True)
     async def season(self, ctx):
-        """:x: This command is under construction!"""
+        """Group command to manage historical stats for seasons past."""
         if ctx.invoked_subcommand is None:
             await ctx.send_help(ctx.command)
 
     @season.command(name='info')
     async def season_info(self, ctx):
+        """Get Season IDs and start/finish times and info."""
         query = "SELECT id, start, finish FROM seasons ORDER BY id DESC"
         fetch = await ctx.db.fetch(query)
         table = TabularData()
@@ -336,8 +337,28 @@ class Season(commands.Cog):
     @season.group(name='stats')
     async def season_stats(self, ctx, season: typing.Optional[int] = None,
                            *, arg: typing.Union[ClanConverter, discord.Member] = None):
+        """Get Overall Season Stats for past seasons.
+
+        This command will give you total clan donations, top players by events, donations etc. and more.
+
+        Parameters
+        --------------------
+
+            • Season ID: integer - optional. Defaults to the previous season.
+            • Discord user or clan name/tag/`all` - either a mention, user ID, clan tag,
+                clan name or `all` for all clans in server.
+
+        Examples
+        ----------------------
+
+        • `+season stats 1 all` - season stats for season 1 for all clans in guild.
+        • `+season stats #CLAN_TAG` - season stats for previous season for that clan tag.
+        • `+season stats 4 @user` - season stats for season 4 for @user.
+        """
         if not arg:
             arg = await ctx.get_clans()
+        if not season:
+            season = (await self.bot.seasonconfig.get_season_id()) - 1
 
         if isinstance(arg, list):
             await ctx.invoke(self.season_stats_guild, clan=arg, season=season)
@@ -347,6 +368,20 @@ class Season(commands.Cog):
     @season_stats.command(name='user')
     async def season_stats_user(self, ctx, season: typing.Optional[int] = None,
                                 *, user: discord.Member = None):
+        """Get Overall Season Stats for a User.
+
+        Parameters
+        -----------------------
+            • Season ID: integer - optional. Defaults to the previous season.
+            • Discord user - either a mention, user ID, or user#discrim combo. Defaults to you.
+
+        Examples
+        ----------------------
+
+        • `+season stats user 1 @user` - season stats for season 1 for @user.
+        • `+season stats` - season stats for previous season for you.
+        • `+season stats user @user` - season stats for previous season for @user.
+        """
         user = user or ctx.author
         season = season or await self.bot.seasonconfig.get_season_id()
 
@@ -369,6 +404,21 @@ class Season(commands.Cog):
     @season_stats.command(name='guild', aliases=['server'])
     async def season_stats_guild(self, ctx, season: typing.Optional[int] = None,
                                  *, clan: ClanConverter):
+        """Get Overall Season Stats for past seasons for a guild.
+
+        Parameters
+        --------------------
+
+            • Season ID: integer - optional. Defaults to the previous season.
+            • Clan name/tag/`all` - either a clan tag, clan name or `all` for all clans in server.
+
+        Examples
+        ----------------------
+
+        • `+season stats guild 1 all` - season stats for season 1 for all clans in guild.
+        • `+season stats guild #CLAN_TAG` - season stats for previous season for that clan tag.
+        • `+season stats 4 Clan Name` - season stats for season 4 for `Clan Name` clan.
+        """
         if not clan:
             return await ctx.send('No claimed clans.')
         season = season or await self.bot.seasonconfig.get_season_id()
