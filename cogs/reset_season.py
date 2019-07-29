@@ -12,6 +12,9 @@ class SeasonConfig(commands.Cog):
         self.season_id = 0
         self.season_sleeper_task = bot.loop.create_task(self.next_season_sleeper())
 
+    def cog_unload(self):
+        self.season_sleeper_task.cancel()
+
     async def get_season_id(self):
         if not self.season_id:
             query = "SELECT id FROM seasons WHERE start < CURRENT_TIMESTAMP " \
