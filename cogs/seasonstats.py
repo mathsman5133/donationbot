@@ -127,6 +127,7 @@ class Season(commands.Cog):
                    FROM events
                    WHERE clan_tag=ANY($1::TEXT[])
                    AND season_id=$2
+                   AND player_name IS NOT NULL
                    GROUP BY player_name
                    ORDER BY "uses" DESC
                    LIMIT 5;
@@ -151,6 +152,7 @@ class Season(commands.Cog):
                    FROM events
                    WHERE clan_tag=ANY($1::TEXT[])
                    AND season_id=$2
+                   AND player_name IS NOT NULL
                    GROUP BY player_name
                    ORDER BY "uses" DESC
                    LIMIT 5;
@@ -172,6 +174,7 @@ class Season(commands.Cog):
                         AND events.season_id=players.season_id
                    WHERE events.clan_tag=ANY($1::TEXT[])
                    AND events.season_id=$2
+                   AND events.player_name IS NOT NULL
                    GROUP BY events.player_name
                    ORDER BY "donations" DESC
                    LIMIT 5;
@@ -192,6 +195,7 @@ class Season(commands.Cog):
                         AND events.season_id=players.season_id
                    WHERE events.clan_tag=ANY($1::TEXT[])
                    AND events.season_id=$2
+                   AND events.player_name IS NOT NULL
                    GROUP BY events.player_name
                    ORDER BY "received" DESC
                    LIMIT 5;
@@ -254,6 +258,7 @@ class Season(commands.Cog):
                         AND players.season_id=events.season_id
                    WHERE players.user_id=$1
                    AND events.season_id=$2
+                   AND player_name IS NOT NULL
                    GROUP BY player_name
                    ORDER BY "uses" DESC
                    LIMIT 5;
@@ -275,6 +280,7 @@ class Season(commands.Cog):
                         AND events.season_id=players.season_id
                    WHERE players.user_id=$1
                    AND events.season_id=$2
+                   AND events.player_name IS NOT NULL
                    GROUP BY events.player_name
                    ORDER BY "donations" DESC
                    LIMIT 5;
@@ -295,6 +301,7 @@ class Season(commands.Cog):
                         AND events.season_id=players.season_id
                    WHERE players.user_id=$1
                    AND events.season_id=$2
+                   AND events.player_name IS NOT NULL
                    GROUP BY events.player_name
                    ORDER BY "received" DESC
                    LIMIT 5;
