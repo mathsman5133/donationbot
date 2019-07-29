@@ -122,7 +122,7 @@ class Events(commands.Cog):
                 else:
                     emoji = emoji_lookup.misc['received']
                     emoji2 = emoji_lookup.misc['offline']
-                    if x.received <= 100:
+                    if 0 < x.received <= 100:
                         number = emoji_lookup.number_emojis[x.received]
                     else:
                         number = str(x.received)
