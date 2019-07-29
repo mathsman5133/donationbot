@@ -41,7 +41,7 @@ class DonationBot(commands.Bot):
                          description=description, pm_help=None, help_attrs=dict(hidden=True),
                          fetch_offline_members=True)
 
-        self.colour = 0x36393E
+        self.colour = discord.Colour.blurple()
         self.coc = coc_client
         self.client_id = creds.client_id
         self.owner_id = 230214242618441728
