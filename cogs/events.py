@@ -93,13 +93,6 @@ class Events(commands.Cog):
                 """
         fetch = await self.bot.pool.fetch(query)
 
-        query = """UPDATE events
-                                SET reported=True
-                            FROM (SELECT clans.clan_tag FROM clans WHERE channel_id=ANY($1::BIGINT[])) AS x
-                        WHERE events.clan_tag=x.clan_tag
-                        """
-        await self.bot.pool.execute(query, [n[0] for n in fetch])
-
         query = """SELECT * FROM events 
                         INNER JOIN clans 
                         ON clans.clan_tag = events.clan_tag 
@@ -159,6 +152,13 @@ class Events(commands.Cog):
                     await self.bot.channel_log(n[0], fmt, embed=False)
                     log.info('Dispatched a log to %s (guild %s)', channel_config.channel or 'Not Found',
                              channel_config.guild or 'No Guild')
+
+        query = """UPDATE events
+                        SET reported=True
+                    FROM (SELECT clans.clan_tag FROM clans WHERE channel_id=ANY($1::BIGINT[])) AS x
+                WHERE events.clan_tag=x.clan_tag
+                """
+        await self.bot.pool.execute(query, [n[0] for n in fetch])
 
         log.info('Dispatched %s logs to various places.', len(fetch))
 
