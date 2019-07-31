@@ -61,7 +61,7 @@ class Events(commands.Cog):
         except ValueError:
             pass
 
-    @tasks.loop(seconds=60.0)
+    @tasks.loop(seconds=30.0)
     async def batch_insert_loop(self):
         async with self._batch_lock:
             await self.bulk_insert()
@@ -82,7 +82,7 @@ class Events(commands.Cog):
                 log.info('Registered %s events to the database.', total)
             self._batch_data.clear()
 
-    @tasks.loop(seconds=30.0)
+    @tasks.loop(seconds=60.0)
     async def bulk_report(self):
         query = """SELECT DISTINCT clans.channel_id 
                    FROM clans 

@@ -80,7 +80,7 @@ class DonationBoard(commands.Cog):
         async with self._batch_lock:
             await self.bulk_insert()
 
-    @tasks.loop(seconds=60)
+    @tasks.loop(seconds=60.0)
     async def update_donationboard_loop(self):
         async with self._batch_lock:
             clan_tags = list(self._clan_events)
