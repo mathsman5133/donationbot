@@ -153,12 +153,14 @@ class Events(commands.Cog):
                     log.info('Dispatched a log to %s (guild %s)', channel_config.channel or 'Not Found',
                              channel_config.guild or 'No Guild')
 
-        query = """UPDATE events
-                        SET reported=True
-                    FROM (SELECT clans.clan_tag FROM clans WHERE channel_id=ANY($1::BIGINT[])) AS x
-                WHERE events.clan_tag=x.clan_tag
-                """
-        await self.bot.pool.execute(query, [n[0] for n in fetch])
+            query = """UPDATE events
+                            SET reported=True
+                        FROM (SELECT clans.clan_tag FROM clans WHERE channel_id=$1) AS x
+                    WHERE events.clan_tag=x.clan_tag
+                    """
+            await self.bot.pool.execute(query, channel_config.channel_id)
+            log.info('Cleared event log backhold for %s (guild %s)', channel_config.channel or 'Not found',
+                     channel_config.guild or 'No guild')
 
         log.info('Dispatched %s logs to various places.', len(fetch))
 
