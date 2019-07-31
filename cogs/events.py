@@ -147,8 +147,8 @@ class Events(commands.Cog):
                                                     )
                 else:
                     await self.bot.channel_log(n[0], fmt, embed=False)
-                    log.info('Dispatched a log to %s (guild %s)', channel_config.channel.name,
-                             channel_config.guild.name)
+                    log.info('Dispatched a log to %s (guild %s)', channel_config.channel,
+                             channel_config.guild)
 
         query = """UPDATE events
                         SET reported=True
