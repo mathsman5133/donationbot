@@ -140,7 +140,8 @@ class Events(commands.Cog):
                 interval = channel_config.log_interval - events[0].delta_since
                 if interval.total_seconds() > 0:
                     if interval.total_seconds() < 600:
-                        await self.short_timer(interval.total_seconds(), n[0], fmt)
+                        await self.bot.loop.create_task(self.short_timer(interval.total_seconds(),
+                                                                         n[0], fmt))
                     else:
                         await self.create_new_timer(n[0], fmt,
                                                     datetime.utcnow() + interval
