@@ -84,6 +84,7 @@ class Events(commands.Cog):
 
     @tasks.loop(seconds=60.0)
     async def bulk_report(self):
+        log.info('Starting bulk report loop.')
         query = """SELECT DISTINCT clans.channel_id 
                    FROM clans 
                         INNER JOIN events 
