@@ -99,7 +99,7 @@ class Events(commands.Cog):
             log.info('Dispatching a log to channel ID %s', channel_id)
             asyncio.ensure_future(self.bot.channel_log(channel_id, fmt, embed=False))
 
-    @tasks.loop(seconds=60.0)
+    @tasks.loop(seconds=30.0)
     async def bulk_report(self):
         log.info('Starting bulk report loop.')
         query = """SELECT DISTINCT clans.channel_id 
@@ -152,6 +152,7 @@ class Events(commands.Cog):
                           FROM clans 
                           WHERE channel_id=ANY($1::BIGINT[]) 
                           OR channel_id IS NULL
+                          OR clans.log_toggle='false'
                           ) AS x
                 WHERE events.clan_tag=x.clan_tag
                 """
