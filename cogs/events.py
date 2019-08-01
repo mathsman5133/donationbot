@@ -150,7 +150,7 @@ class Events(commands.Cog):
                         SET reported=True
                     FROM (SELECT clans.clan_tag 
                           FROM clans 
-                          WHERE channel_id=ANY($1::TEXT[]) 
+                          WHERE channel_id=ANY($1::BIGINT[]) 
                           OR channel_id IS NULL
                           ) AS x
                 WHERE events.clan_tag=x.clan_tag
