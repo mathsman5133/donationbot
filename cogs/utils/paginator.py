@@ -56,8 +56,8 @@ class Pages:
             ('\N{BLACK LEFT-POINTING TRIANGLE}', self.previous_page),
             ('\N{BLACK RIGHT-POINTING TRIANGLE}', self.next_page),
             ('\N{BLACK RIGHT-POINTING DOUBLE TRIANGLE WITH VERTICAL BAR}', self.last_page),
-            # ('\N{INPUT SYMBOL FOR NUMBERS}', self.numbered_page ),
-            # ('\N{BLACK SQUARE FOR STOP}', self.stop_pages),
+            ('\N{INPUT SYMBOL FOR NUMBERS}', self.numbered_page ),
+            ('\N{BLACK SQUARE FOR STOP}', self.stop_pages),
             # ('\N{INFORMATION SOURCE}', self.show_help),
         ]
 

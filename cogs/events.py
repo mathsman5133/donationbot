@@ -4,6 +4,7 @@ import coc
 import discord
 import logging
 import math
+import time
 import typing
 
 from datetime import datetime
@@ -33,8 +34,8 @@ class Events(commands.Cog):
         self._batch_lock = asyncio.Lock(loop=bot.loop)
         self.batch_insert_loop.add_exception_type(asyncpg.PostgresConnectionError)
         self.batch_insert_loop.start()
-        self.bulk_report.add_exception_type(asyncpg.PostgresConnectionError)
-        self.bulk_report.start()
+        self.report_task.add_exception_type(asyncpg.PostgresConnectionError)
+        self.report_task.start()
         self.check_for_timers_task = self.bot.loop.create_task(self.check_for_timers())
 
         self.bot.coc.add_events(
@@ -100,8 +101,14 @@ class Events(commands.Cog):
             asyncio.ensure_future(self.bot.channel_log(channel_id, fmt, embed=False))
 
     @tasks.loop(seconds=30.0)
-    async def bulk_report(self):
+    async def report_task(self):
         log.info('Starting bulk report loop.')
+        start = time.perf_counter()
+        async with self._batch_lock:
+            await self.bulk_report()
+        log.info('Time taken: %s seconds', (time.perf_counter() - start)*1000)
+
+    async def bulk_report(self):
         query = """SELECT DISTINCT clans.channel_id 
                    FROM clans 
                         INNER JOIN events 
@@ -148,16 +155,10 @@ class Events(commands.Cog):
 
         query = """UPDATE events
                         SET reported=True
-                    FROM (SELECT clans.clan_tag 
-                          FROM clans 
-                          WHERE channel_id=ANY($1::BIGINT[]) 
-                          OR channel_id IS NULL
-                          OR clans.log_toggle='false'
-                          ) AS x
-                WHERE events.clan_tag=x.clan_tag
+                   WHERE reported=False
                 """
-        await self.bot.pool.execute(query, [n[0] for n in fetch])
-        log.info('Removed %s logs from the database.', len(fetch))
+        removed = await self.bot.pool.execute(query)
+        log.info('Removed events from the database. Status Code %s', removed)
 
     async def short_timer(self, seconds, channel_id, fmt):
         await asyncio.sleep(seconds)
