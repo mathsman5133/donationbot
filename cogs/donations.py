@@ -3,7 +3,7 @@ import coc
 import discord
 import re
 import math
-from cogs.utils import formatters, db_objects
+from cogs.utils import formatters
 
 
 tag_validator = re.compile("(?P<tag>^\s*#?[PYLQGRJCUV0289]+\s*$)")
@@ -102,7 +102,7 @@ class Donations(commands.Cog):
             • A player tag
             • A player name (must be in clan claimed to server)
             • `all`, `server`, `guild` for all clans in guild
-            • None passed will divert to donations for your discord account
+            • None passed will divert to donations for your guild
 
         Example
         -----------
@@ -120,8 +120,10 @@ class Donations(commands.Cog):
         """
         if ctx.invoked_subcommand is not None:
             return
+
         if not arg:
-            await ctx.invoke(self.donations_user, ctx.author)
+            arg = await ctx.get_clans()
+
         elif isinstance(arg, discord.Member):
             await ctx.invoke(self.donations_user, arg)
         elif isinstance(arg, coc.BasicClan):
@@ -132,7 +134,7 @@ class Donations(commands.Cog):
             if isinstance(arg[0], coc.BasicClan):
                 await ctx.invoke(self.donations_clan, clans=arg)
 
-    @donations.command(name='user')
+    @donations.command(name='user', hidden=True)
     async def donations_user(self, ctx, user: discord.Member = None):
         """Get donations for a discord user.
 
@@ -178,7 +180,7 @@ class Donations(commands.Cog):
 
         await p.paginate()
 
-    @donations.command(name='player')
+    @donations.command(name='player', hidden=True)
     async def donations_player(self, ctx, *, player: PlayerConverter):
         """Get donations for a player.
 
@@ -221,7 +223,7 @@ class Donations(commands.Cog):
 
         await p.paginate()
 
-    @donations.command(name='clan')
+    @donations.command(name='clan', hidden=True)
     async def donations_clan(self, ctx, *, clans: ClanConverter):
         """Get donations for a clan.
 

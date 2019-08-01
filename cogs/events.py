@@ -51,16 +51,13 @@ class Events(commands.Cog):
         await ctx.send(str(error))
 
     def cog_unload(self):
-        self.bulk_report.cancel()
+        self.report_task.cancel()
         self.batch_insert_loop.cancel()
         self.check_for_timers_task.cancel()
-        try:
-            self.bot.coc.extra_events['on_clan_member_donation'].remove(
-                self.on_clan_member_donation)
-            self.bot.coc.extra_events['on_clan_member_received'].remove(
-                self.on_clan_member_received)
-        except ValueError:
-            pass
+        self.bot.coc.remove_events(
+            self.on_clan_member_donation,
+            self.on_clan_member_received
+        )
 
     @tasks.loop(seconds=30.0)
     async def batch_insert_loop(self):
@@ -106,7 +103,7 @@ class Events(commands.Cog):
         start = time.perf_counter()
         async with self._batch_lock:
             await self.bulk_report()
-        log.info('Time taken: %s seconds', (time.perf_counter() - start)*1000)
+        log.info('Time taken: %s ms', (time.perf_counter() - start)*1000)
 
     async def bulk_report(self):
         query = """SELECT DISTINCT clans.channel_id 
@@ -412,12 +409,14 @@ class Events(commands.Cog):
         self.invalidate_channel_config(channel.id)
 
     @commands.group(invoke_without_command=True)
-    async def events(self, ctx, *, arg: EventsConverter = None, limit=20):
+    async def events(self, ctx, limit: typing.Optional[int] = 20, *, arg: EventsConverter = None):
         """Check recent donation events for a player, user, clan or guild.
 
         Parameters
         ----------------
-        Pass in any of the following:
+        • Optional: Pass in a limit (number of events) to get. Defaults to 20.
+
+        Then pass in any of the following:
 
             • A clan tag
             • A clan name (clan must be claimed to the server)
@@ -429,18 +428,18 @@ class Events(commands.Cog):
 
         Example
         -----------
-        • `+events #CLAN_TAG`
+        • `+events 20 #CLAN_TAG`
         • `+events @mention`
         • `+events #PLAYER_TAG`
         • `+events player name`
-        • `+events all`
+        • `+events 1000 all`
         • `+events`
         """
         if ctx.invoked_subcommand is not None:
             return
 
         if not arg:
-            arg = 20
+            arg = limit
 
         if isinstance(arg, int):
             await ctx.invoke(self.events_recent, limit=arg)
@@ -454,7 +453,7 @@ class Events(commands.Cog):
             if isinstance(arg[0], coc.Clan):
                 await ctx.invoke(self.events_clan, clans=arg, limit=limit)
 
-    @events.command(name='recent')
+    @events.command(name='recent', hidden=True)
     async def events_recent(self, ctx, limit: int = None):
         query = """SELECT player_tag, donations, received, time, player_name
                     FROM events
@@ -476,8 +475,8 @@ class Events(commands.Cog):
         p = formatters.EventsPaginator(ctx, fetch, page_count=no_pages, title=title)
         await p.paginate()
 
-    @events.command(name='user')
-    async def events_user(self, ctx, user: discord.Member = None, limit=20):
+    @events.command(name='user', hidden=True)
+    async def events_user(self, ctx, limit: typing.Optional[int] = 20, user: discord.Member = None):
         """Get donation history/events for a discord user.
 
         Parameters
@@ -517,8 +516,9 @@ class Events(commands.Cog):
         p = formatters.EventsPaginator(ctx, data=fetch, title=title, page_count=no_pages)
         await p.paginate()
 
-    @events.command(name='player')
-    async def events_player(self, ctx, *, player: PlayerConverter, limit=20):
+    @events.command(name='player', hidden=True)
+    async def events_player(self, ctx, limit: typing.Optional[int] = 20,
+                            *, player: PlayerConverter):
         """Get donation history/events for a player.
 
         Parameters
@@ -560,8 +560,8 @@ class Events(commands.Cog):
         p = formatters.EventsPaginator(ctx, data=fetch, title=title, page_count=no_pages)
         await p.paginate()
 
-    @events.command(name='clan')
-    async def events_clan(self, ctx, *, clans: ClanConverter, limit=20):
+    @events.command(name='clan', hidden=True)
+    async def events_clan(self, ctx, limit: typing.Optional[int] = 20, *, clans: ClanConverter):
         """Get donation history/events for a clan.
 
         Parameters
@@ -602,39 +602,6 @@ class Events(commands.Cog):
 
         p = formatters.EventsPaginator(ctx, data=fetch, title=title, page_count=no_pages)
         await p.paginate()
-
-    @commands.command(name='eventslim')
-    async def events_limit(self, ctx, limit: int = 20, *, arg: EventsConverter = None):
-        """Get a specific limit of donation events/history.
-
-        This command is similar in usage to `+events`.
-        The only difference is you must specify the limit to fetch
-        before your clan/player/user argument.
-
-        Parameters
-        ----------------
-        Pass in any of the following, in this order:
-            • First: limit: `1`, `2`, `5`, `50` etc.
-
-            • Then:
-            • A clan tag
-            • A clan name (clan must be claimed to the server)
-            • A discord @mention, user#discrim or user id
-            • A player tag
-            • A player name (must be in clan claimed to server)
-            • `all`, `server`, `guild` for all clans in guild
-            • None passed will divert to donations for your discord account
-
-        Example
-        ------------
-        • `+eventslim #CLAN_TAG`
-        • `+eventslim @mention`
-        • `+eventslim #PLAYER_TAG`
-        • `+eventslim player name`
-        • `+eventslim all`
-        • `+eventslim`
-        """
-        await ctx.invoke(self.events, arg=arg, limit=limit)
 
 
 def setup(bot):
