@@ -82,6 +82,23 @@ class Events(commands.Cog):
                 log.info('Registered %s events to the database.', total)
             self._batch_data.clear()
 
+    def dispatch_log(self, channel_id, interval, fmt):
+        seconds = interval.total_seconds()
+        if seconds > 0:
+            if seconds < 600:
+                self.bot.loop.create_task(self.short_timer(interval.total_seconds(),
+                                                           channel_id, fmt
+                                                           )
+                                          )
+            else:
+                asyncio.ensure_future(self.create_new_timer(channel_id, fmt,
+                                      datetime.utcnow() + interval
+                                                            )
+                                      )
+        else:
+            log.info('Dispatching a log to channel ID %s', channel_id)
+            asyncio.ensure_future(self.bot.channel_log(channel_id, fmt, embed=False))
+
     @tasks.loop(seconds=60.0)
     async def bulk_report(self):
         log.info('Starting bulk report loop.')
@@ -114,55 +131,32 @@ class Events(commands.Cog):
 
             messages = []
             for x in events:
-                if x.donations:
-                    emoji = emoji_lookup.misc['donated']
-                    emoji2 = emoji_lookup.misc['online']
-                    if x.donations <= 100:
-                        number = emoji_lookup.number_emojis[x.donations]
-                    else:
-                        number = str(x.donations)
-                else:
-                    emoji = emoji_lookup.misc['received']
-                    emoji2 = emoji_lookup.misc['offline']
-                    if 0 < x.received <= 100:
-                        number = emoji_lookup.number_emojis[x.received]
-                    else:
-                        number = str(x.received)
                 clan_name = await self.bot.donationboard.get_clan_name(channel_config.guild_id,
                                                                        x.clan_tag)
-                fmt = f'{emoji2}{x.player_name} {emoji} {number} ({clan_name})'
-                messages.append(fmt)
+                messages.append(formatters.format_event_log_message(x, clan_name))
 
             group_batch = []
             for i in range(math.ceil(len(messages) / 20)):
                 group_batch.append(messages[i*20:(i+1)*20])
 
             for x in group_batch:
-                fmt = '\n'.join(x)
                 interval = channel_config.log_interval - events[0].delta_since
-                if interval.total_seconds() > 0:
-                    if interval.total_seconds() < 600:
-                        await self.bot.loop.create_task(self.short_timer(interval.total_seconds(),
-                                                                         n[0], fmt))
-                    else:
-                        await self.create_new_timer(n[0], fmt,
-                                                    datetime.utcnow() + interval
-                                                    )
-                else:
-                    await self.bot.channel_log(n[0], fmt, embed=False)
-                    log.info('Dispatched a log to %s (guild %s)', channel_config.channel or 'Not Found',
-                             channel_config.guild or 'No Guild')
+                self.dispatch_log(channel_config.channel_id, interval, '\n'.join(x))
 
-            query = """UPDATE events
-                            SET reported=True
-                        FROM (SELECT clans.clan_tag FROM clans WHERE channel_id=$1) AS x
-                    WHERE events.clan_tag=x.clan_tag
-                    """
-            await self.bot.pool.execute(query, channel_config.channel_id)
-            log.info('Cleared event log backhold for %s (guild %s)', channel_config.channel or 'Not found',
+            log.info('Dispatched logs for %s (guild %s)', channel_config.channel or 'Not found',
                      channel_config.guild or 'No guild')
 
-        log.info('Dispatched %s logs to various places.', len(fetch))
+        query = """UPDATE events
+                        SET reported=True
+                    FROM (SELECT clans.clan_tag 
+                          FROM clans 
+                          WHERE channel_id=ANY($1::TEXT[]) 
+                          OR channel_id IS NULL
+                          ) AS x
+                WHERE events.clan_tag=x.clan_tag
+                """
+        await self.bot.pool.execute(query, [n[0] for n in fetch])
+        log.info('Removed %s logs from the database.', len(fetch))
 
     async def short_timer(self, seconds, channel_id, fmt):
         await asyncio.sleep(seconds)

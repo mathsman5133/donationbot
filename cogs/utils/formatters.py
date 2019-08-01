@@ -39,6 +39,24 @@ def events_time(delta_seconds):
     return f"{seconds}sec"
 
 
+def format_event_log_message(player, clan_name):
+    if player.donations:
+        emoji = misc['donated']
+        emoji2 = misc['online']
+        if player.donations <= 100:
+            number = number_emojis[player.donations]
+        else:
+            number = str(player.donations)
+    else:
+        emoji = misc['received']
+        emoji2 = misc['offline']
+        if 0 < player.received <= 100:
+            number = number_emojis[player.received]
+        else:
+            number = str(player.received)
+    return f'{emoji2}{player.player_name} {emoji} {number} ({clan_name})'
+
+
 class TabularData:
     def __init__(self):
         self._widths = []
