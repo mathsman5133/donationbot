@@ -464,7 +464,7 @@ class GuildConfiguration(commands.Cog):
         for n in player:
             fetch = await ctx.db.fetch(query, n.tag, season_id)
             if not fetch:
-                final.append([n.name, n.tag, 'None'])
+                final.append([n.name, n.tag, ' '])
                 continue
 
             name = str(ctx.guild.get_member(fetch[0]))
