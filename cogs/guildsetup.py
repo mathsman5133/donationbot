@@ -26,6 +26,7 @@ class GuildConfiguration(commands.Cog):
             return await ctx.send(f'You\'re on cooldown. Please try again in: {time}')
         else:
             ctx.command.reset_cooldown(ctx)
+            await ctx.send(str(error))
 
     async def match_player(self, player, guild: discord.Guild, prompt=False, ctx=None,
                            score_cutoff=20, claim=True):
@@ -266,6 +267,7 @@ class GuildConfiguration(commands.Cog):
         await ctx.confirm()
 
     @commands.command()
+    @checks.manage_guild()
     @commands.cooldown(1, 43200, commands.BucketType.guild)
     async def refresh(self, ctx, *, clans: ClanConverter = None):
         """Manually refresh all players in the database with current donations and received.
