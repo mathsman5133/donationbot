@@ -1,14 +1,15 @@
 import discord
 from discord.ext import commands
 import coc
-from .donations import PlayerConverter, ClanConverter
+from cogs.utils.converters import PlayerConverter, ClanConverter
 import math
 from .utils import paginator, checks, formatters, fuzzy
 import typing
 
 
 class GuildConfiguration(commands.Cog):
-    """All commands related to setting up the server for the first time, and managing configurations."""
+    """All commands related to setting up the server for the first time,
+    and managing configurations."""
     def __init__(self, bot):
         self.bot = bot
 
@@ -193,15 +194,22 @@ class GuildConfiguration(commands.Cog):
 
         Parameters
         ------------------
-        Pass in any of the following:
+        First, pass in an optional discord user:
+            • User ID
+            • Mention (@user)
+            • user#discrim (must be 1-word)
 
-            • A player tag
-            • A player name (must be in clan claimed in server)
+            • **Optional**: Defaults to the user calling the command.
 
-        Example
+        Then, pass in a clash account:
+            • Player tag
+            • Player name (must be in clan claimed in server)
+
+        Examples
         -------------
         • `+claim #PLAYER_TAG`
-        • `+claim my account name
+        • `+claim @user my account name`
+        • `+claim @user #playertag`
         """
         if not user:
             user = ctx.author
@@ -226,21 +234,47 @@ class GuildConfiguration(commands.Cog):
         await ctx.db.execute(query, user.id, player.tag, season_id)
         await ctx.confirm()
 
+    @commands.command(name='multiclaim')
+    async def multi_claim(self, ctx, user: discord.Member,
+                          players: commands.Greedy[PlayerConverter]):
+        """Helper command to link many clas accounts to a user's discord.
+
+        Note: unlike `+claim`, a discord mention **is not optional** - mention yourself if you want.
+
+        Parameters
+        ------------------
+        First, pass in a discord member:
+            • User ID
+            • Mention
+            • user#discrim (can only be 1-word)
+
+        Second, pass in a clash player:
+            • Player tag
+            • Player name (must be in clan claimed in server, can only be 1-word)
+
+        Example
+        -------------
+        • `+multiclaim @mathsman #PLAYER_TAG #PLAYER_TAG2 name1 name2 #PLAYER_TAG3`
+        • `+multiclaim @user #playertag name1`
+        """
+        for n in players:
+            # TODO: fix this
+            await ctx.invoke(self.claim, user=user, player=n)
+
     @commands.command()
     async def unclaim(self, ctx, *, player: PlayerConverter):
         """Unlink a clash account from your discord account
 
         Parameters
         ----------------
-        Pass in any of the following:
-
-            • A player tag
-            • A player name (must be in clan claimed in server)
+        Pass in a clash account - either:
+            • Player tag
+            • Player name (must be in clan claimed in server)
 
         Example
         -------------
         • `+unclaim #PLAYER_TAG`
-        • `+unclaim my account name
+        • `+unclaim my account name`
         """
         season_id = await self.bot.seasonconfig.get_season_id()
         if ctx.channel.permissions_for(ctx.author).manage_guild \
@@ -283,11 +317,16 @@ class GuildConfiguration(commands.Cog):
 
         Parameters
         --------------------
-        Pass in any one of the following:
-            • clan tag
-            • clan name (if claimed)
+        **Optional**: this command will default to all clans in guild.
+
+        Pass a clash clan:
+            • Clan tag
+            • Clan name (must be claimed to server)
             • `all`, `server`, `guild` for all clans in guild
-            • None: all clans in guild
+
+        Required Permissions
+        -------------------
+        You must have `manage server` permissions to run this command.
 
         Example
         ---------------
@@ -320,16 +359,17 @@ class GuildConfiguration(commands.Cog):
 
         Parameters
         ------------------
-        Pass in any one of the following:
-            • clan tag
-            • clan name (if claimed)
+        **Optional**: this command will default to all clans in guild.
+
+        Pass in a clash clan:
+            • Clan tag
+            • Clan name (must be claimed to server)
             • `all`, `server`, `guild` for all clans in guild
-            • None: all clans in guild
 
         Example
         ------------
         • `+accounts #CLAN_TAG`
-        • `+accounts guild`
+        • `+accounts all`
         """
         if not clans:
             clans = await ctx.get_clans()
@@ -345,7 +385,7 @@ class GuildConfiguration(commands.Cog):
         for n in players:
             fetch = await ctx.db.fetchrow(query, n.tag, season_id)
             if not fetch:
-                final.append([n.name, n.tag, 'None'])
+                final.append([n.name, n.tag, ''])
                 continue
             name = str(ctx.guild.get_member(fetch[0]))
 
@@ -376,18 +416,21 @@ class GuildConfiguration(commands.Cog):
 
         await p.paginate()
 
-    @commands.command()
-    async def get_claims(self, ctx, *, player: typing.Union[PlayerConverter, discord.Member]=None):
+    @commands.command(aliases=['gc', 'gclaims'])
+    async def get_claims(self, ctx, *,
+                         player: typing.Union[discord.Member, PlayerConverter] = None):
         """Get accounts and claims for a player or discord user.
 
         Parameters
         ------------------
-        Pass in any one of the following:
-            • discord @mention
-            • discord user#discrim combo
-            • discord user id
-            • player tag
-            • player name (must be in clan claimed in server)
+        **Optional**: this command will default to all accounts for the person calling the command.
+
+        Pass in a clash account, or a discord user:
+            • User ID (discord)
+            • Mention (@user, discord)
+            • user#discrim (discord)
+            • Player tag (clash account)
+            • Player name (must be in a clan claimed in server)
 
         Example
         --------------
@@ -473,8 +516,6 @@ class GuildConfiguration(commands.Cog):
 
         if not clan:
             clan = await ctx.get_clans()
-        else:
-            clan = [clan]
 
         prompt = await ctx.prompt('Would you like to be asked to confirm before the bot claims matching accounts? '
                                   'Else you can un-claim and reclaim if there is an incorrect claim.')
@@ -562,26 +603,6 @@ class GuildConfiguration(commands.Cog):
 
         await ctx.send('All done. Thanks!')
         await ctx.confirm()
-
-    @commands.group(name='toggle', hidden=True)
-    async def _toggle(self, ctx):
-        pass
-
-    @_toggle.command()
-    async def mentions(self, ctx, toggle: bool=True):
-        pass
-
-    @_toggle.command()
-    async def required(self, ctx, toggle: bool=True):
-        pass
-
-    @_toggle.command()
-    async def nonmembers(self, ctx, toggle: bool=False):
-        pass
-
-    @_toggle.command()
-    async def persist(self, ctx, toggle: bool=True):
-        pass
 
 
 def setup(bot):

@@ -343,7 +343,7 @@ class Season(commands.Cog):
 
     @season.group(name='stats')
     async def season_stats(self, ctx, season: typing.Optional[int] = None,
-                           *, arg: typing.Union[ClanConverter, discord.Member] = None):
+                           *, arg: typing.Union[discord.Member, ClanConverter] = None):
         """Get Overall Season Stats for past seasons.
 
         This command will give you total clan donations, top players by events, donations etc. and more.

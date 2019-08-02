@@ -373,7 +373,7 @@ class DonationBoard(commands.Cog):
             return await ctx.send_help(ctx.command)
         if not ctx.channel.permissions_for(ctx.author).manage_channels \
                 or not await self.bot.is_owner(ctx.author):
-            return
+            raise commands.CheckFailure('You need `manage_server` permissions to run this command.')
 
     @donationboard.command(name='create')
     async def donationboard_create(self, ctx, *, name='donationboard'):

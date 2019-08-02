@@ -9,20 +9,11 @@ import typing
 
 from datetime import datetime
 from discord.ext import commands, tasks
-from cogs.donations import ArgConverter, ClanConverter, PlayerConverter
+from cogs.utils.converters import ArgConverter, ClanConverter, PlayerConverter
 from cogs.utils import formatters, emoji_lookup
 from cogs.utils.db_objects import DatabaseEvent, DatabaseClan
 
 log = logging.getLogger(__name__)
-
-
-class EventsConverter(commands.Converter):
-    async def convert(self, ctx, argument):
-        try:
-            to_fetch = int(argument)
-        except ValueError:
-            to_fetch = await ArgConverter().convert(ctx, argument)
-        return to_fetch
 
 
 class Events(commands.Cog):
@@ -256,10 +247,10 @@ class Events(commands.Cog):
             return await ctx.send_help(ctx.command)
         if not ctx.channel.permissions_for(ctx.author).manage_channels \
                 or not await self.bot.is_owner(ctx.author):
-            return
+            raise commands.CheckFailure('You need `Manage_guild` permissions to run this command.')
 
     @log.command(name='info')
-    async def log_info(self, ctx, channel: typing.Optional[discord.TextChannel] = None):
+    async def log_info(self, ctx, *, channel: discord.TextChannel = None):
         """Get information about log channels for the guild.
 
         Parameters
@@ -302,7 +293,7 @@ class Events(commands.Cog):
         await ctx.send(embed=e)
 
     @log.command(name='interval')
-    async def log_interval(self, ctx, channel: typing.Optional[discord.TextChannel],
+    async def log_interval(self, ctx, channel: typing.Optional[discord.TextChannel] = None,
                            minutes: int = 1):
         """Update the interval (in minutes) for which the bot will log your donations.
 
@@ -338,7 +329,7 @@ class Events(commands.Cog):
         self.invalidate_channel_config(channel.id)
 
     @log.command(name='create')
-    async def log_create(self, ctx, channel: typing.Optional[discord.TextChannel], *,
+    async def log_create(self, ctx, channel: typing.Optional[discord.TextChannel] = None, *,
                          clan: ClanConverter):
         """Create a donation log for your server.
 
@@ -371,7 +362,7 @@ class Events(commands.Cog):
         self.invalidate_channel_config(channel.id)
 
     @log.command(name='toggle')
-    async def log_toggle(self, ctx, channel: typing.Optional[discord.TextChannel]):
+    async def log_toggle(self, ctx, channel: discord.TextChannel = None):
         """Toggle the donation log on/off for your server.
 
         Parameters
@@ -409,7 +400,8 @@ class Events(commands.Cog):
         self.invalidate_channel_config(channel.id)
 
     @commands.group(invoke_without_command=True)
-    async def events(self, ctx, limit: typing.Optional[int] = 20, *, arg: EventsConverter = None):
+    async def events(self, ctx, limit: typing.Optional[int] = 20, *,
+                     arg: typing.Union[discord.Member, ClanConverter, PlayerConverter] = None):
         """Check recent donation events for a player, user, clan or guild.
 
         Parameters
@@ -443,12 +435,10 @@ class Events(commands.Cog):
 
         if isinstance(arg, int):
             await ctx.invoke(self.events_recent, limit=arg)
-        elif isinstance(arg, coc.Player):
+        elif isinstance(arg, coc.BasicPlayer):
             await ctx.invoke(self.events_player, player=arg, limit=limit)
         elif isinstance(arg, discord.Member):
             await ctx.invoke(self.events_user, user=arg, limit=limit)
-        elif isinstance(arg, coc.Clan):
-            await ctx.invoke(self.events_clan, clan=[arg], limit=limit)
         elif isinstance(arg, list):
             if isinstance(arg[0], coc.Clan):
                 await ctx.invoke(self.events_clan, clans=arg, limit=limit)
@@ -476,7 +466,8 @@ class Events(commands.Cog):
         await p.paginate()
 
     @events.command(name='user', hidden=True)
-    async def events_user(self, ctx, limit: typing.Optional[int] = 20, user: discord.Member = None):
+    async def events_user(self, ctx, limit: typing.Optional[int] = 20, *,
+                          user: discord.Member = None):
         """Get donation history/events for a discord user.
 
         Parameters

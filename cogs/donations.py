@@ -1,80 +1,11 @@
-from discord.ext import commands
 import coc
 import discord
-import re
 import math
+import typing
+
+from discord.ext import commands
 from cogs.utils import formatters
-
-
-tag_validator = re.compile("(?P<tag>^\s*#?[PYLQGRJCUV0289]+\s*$)")
-
-
-class PlayerConverter(commands.Converter):
-    async def convert(self, ctx, argument):
-        if not argument:
-            raise commands.BadArgument('No player tag or name supplied')
-        if isinstance(argument, coc.BasicPlayer):
-            return argument
-        if tag_validator.match(argument):
-            return await ctx.coc.get_player(argument)
-        guild_clans = await ctx.get_clans()
-        for g in guild_clans:
-            if g.name == argument or g.tag == argument:
-                raise commands.BadArgument(f'You appear to be passing '
-                                           f'the clan tag/name for `{str(g)}`')
-
-            member = g.get_member(name=argument)
-            if member:
-                return member  # finding don for clash player
-            member_by_tag = g.get_member(tag=argument)
-            if member_by_tag:
-                return member_by_tag
-
-        raise commands.BadArgument(f"Invalid tag or IGN in "
-                                   f"`{','.join(str(n) for n in guild_clans)}` clans.")
-
-
-class ClanConverter(commands.Converter):
-    async def convert(self, ctx, argument):
-        if argument in ['all', 'guild', 'server'] or not argument:
-            return await ctx.get_clans()
-
-        if not argument:
-            raise commands.BadArgument('No clan tag or name supplied.')
-        if isinstance(argument, coc.BasicClan):
-            return argument
-        if tag_validator.match(argument):
-            return [await ctx.coc.get_clan(argument)]
-        guild_clans = await ctx.get_clans()
-        matches = [n for n in guild_clans if n.name == argument or n.tag == argument]
-        if not matches:
-            raise commands.BadArgument(f'Clan name or tag `{argument}` not found')
-        return matches
-
-
-class ArgConverter(commands.Converter):
-    async def convert(self, ctx, argument):
-        if not argument:
-            return ctx.author
-        if argument in ['all', 'server', 'guild']:
-            return await ctx.get_clans()
-        try:
-            return await commands.MemberConverter().convert(ctx, argument)
-            # finding don for a discord member
-        except commands.BadArgument:
-            pass
-        guild_clans = await ctx.get_clans()
-        for g in guild_clans:
-            if g.name == argument or g.tag == argument:
-                return [g]  # finding don for a clan
-
-            member = g.get_member(name=argument)
-            if member:
-                return member  # finding don for clash player
-            member_by_tag = g.get_member(tag=argument)
-            if member_by_tag:
-                return member
-        return ctx.author
+from cogs.utils.converters import ClanConverter, PlayerConverter, ArgConverter
 
 
 class Donations(commands.Cog):
@@ -86,7 +17,8 @@ class Donations(commands.Cog):
         await ctx.send(str(error))
 
     @commands.group(name='donations', aliases=['don'],  invoke_without_command=True)
-    async def donations(self, ctx, *, arg: ArgConverter = None):
+    async def donations(self, ctx, *,
+                        arg: typing.Union[discord.Member, ClanConverter, PlayerConverter] = None):
         """Check donations for a player, user, clan or guild.
 
         For a mobile-friendly table that is guaranteed to fit on a mobile screen,
@@ -121,13 +53,8 @@ class Donations(commands.Cog):
         if ctx.invoked_subcommand is not None:
             return
 
-        if not arg:
-            arg = await ctx.get_clans()
-
         elif isinstance(arg, discord.Member):
             await ctx.invoke(self.donations_user, arg)
-        elif isinstance(arg, coc.BasicClan):
-            await ctx.invoke(self.donations_clan, clans=[arg])
         elif isinstance(arg, coc.BasicPlayer):
             await ctx.invoke(self.donations_player, player=arg)
         elif isinstance(arg, list):
@@ -135,7 +62,7 @@ class Donations(commands.Cog):
                 await ctx.invoke(self.donations_clan, clans=arg)
 
     @donations.command(name='user', hidden=True)
-    async def donations_user(self, ctx, user: discord.Member = None):
+    async def donations_user(self, ctx, *, user: discord.Member = None):
         """Get donations for a discord user.
 
         Parameters
@@ -204,7 +131,6 @@ class Donations(commands.Cog):
         By default, you shouldn't need to call these sub-commands as the bot will
         parse your argument and direct it to the correct sub-command automatically.
         """
-
         query = """SELECT player_tag, donations, received, user_id 
                         FROM players 
                     WHERE player_tag = $1 
@@ -250,7 +176,7 @@ class Donations(commands.Cog):
         parse your argument and direct it to the correct sub-command automatically.
         """
         query = """SELECT player_tag, donations, received, user_id 
-                        FROM players 
+                    FROM players 
                     WHERE player_tag=ANY($1::TEXT[])
                     AND season_id=$2
                     ORDER BY donations DESC

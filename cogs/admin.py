@@ -14,7 +14,10 @@ import copy
 import time
 import subprocess
 from typing import Union, Optional
+
 from cogs.utils.formatters import TabularData
+from cogs.utils.converters import GlobalChannel
+
 # to expose to the eval command
 import datetime
 from collections import Counter
@@ -63,22 +66,6 @@ class PerformanceMocker:
     def __bool__(self):
         return False
 
-
-class GlobalChannel(commands.Converter):
-    async def convert(self, ctx, argument):
-        try:
-            return await commands.TextChannelConverter().convert(ctx, argument)
-        except commands.BadArgument:
-            # Not found... so fall back to ID + global lookup
-            try:
-                channel_id = int(argument, base=10)
-            except ValueError:
-                raise commands.BadArgument(f'Could not find a channel by ID {argument!r}.')
-            else:
-                channel = ctx.bot.get_channel(channel_id)
-                if channel is None:
-                    raise commands.BadArgument(f'Could not find a channel by ID {argument!r}.')
-                return channel
 
 
 class Admin(commands.Cog):
