@@ -5,7 +5,7 @@ import typing
 
 from discord.ext import commands
 from cogs.utils import formatters
-from cogs.utils.converters import ClanConverter, PlayerConverter, ArgConverter
+from cogs.utils.converters import ClanConverter, PlayerConverter
 
 
 class Donations(commands.Cog):

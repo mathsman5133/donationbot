@@ -9,7 +9,7 @@ import typing
 
 from datetime import datetime
 from discord.ext import commands, tasks
-from cogs.utils.converters import ArgConverter, ClanConverter, PlayerConverter
+from cogs.utils.converters import ClanConverter, PlayerConverter
 from cogs.utils import formatters, emoji_lookup
 from cogs.utils.db_objects import DatabaseEvent, DatabaseClan
 
