@@ -10,7 +10,7 @@ import typing
 from datetime import datetime
 from discord.ext import commands, tasks
 from cogs.utils.converters import ClanConverter, PlayerConverter
-from cogs.utils import formatters, emoji_lookup
+from cogs.utils import formatters, emoji_lookup, checks
 from cogs.utils.db_objects import DatabaseEvent, DatabaseClan
 
 log = logging.getLogger(__name__)
@@ -236,6 +236,7 @@ class Events(commands.Cog):
         self.channel_config_cache.pop(channel_id, None)
 
     @commands.group(invoke_without_subcommand=True)
+    @checks.manage_guild()
     async def log(self, ctx):
         """Manage the donation log for the server.
 
@@ -245,9 +246,6 @@ class Events(commands.Cog):
         """
         if ctx.invoked_subcommand is None:
             return await ctx.send_help(ctx.command)
-        if not ctx.channel.permissions_for(ctx.author).manage_channels \
-                or not await self.bot.is_owner(ctx.author):
-            raise commands.CheckFailure('You need `Manage_guild` permissions to run this command.')
 
     @log.command(name='info')
     async def log_info(self, ctx, *, channel: discord.TextChannel = None):

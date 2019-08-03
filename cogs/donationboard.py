@@ -366,14 +366,12 @@ class DonationBoard(commands.Cog):
             await v.edit(embed=e, content=None)
 
     @commands.group(invoke_without_command=True)
+    @checks.manage_guild()
     async def donationboard(self, ctx):
         """Manage the donationboard for the guild.
         """
         if ctx.invoked_subcommand is None:
             return await ctx.send_help(ctx.command)
-        if not ctx.channel.permissions_for(ctx.author).manage_channels \
-                or not await self.bot.is_owner(ctx.author):
-            raise commands.CheckFailure('You need `manage_server` permissions to run this command.')
 
     @donationboard.command(name='create')
     async def donationboard_create(self, ctx, *, name='donationboard'):
