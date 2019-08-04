@@ -54,7 +54,7 @@ class Donations(commands.Cog):
             return
 
         elif isinstance(arg, discord.Member):
-            await ctx.invoke(self.donations_user, arg)
+            await ctx.invoke(self.donations_user, user=arg)
         elif isinstance(arg, coc.BasicPlayer):
             await ctx.invoke(self.donations_player, player=arg)
         elif isinstance(arg, list):
