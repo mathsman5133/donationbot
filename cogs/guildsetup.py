@@ -387,7 +387,7 @@ class GuildConfiguration(commands.Cog):
             if not fetch:
                 final.append([n.name, n.tag, ' '])
                 continue
-            name = str(ctx.guild.get_member(fetch[0]))
+            name = str(self.bot.get_user(fetch[0]))
 
             if len(name) > 20:
                 name = name[:20] + '..'
@@ -467,7 +467,7 @@ class GuildConfiguration(commands.Cog):
                 final.append([n.name, n.tag, ' '])
                 continue
 
-            name = str(ctx.guild.get_member(fetch[0]))
+            name = str(self.bot.get_user(fetch[0]))
 
             if len(name) > 20:
                 name = name[:20] + '..'
