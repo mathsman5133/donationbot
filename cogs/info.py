@@ -139,10 +139,8 @@ class Info(commands.Cog):
     async def cog_command_error(self, ctx, error):
         await ctx.send(str(error))
 
-    @commands.command(aliases=['join'])
-    async def invite(self, ctx):
-        """Get an invite to add the bot to your server.
-        """
+    @property
+    def invite(self):
         perms = discord.Permissions.none()
         perms.read_messages = True
         perms.external_emojis = True
@@ -153,7 +151,13 @@ class Info(commands.Cog):
         perms.read_message_history = True
         perms.add_reactions = True
         perms.attach_files = True
-        await ctx.send(f'<{discord.utils.oauth_url(self.bot.client_id, perms)}>')
+        return discord.utils.oauth_url(self.bot.client_id, perms)
+
+    @commands.command(aliases=['join'])
+    async def invite(self, ctx):
+        """Get an invite to add the bot to your server.
+        """
+        await ctx.send(f'<{self.invite}>')
 
     @commands.command()
     async def feedback(self, ctx, *, content):
@@ -207,11 +211,28 @@ class Info(commands.Cog):
         await self.send_guild_stats(e, guild)
         query = "INSERT INTO guilds (guild_id) VALUES ($1) ON CONFLICT (guild_id) DO NOTHING"
         await self.bot.pool.execute(query, guild.id)
-        fmt = 'Hello! I\'m a clash of clans donation tracker! My prefix is `+`'
+        fmt = '**Some handy hints:**\n' \
+              f'• My prefix is `+`, or {self.bot.user.mention}\n' \
+              '• All commands have super-detailed help commands; please use them!\n' \
+              '• Usage: `+help command_name`\n\n' \
+              'A few frequently used ones to get started:\n' \
+              '• `+help addclan`\n' \
+              '• `+help donationboard` and `+help donationboard create`\n' \
+              '• `+help log` and `+help log create`\n\n' \
+              '• There are lots of how-to\'s and other ' \
+              'support on the [support server](https://discord.gg/ePt8y4V) if you get stuck.\n' \
+              f'• Please share the bot with your friends! [Bot Invite]({self.invite})\n' \
+              '• Please support us on [Patreon](https://www.patreon.com/donationtracker)!\n' \
+              '• Have a good day!'
+        e = discord.Embed(colour=self.bot.colour,
+                          description=fmt)
+        e.set_author(name='Hello! I\'m the Donation Tracker!',
+                     icon_url=self.bot.user.avatar_url
+                     )
 
         if guild.system_channel:
             try:
-                await guild.system_channel.send(fmt)
+                await guild.system_channel.send(embed=e)
                 return
             except (discord.Forbidden, discord.HTTPException):
                 pass
@@ -220,7 +241,7 @@ class Info(commands.Cog):
                 continue
             if c.permissions_for(c.guild.get_member(self.bot.user.id)).send_messages:
                 try:
-                    await c.send(fmt)
+                    await c.send(embed=e)
                 except (discord.Forbidden, discord.HTTPException):
                     pass
                 return
@@ -249,6 +270,42 @@ class Info(commands.Cog):
         await self.bot.pool.execute(query, guild_id, ctx.channel.id, ctx.author.id,
                                     message.created_at, ctx.prefix, command
                                     )
+
+    async def send_claim_clan_stats(self, e, clan, guild):
+        e.add_field(name='Name', value=clan.name)
+        e.add_field(name='Tag', value=clan.id)
+
+        total = len(clan.members)
+        e.add_field(name='Member Count', value=str(total))
+
+        if clan.badge:
+            e.set_thumbnail(url=clan.badge.url)
+
+        e.add_field(name='Guild Name', value=guild.name)
+        e.add_field(name='Guild ID', value=guild.id)
+        e.add_field(name='Guild Owner', value=f'{guild.owner} (ID: {guild.owner.id})')
+
+        bots = sum(m.bot for m in guild.members)
+        total = guild.member_count
+        online = sum(m.status is discord.Status.online for m in guild.members)
+        e.add_field(name='Guild Members', value=str(total))
+        e.add_field(name='Guild Bots', value=f'{bots} ({bots / total:.2%})')
+        e.add_field(name='Guild Online', value=f'{online} ({online / total:.2%})')
+
+        if guild.me:
+            e.set_footer(text='Bot Added').timestamp = guild.me.joined_at
+
+        await self.bot.join_log_webhook.send(embed=e)
+
+    @commands.Cog.listener()
+    async def on_clan_claim(self, ctx, clan):
+        e = discord.Embed(colour=0x53dda4, title='Clan Claimed')  # green colour
+        await self.send_claim_clan_stats(e, clan, ctx.guild)
+
+    @commands.Cog.listener()
+    async def on_clan_unclaim(self, ctx, clan):
+        e = discord.Embed(colour=0xdd5f53, title='Clan Unclaimed')  # green colour
+        await self.send_claim_clan_stats(e, clan, ctx.guild)
 
 
 def setup(bot):
