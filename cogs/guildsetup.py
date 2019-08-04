@@ -17,7 +17,9 @@ class GuildConfiguration(commands.Cog):
         error = getattr(error, 'original', error)
 
         if isinstance(error, commands.CheckFailure):
-            await ctx.send('\N{WARNING SIGN} You must have `manage_server` permission to run this command.')
+            await ctx.send('\N{WARNING SIGN} You must have '
+                           '`manage_server` permission to run this command.')
+            return
         if not isinstance(error, commands.CommandError):
             return
         if isinstance(error, commands.CommandOnCooldown):
@@ -78,11 +80,17 @@ class GuildConfiguration(commands.Cog):
 
         return [clan.get_member(name=n) for n in matches]
 
-    @commands.command(aliases=['aclan'])
+    @commands.command(name='addclan', aliases=['aclan', 'add_clan'])
     @checks.manage_guild()
     async def add_clan(self, ctx, clan_tag: str):
         """Link a clan to your server.
         This will add all accounts in clan to the database, if not already present.
+
+        Note: As a security feature, the clan must have the letters `dt` added
+        at the end of the clan's description.
+
+        This is a security feature of the bot to ensure you have proper (co)ownership of the clan.
+        `dt` should be removed once the command has been sucessfully run.
 
         Parameters
         ----------------
@@ -108,12 +116,18 @@ class GuildConfiguration(commands.Cog):
         query = "SELECT * FROM clans WHERE clan_tag = $1 AND guild_id = $2"
         fetch = await ctx.db.fetch(query, clan_tag, ctx.guild.id)
         if fetch:
-            raise commands.BadArgument('This clan has already been linked to the server.')
+            return await ctx.send('This clan has already been linked to the server.')
 
         try:
-            clan = await ctx.bot.coc.get_clan(clan_tag)
+            clan = await ctx.bot.coc.get_clan(clan_tag, cache=False, update_cache=False)
         except coc.NotFound:
-            raise commands.BadArgument(f'Clan not found with `{clan_tag}` tag.')
+            return await ctx.send(f'Clan not found with `{clan_tag}` tag.')
+
+        if not clan.description.strip().endswith('dt'):
+            return await ctx.send('Please add the letters `dt` to the end of '
+                                  f'`{clan.name}`\'s clan description. Wait 5 minutes and try again.'
+                                  '\n\nThis is a security feature of the bot and should '
+                                  'be removed once the clan has been added.')
 
         query = "INSERT INTO clans (clan_tag, guild_id, clan_name) VALUES ($1, $2, $3)"
         await ctx.db.execute(query, clan.tag, ctx.guild.id, clan.name)
@@ -129,7 +143,7 @@ class GuildConfiguration(commands.Cog):
         await ctx.send('Clan and all members have been added to the database (if not already added)')
         await self.bot.donationboard.update_clan_tags()
 
-    @commands.command(aliases=['rclan'])
+    @commands.command(name='removeclan', aliases=['rclan', 'remove_clan'])
     @checks.manage_guild()
     async def remove_clan(self, ctx, clan_tag: str):
         """Unlink a clan from your server.
@@ -160,7 +174,7 @@ class GuildConfiguration(commands.Cog):
         await ctx.confirm()
         await self.bot.donationboard.update_clan_tags()
 
-    @commands.command(aliases=['aplayer'])
+    @commands.command(name='addplayer', aliases=['aplayer', 'add_player'])
     async def add_player(self, ctx, *, player: PlayerConverter):
         """Manually add a clash account to the database. This does not claim the account.
 
@@ -416,7 +430,7 @@ class GuildConfiguration(commands.Cog):
 
         await p.paginate()
 
-    @commands.command(aliases=['gc', 'gclaims'])
+    @commands.command(name='getclaims', aliases=['gc', 'gclaims', 'get_claims'])
     async def get_claims(self, ctx, *,
                          player: typing.Union[discord.Member, PlayerConverter] = None):
         """Get accounts and claims for a player or discord user.
@@ -478,7 +492,7 @@ class GuildConfiguration(commands.Cog):
         table.add_rows(final)
         await ctx.send(f'```\n{table.render()}\n```')
 
-    @commands.command()
+    @commands.command(name='autoclaim', aliases=['auto_claim'])
     @checks.manage_guild()
     async def auto_claim(self, ctx, *, clan: ClanConverter = None):
         """Automatically claim all accounts in server, through an interactive process.
