@@ -165,7 +165,7 @@ class Info(commands.Cog):
         self.bot = bot
         bot.help_command = HelpCommand()
         bot.help_command.cog = self
-        self.bot.invite = self.invite
+        self.bot.invite = self.invite_link
 
         self.bot.front_help_page_false = []
 
@@ -176,12 +176,12 @@ class Info(commands.Cog):
         if ctx.guild is None:
             await ctx.send(f'This command cannot be used in private messages. '
                            f'Please invite the bot to a server with '
-                           f'[this invite link]({self.invite})')
+                           f'[this invite link]({self.invite_link})')
             return False
         return True
 
     @property
-    def invite(self):
+    def invite_link(self):
         perms = discord.Permissions.none()
         perms.read_messages = True
         perms.external_emojis = True
@@ -198,7 +198,7 @@ class Info(commands.Cog):
     async def invite(self, ctx):
         """Get an invite to add the bot to your server.
         """
-        await ctx.send(f'<{self.invite}>')
+        await ctx.send(f'<{self.invite_link}>')
 
     @commands.command()
     async def support(self, ctx):
