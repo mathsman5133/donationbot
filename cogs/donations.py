@@ -53,6 +53,11 @@ class Donations(commands.Cog):
         if ctx.invoked_subcommand is not None:
             return
 
+        if not arg:
+            arg = await ctx.get_clans()
+
+        if not arg:
+            return await ctx.send('Please claim a clan.')
         elif isinstance(arg, discord.Member):
             await ctx.invoke(self.donations_user, user=arg)
         elif isinstance(arg, coc.BasicPlayer):

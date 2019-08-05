@@ -176,7 +176,7 @@ class Info(commands.Cog):
         if ctx.guild is None:
             await ctx.send(f'This command cannot be used in private messages. '
                            f'Please invite the bot to a server with '
-                           f'[this invite link]({self.invite_link})')
+                           f'the invite: {self.invite_link}')
             return False
         return True
 
