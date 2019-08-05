@@ -14,6 +14,28 @@ class HelpPaginator(Pages):
         self.prefix = help_command.clean_prefix
         self.total = len(entries)
         self.help_command = help_command
+        if ctx.author.id not in ctx.bot.front_help_page_false:
+            self.show_first_help = True
+            ctx.bot.front_help_page_false.append(ctx.author.id)
+        else:
+            self.show_first_help = False
+
+    def get_first_page(self):
+        self.title = 'The Donation Tracker Bot Help'
+        description = 'This is the help command for the bot.\nA few points to notice:\n\n' \
+                      '• This command is powered by reactions: \n' \
+                      ':track_previous: goes to the first page\n' \
+                      ':arrow_backward: goes to the previous page\n' \
+                      ':arrow_forward: goes to the next page\n' \
+                      ':track_next: goes to the last page\n' \
+                      ':1234: lets you type a page number to go to\n' \
+                      ':stop_button: stops the interactive pagination session\n\n' \
+                      '• Help for a specific command can be found with `+help commandname`\n' \
+                      '• e.g `+help don` or `+help donationboard create`.\n\n' \
+                      '• Press :arrow_forward: to proceed.'
+        self.description = description
+        self.prepare_embed([], 1)
+        return self.embed
 
     def get_bot_page(self, page):
         cog, description, commands = self.entries[page - 1]
@@ -43,6 +65,14 @@ class HelpPaginator(Pages):
 
         if self.maximum_pages:
             self.embed.set_author(name=f'Page {page}/{self.maximum_pages} ({self.total} commands)')
+
+    async def get_embed(self, entries, page, *, first=False):
+        if first and self.show_first_help:
+            self.show_first_help = False
+            return self.get_first_page()
+
+        self.prepare_embed(entries, page, first=first)
+        return self.embed
 
 
 class HelpCommand(commands.HelpCommand):
@@ -135,9 +165,20 @@ class Info(commands.Cog):
         self.bot = bot
         bot.help_command = HelpCommand()
         bot.help_command.cog = self
+        self.bot.invite = self.invite
+
+        self.bot.front_help_page_false = []
 
     async def cog_command_error(self, ctx, error):
         await ctx.send(str(error))
+
+    async def bot_check(self, ctx):
+        if ctx.guild is None:
+            await ctx.send(f'This command cannot be used in private messages. '
+                           f'Please invite the bot to a server with '
+                           f'[this invite link]({self.invite})')
+            return False
+        return True
 
     @property
     def invite(self):
@@ -158,6 +199,11 @@ class Info(commands.Cog):
         """Get an invite to add the bot to your server.
         """
         await ctx.send(f'<{self.invite}>')
+
+    @commands.command()
+    async def support(self, ctx):
+        """Get an invite link to the support server."""
+        await ctx.send(f'<https://discord.gg/ePt8y4V>')
 
     @commands.command()
     async def feedback(self, ctx, *, content):
@@ -255,7 +301,7 @@ class Info(commands.Cog):
 
     @commands.Cog.listener()
     async def on_command(self, ctx):
-        command = ctx.command
+        command = ctx.command.qualified_name
         self.bot.command_stats[command] += 1
         message = ctx.message
         if ctx.guild is None:
@@ -273,7 +319,7 @@ class Info(commands.Cog):
 
     async def send_claim_clan_stats(self, e, clan, guild):
         e.add_field(name='Name', value=clan.name)
-        e.add_field(name='Tag', value=clan.id)
+        e.add_field(name='Tag', value=clan.tag)
 
         total = len(clan.members)
         e.add_field(name='Member Count', value=str(total))
