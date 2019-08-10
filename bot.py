@@ -224,10 +224,10 @@ class DonationBot(commands.Bot):
         return await self.coc.get_clans(n[0].strip() for n in fetch).flatten()
 
     async def get_channel_config(self, channel_id):
-        return self.events.get_channel_config(channel_id)
+        return await self.events.get_channel_config(channel_id)
 
     async def get_guild_config(self, guild_id):
-        return self.donationboard.get_guild_config(guild_id)
+        return await self.donationboard.get_guild_config(guild_id)
 
 
 if __name__ == '__main__':
