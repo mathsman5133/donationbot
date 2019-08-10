@@ -1,47 +1,15 @@
 from datetime import datetime
 import discord
-import functools
 import traceback
 import typing
 
 from discord.ext import commands
-from collections import OrderedDict
 
 from cogs.donations import ClanConverter
 from cogs.utils.emoji_lookup import number_emojis
 from cogs.utils.paginator import SeasonStatsPaginator
 from cogs.utils.formatters import TabularData, readable_time
-
-
-def async_cache(max_size=128, arg_offset=0):
-    """
-    LRU cache implementation for coroutines.
-    :param max_size:
-    Specifies the maximum size the cache should have.
-    Once it exceeds the maximum size, keys are deleted in FIFO order.
-    :param arg_offset:
-    The offset that should be applied to the coroutine's arguments
-    when creating the cache key. Defaults to `0`.
-    """
-
-    # Assign the cache to the function itself so we can clear it from outside.
-    async_cache.cache = OrderedDict()
-
-    def decorator(function):
-        @functools.wraps(function)
-        async def wrapper(*args):
-            key = ':'.join(str(n) for n in args[arg_offset:])
-            key += f':{function.__name__}'
-
-            value = async_cache.cache.get(key)
-            if value is None:
-                if len(async_cache.cache) > max_size:
-                    async_cache.cache.popitem(last=False)
-
-                async_cache.cache[key] = await function(*args)
-            return async_cache.cache[key]
-        return wrapper
-    return decorator
+from cogs.utils.cache import cache
 
 
 class Season(commands.Cog):
@@ -55,7 +23,7 @@ class Season(commands.Cog):
         await ctx.send(str(error))
         traceback.print_exc()
 
-    @async_cache()
+    @cache()
     async def build_season_clan_misc_stats(self, ctx, clans, season_id):
         clan_tags = [n.tag for n in clans]
 
@@ -93,7 +61,7 @@ class Season(commands.Cog):
                     value=value)
         return e
 
-    @async_cache()
+    @cache()
     async def build_season_clan_event_stats(self, ctx, clans, season_id):
         clan_tags = [n.tag for n in clans]
 
@@ -178,7 +146,7 @@ class Season(commands.Cog):
         e.set_footer(text='Page 2/3').timestamp = datetime.utcnow()
         return e
 
-    @async_cache()
+    @cache()
     async def build_season_clan_player_stats(self, ctx, clans, season_id):
         clan_tags = [n.tag for n in clans]
 
@@ -247,7 +215,7 @@ class Season(commands.Cog):
         e.set_footer(text='Page 3/3').timestamp = datetime.utcnow()
         return e
 
-    @async_cache()
+    @cache()
     async def build_season_user_misc_stats(self, ctx, user, season_id):
         e = discord.Embed(colour=self.bot.colour,
                           title=f'Season Overview for {user}')
@@ -286,7 +254,7 @@ class Season(commands.Cog):
                     value=value)
         return e
 
-    @async_cache()
+    @cache()
     async def build_season_user_player_stats(self, ctx, user, season_id):
         e = discord.Embed(colour=self.bot.colour,
                           title=f'Season Player Stats for {user}')

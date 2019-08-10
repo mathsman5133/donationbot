@@ -141,7 +141,6 @@ class GuildConfiguration(commands.Cog):
 
         await ctx.confirm()
         await ctx.send('Clan and all members have been added to the database (if not already added)')
-        await self.bot.donationboard.update_clan_tags()
         self.bot.dispatch('clan_claim', ctx, clan)
 
     @commands.command(name='removeclan', aliases=['rclan', 'remove_clan'])
@@ -173,7 +172,6 @@ class GuildConfiguration(commands.Cog):
         query = "DELETE FROM clans WHERE clan_tag = $1 AND guild_id = $2"
         await ctx.db.execute(query, clan_tag, ctx.guild.id)
         await ctx.confirm()
-        await self.bot.donationboard.update_clan_tags()
 
         clan = await self.bot.coc.get_clan(clan_tag)
         if clan:

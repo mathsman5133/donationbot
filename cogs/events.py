@@ -10,7 +10,7 @@ import typing
 from datetime import datetime
 from discord.ext import commands, tasks
 from cogs.utils.converters import ClanConverter, PlayerConverter
-from cogs.utils import formatters, emoji_lookup, checks
+from cogs.utils import formatters, checks, cache
 from cogs.utils.db_objects import DatabaseEvent, DatabaseClan
 
 log = logging.getLogger(__name__)
@@ -35,8 +35,6 @@ class Events(commands.Cog):
         )
         self.bot.coc._clan_retry_interval = 60
         self.bot.coc.start_updates('clan')
-
-        self.channel_config_cache = {}
 
     async def cog_command_error(self, ctx, error):
         await ctx.send(str(error))
@@ -218,11 +216,8 @@ class Events(commands.Cog):
                 'season_id': await self.bot.seasonconfig.get_season_id()
             })
 
+    @cache.cache()
     async def get_channel_config(self, channel_id):
-        config = self.channel_config_cache.get(channel_id)
-        if config:
-            return config
-
         query = """SELECT id, guild_id, clan_tag, clan_name, 
                           channel_id, log_interval, log_toggle 
                     FROM clans WHERE channel_id=$1
@@ -233,12 +228,7 @@ class Events(commands.Cog):
             return None
 
         clan = DatabaseClan(bot=self.bot, record=fetch)
-        self.channel_config_cache[channel_id] = clan
-
         return clan
-
-    def invalidate_channel_config(self, channel_id):
-        self.channel_config_cache.pop(channel_id, None)
 
     @commands.group(invoke_without_subcommand=True)
     @checks.manage_guild()
@@ -338,7 +328,7 @@ class Events(commands.Cog):
         await ctx.confirm()
         fmt = '\n'.join(n[0] for n in fetch)
         await ctx.send(f'Set log interval to {minutes} minutes for {fmt}.')
-        self.invalidate_channel_config(channel.id)
+        self.get_channel_config.invalidate(channel.id)
 
     @log.command(name='create')
     async def log_create(self, ctx, channel: typing.Optional[discord.TextChannel] = None, *,
@@ -371,7 +361,7 @@ class Events(commands.Cog):
         await ctx.send(f'Events log channel has been set to {channel.mention} for {clan[0].name} '
                        f'and logging is enabled.')
         await ctx.confirm()
-        self.invalidate_channel_config(channel.id)
+        self.get_channel_config.invalidate(channel.id)
 
     @log.command(name='toggle')
     async def log_toggle(self, ctx, channel: discord.TextChannel = None):
@@ -409,7 +399,7 @@ class Events(commands.Cog):
         fmt = '\n'.join(n[0] for n in fetch)
         await ctx.send(f'Events logging has been {"enabled" if toggle else "disabled"} for {fmt}')
         await ctx.confirm()
-        self.invalidate_channel_config(channel.id)
+        self.get_channel_config.invalidate(channel.id)
 
     @commands.group(invoke_without_command=True)
     async def events(self, ctx, limit: typing.Optional[int] = 20, *,

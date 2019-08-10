@@ -14,6 +14,8 @@ from cogs.utils import context
 from cogs.utils.db import Table
 from cogs.utils.paginator import CannotPaginate
 from cogs.utils.emoji_lookup import misc
+from cogs.utils.cache import cache
+
 import logging
 
 logging.basicConfig(level=logging.INFO)
@@ -209,38 +211,23 @@ class DonationBot(commands.Bot):
         except (discord.Forbidden, discord.HTTPException):
             return
 
+    @cache()
     async def get_guilds(self, clan_tag):
         query = "SELECT guild_id FROM clans WHERE clan_tag = $1"
         fetch = await self.pool.fetch(query, clan_tag)
         return [self.get_guild(n[0]) for n in fetch if self.get_guild(n[0])]
 
+    @cache()
     async def get_clans(self, guild_id):
         query = "SELECT clan_tag FROM clans WHERE guild_id = $1"
         fetch = await self.pool.fetch(query, guild_id)
         return await self.coc.get_clans(n[0].strip() for n in fetch).flatten()
 
     async def get_channel_config(self, channel_id):
-        cog = self.events
-        if not cog:
-            self.load_extension('cogs.events')
-            cog = self.get_cog('Events')
-
-        return await cog.get_channel_config(channel_id)
+        return self.events.get_channel_config(channel_id)
 
     async def get_guild_config(self, guild_id):
-        cog = self.get_cog('DonationBoard')
-        if not cog:
-            self.load_extension('cogs.donationboard')
-            cog = self.get_cog('DonationBoard')
-
-        return await cog.get_guild_config(guild_id)
-
-    def invalidate_guild_cache(self, guild_id):
-        cog = self.get_cog('DonationBoard')
-        if not cog:
-            self.load_extension('cogs.donationboard')
-            cog = self.get_cog('DonationBoard')
-        cog._guild_config_cache[guild_id] = None
+        return self.donationboard.get_guild_config(guild_id)
 
 
 if __name__ == '__main__':

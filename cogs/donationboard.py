@@ -5,13 +5,12 @@ import discord
 import logging
 import math
 
-from collections import OrderedDict
 from datetime import datetime
 from discord.ext import commands, tasks
 
 from cogs.utils.db_objects import DatabaseGuild, DatabaseMessage, DatabasePlayer, DatabaseClan, DatabaseEvent
 from cogs.utils.formatters import TabularData, clean_name, CLYTable
-from cogs.utils import checks
+from cogs.utils import checks, cache
 
 
 log = logging.getLogger(__name__)
@@ -31,12 +30,6 @@ class DonationBoard(commands.Cog):
 
         self.clan_updates = []
         self.player_updates = []
-
-        self._clan_names = OrderedDict()
-        self._message_cache = OrderedDict()
-        self._guild_config_cache = OrderedDict()
-
-        self.clean_message_cache.start()
 
         self._to_be_deleted = set()
 
@@ -60,7 +53,6 @@ class DonationBoard(commands.Cog):
         self.update_donationboard_loop.start()
 
     def cog_unload(self):
-        self.clean_message_cache.cancel()
         self.bulk_insert_loop.cancel()
         self.update_donationboard_loop.cancel()
         self.bot.coc.remove_events(
@@ -68,10 +60,6 @@ class DonationBoard(commands.Cog):
             self.on_clan_member_received,
             self.on_clan_member_join
         )
-
-    @tasks.loop(hours=1.0)
-    async def clean_message_cache(self):
-        self._message_cache.clear()
 
     @tasks.loop(seconds=30.0)
     async def bulk_insert_loop(self):
@@ -111,54 +99,34 @@ class DonationBoard(commands.Cog):
                 log.info('Registered %s donations/received to the database.', total)
             self._data_batch.clear()
 
+    @cache.cache()
     async def get_guild_config(self, guild_id):
-        cache = self._guild_config_cache.get(guild_id)
-        if cache:
-            return cache
-
         query = "SELECT * FROM guilds WHERE guild_id = $1"
         fetch = await self.bot.pool.fetchrow(query, guild_id)
 
-        config = DatabaseGuild(guild_id=guild_id, bot=self.bot, record=fetch)
-        self._guild_config_cache[guild_id] = config
-        return config
+        return DatabaseGuild(guild_id=guild_id, bot=self.bot, record=fetch)
 
+    @cache.cache()
     async def get_clan_name(self, guild_id, tag):
-        try:
-            name = self._clan_names[guild_id][tag]
-            if name:
-                return name
-        except KeyError:
-            pass
-
         query = "SELECT clan_name FROM clans WHERE clan_tag=$1 AND guild_id=$2"
         fetch = await self.bot.pool.fetchrow(query, tag, guild_id)
         if not fetch:
             return 'Unknown'
-
-        try:
-            self._clan_names[guild_id][tag] = fetch[0]
-        except KeyError:
-            self._clan_names[guild_id] = {}
-            self._clan_names[guild_id][tag] = fetch[0]
         return fetch[0]
 
+    @cache.cache()
     async def get_message(self, channel, message_id):
         try:
-            return self._message_cache[message_id]
-        except KeyError:
-            try:
-                o = discord.Object(id=message_id + 1)
-                # don't wanna use get_message due to poor rate limit (1/1s) vs (50/1s)
-                msg = await channel.history(limit=1, before=o).next()
+            o = discord.Object(id=message_id + 1)
+            # don't wanna use get_message due to poor rate limit (1/1s) vs (50/1s)
+            msg = await channel.history(limit=1, before=o).next()
 
-                if msg.id != message_id:
-                    return None
-
-                self._message_cache[message_id] = msg
-                return msg
-            except Exception:
+            if msg.id != message_id:
                 return None
+
+            return msg
+        except Exception:
+            return None
 
     async def new_donationboard_message(self, guild_id):
         guild_config = await self.get_guild_config(guild_id)
@@ -400,7 +368,7 @@ class DonationBoard(commands.Cog):
         • `manage_channels` permissions
         """
         guild_id = ctx.guild.id
-        self.bot.invalidate_guild_cache(guild_id)
+        self.get_guild_config.invalidate(guild_id)
         guild_config = await self.bot.get_guild_config(guild_id)
 
         if guild_config.donationboard is not None:
@@ -491,7 +459,7 @@ class DonationBoard(commands.Cog):
         await ctx.db.execute(query, reactions.index(str(r)) + 1, ctx.guild.id)
         await ctx.confirm()
         await ctx.send('All done. Thanks!')
-        self.bot.invalidate_guild_cache(ctx.guild.id)
+        self.get_guild_config.invalidate(ctx.guild.id)
 
     @donationboard.command(name='icon')
     async def donationboard_icon(self, ctx, *, url: str = None):
@@ -522,7 +490,7 @@ class DonationBoard(commands.Cog):
         query = "UPDATE guilds SET icon_url=$1 WHERE guild_id=$2"
         await ctx.db.execute(query, url, ctx.guild.id)
         await ctx.confirm()
-        self.bot.invalidate_guild_cache(ctx.guild.id)
+        self.get_guild_config.invalidate(ctx.guild.id)
 
     @donationboard.command(name='title')
     async def donationboard_title(self, ctx, *, title: str = None):
@@ -546,7 +514,7 @@ class DonationBoard(commands.Cog):
         query = "UPDATE guilds SET donationboard_title=$1 WHERE guild_id=$2"
         await ctx.db.execute(query, title, ctx.guild.id)
         await ctx.confirm()
-        self.bot.invalidate_guild_cache(ctx.guild.id)
+        self.get_guild_config.invalidate(ctx.guild.id)
 
     @donationboard.command(name='info')
     async def donationboard_info(self, ctx):
