@@ -106,7 +106,7 @@ class Events(commands.Cog):
         fetch = await self.bot.pool.fetch(query)
 
         query = """SELECT events.clan_tag, events.donations, events.received, 
-                          events.player_name, clans.log_interval
+                          events.player_name, events.time
                     FROM events 
                         INNER JOIN clans 
                         ON clans.clan_tag = events.clan_tag 
