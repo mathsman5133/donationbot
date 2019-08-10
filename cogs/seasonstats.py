@@ -346,6 +346,10 @@ class Season(commands.Cog):
                     LIMIT 100;
                 """
         fetch = await self.bot.pool.fetch(query, [n.tag for n in players], season_id)
+        if not fetch:
+            e = discord.Embed(colour=self.bot.colour,
+                              title='No Donations Found')
+            return [e]
         db_players = [DatabasePlayer(bot=self.bot, record=n) for n in fetch]
         players = {n.tag: n for n in players if n.tag in set(x.player_tag for x in db_players)}
 
@@ -424,6 +428,7 @@ class Season(commands.Cog):
 
         • `+season donationboard 1` - donationboard for season 1
         """
+        query = "SELECT COUNT(*) FROM events WHERE clan_tag=ANY($1::TEXT[]) AND"
         embeds = await self.get_donationboard(ctx.guild.id, season
                                               or (await self.bot.seasonconfig.get_season_id()) - 1)
         p = SeasonStatsPaginator(ctx, entries=embeds)
