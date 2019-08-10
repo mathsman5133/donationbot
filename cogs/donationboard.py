@@ -194,7 +194,7 @@ class DonationBoard(commands.Cog):
             self._to_be_deleted.discard(payload.message_id)
             return
 
-        self._message_cache.pop(payload.message_id, None)
+        self.get_message.invalidate(payload.message_id)
 
         message = await self.safe_delete(message_id=payload.message_id, delete_message=False)
         if message:
@@ -211,7 +211,7 @@ class DonationBoard(commands.Cog):
                 self._to_be_deleted.discard(n)
                 continue
 
-            self._message_cache.pop(n, None)
+            self.get_message.invalidate(n)
 
             message = await self.safe_delete(message_id=n, delete_message=False)
             if message:

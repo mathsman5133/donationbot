@@ -378,7 +378,7 @@ class Season(commands.Cog):
             e.set_author(name=guild_config.donationboard_title or 'DonationBoard',
                          icon_url=guild_config.icon_url or 'https://cdn.discordapp.com/'
                                                            'emojis/592028799768592405.png?v=1')
-            e.set_footer(text=f'Historical DonationBoard - Page {i+1}/{message_count}')
+            e.set_footer(text=f'Historical DonationBoard; Season {season_id} - Page {i+1}/{message_count}')
             embeds.append(e)
         return embeds
 
