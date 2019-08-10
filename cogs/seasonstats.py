@@ -30,7 +30,7 @@ def async_cache(max_size=128, arg_offset=0):
     def decorator(function):
         @functools.wraps(function)
         async def wrapper(*args):
-            key = ':'.join(args[arg_offset:])
+            key = ':'.join(str(n) for n in args[arg_offset:])
 
             value = async_cache.cache.get(key)
             if value is None:

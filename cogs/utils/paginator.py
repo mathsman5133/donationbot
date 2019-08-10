@@ -337,7 +337,7 @@ class SeasonStatsPaginator(Pages):
 
         return self.entries[page - 1]
 
-    async def callback(self):
-        for i, v in enumerate(self.entries):
-            if inspect.isawaitable(v):
-                self.entries[i] = await v
+    # async def callback(self):
+    #     for i, v in enumerate(self.entries):
+    #         if inspect.isawaitable(v):
+    #             self.entries[i] = await v
