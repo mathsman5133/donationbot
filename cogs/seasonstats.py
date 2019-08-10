@@ -1,15 +1,18 @@
 from datetime import datetime
 import discord
+import math
 import traceback
 import typing
 
 from discord.ext import commands
 
 from cogs.donations import ClanConverter
+from cogs.donationboard import MockPlayer
 from cogs.utils.emoji_lookup import number_emojis
 from cogs.utils.paginator import SeasonStatsPaginator
-from cogs.utils.formatters import TabularData, readable_time
+from cogs.utils.formatters import TabularData, readable_time, CLYTable
 from cogs.utils.cache import cache
+from cogs.utils.db_objects import DatabasePlayer
 
 
 class Season(commands.Cog):
@@ -324,6 +327,61 @@ class Season(commands.Cog):
         e.set_footer(text='Page 2/2').timestamp = datetime.utcnow()
         return e
 
+    @cache()
+    async def get_donationboard(self, guild_id, season_id):
+        query = "SELECT DISTINCT clan_tag FROM clans WHERE guild_id=$1"
+        fetch = await self.bot.pool.fetch(query, guild_id)
+        clans = await self.bot.coc.get_clans((n[0] for n in fetch)).flatten()
+        guild_config = await self.bot.donationboard.get_guild_config(guild_id)
+
+        players = []
+        for n in clans:
+            players.extend(p for p in n.itermembers)
+
+        query = """SELECT player_tag, donations, received
+                    FROM players 
+                    WHERE player_tag=ANY($1::TEXT[])
+                    AND season_id=$2
+                    ORDER BY donations DESC
+                    LIMIT 100;
+                """
+        fetch = await self.bot.pool.fetch(query, [n.tag for n in players], season_id)
+        db_players = [DatabasePlayer(bot=self.bot, record=n) for n in fetch]
+        players = {n.tag: n for n in players if n.tag in set(x.player_tag for x in db_players)}
+
+        message_count = math.ceil(len(db_players) / 20)
+
+        embeds = []
+        for i in range(message_count):
+            player_data = db_players[i * 20:(i + 1) * 20]
+            table = CLYTable()
+
+            for x, y in enumerate(player_data):
+                index = i * 20 + x
+                if guild_config.donationboard_render == 2:
+                    table.add_row([index,
+                                   y.donations,
+                                   players.get(y.player_tag, MockPlayer()).name])
+                else:
+                    table.add_row([index,
+                                   y.donations,
+                                   y.received,
+                                   players.get(y.player_tag, MockPlayer()).name
+                                   ]
+                                  )
+
+            fmt = table.render_option_2() if \
+                guild_config.donationboard_render == 2 else table.render_option_1()
+            e = discord.Embed(colour=self.bot.colour,
+                              description=fmt,
+                              timestamp=datetime.utcnow())
+            e.set_author(name=guild_config.donationboard_title or 'DonationBoard',
+                         icon_url=guild_config.icon_url or 'https://cdn.discordapp.com/'
+                                                           'emojis/592028799768592405.png?v=1')
+            e.set_footer(text='Last Updated')
+            embeds.append(e)
+        return embeds
+
     @commands.group(invoke_without_subcommand=True)
     async def season(self, ctx):
         """Group command to manage historical stats for seasons past."""
@@ -349,6 +407,27 @@ class Season(commands.Cog):
                     value=readable_time((fetch[0][2] - fetch[0][1]).total_seconds()) + ' left',
                     inline=False)
         await ctx.send(embed=e)
+
+    @season.command(name='donationboard')
+    async def season_donationboard(self, ctx, season: typing.Optional[int] = None):
+        """Get a historical donationboard for the given season.
+
+        This command will return a pagination of the top 100 players for the guild, in that season.
+
+        Parameters
+        --------------------
+
+            • Season ID: integer - optional. Defaults to the previous season.
+
+        Examples
+        ----------------------
+
+        • `+season donationboard 1` - donationboard for season 1
+        """
+        embeds = await self.get_donationboard(ctx.guild.id, season
+                                              or (await self.bot.seasonconfig.get_season_id()) - 1)
+        p = SeasonStatsPaginator(ctx, entries=embeds)
+        await p.paginate()
 
     @season.group(name='stats')
     async def season_stats(self, ctx, season: typing.Optional[int] = None,

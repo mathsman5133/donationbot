@@ -210,6 +210,26 @@ class Info(commands.Cog):
         """Get an invite link to the support server."""
         await ctx.send(f'<{self.support_invite}>')
 
+    @commands.command(aliases=['patreon', 'patrons'])
+    async def patron(self, ctx):
+        e = discord.Embed(
+            title='Donation Tracker Patrons',
+            colour=self.bot.colour
+        )
+        e.description = 'Patreon provides funds to keep the Donation Tracker servers alive, ' \
+                        'and to enable future development.\n\nTracking donations requires a lot of ' \
+                        'processing power; that\'s how you can help!\n\nAs a patron, ' \
+                        'you will get a few special rewards:\n' \
+                        '• A special hoisted role and a secret patreon channel\n' \
+                        '• Ability to claim more than 2 clans per guild.\n' \
+                        '• The nice warm fuzzy feeling knowing you\'re keeping the ' \
+                        'bot free for everyone else.\n\n' \
+                        '[Link to sign up](https://www.patreon.com/join/donationtracker?)' \
+                        '\n\nThese are our current patrons!\n• '
+        e.description += '\n• '.join(str(n) for n in self.bot.get_guild(594276321937326091).members if
+                                     any(r.id == 605349824472154134 for r in n.roles))
+        await ctx.send(embed=e)
+
     @commands.command()
     async def feedback(self, ctx, *, content):
         """Give feedback on the bot.
