@@ -175,6 +175,7 @@ class Season(commands.Cog):
                     value=value,
                     inline=False
                     )
+        e.set_footer(text='Page 2/3').timestamp = datetime.utcnow()
         return e
 
     @async_cache()
@@ -243,6 +244,7 @@ class Season(commands.Cog):
                     value=value,
                     inline=False
                     )
+        e.set_footer(text='Page 3/3').timestamp = datetime.utcnow()
         return e
 
     @async_cache()
@@ -351,6 +353,7 @@ class Season(commands.Cog):
                     value=value,
                     inline=False
                     )
+        e.set_footer(text='Page 2/2').timestamp = datetime.utcnow()
         return e
 
     @commands.group(invoke_without_subcommand=True)
