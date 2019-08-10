@@ -112,6 +112,12 @@ class GuildConfiguration(commands.Cog):
         ------------------------------
         • `manage_server` permissions
         """
+        current_clans = await self.bot.get_clans(ctx.guild.id)
+        if len(current_clans) > 2 and not checks.is_patron_pred(ctx):
+            return await ctx.send('You must be a patron to have more than 2 clans claimed per server. '
+                                  'See more info with `+patron`, or join the support server for more help: '
+                                  f'{self.bot.support_invite}')
+
         clan_tag = coc.utils.correct_tag(clan_tag)
         query = "SELECT * FROM clans WHERE clan_tag = $1 AND guild_id = $2"
         fetch = await ctx.db.fetch(query, clan_tag, ctx.guild.id)

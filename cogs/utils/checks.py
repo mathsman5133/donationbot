@@ -19,3 +19,11 @@ def manage_guild():
     async def pred(ctx):
         return await check_guild_permissions(ctx, {'manage_guild': True})
     return commands.check(pred)
+
+
+def is_patron_pred(ctx):
+    return any(r.id == 605349824472154134 for r in ctx.author.roles)
+
+
+def is_patron():
+    return commands.check(is_patron_pred)

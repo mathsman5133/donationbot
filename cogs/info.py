@@ -166,6 +166,7 @@ class Info(commands.Cog):
         bot.help_command = HelpCommand()
         bot.help_command.cog = self
         self.bot.invite = self.invite_link
+        self.bot.support_invite = self.support_invite
 
         self.bot.front_help_page_false = []
 
@@ -194,6 +195,10 @@ class Info(commands.Cog):
         perms.attach_files = True
         return discord.utils.oauth_url(self.bot.client_id, perms)
 
+    @property
+    def support_invite(self):
+        return 'https://discord.gg/ePt8y4V'
+
     @commands.command(aliases=['join'])
     async def invite(self, ctx):
         """Get an invite to add the bot to your server.
@@ -203,7 +208,7 @@ class Info(commands.Cog):
     @commands.command()
     async def support(self, ctx):
         """Get an invite link to the support server."""
-        await ctx.send(f'<https://discord.gg/ePt8y4V>')
+        await ctx.send(f'<{self.support_invite}>')
 
     @commands.command()
     async def feedback(self, ctx, *, content):
