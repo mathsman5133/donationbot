@@ -45,10 +45,7 @@ def cache(max_size=128, arg_offset=0):
                 if len(cache.cache) > max_size:
                     cache.cache.popitem(last=False)
 
-                if inspect.isawaitable(function):
-                    cache.cache[key] = await function(*args, **kwargs)
-                else:
-                    cache.cache[key] = function(*args, **kwargs)
+                cache.cache[key] = await function(*args, **kwargs)
             return cache.cache[key]
 
         wrapper.cache = cache.cache
