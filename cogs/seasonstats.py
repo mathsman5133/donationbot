@@ -31,6 +31,7 @@ def async_cache(max_size=128, arg_offset=0):
         @functools.wraps(function)
         async def wrapper(*args):
             key = ':'.join(str(n) for n in args[arg_offset:])
+            key += f':{function.__name__}'
 
             value = async_cache.cache.get(key)
             if value is None:
