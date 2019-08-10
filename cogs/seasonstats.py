@@ -435,8 +435,8 @@ class Season(commands.Cog):
             return await ctx.send(f'{user} doesn\'t have any claimed accounts.')
 
         entries = [
-            self.build_season_user_misc_stats(ctx, user, season),
-            self.build_season_user_player_stats(ctx, user, season),
+            await self.build_season_user_misc_stats(ctx, user, season),
+            await self.build_season_user_player_stats(ctx, user, season)
         ]
 
         p = SeasonStatsPaginator(ctx, entries=entries)
@@ -466,9 +466,9 @@ class Season(commands.Cog):
         season = season or await self.bot.seasonconfig.get_season_id()
 
         entries = [
-            self.build_season_clan_misc_stats(ctx, clan, season),
-            self.build_season_clan_event_stats(ctx, clan, season),
-            self.build_season_clan_player_stats(ctx, clan, season)
+            await self.build_season_clan_misc_stats(ctx, clan, season),
+            await self.build_season_clan_event_stats(ctx, clan, season),
+            await self.build_season_clan_player_stats(ctx, clan, season)
         ]
 
         p = SeasonStatsPaginator(ctx, entries=entries)

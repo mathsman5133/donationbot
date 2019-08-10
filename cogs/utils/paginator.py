@@ -331,13 +331,4 @@ class SeasonStatsPaginator(Pages):
         super().__init__(ctx, entries=entries, per_page=1)
 
     async def get_embed(self, entries, page, *, first=False):
-        entry = self.entries[page - 1]
-        if inspect.isawaitable(entry):
-            self.entries[page - 1] = await entry
-
         return self.entries[page - 1]
-
-    # async def callback(self):
-    #     for i, v in enumerate(self.entries):
-    #         if inspect.isawaitable(v):
-    #             self.entries[i] = await v
