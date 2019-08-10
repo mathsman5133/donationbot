@@ -50,6 +50,6 @@ def cache(max_size=128, arg_offset=0):
 
         wrapper.cache = cache._cache
         wrapper.get_key = lambda *args, **kwargs: _make_key(args, kwargs)
-        wrapper.invalidate = _invalidate
+        wrapper.invalidate = lambda *args, **kwargs: _invalidate(args, kwargs)
         return wrapper
     return decorator
