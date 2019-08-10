@@ -16,7 +16,7 @@ def cache(max_size=128, arg_offset=0):
     """
 
     # Assign the cache to the function itself so we can clear it from outside.
-    cache.cache = OrderedDict()
+    cache._cache = OrderedDict()
 
     def decorator(function):
         def _make_key(args, kwargs):
@@ -30,7 +30,7 @@ def cache(max_size=128, arg_offset=0):
 
         def _invalidate(args, kwargs):
             try:
-                del cache.cache[_make_key(args, kwargs)]
+                del cache._cache[_make_key(args, kwargs)]
             except KeyError:
                 return False
             else:
@@ -40,15 +40,15 @@ def cache(max_size=128, arg_offset=0):
         async def wrapper(*args, **kwargs):
             key = _make_key(args, kwargs)
 
-            value = cache.cache.get(key)
+            value = cache._cache.get(key)
             if value is None:
-                if len(cache.cache) > max_size:
-                    cache.cache.popitem(last=False)
+                if len(cache._cache) > max_size:
+                    cache._cache.popitem(last=False)
 
-                cache.cache[key] = await function(*args, **kwargs)
-            return cache.cache[key]
+                cache._cache[key] = await function(*args, **kwargs)
+            return cache._cache[key]
 
-        wrapper.cache = cache.cache
+        wrapper.cache = cache._cache
         wrapper.get_key = lambda *args, **kwargs: _make_key(args, kwargs)
         wrapper.invalidate = _invalidate
         return wrapper
