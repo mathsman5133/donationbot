@@ -95,7 +95,7 @@ class Donations(commands.Cog):
             user = ctx.author
 
         query = """SELECT player_tag, donations, received, user_id 
-                        FROM players 
+                    FROM players 
                     WHERE user_id = $1 
                     AND season_id=$2
                     ORDER BY donations DESC
@@ -137,7 +137,7 @@ class Donations(commands.Cog):
         parse your argument and direct it to the correct sub-command automatically.
         """
         query = """SELECT player_tag, donations, received, user_id 
-                        FROM players 
+                    FROM players 
                     WHERE player_tag = $1 
                     AND season_id=$2
                     ORDER BY donations DESC

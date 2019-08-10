@@ -170,16 +170,16 @@ class DonationBot(commands.Bot):
         await cog.update_clan_tags()
         await self.change_presence(activity=discord.Game('+help for commands'))
 
-    async def log_info(self, guild_id, message, colour=None, prompt=False):
-        guild_config = await self.get_guild_config(guild_id)
-        if not guild_config.log_channel or not guild_config.log_toggle:
+    async def log_info(self, channel_id, message, colour=None, prompt=False):
+        channel = self.get_channel(channel_id)
+        if not channel:
             return
 
         e = discord.Embed(colour=colour or self.colour,
                           description=message,
                           timestamp=datetime.datetime.utcnow())
         try:
-            msg = await guild_config.log_channel.send(embed=e)
+            msg = await channel.send(embed=e)
         except (discord.Forbidden, discord.HTTPException):
             return
         if prompt:

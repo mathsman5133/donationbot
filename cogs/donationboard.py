@@ -1,5 +1,6 @@
 import asyncio
 import asyncpg
+import coc
 import discord
 import logging
 import math
@@ -55,21 +56,18 @@ class DonationBoard(commands.Cog):
         self.bulk_insert_loop.add_exception_type(asyncpg.PostgresConnectionError)
         self.bulk_insert_loop.start()
         self.update_donationboard_loop.add_exception_type(asyncpg.PostgresConnectionError)
+        self.update_donationboard_loop.add_exception_type(coc.ClashOfClansException)
         self.update_donationboard_loop.start()
 
     def cog_unload(self):
         self.clean_message_cache.cancel()
         self.bulk_insert_loop.cancel()
         self.update_donationboard_loop.cancel()
-        try:
-            self.bot.coc.extra_events['on_clan_member_donation'].remove(
-                self.on_clan_member_donation)
-            self.bot.coc.extra_events['on_clan_member_received'].remove(
-                self.on_clan_member_received)
-            self.bot.coc.extra_events['on_clan_member_join'].remove(
-                self.on_clan_member_join)
-        except ValueError:
-            pass
+        self.bot.coc.remove_events(
+            self.on_clan_member_donation,
+            self.on_clan_member_received,
+            self.on_clan_member_join
+        )
 
     @tasks.loop(hours=1.0)
     async def clean_message_cache(self):
@@ -171,7 +169,7 @@ class DonationBoard(commands.Cog):
         return new_msg
 
     async def safe_delete(self, message_id, delete_message=True):
-        query = "DELETE FROM messages WHERE message_id = $1 RETURNING *"
+        query = "DELETE FROM messages WHERE message_id = $1 RETURNING id, guild_id, message_id, channel_id"
         fetch = await self.bot.pool.fetchrow(query, message_id)
         if not fetch:
             return None
@@ -188,7 +186,7 @@ class DonationBoard(commands.Cog):
         await m.delete()
 
     async def get_message_database(self, message_id):
-        query = "SELECT * FROM messages WHERE message_id = $1"
+        query = "SELECT id, guild_id, message_id, channel_id FROM messages WHERE message_id = $1"
         fetch = await self.bot.pool.fetchrow(query, message_id)
         if not fetch:
             return
@@ -211,9 +209,11 @@ class DonationBoard(commands.Cog):
         query = "DELETE FROM messages WHERE channel_id = $1;"
         await self.bot.pool.execute(query, channel.id)
 
-        query = "UPDATE guilds SET updates_channel_id = NULL, " \
-                "updates_message_id = NULL, updates_toggle = False WHERE " \
-                "guild_id = $1"
+        query = """UPDATE guilds 
+                    SET updates_channel_id = NULL,
+                        updates_toggle = False 
+                    WHERE guild_id = $1
+                """
         await self.bot.pool.execute(query, channel.guild.id)
 
     @commands.Cog.listener()
@@ -278,9 +278,11 @@ class DonationBoard(commands.Cog):
             self._clan_events.add(clan.tag)
 
     async def on_clan_member_join(self, member, clan):
-        query = "INSERT INTO players (player_tag, donations, received, season_id) " \
-                "VALUES ($1,$2,$3, $4) " \
-                "ON CONFLICT (player_tag, season_id) DO NOTHING"
+        query = """INSERT INTO players (player_tag, donations, received, season_id) 
+                    VALUES ($1,$2,$3, $4) 
+                    ON CONFLICT (player_tag, season_id) 
+                    DO NOTHING
+                """
         await self.bot.pool.execute(query, member.tag, member.donations, member.received,
                                     await self.bot.seasonconfig.get_season_id())
 
@@ -319,15 +321,16 @@ class DonationBoard(commands.Cog):
         for n in clans:
             players.extend(p for p in n.itermembers)
 
-        query = """SELECT *
-                        FROM players 
+        query = """SELECT player_tag, donations, received
+                    FROM players 
                     WHERE player_tag=ANY($1::TEXT[])
                     AND season_id=$2
                     ORDER BY donations DESC
+                    LIMIT 100;
                 """
         fetch = await self.bot.pool.fetch(query, [n.tag for n in players],
                                           await self.bot.seasonconfig.get_season_id())
-        db_players = [DatabasePlayer(bot=self.bot, record=n) for n in fetch][:100]
+        db_players = [DatabasePlayer(bot=self.bot, record=n) for n in fetch]
         players = {n.tag: n for n in players if n.tag in set(x.player_tag for x in db_players)}
 
         message_count = math.ceil(len(db_players) / 20)

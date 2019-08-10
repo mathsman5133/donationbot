@@ -4,49 +4,33 @@ from cogs.utils.formatters import readable_time
 
 
 class DatabaseGuild:
-    __slots__ = ('bot', 'guild_id', 'id', 'updates_channel_id', 'updates_header_id', 'updates_toggle',
-                 'log_channel_id', 'log_toggle', 'ign', 'don', 'rec', 'tag', 'claimed_by', 'clan',
-                 'auto_claim', 'donationboard_title', 'icon_url', 'donationboard_render', 'log_interval')
+    __slots__ = ('bot', 'guild_id', 'id', 'updates_channel_id', 'updates_toggle',
+                 'auto_claim', 'donationboard_title', 'icon_url', 'donationboard_render')
 
     def __init__(self, *, guild_id, bot, record=None):
         self.guild_id = guild_id
         self.bot = bot
 
         if record:
-            self.id = record['id']
-            self.updates_channel_id = record['updates_channel_id']
-            self.updates_toggle = record['updates_toggle']
-            self.log_channel_id = record['log_channel_id']
-            self.log_toggle = record['log_toggle']
-            self.ign = record['updates_ign']
-            self.don = record['updates_don']
-            self.rec = record['updates_rec']
-            self.tag = record['updates_tag']
-            self.claimed_by = record['updates_claimed_by']
-            self.clan = record['updates_clan']  # record['updates_clan']
-            self.auto_claim = record['auto_claim']
-            self.donationboard_title = record['donationboard_title']
-            self.icon_url = record['icon_url']
-            self.donationboard_render = record['donationboard_render']
-            self.log_interval = record['log_interval']
+            get = record.get
+            self.id = get('id')
+            self.updates_channel_id = get('updates_channel_id')
+            self.updates_toggle = get('updates_toggle')
+            self.auto_claim = get('auto_claim')
+            self.donationboard_title = get('donationboard_title')
+            self.icon_url = get('icon_url')
+            self.donationboard_render = get('donationboard_render')
         else:
             self.updates_channel_id = None
-            self.log_channel_id = None
             self.updates_toggle = False
-            self.log_toggle = False
             self.auto_claim = False
 
     @property
     def donationboard(self):
         return self.bot.get_channel(self.updates_channel_id)
 
-    @property
-    def log_channel(self):
-        guild = self.bot.get_guild(self.guild_id)
-        return guild and guild.get_channel(self.log_channel_id)
-
     async def updates_messages(self):
-        query = "SELECT * FROM messages WHERE guild_id = $1"
+        query = "SELECT id, message_id, guild_id, channel_id FROM messages WHERE guild_id = $1"
         fetch = await self.bot.pool.fetch(query, self.guild_id)
         return [DatabaseMessage(bot=self.bot, record=n) for n in fetch]
 
@@ -56,11 +40,12 @@ class DatabasePlayer:
         self.bot = bot
 
         if record:
-            self.id = record['id']
-            self.player_tag = record['player_tag']
-            self.donations = record['donations']
-            self.received = record['received']
-            self.user_id = record['user_id']
+            get = record.get
+            self.id = get('id')
+            self.player_tag = get('player_tag')
+            self.donations = get('donations')
+            self.received = get('received')
+            self.user_id = get('user_id')
         else:
             self.user_id = None
             self.player_tag = player_tag
@@ -78,13 +63,14 @@ class DatabaseClan:
         self.bot = bot
 
         if record:
-            self.id = record['id']
-            self.guild_id = record['guild_id']
-            self.clan_tag = record['clan_tag']
-            self.clan_name = record['clan_name']
-            self.channel_id = record['channel_id']
-            self.log_interval = record['log_interval']
-            self.log_toggle = record['log_toggle']
+            get = record.get
+            self.id = get('id')
+            self.guild_id = get('guild_id')
+            self.clan_tag = get('clan_tag')
+            self.clan_name = get('clan_name')
+            self.channel_id = get('channel_id')
+            self.log_interval = get('log_interval')
+            self.log_toggle = get('log_toggle')
         else:
             self.guild_id = None
             self.clan_tag = clan_tag
@@ -110,10 +96,11 @@ class DatabaseMessage:
         self.bot = bot
 
         if record:
-            self.id = record['id']
-            self.guild_id = record['guild_id']
-            self.message_id = record['message_id']
-            self.channel_id = record['channel_id']
+            get = record.get
+            self.id = get('id')
+            self.guild_id = get('guild_id')
+            self.message_id = get('message_id')
+            self.channel_id = get('channel_id')
 
         else:
             self.guild_id = None
@@ -137,13 +124,14 @@ class DatabaseEvent:
         self.bot = bot
 
         if record:
-            self.id = record['id']
-            self.player_tag = record['player_tag']
-            self.player_name = record['player_name']
-            self.clan_tag = record['clan_tag']
-            self.donations = record['donations']
-            self.received = record['received']
-            self.time = record['time']
+            get = record.get
+            self.id = get('id')
+            self.player_tag = get('player_tag')
+            self.player_name = get('player_name')
+            self.clan_tag = get('clan_tag')
+            self.donations = get('donations')
+            self.received = get('received')
+            self.time = get('time')
 
         else:
             self.time = None

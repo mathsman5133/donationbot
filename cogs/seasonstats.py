@@ -1,14 +1,46 @@
 from datetime import datetime
 import discord
+import functools
 import traceback
 import typing
 
 from discord.ext import commands
+from collections import OrderedDict
 
 from cogs.donations import ClanConverter
 from cogs.utils.emoji_lookup import number_emojis
 from cogs.utils.paginator import SeasonStatsPaginator
 from cogs.utils.formatters import TabularData, readable_time
+
+
+def async_cache(max_size=128, arg_offset=0):
+    """
+    LRU cache implementation for coroutines.
+    :param max_size:
+    Specifies the maximum size the cache should have.
+    Once it exceeds the maximum size, keys are deleted in FIFO order.
+    :param arg_offset:
+    The offset that should be applied to the coroutine's arguments
+    when creating the cache key. Defaults to `0`.
+    """
+
+    # Assign the cache to the function itself so we can clear it from outside.
+    async_cache.cache = OrderedDict()
+
+    def decorator(function):
+        @functools.wraps(function)
+        async def wrapper(*args):
+            key = ':'.join(args[arg_offset:])
+
+            value = async_cache.cache.get(key)
+            if value is None:
+                if len(async_cache.cache) > max_size:
+                    async_cache.cache.popitem(last=False)
+
+                async_cache.cache[key] = await function(*args)
+            return async_cache.cache[key]
+        return wrapper
+    return decorator
 
 
 class Season(commands.Cog):
@@ -22,6 +54,7 @@ class Season(commands.Cog):
         await ctx.send(str(error))
         traceback.print_exc()
 
+    @async_cache()
     async def build_season_clan_misc_stats(self, ctx, clans, season_id):
         clan_tags = [n.tag for n in clans]
 
@@ -59,6 +92,7 @@ class Season(commands.Cog):
                     value=value)
         return e
 
+    @async_cache()
     async def build_season_clan_event_stats(self, ctx, clans, season_id):
         clan_tags = [n.tag for n in clans]
 
@@ -142,6 +176,7 @@ class Season(commands.Cog):
                     )
         return e
 
+    @async_cache()
     async def build_season_clan_player_stats(self, ctx, clans, season_id):
         clan_tags = [n.tag for n in clans]
 
@@ -209,6 +244,7 @@ class Season(commands.Cog):
                     )
         return e
 
+    @async_cache()
     async def build_season_user_misc_stats(self, ctx, user, season_id):
         e = discord.Embed(colour=self.bot.colour,
                           title=f'Season Overview for {user}')
@@ -247,6 +283,7 @@ class Season(commands.Cog):
                     value=value)
         return e
 
+    @async_cache()
     async def build_season_user_player_stats(self, ctx, user, season_id):
         e = discord.Embed(colour=self.bot.colour,
                           title=f'Season Player Stats for {user}')
@@ -392,21 +429,18 @@ class Season(commands.Cog):
         user = user or ctx.author
         season = season or await self.bot.seasonconfig.get_season_id()
 
-        query = "SELECT * FROM players WHERE user_id=$1"
+        query = "SELECT player_tag FROM players WHERE user_id=$1"
         fetch = await ctx.db.fetchrow(query, user.id)
         if not fetch:
             return await ctx.send(f'{user} doesn\'t have any claimed accounts.')
 
-        entries = self.season_stats_user_entries.get(user.id)
-        if not entries:
-            entries = [
-                self.build_season_user_misc_stats(ctx, user, season),
-                self.build_season_user_player_stats(ctx, user, season),
-            ]
+        entries = [
+            self.build_season_user_misc_stats(ctx, user, season),
+            self.build_season_user_player_stats(ctx, user, season),
+        ]
 
         p = SeasonStatsPaginator(ctx, entries=entries)
         await p.paginate()
-        self.season_stats_guild_entries[ctx.guild.id] = p.entries
 
     @season_stats.command(name='guild', aliases=['server'])
     async def season_stats_guild(self, ctx, season: typing.Optional[int] = None,
@@ -428,19 +462,17 @@ class Season(commands.Cog):
         """
         if not clan:
             return await ctx.send('No claimed clans.')
-        season = season or await self.bot.seasonconfig.get_season_id()
-        entries = self.season_stats_guild_entries.get(ctx.guild.id)
 
-        if not entries:
-            entries = [
-                self.build_season_clan_misc_stats(ctx, clan, season),
-                self.build_season_clan_event_stats(ctx, clan, season),
-                self.build_season_clan_player_stats(ctx, clan, season)
-            ]
+        season = season or await self.bot.seasonconfig.get_season_id()
+
+        entries = [
+            self.build_season_clan_misc_stats(ctx, clan, season),
+            self.build_season_clan_event_stats(ctx, clan, season),
+            self.build_season_clan_player_stats(ctx, clan, season)
+        ]
 
         p = SeasonStatsPaginator(ctx, entries=entries)
         await p.paginate()
-        self.season_stats_guild_entries[ctx.guild.id] = p.entries
 
 
 def setup(bot):

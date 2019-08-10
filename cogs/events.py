@@ -105,7 +105,8 @@ class Events(commands.Cog):
                 """
         fetch = await self.bot.pool.fetch(query)
 
-        query = """SELECT * FROM events 
+        query = """SELECT clan_tag, donations, received, player_name
+                    FROM events 
                         INNER JOIN clans 
                         ON clans.clan_tag = events.clan_tag 
                     WHERE clans.channel_id=$1 
@@ -156,7 +157,7 @@ class Events(commands.Cog):
     async def check_for_timers(self):
         try:
             while not self.bot.is_closed():
-                query = "SELECT * FROM log_timers ORDER BY expires LIMIT 1;"
+                query = "SELECT id, expires, channel_id, fmt FROM log_timers ORDER BY expires LIMIT 1;"
                 fetch = await self.bot.pool.fetchrow(query)
                 if not fetch:
                     continue
@@ -221,7 +222,10 @@ class Events(commands.Cog):
         if config:
             return config
 
-        query = "SELECT * FROM clans WHERE channel_id=$1"
+        query = """SELECT id, guild_id, clan_tag, clan_name, 
+                          channel_id, log_interval, log_toggle 
+                    FROM clans WHERE channel_id=$1
+                """
         fetch = await self.bot.pool.fetchrow(query, channel_id)
 
         if not fetch:
@@ -266,10 +270,18 @@ class Events(commands.Cog):
         • `manage_server` permissions
         """
         if channel:
-            query = "SELECT * FROM clans WHERE channel_id=$1"
+            query = """SELECT clan_tag, channel_id, log_toggle, 
+                              log_interval, clan_name 
+                       FROM clans 
+                       WHERE channel_id=$1
+                    """
             fetch = await ctx.db.fetch(query, channel.id)
         else:
-            query = "SELECT * from clans WHERE guild_id=$1"
+            query = """SELECT clan_tag, channel_id, log_toggle, 
+                              log_interval, clan_name 
+                       FROM clans 
+                       WHERE guild_id=$1
+                    """
             fetch = await ctx.db.fetch(query, ctx.guild.id)
 
         if channel:
@@ -314,8 +326,9 @@ class Events(commands.Cog):
             channel = ctx.channel
 
         query = """UPDATE clans SET log_interval = ($1 ||' minutes')::interval
-                        WHERE channel_id=$2
-                        RETURNING clan_name"""
+                    WHERE channel_id=$2
+                    RETURNING clan_name
+                """
         fetch = await ctx.db.fetch(query, str(minutes), channel.id)
 
         if not fetch:
@@ -530,12 +543,10 @@ class Events(commands.Cog):
         By default, you shouldn't need to call these sub-commands as the bot will
         parse your argument and direct it to the correct sub-command automatically.
         """
-        query = """SELECT events.player_tag, events.donations, events.received, events.time, events.player_name
+        query = """SELECT player_tag, donations, received, time, player_name
                     FROM events 
-                        INNER JOIN players 
-                        ON players.player_tag = events.player_tag 
-                    WHERE events.player_tag = $1 
-                    ORDER BY events.time DESC 
+                    WHERE player_tag = $1 
+                    ORDER BY time DESC 
                     LIMIT $2
                 """
         fetch = await ctx.db.fetch(query, player.tag, limit)
