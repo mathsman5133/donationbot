@@ -64,7 +64,7 @@ def cache(maxsize=128, strategy=Strategy.lru, ignore_kwargs=False):
                 return repr(o)
 
             key = [ f'{func.__module__}.{func.__name__}' ]
-            key.extend(_true_repr(o) for o in args)
+            key.extend(_true_repr(o) for o in args[1:])
             if not ignore_kwargs:
                 for k, v in kwargs.items():
                     # note: this only really works for this use case in particular
