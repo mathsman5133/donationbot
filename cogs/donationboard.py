@@ -194,7 +194,7 @@ class DonationBoard(commands.Cog):
             self._to_be_deleted.discard(payload.message_id)
             return
 
-        self.get_message.invalidate(payload.message_id)
+        self.get_message.invalidate(self, payload.message_id)
 
         message = await self.safe_delete(message_id=payload.message_id, delete_message=False)
         if message:
@@ -211,7 +211,7 @@ class DonationBoard(commands.Cog):
                 self._to_be_deleted.discard(n)
                 continue
 
-            self.get_message.invalidate(n)
+            self.get_message.invalidate(self, n)
 
             message = await self.safe_delete(message_id=n, delete_message=False)
             if message:
@@ -368,7 +368,7 @@ class DonationBoard(commands.Cog):
         • `manage_channels` permissions
         """
         guild_id = ctx.guild.id
-        self.get_guild_config.invalidate(guild_id)
+        self.get_guild_config.invalidate(self, guild_id)
         guild_config = await self.bot.get_guild_config(guild_id)
 
         if guild_config.donationboard is not None:
@@ -459,7 +459,7 @@ class DonationBoard(commands.Cog):
         await ctx.db.execute(query, reactions.index(str(r)) + 1, ctx.guild.id)
         await ctx.confirm()
         await ctx.send('All done. Thanks!')
-        self.get_guild_config.invalidate(ctx.guild.id)
+        self.get_guild_config.invalidate(self, ctx.guild.id)
 
     @donationboard.command(name='icon')
     async def donationboard_icon(self, ctx, *, url: str = None):
@@ -490,7 +490,7 @@ class DonationBoard(commands.Cog):
         query = "UPDATE guilds SET icon_url=$1 WHERE guild_id=$2"
         await ctx.db.execute(query, url, ctx.guild.id)
         await ctx.confirm()
-        self.get_guild_config.invalidate(ctx.guild.id)
+        self.get_guild_config.invalidate(self, ctx.guild.id)
 
     @donationboard.command(name='title')
     async def donationboard_title(self, ctx, *, title: str = None):
@@ -514,7 +514,7 @@ class DonationBoard(commands.Cog):
         query = "UPDATE guilds SET donationboard_title=$1 WHERE guild_id=$2"
         await ctx.db.execute(query, title, ctx.guild.id)
         await ctx.confirm()
-        self.get_guild_config.invalidate(ctx.guild.id)
+        self.get_guild_config.invalidate(self, ctx.guild.id)
 
     @donationboard.command(name='info')
     async def donationboard_info(self, ctx):

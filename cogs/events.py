@@ -327,7 +327,7 @@ class Events(commands.Cog):
         await ctx.confirm()
         fmt = '\n'.join(n[0] for n in fetch)
         await ctx.send(f'Set log interval to {minutes} minutes for {fmt}.')
-        self.get_channel_config.invalidate(channel.id)
+        self.get_channel_config.invalidate(self, channel.id)
 
     @log.command(name='create')
     async def log_create(self, ctx, channel: typing.Optional[discord.TextChannel] = None, *,
@@ -360,7 +360,7 @@ class Events(commands.Cog):
         await ctx.send(f'Events log channel has been set to {channel.mention} for {clan[0].name} '
                        f'and logging is enabled.')
         await ctx.confirm()
-        self.get_channel_config.invalidate(channel.id)
+        self.get_channel_config.invalidate(self, channel.id)
 
     @log.command(name='toggle')
     async def log_toggle(self, ctx, channel: discord.TextChannel = None):
@@ -398,7 +398,7 @@ class Events(commands.Cog):
         fmt = '\n'.join(n[0] for n in fetch)
         await ctx.send(f'Events logging has been {"enabled" if toggle else "disabled"} for {fmt}')
         await ctx.confirm()
-        self.get_channel_config.invalidate(channel.id)
+        self.get_channel_config.invalidate(self, channel.id)
 
     @commands.group(invoke_without_command=True)
     async def events(self, ctx, limit: typing.Optional[int] = 20, *,

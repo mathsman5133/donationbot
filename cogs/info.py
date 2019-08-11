@@ -373,16 +373,16 @@ class Info(commands.Cog):
         e = discord.Embed(colour=0x53dda4, title='Clan Claimed')  # green colour
         await self.send_claim_clan_stats(e, clan, ctx.guild)
         await self.bot.donationboard.update_clan_tags()
-        self.bot.get_guilds.invalidate(clan.tag)
-        self.bot.get_clans.invalidate(ctx.guild.id)
+        self.bot.get_guilds.invalidate(self.bot, clan.tag)
+        self.bot.get_clans.invalidate(self.bot, ctx.guild.id)
 
     @commands.Cog.listener()
     async def on_clan_unclaim(self, ctx, clan):
         e = discord.Embed(colour=0xdd5f53, title='Clan Unclaimed')  # green colour
         await self.send_claim_clan_stats(e, clan, ctx.guild)
         await self.bot.donationboard.update_clan_tags()
-        self.bot.get_guilds.invalidate(clan.tag)
-        self.bot.get_clans.invalidate(ctx.guild.id)
+        self.bot.get_guilds.invalidate(self.bot, clan.tag)
+        self.bot.get_clans.invalidate(self.bot, ctx.guild.id)
 
 
 def setup(bot):
