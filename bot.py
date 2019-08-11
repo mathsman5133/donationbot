@@ -22,7 +22,7 @@ logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 
 coc_client = coc.login(creds.email, creds.password, client=coc.EventsClient,
-                       key_names='test', throttle_limit=40, default_cache_class=LRU)
+                       key_names='test', throttle_limit=40)
 
 initial_extensions = (
     'cogs.guildsetup',
