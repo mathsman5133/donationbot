@@ -114,7 +114,7 @@ class Events(commands.Cog):
                              time DESC;
                 """
         for n in fetch:
-            channel_config = await self.bot.get_channel_config(channel_id=n[0])
+            channel_config = await self.bot.get_channel_config(n[0])
             if not channel_config:
                 continue
             if not channel_config.log_toggle:
@@ -227,8 +227,7 @@ class Events(commands.Cog):
         if not fetch:
             return None
 
-        clan = DatabaseClan(bot=self.bot, record=fetch)
-        return clan
+        return DatabaseClan(bot=self.bot, record=fetch)
 
     @commands.group(invoke_without_subcommand=True)
     @checks.manage_guild()
