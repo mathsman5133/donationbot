@@ -8,6 +8,8 @@ import creds
 import textwrap
 
 from discord.ext import commands
+from lru import LRU
+
 from cogs.utils import context
 from cogs.utils.db import Table
 from cogs.utils.paginator import CannotPaginate
@@ -20,7 +22,7 @@ logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 
 coc_client = coc.login(creds.email, creds.password, client=coc.EventsClient,
-                       key_names='test', throttle_limit=40, default_cache_class=COCCustomCache)
+                       key_names='test', throttle_limit=40, default_cache_class=LRU)
 
 initial_extensions = (
     'cogs.guildsetup',
