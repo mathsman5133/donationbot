@@ -14,7 +14,7 @@ from cogs.utils import context
 from cogs.utils.db import Table
 from cogs.utils.paginator import CannotPaginate
 from cogs.utils.emoji_lookup import misc
-from cogs.utils.cache import cache, COCCustomCache
+from cogs.utils.cache import cache
 
 import logging
 
