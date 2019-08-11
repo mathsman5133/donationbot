@@ -38,10 +38,6 @@ class ExpiringCache(dict):
     def __setitem__(self, key, value):
         super().__setitem__(key, (value, time.monotonic()))
 
-class COCCustomCache(LRU):
-    def __init__(self, max_size, ttl):
-        super().__init__(max_size)
-
 class Strategy(enum.Enum):
     lru = 1
     raw = 2
