@@ -12,7 +12,7 @@ from cogs.utils import context
 from cogs.utils.db import Table
 from cogs.utils.paginator import CannotPaginate
 from cogs.utils.emoji_lookup import misc
-from cogs.utils.cache import cache
+from cogs.utils.cache import cache, COCCustomCache
 
 import logging
 
@@ -20,7 +20,7 @@ logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 
 coc_client = coc.login(creds.email, creds.password, client=coc.EventsClient,
-                       key_names='test', throttle_limit=40)
+                       key_names='test', throttle_limit=40, default_cache_class=COCCustomCache)
 
 initial_extensions = (
     'cogs.guildsetup',
