@@ -74,6 +74,11 @@ class HelpPaginator(Pages):
         self.prepare_embed(entries, page, first=first)
         return self.embed
 
+    async def paginate(self):
+        if self.show_first_help:
+            self.paginating = True
+        await super().paginate()
+
 
 class HelpCommand(commands.HelpCommand):
     def get_command_signature(self, command):
