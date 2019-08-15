@@ -71,7 +71,7 @@ class HelpPaginator(Pages):
             self.show_first_help = False
             return self.get_first_page()
 
-        self.prepare_embed(entries, page - 1, first=first)
+        self.prepare_embed(entries, page, first=first)
         return self.embed
 
     async def paginate(self):
