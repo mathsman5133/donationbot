@@ -21,8 +21,19 @@ import logging
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 
+
+class Cache(coc.Cache):
+    @staticmethod
+    def create_default_cache(max_size, ttl):
+        return LRU(max_size)
+
+    @property
+    def player_config(self):
+        return coc.CacheConfig(1, None)
+
+
 coc_client = coc.login(creds.email, creds.password, client=coc.EventsClient,
-                       key_names='test', throttle_limit=40)
+                       key_names='test', throttle_limit=40, cache=Cache)
 
 initial_extensions = (
     'cogs.guildsetup',
@@ -150,7 +161,7 @@ class DonationBot(commands.Bot):
         except discord.Forbidden:
             pass
 
-    async def on_event_error(self, event_name, *args, **kwargs):
+    async def on_event_error(self, event_name, exception, *args, **kwargs):
         e = discord.Embed(title='COC Event Error', colour=0xa32952)
         e.add_field(name='Event', value=event_name)
         e.description = f'```py\n{traceback.format_exc()}\n```'
