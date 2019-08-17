@@ -66,19 +66,19 @@ class HelpPaginator(Pages):
         if self.maximum_pages:
             self.embed.set_author(name=f'Page {page}/{self.maximum_pages} ({self.total} commands)')
 
-    async def get_embed(self, entries, page, *, first=False):
-        if first and self.show_first_help:
-            self.show_first_help = False
-            return self.get_first_page()
-
-        self.prepare_embed(entries, page, first=first)
-        return self.embed
-
-    async def paginate(self):
-        if self.show_first_help:
-            self.paginating = True
-            self.maximum_pages += 1
-        await super().paginate()
+    # async def get_embed(self, entries, page, *, first=False):
+    #     if first and self.show_first_help:
+    #         self.show_first_help = False
+    #         return self.get_first_page()
+    #
+    #     self.prepare_embed(entries, page, first=first)
+    #     return self.embed
+    #
+    # async def paginate(self):
+    #     if self.show_first_help:
+    #         self.paginating = True
+    #         self.maximum_pages += 1
+    #     await super().paginate()
 
 
 class HelpCommand(commands.HelpCommand):
@@ -227,7 +227,7 @@ class Info(commands.Cog):
                         'processing power; that\'s how you can help!\n\nAs a patron, ' \
                         'you will get a few special rewards:\n' \
                         '• A special hoisted role and a secret patreon channel\n' \
-                        '• Ability to claim more than 2 clans per guild.\n' \
+                        '• Ability to claim more than 4 clans per guild.\n' \
                         '• The nice warm fuzzy feeling knowing you\'re keeping the ' \
                         'bot free for everyone else.\n\n' \
                         '[Link to sign up](https://www.patreon.com/join/donationtracker?)' \
