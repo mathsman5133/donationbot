@@ -1,8 +1,8 @@
 from datetime import datetime
-from discord.utils import _string_width, escape_markdown
-import discord
+from discord.utils import _string_width
 from cogs.utils.paginator import Pages
-from cogs.utils.emoji_lookup import number_emojis, misc, townhall_emojis
+from cogs.utils.emoji_lookup import number_emojis, misc
+
 
 def clean_name(name):
     if len(name) > 15:
@@ -156,28 +156,8 @@ class CLYTable:
             fmt += f"{v[0]}⠀`⠀{str(v[1]):\u00A0>7.7}⠀`  `⠀{str(v[2]):\u00A0<12.12}⠀`  `⠀{str(v[3]):\u00A0<5.5}⠀`\n"
         return fmt
 
-    def render(self):
-        sep = '+'.join('-' * w for w in self._widths)
-        sep = f'+{sep}+'
-
-        to_draw = [sep]
-
-        def get_entry(d):
-            elem = '|'.join(f'{e:^{self._widths[i]}}' for i, e in enumerate(d))
-            return f'|{elem}|'
-
-        to_draw.append(get_entry(self._columns))
-        to_draw.append(sep)
-
-        for row in self._rows:
-            to_draw.append(get_entry(row))
-
-        to_draw.append(sep)
-        return '\n'.join(to_draw)
-
-
 class TablePaginator(Pages):
-    def __init__(self, ctx, data, title='', page_count=1, rows_per_table=20, mobile=False):
+    def __init__(self, ctx, data, title=None, page_count=1, rows_per_table=20, mobile=False):
         super().__init__(ctx, entries=[i for i in range(page_count)], per_page=1)
         self.table = CLYTable()
         self.data = [(i, v) for (i, v) in enumerate(data)]
@@ -225,8 +205,9 @@ class TablePaginator(Pages):
 
         self.embed.description = entries
 
-        self.embed.set_author(name=self.guild_config.donationboard_title or self.title,
-                              icon_url=self.guild_config.icon_url or 'https://cdn.discordapp.com/emojis/592028799768592405.png?v=1')
+        self.embed.set_author(name=self.title or self.guild_config.donationboard_title,
+                              icon_url=self.guild_config.icon_url
+                                        or 'https://cdn.discordapp.com/emojis/592028799768592405.png?v=1')
 
         return self.embed
 
