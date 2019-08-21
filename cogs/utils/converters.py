@@ -53,7 +53,11 @@ class ClanConverter(commands.Converter):
         name = argument.strip()
 
         if tag_validator.match(tag):
-            clan = await ctx.coc.get_clan(argument)
+            try:
+                clan = await ctx.coc.get_clan(argument)
+            except coc.NotFound:
+                raise commands.BadArgument(f'{tag} is not a valid clan tag.')
+
             if clan:
                 return [clan]
 
