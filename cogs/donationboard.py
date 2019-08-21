@@ -409,6 +409,40 @@ class DonationBoard(commands.Cog):
 
         await ctx.invoke(self.donationboard_edit)
 
+    @donationboard.command(name='delete', aliases=['remove', 'destroy'])
+    async def donationboard_delete(self, ctx):
+        """Deletes the guild donationboard.
+
+        Example
+        -----------
+        • `+donationboard delete`
+        • `+donationboard remove`
+
+        Required Perimssions
+        ----------------------------
+        • `manage_server` permissions
+        """
+        guild_id = ctx.guild.id
+        guild_config = await self.get_guild_config(guild_id)
+
+        if guild_config.donationboard is None:
+            return await ctx.send(
+                f'This server doesn\'t have a donationboard.')
+
+        query = "SELECT message_id FROM messages WHERE channel_id=$1;"
+        messages = await self.bot.pool.fetch(query, guild_config.donationboard.id)
+        for n in messages:
+            await self.safe_delete(n[0])
+
+        query = """UPDATE guilds 
+                    SET updates_channel_id = NULL,
+                        updates_toggle = False 
+                    WHERE guild_id = $1
+                """
+        await self.bot.pool.execute(query, guild_id)
+        await ctx.send('Donationboard sucessfully removed.')
+        self.get_guild_config.invalidate(self, guild_id)
+
     @donationboard.command(name='edit')
     async def donationboard_edit(self, ctx):
         """Edit the format of the guild's donationboard.
