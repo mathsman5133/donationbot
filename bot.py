@@ -21,15 +21,15 @@ import logging
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 
-
-class Cache(coc.Cache):
-    @staticmethod
-    def create_default_cache(max_size, ttl):
-        return LRU(max_size)
-
-    @property
-    def player_config(self):
-        return coc.CacheConfig(1, None)
+#
+# class Cache(coc.Cache):
+#     @staticmethod
+#     def create_default_cache(max_size, ttl):
+#         return LRU(max_size)
+#
+#     @property
+#     def player_config(self):
+#         return coc.CacheConfig(1, None)
 
 
 coc_client = coc.login(creds.email, creds.password, client=coc.EventsClient,

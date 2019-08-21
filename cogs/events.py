@@ -78,7 +78,7 @@ class Events(commands.Cog):
         log.info('Time taken: %s ms', (time.perf_counter() - start)*1000)
 
     async def sync_temp_event_tasks(self):
-        query = """SELECT channel_id FROM clans WHERE log_toggle=True AND log_interval > interval()"""
+        query = """SELECT channel_id FROM clans WHERE log_toggle=True AND log_interval > make_interval()"""
         fetch = await self.bot.pool.fetch(query)
         for n in fetch:
             channel_id = n[0]
