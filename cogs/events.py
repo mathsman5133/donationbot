@@ -101,7 +101,7 @@ class Events(commands.Cog):
     async def create_temp_event_task(self, channel_id):
         try:
             while not self.bot.is_closed():
-                config = await self.get_channel_config(self, channel_id)
+                config = await self.get_channel_config(channel_id)
                 if not config:
                     return await self.bot.error_webhook.send(channel_id)
                 await asyncio.sleep(config.interval_seconds)
