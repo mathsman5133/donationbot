@@ -36,7 +36,7 @@ class Events(commands.Cog):
         self.bot.coc.start_updates('clan')
 
         self._tasks = {}
-        self.sync_temp_event_tasks()
+        asyncio.ensure_future(self.sync_temp_event_tasks())
 
     def cog_unload(self):
         self.report_task.cancel()
@@ -77,7 +77,7 @@ class Events(commands.Cog):
             await self.bulk_report()
         log.info('Time taken: %s ms', (time.perf_counter() - start)*1000)
 
-    def sync_temp_event_tasks(self):
+    async def sync_temp_event_tasks(self):
         query = """SELECT channel_id FROM clans WHERE log_toggle=True AND log_interval > interval()"""
         fetch = await self.bot.pool.fetch(query)
         for n in fetch:
