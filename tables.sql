@@ -78,13 +78,12 @@ create index clan_tag_idx on events (clan_tag);
 create index reported_idx on events (reported);
 create index season_id_idx on events (season_id);
 
-CREATE TABLE log_timers (
+create table tempevents (
     id serial primary key,
-
-    fmt text,
-    expires timestamp,
-    channel_id bigint
+    channel_id bigint,
+    fmt text
 );
+create index channel_id_idx on tempevents (channel_id);
 
 CREATE TABLE seasons (
     id serial primary key,
