@@ -45,8 +45,8 @@ class Events(commands.Cog):
             self.on_clan_member_donation,
             self.on_clan_member_received
         )
-        for n in self._tasks:
-            n.cancel()
+        for k, v in self._tasks:
+            v.cancel()
 
     @tasks.loop(seconds=30.0)
     async def batch_insert_loop(self):
@@ -111,7 +111,7 @@ class Events(commands.Cog):
                 query = "DELETE FROM tempevents WHERE channel_id=$1 RETURNING fmt"
                 fetch = await self.bot.pool.fetch(query, channel_id)
                 for n in fetch:
-                    asyncio.ensure_future(self.bot.channel_log(channel_id, n, embed=False))
+                    asyncio.ensure_future(self.bot.channel_log(channel_id, n[0], embed=False))
                 log.info(f'Dispatching {len(fetch)} logs after sleeping for {config.interval_seconds} '
                          f'sec to channel {config.channel} ({config.channel_id})')
         except asyncio.CancelledError:
@@ -225,7 +225,7 @@ class Events(commands.Cog):
 
     def invalidate_channel_configs(self, channel_id):
         self.get_channel_config.invalidate(self, channel_id)
-        task = self._tasks.pop(channel_id)
+        task = self._tasks.pop(channel_id, None)
         if task:
             task.cancel()
 
