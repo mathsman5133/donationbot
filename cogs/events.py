@@ -27,7 +27,6 @@ class Events(commands.Cog):
         self.batch_insert_loop.start()
         self.report_task.add_exception_type(asyncpg.PostgresConnectionError)
         self.report_task.start()
-        self.check_for_timers_task = self.bot.loop.create_task(self.check_for_timers())
 
         self.bot.coc.add_events(
             self.on_clan_member_donation,
@@ -36,17 +35,18 @@ class Events(commands.Cog):
         self.bot.coc._clan_retry_interval = 60
         self.bot.coc.start_updates('clan')
 
-    async def cog_command_error(self, ctx, error):
-        await ctx.send(str(error))
+        self._tasks = {}
+        self.sync_temp_event_tasks()
 
     def cog_unload(self):
         self.report_task.cancel()
         self.batch_insert_loop.cancel()
-        self.check_for_timers_task.cancel()
         self.bot.coc.remove_events(
             self.on_clan_member_donation,
             self.on_clan_member_received
         )
+        for n in self._tasks:
+            n.cancel()
 
     @tasks.loop(seconds=30.0)
     async def batch_insert_loop(self):
@@ -69,23 +69,6 @@ class Events(commands.Cog):
                 log.info('Registered %s events to the database.', total)
             self._batch_data.clear()
 
-    def dispatch_log(self, channel_id, interval, fmt):
-        seconds = interval.total_seconds()
-        if seconds > 0:
-            if seconds < 600:
-                self.bot.loop.create_task(self.short_timer(interval.total_seconds(),
-                                                           channel_id, fmt
-                                                           )
-                                          )
-            else:
-                asyncio.ensure_future(self.create_new_timer(channel_id, fmt,
-                                      datetime.utcnow() + interval
-                                                            )
-                                      )
-        else:
-            log.info('Dispatching a log to channel ID %s', channel_id)
-            asyncio.ensure_future(self.bot.channel_log(channel_id, fmt, embed=False))
-
     @tasks.loop(seconds=30.0)
     async def report_task(self):
         log.info('Starting bulk report loop.')
@@ -93,6 +76,42 @@ class Events(commands.Cog):
         async with self._batch_lock:
             await self.bulk_report()
         log.info('Time taken: %s ms', (time.perf_counter() - start)*1000)
+
+    def sync_temp_event_tasks(self):
+        query = """SELECT channel_id FROM clans WHERE log_toggle=True AND log_interval > interval()"""
+        fetch = await self.bot.pool.fetch(query)
+        for n in fetch:
+            channel_id = n[0]
+            task = self._tasks.get(channel_id)
+            if not task:
+                self._tasks[channel_id] = self.bot.loop.create_task(self.create_temp_event_task(channel_id))
+                continue
+            if task.done():
+                self._tasks[channel_id] = self.bot.loop.create_task(self.create_temp_event_task(channel_id))
+                continue
+        to_cancel = [n for n in self._tasks.keys() if n not in set(n[0] for n in fetch)]
+        for n in to_cancel:
+            task = self._tasks.pop(n)
+            task.cancel()
+
+    async def add_temp_events(self, channel_id, fmt):
+        query = """INSERT INTO tempevents (channel_id, fmt) VALUES ($1, $2)"""
+        await self.bot.pool.execute(query, channel_id, fmt)
+
+    async def create_temp_event_task(self, channel_id):
+        try:
+            while not self.bot.is_closed():
+                config = await self.get_channel_config(self, channel_id)
+                await asyncio.sleep(config.interval_seconds)
+                query = "DELETE FROM tempevents WHERE channel_id=$1 RETURNING fmt"
+                fetch = await self.bot.pool.fetch(query, channel_id)
+                for n in fetch:
+                    asyncio.ensure_future(self.bot.channel_log(channel_id, n, embed=False))
+        except asyncio.CancelledError:
+            raise
+        except (OSError, discord.ConnectionClosed, asyncpg.PostgresConnectionError):
+            self._tasks[channel_id].cancel()
+            self._tasks[channel_id] = self.bot.loop.create_task(self.create_temp_event_task(channel_id))
 
     async def bulk_report(self):
         query = """SELECT DISTINCT clans.channel_id 
@@ -113,6 +132,7 @@ class Events(commands.Cog):
                     ORDER BY events.clan_tag, 
                              time DESC;
                 """
+
         for n in fetch:
             channel_config = await self.bot.get_channel_config(n[0])
             if not channel_config:
@@ -135,8 +155,12 @@ class Events(commands.Cog):
                 group_batch.append(messages[i*20:(i+1)*20])
 
             for x in group_batch:
-                interval = channel_config.log_interval - events[0].delta_since
-                self.dispatch_log(channel_config.channel_id, interval, '\n'.join(x))
+                if channel_config.interval_seconds > 0:
+                    await self.add_temp_events(channel_config.channel_id, '\n'.join(x))
+                else:
+                    log.info('Dispatching a log to channel %s', channel_config.channel)
+                    asyncio.ensure_future(self.bot.channel_log(channel_config.channel_id,
+                                                               '\n'.join(x), embed=False))
 
             log.info('Dispatched logs for %s (guild %s)', channel_config.channel or 'Not found',
                      channel_config.guild or 'No guild')
@@ -147,40 +171,6 @@ class Events(commands.Cog):
                 """
         removed = await self.bot.pool.execute(query)
         log.info('Removed events from the database. Status Code %s', removed)
-
-    async def short_timer(self, seconds, channel_id, fmt):
-        await asyncio.sleep(seconds)
-        await self.bot.channel_log(channel_id, fmt, embed=False)
-        log.info('Sent a log to channel ID: %s after sleeping for %s', channel_id, seconds)
-
-    async def check_for_timers(self):
-        try:
-            while not self.bot.is_closed():
-                query = "SELECT id, expires, channel_id, fmt FROM log_timers ORDER BY expires LIMIT 1;"
-                fetch = await self.bot.pool.fetchrow(query)
-                if not fetch:
-                    continue
-
-                now = datetime.utcnow()
-                if fetch['expires'] >= now:
-                    to_sleep = (fetch['expires'] - now).total_seconds()
-                    await asyncio.sleep(to_sleep)
-
-                await self.bot.channel_log(fetch['channel_id'], fetch['fmt'], embed=False)
-                log.info('Sent a log to channel ID: %s which had been saved to DB.',
-                         fetch['channel_id'])
-
-                query = "DELETE FROM log_timers WHERE id=$1;"
-                await self.bot.pool.execute(query, fetch['id'])
-        except asyncio.CancelledError:
-            raise
-        except (OSError, discord.ConnectionClosed, asyncpg.PostgresConnectionError):
-            self.create_new_timer_task.cancel()
-            self.create_new_timer_task = self.bot.loop.create_task(self.check_for_timers())
-
-    async def create_new_timer(self, channel_id, fmt, expires):
-        query = "INSERT INTO log_timers (channel_id, fmt, expires) VALUES ($1, $2, $3)"
-        await self.bot.pool.execute(query, channel_id, fmt, expires)
 
     async def on_clan_member_donation(self, old_donations, new_donations, player, clan):
         if old_donations > new_donations:
@@ -228,6 +218,15 @@ class Events(commands.Cog):
             return None
 
         return DatabaseClan(bot=self.bot, record=fetch)
+
+    def invalidate_channel_configs(self, channel_id):
+        self.get_channel_config.invalidate(self, channel_id)
+        task = self._tasks.pop(channel_id)
+        if task:
+            task.cancel()
+
+    async def cog_command_error(self, ctx, error):
+        await ctx.send(str(error))
 
     @commands.group(invoke_without_subcommand=True)
     @checks.manage_guild()
@@ -327,7 +326,7 @@ class Events(commands.Cog):
         await ctx.confirm()
         fmt = '\n'.join(n[0] for n in fetch)
         await ctx.send(f'Set log interval to {minutes} minutes for {fmt}.')
-        self.get_channel_config.invalidate(self, channel.id)
+        self.invalidate_channel_configs(channel.id)
 
     @log.command(name='create')
     async def log_create(self, ctx, channel: typing.Optional[discord.TextChannel] = None, *,
@@ -351,6 +350,9 @@ class Events(commands.Cog):
         """
         if not channel:
             channel = ctx.channel
+        guild_config = await self.bot.donationboard.get_guild_config(ctx.guild.id)
+        if guild_config.donationboard == ctx.channel:
+            return await ctx.send('You can\'t have the same channel for the donationboard and log channel!')
         if not (channel.permissions_for(ctx.me).send_messages or channel.permissions_for(
                 ctx.me).read_messages):
             return await ctx.send('I need permission to send and read messages here!')
@@ -360,7 +362,7 @@ class Events(commands.Cog):
         await ctx.send(f'Events log channel has been set to {channel.mention} for {clan[0].name} '
                        f'and logging is enabled.')
         await ctx.confirm()
-        self.get_channel_config.invalidate(self, channel.id)
+        self.invalidate_channel_configs(channel.id)
 
     @log.command(name='toggle')
     async def log_toggle(self, ctx, channel: discord.TextChannel = None):
@@ -398,7 +400,7 @@ class Events(commands.Cog):
         fmt = '\n'.join(n[0] for n in fetch)
         await ctx.send(f'Events logging has been {"enabled" if toggle else "disabled"} for {fmt}')
         await ctx.confirm()
-        self.get_channel_config.invalidate(self, channel.id)
+        self.invalidate_channel_configs(channel.id)
 
     @commands.group(invoke_without_command=True)
     async def events(self, ctx, limit: typing.Optional[int] = 20, *,
