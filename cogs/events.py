@@ -102,6 +102,8 @@ class Events(commands.Cog):
         try:
             while not self.bot.is_closed():
                 config = await self.get_channel_config(self, channel_id)
+                if not config:
+                    return await self.bot.error_webhook.send(channel_id)
                 await asyncio.sleep(config.interval_seconds)
                 query = "DELETE FROM tempevents WHERE channel_id=$1 RETURNING fmt"
                 fetch = await self.bot.pool.fetch(query, channel_id)
