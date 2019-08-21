@@ -94,9 +94,12 @@ class Events(commands.Cog):
             task = self._tasks.pop(n)
             task.cancel()
 
+        log.info('Synced channel tasks...')
+
     async def add_temp_events(self, channel_id, fmt):
         query = """INSERT INTO tempevents (channel_id, fmt) VALUES ($1, $2)"""
         await self.bot.pool.execute(query, channel_id, fmt)
+        log.info(f'Added a msg for channel id {channel_id} to tempevents db')
 
     async def create_temp_event_task(self, channel_id):
         try:
@@ -109,6 +112,8 @@ class Events(commands.Cog):
                 fetch = await self.bot.pool.fetch(query, channel_id)
                 for n in fetch:
                     asyncio.ensure_future(self.bot.channel_log(channel_id, n, embed=False))
+                log.info(f'Dispatching {len(fetch)} logs after sleeping for {config.interval_seconds} '
+                         f'sec to channel {config.channel} ({config.channel_id})')
         except asyncio.CancelledError:
             raise
         except (OSError, discord.ConnectionClosed, asyncpg.PostgresConnectionError):
@@ -163,9 +168,6 @@ class Events(commands.Cog):
                     log.info('Dispatching a log to channel %s', channel_config.channel)
                     asyncio.ensure_future(self.bot.channel_log(channel_config.channel_id,
                                                                '\n'.join(x), embed=False))
-
-            log.info('Dispatched logs for %s (guild %s)', channel_config.channel or 'Not found',
-                     channel_config.guild or 'No guild')
 
         query = """UPDATE events
                         SET reported=True
