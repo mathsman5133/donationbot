@@ -1,10 +1,16 @@
-from discord.ext import commands
+from discord.ext import commands, tasks
 import discord
 from .utils.paginator import Pages
 import itertools
-from datetime import datetime
+from datetime import datetime, time
 from collections import Counter
+import logging
+import dbl
+import psutil
+import os
+import asyncio
 
+log = logging.getLogger(__name__)
 
 class HelpPaginator(Pages):
     def __init__(self, help_command, ctx, entries, *, per_page=4):
@@ -173,8 +179,21 @@ class Info(commands.Cog):
         bot.help_command.cog = self
         self.bot.invite = self.invite_link
         self.bot.support_invite = self.support_invite
-
         self.bot.front_help_page_false = []
+
+        self.dblpy = dbl.Client(self.bot, self.bot.dbl_token)
+        self.dbl_task.start()
+
+        self.process = psutil.Process()
+
+    @tasks.loop(time=time(hour=0))
+    async def dbl_task(self):
+        log.info('Attempting to post server count')
+        try:
+            await self.dblpy.post_guild_count()
+            log.info('Posted server count ({})'.format(self.dblpy.guild_count()))
+        except Exception as e:
+            log.exception('Failed to post server count\n{}: {}'.format(type(e).__name__, e))
 
     async def cog_command_error(self, ctx, error):
         await ctx.send(str(error))
@@ -257,6 +276,42 @@ class Info(commands.Cog):
 
         await channel.send(embed=e)
         await ctx.send(f'{ctx.tick(True)} Successfully sent feedback')
+
+    @commands.command(hidden=True)
+    async def ping(self, ctx):
+        await ctx.send(f'Pong! {self.bot.latency*1000:.2f}ms')
+
+    @commands.command(hidden=True)
+    @commands.is_owner()
+    async def process(self, ctx):
+        memory_usage = self.process.memory_full_info().uss / 1024 ** 2
+        cpu_usage = self.process.cpu_percent() / psutil.cpu_count()
+        await ctx.send(f'{memory_usage:.2f} MiB\n{cpu_usage:.2f}% CPU')
+
+    @commands.command(hidden=True)
+    @commands.is_owner()
+    async def tasks(self, ctx):
+        task_retriever = asyncio.Task.all_tasks
+        all_tasks = task_retriever(loop=self.bot.loop)
+
+        event_tasks = [
+            t for t in all_tasks
+            if 'Client._run_event' in repr(t) and not t.done()
+        ]
+
+        cogs_directory = os.path.dirname(__file__)
+        tasks_directory = os.path.join('discord', 'ext', 'tasks', 'init.py')
+        inner_tasks = [
+            t for t in all_tasks
+            if cogs_directory in repr(t) or tasks_directory in repr(t)
+        ]
+
+        bad_inner_tasks = ", ".join(hex(id(t)) for t in inner_tasks if t.done() and t._exception is not None)
+        embed = discord.Embed()
+        embed.add_field(name='Inner Tasks',
+                        value=f'Total: {len(inner_tasks)}\nFailed: {bad_inner_tasks or "None"}')
+        embed.add_field(name='Events Waiting', value=f'Total: {len(event_tasks)}', inline=False)
+        await ctx.send(embed=embed)
 
     @commands.group(hidden=True)
     async def info(self, ctx):
