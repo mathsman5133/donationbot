@@ -181,7 +181,7 @@ class Info(commands.Cog):
         self.bot.support_invite = self.support_invite
         self.bot.front_help_page_false = []
 
-        self.dblpy = dbl.Client(self.bot, self.bot.dbl_token)
+        self.dblpy = dbl.DBLClient(self.bot, self.bot.dbl_token)
         self.dbl_task.start()
 
         self.process = psutil.Process()
