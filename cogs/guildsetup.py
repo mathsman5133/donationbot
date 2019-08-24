@@ -46,7 +46,7 @@ class GuildConfiguration(commands.Cog):
                                      f'If already claimed, this will do nothing.')
                 if m is True and claim is True:
                     query = "UPDATE players SET user_id = $1 " \
-                            "WHERE player_tag = $2 AND user_id IS NULL AND season_id=$3"
+                            "WHERE player_tag = $2 AND user_id IS NULL AND season_id = $3"
                     await self.bot.pool.execute(query, user.id, player.tag,
                                                 await self.bot.seasonconfig.get_season_id())
                 else:
@@ -60,7 +60,7 @@ class GuildConfiguration(commands.Cog):
         if len(matches) == 0:
             return None
         for i, n in enumerate(matches):
-            query = "SELECT user_id FROM players WHERE player_tag = $1 AND season_id=$2"
+            query = "SELECT user_id FROM players WHERE player_tag = $1 AND season_id = $2"
             m = clan.get_member(name=n[0])
             fetch = await self.bot.pool.fetchrow(query, m.tag,
                                                  await self.bot.seasonconfig.get_season_id())
@@ -71,7 +71,7 @@ class GuildConfiguration(commands.Cog):
         if len(matches) == 1 and claim is True:
             player = clan.get_member(name=matches[0][0])
             query = "UPDATE players SET user_id = $1 WHERE player_tag = $2 " \
-                    "AND user_id IS NULL AND season_id=$3"
+                    "AND user_id IS NULL AND season_id = $3"
             await self.bot.pool.execute(query, member.id, player.tag,
                                         await self.bot.seasonconfig.get_season_id())
             return player
@@ -80,8 +80,28 @@ class GuildConfiguration(commands.Cog):
 
         return [clan.get_member(name=n) for n in matches]
 
-    @commands.command(name='addclan', aliases=['aclan', 'add_clan'])
+    @commands.group(invoke_without_subcommand=True)
     @checks.manage_guild()
+    async def add(self, ctx):
+        """Allows the user to add a variety of features to the bot.
+
+        Available Commands
+        ------------------
+        • `add clan`
+        • `add player`
+        • `add event`
+        • `add donationboard`
+        • `add trophyboard`
+        • `add attackboard`
+
+        Required Permissions
+        --------------------
+        • `manage_server` permissions
+        """
+        if ctx.invoke_subcommand is None:
+            return await ctx.send_help(ctx.command)
+
+    @add.command(name='clan')
     async def add_clan(self, ctx, clan_tag: str):
         """Link a clan to your server.
         This will add all accounts in clan to the database, if not already present.
@@ -100,13 +120,7 @@ class GuildConfiguration(commands.Cog):
 
         Example
         -----------
-        • `+add_clan #CLAN_TAG`
-        • `+aclan #CLAN_TAG`
-
-        Aliases
-        -----------
-        • `+add_clan` (primary)
-        • `+aclan`
+        • `+add clan #CLAN_TAG`
 
         Required Permissions
         ------------------------------
@@ -149,41 +163,7 @@ class GuildConfiguration(commands.Cog):
         await ctx.send('Clan and all members have been added to the database (if not already added)')
         self.bot.dispatch('clan_claim', ctx, clan)
 
-    @commands.command(name='removeclan', aliases=['rclan', 'remove_clan'])
-    @checks.manage_guild()
-    async def remove_clan(self, ctx, clan_tag: str):
-        """Unlink a clan from your server.
-
-        Parameters
-        -----------------
-        Pass in any of the following:
-
-            • A clan tag
-
-        Example
-        -------------
-        • `+remove_clan #CLAN_TAG`
-        • `+rclan #CLAN_TAG`
-
-        Aliases
-        ------------
-        • `+remove_clan` (primary)
-        • `+rclan`
-
-        Required Permissions
-        ----------------------------
-        • `manage_server` permissions
-        """
-        clan_tag = coc.utils.correct_tag(clan_tag)
-        query = "DELETE FROM clans WHERE clan_tag = $1 AND guild_id = $2"
-        await ctx.db.execute(query, clan_tag, ctx.guild.id)
-        await ctx.confirm()
-
-        clan = await self.bot.coc.get_clan(clan_tag)
-        if clan:
-            self.bot.dispatch('clan_unclaim', ctx, clan)
-
-    @commands.command(name='addplayer', aliases=['aplayer', 'add_player'])
+    @add.command(name='player')
     async def add_player(self, ctx, *, player: PlayerConverter):
         """Manually add a clash account to the database. This does not claim the account.
 
@@ -196,19 +176,171 @@ class GuildConfiguration(commands.Cog):
 
         Example
         ------------
-        • `+add_player #PLAYER_TAG`
-        • `+aplayer my account name`
-
-        Aliases
-        -------------
-        • `+add_player` (primary)
-        • `+aplayer`
+        • `+add player #PLAYER_TAG`
+        • `+add player my account name`
         """
         query = "INSERT INTO players (player_tag, donations, received, season_id) " \
                 "VALUES ($1, $2, $3, $4) ON CONFLICT (player_tag, season_id) DO NOTHING"
         await ctx.db.execute(query, player.tag, player.donations, player.received,
                              await self.bot.seasonconfig.get_season_id())
         await ctx.confirm()
+
+    @add.command(name='discord', aliases=['claim', 'link'])
+    async def add_discord(self, ctx, user: typing.Optional[discord.Member] = None, *,
+                          player: PlayerConverter):
+        """Link a clash account to your discord account
+
+        Parameters
+        ------------------
+        First, pass in an optional discord user:
+            • User ID
+            • Mention (@user)
+            • user#discrim (must be 1-word)
+
+            • **Optional**: Defaults to the user calling the command.
+
+        Then, pass in a clash account:
+            • Player tag
+            • Player name (must be in clan claimed in server)
+
+        Examples
+        -------------
+        • `+add discord #PLAYER_TAG`
+        • `+add discord @user my account name`
+        • `+add discord @user #playertag`
+        """
+        if not user:
+            user = ctx.author
+
+        season_id = await self.bot.seasonconfig.get_season_id()
+        query = "SELECT user_id FROM players WHERE player_tag = $1 AND season_id = $2"
+        fetch = await ctx.db.fetchrow(query, player.tag, season_id)
+
+        if not fetch:
+            query = "INSERT INTO players (player_tag, donations, received, user_id, season_id) " \
+                    "VALUES ($1, $2, $3, $4, $5)"
+            await ctx.db.execute(query, player.tag, player.donations, player.received, user.id,
+                                 season_id)
+            return await ctx.confirm()
+
+        if fetch[0]:
+            user = self.bot.get_user(fetch[0])
+            raise commands.BadArgument(f'Player {player.name} '
+                                       f'({player.tag}) has already been claimed by {str(user)}')
+
+        query = "UPDATE players SET user_id = $1 WHERE player_tag = $2 AND season_id = $3"
+        await ctx.db.execute(query, user.id, player.tag, season_id)
+        await ctx.confirm()
+
+    @add.command(name='multidiscord', aliases=['multi_discord', 'multiclaim', 'multi_claim', 'multilink', 'multi_link'])
+    async def multi_discord(self, ctx, user: discord.Member,
+                            players: commands.Greedy[PlayerConverter]):
+        """Helper command to link many clas accounts to a user's discord.
+
+        Note: unlike `+claim`, a discord mention **is not optional** - mention yourself if you want.
+
+        Parameters
+        ------------------
+        First, pass in a discord member:
+            • User ID
+            • Mention
+            • user#discrim (can only be 1-word)
+
+        Second, pass in a clash player:
+            • Player tag
+            • Player name (must be in clan claimed in server, can only be 1-word)
+
+        Example
+        -------------
+        • `+multiclaim @mathsman #PLAYER_TAG #PLAYER_TAG2 name1 name2 #PLAYER_TAG3`
+        • `+multiclaim @user #playertag name1`
+        """
+        for n in players:
+            # TODO: fix this
+            await ctx.invoke(self.add_discord, user=user, player=n)
+
+    @add.command(name="event")
+    async def add_event(self, ctx, event_name):
+        # TODO finish this function
+        pass
+
+    @add.command(name="trophyboard")
+    async def add_trophyboard(self, ctx, *, name="trophyboard"):
+        """Creates a trophyboard channel for trophy updates.
+
+        Parameters
+        ----------------
+        Pass in any of the following:
+
+            • A name for the channel. Defaults to `trophyboard`
+
+        Example
+        -----------
+        • `+trophyboard create`
+        • `+trophyboard create my cool trophyboard name`
+
+        Required Permissions
+        ----------------------------
+        • `manage_server` permissions
+
+        Bot Required Permissions
+        --------------------------------
+        • `manage_channels` permissions
+        """
+        # TODO finish this function
+        pass
+
+    @add.command(name="attackboard")
+    async def add_attackboard(self, ctx, *, name="attackboard"):
+        """Creates a attackboard channel for attack updates.
+
+        Parameters
+        ----------------
+        Pass in any of the following:
+
+            • A name for the channel. Defaults to `attackboard`
+
+        Example
+        -----------
+        • `+attackboard create`
+        • `+attackboard create my cool attackboard name`
+
+        Required Permissions
+        ----------------------------
+        • `manage_server` permissions
+
+        Bot Required Permissions
+        --------------------------------
+        • `manage_channels` permissions
+        """
+        # TODO finish this function
+        pass
+
+    @add.command(name='donationboard')
+    async def add_donationboard(self, ctx, *, name='donationboard'):
+        """Creates a donationboard channel for donation updates.
+
+        Parameters
+        ----------------
+        Pass in any of the following:
+
+            • A name for the channel. Defaults to `donationboard`
+
+        Example
+        -----------
+        • `+add donationboard`
+        • `+add donationboard my cool donationboard name`
+
+        Required Perimssions
+        ----------------------------
+        • `manage_server` permissions
+
+        Bot Required Permissions
+        --------------------------------
+        • `manage_channels` permissions
+        """
+        # TODO move code from donationboard.py here (will need to see get_guild_config and donationboard_edit
+        pass
 
     @commands.command()
     async def claim(self, ctx, user: typing.Optional[discord.Member] = None, *,
@@ -234,33 +366,13 @@ class GuildConfiguration(commands.Cog):
         • `+claim @user my account name`
         • `+claim @user #playertag`
         """
-        if not user:
-            user = ctx.author
-
-        season_id = await self.bot.seasonconfig.get_season_id()
-        query = "SELECT user_id FROM players WHERE player_tag = $1 AND season_id=$2"
-        fetch = await ctx.db.fetchrow(query, player.tag, season_id)
-
-        if not fetch:
-            query = "INSERT INTO players (player_tag, donations, received, user_id, season_id) " \
-                    "VALUES ($1, $2, $3, $4, $5)"
-            await ctx.db.execute(query, player.tag, player.donations, player.received, user.id,
-                                 season_id)
-            return await ctx.confirm()
-
-        if fetch[0]:
-            user = self.bot.get_user(fetch[0])
-            raise commands.BadArgument(f'Player {player.name} '
-                                       f'({player.tag}) has already been claimed by {str(user)}')
-
-        query = "UPDATE players SET user_id = $1 WHERE player_tag = $2 AND season_id=$3"
-        await ctx.db.execute(query, user.id, player.tag, season_id)
-        await ctx.confirm()
+        if await self.add_discord.can_run(ctx):
+            await ctx.invoke(self.add_discord)
 
     @commands.command(name='multiclaim')
     async def multi_claim(self, ctx, user: discord.Member,
                           players: commands.Greedy[PlayerConverter]):
-        """Helper command to link many clas accounts to a user's discord.
+        """Helper command to link many clash accounts to a user's discord.
 
         Note: unlike `+claim`, a discord mention **is not optional** - mention yourself if you want.
 
@@ -280,9 +392,117 @@ class GuildConfiguration(commands.Cog):
         • `+multiclaim @mathsman #PLAYER_TAG #PLAYER_TAG2 name1 name2 #PLAYER_TAG3`
         • `+multiclaim @user #playertag name1`
         """
-        for n in players:
-            # TODO: fix this
-            await ctx.invoke(self.claim, user=user, player=n)
+        if await self.multi_discord.can_run(ctx):
+            await ctx.invoke(self.multi_discord)
+
+    @commands.group(invoke_without_subcommands=True)
+    @checks.manage_guild()
+    async def remove(self, ctx):
+        """Allows the user to remove a variety of features to the bot.
+
+        Available Commands
+        ------------------
+        • `remove clan`
+        • `remove player`
+        • `remove event`
+        • `remove donationboard`
+        • `remove trophyboard`
+        • `remove attackboard`
+
+        Required Permissions
+        ----------------------------
+        • `manage_server` permissions
+        """
+        if ctx.invoke_subcommand is None:
+            return await ctx.send_help(ctx.command)
+
+    @remove.command(name='clan')
+    async def remove_clan(self, ctx, clan_tag: str):
+        """Unlink a clan from your server.
+
+        Parameters
+        -----------------
+        Pass in any of the following:
+
+            • A clan tag
+
+        Example
+        -------------
+        • `+remove clan #CLAN_TAG`
+
+        Required Permissions
+        ----------------------------
+        • `manage_server` permissions
+        """
+        clan_tag = coc.utils.correct_tag(clan_tag)
+        query = "DELETE FROM clans WHERE clan_tag = $1 AND guild_id = $2"
+        await ctx.db.execute(query, clan_tag, ctx.guild.id)
+        await ctx.confirm()
+
+        clan = await self.bot.coc.get_clan(clan_tag)
+        if clan:
+            self.bot.dispatch('clan_unclaim', ctx, clan)
+
+    @remove.command()
+    async def remove_player(self, ctx, *, player: PlayerConverter):
+        """Manually remove a clash account from the database.
+
+        Parameters
+        -----------------
+        Pass in any of the following:
+
+            • A player tag
+            • A player name
+
+        Example
+        ------------
+        • `+remove player #PLAYER_TAG`
+        • `+remove player my account name`
+        """
+        query = "DELTE FROM players WHERE player_tag = $1 and guild_id = $2"
+        result = await ctx.db.execute(query, player.tag, ctx.guild.id)
+        if result[:-1] == 0:
+            return await ctx.send(f'{player.name}({player.tag}) was not found in the database.')
+        await ctx.confirm()
+
+    @remove.command()
+    async def remove_discord(self, ctx, *, player: PlayerConverter):
+        """Unlink a clash account from your discord account
+
+        Parameters
+        ----------------
+        Pass in a clash account - either:
+            • Player tag
+            • Player name (must be in clan claimed in server)
+
+        Example
+        -------------
+        • `+remove claim #PLAYER_TAG`
+        • `+remove claim my account name`
+        """
+        season_id = await self.bot.seasonconfig.get_season_id()
+        if ctx.channel.permissions_for(ctx.author).manage_guild \
+                or await self.bot.is_owner(ctx.author):
+            query = "UPDATE players SET user_id = NULL WHERE player_tag = $1 AND season_id = $2"
+            await ctx.db.execute(query, player.tag, season_id)
+            return await ctx.confirm()
+
+        query = "SELECT user_id FROM players WHERE player_tag = $1 AND season_id = $2"
+        fetch = await ctx.db.fetchrow(query, player.tag, season_id)
+        if not fetch:
+            query = "UPDATE players SET user_id = NULL WHERE player_tag = $1 AND season_id = $2"
+            await ctx.db.execute(query, player.tag, season_id)
+            return await ctx.confirm()
+
+        if fetch[0] != ctx.author.id:
+            return await ctx.send(f'Player has been claimed by '
+                                  f'{self.bot.get_user(fetch[0]) or "unknown"}.\n'
+                                  f'Please contact them, or someone '
+                                  f'with `manage_guild` permissions to unclaim it.')
+
+        query = "UPDATE players SET user_id = NULL WHERE player_tag = $1 AND season_id = $2"
+        await ctx.db.execute(query, player.tag, season_id)
+        await ctx.confirm()
 
     @commands.command()
     async def unclaim(self, ctx, *, player: PlayerConverter):
@@ -299,29 +519,8 @@ class GuildConfiguration(commands.Cog):
         • `+unclaim #PLAYER_TAG`
         • `+unclaim my account name`
         """
-        season_id = await self.bot.seasonconfig.get_season_id()
-        if ctx.channel.permissions_for(ctx.author).manage_guild \
-                or await self.bot.is_owner(ctx.author):
-            query = "UPDATE players SET user_id = NULL WHERE player_tag = $1 AND season_id=$2"
-            await ctx.db.execute(query, player.tag, season_id)
-            return await ctx.confirm()
-
-        query = "SELECT user_id FROM players WHERE player_tag = $1 AND season_id=$2"
-        fetch = await ctx.db.fetchrow(query, player.tag, season_id)
-        if not fetch:
-            query = "UPDATE players SET user_id = NULL WHERE player_tag = $1 AND season_id=$2"
-            await ctx.db.execute(query, player.tag, season_id)
-            return await ctx.confirm()
-
-        if fetch[0] != ctx.author.id:
-            return await ctx.send(f'Player has been claimed by '
-                                  f'{self.bot.get_user(fetch[0]) or "unknown"}.\n'
-                                  f'Please contact them, or someone '
-                                  f'with `manage_guild` permissions to unclaim it.')
-
-        query = "UPDATE players SET user_id = NULL WHERE player_tag = $1 AND season_id=$2"
-        await ctx.db.execute(query, player.tag, season_id)
-        await ctx.confirm()
+        if await self.remove_discord.can_run(ctx):
+            await ctx.invoke(self.remove_discord)
 
     @commands.command()
     @checks.manage_guild()
@@ -360,10 +559,10 @@ class GuildConfiguration(commands.Cog):
         if not clans:
             clans = await ctx.get_clans()
         query = """UPDATE players 
-                        SET donations=$1, received=$2
-                    WHERE player_tag=$3
-                    AND donations<=$1
-                    AND received<=$2
+                   SET donations = $1, received = $2
+                   WHERE player_tag = $3
+                   AND donations <= $1
+                   AND received <= $2
                 """
         for clan in clans:
             for member in clan.members:
@@ -404,7 +603,7 @@ class GuildConfiguration(commands.Cog):
         final = []
 
         season_id = await self.bot.seasonconfig.get_season_id()
-        query = "SELECT user_id FROM players WHERE player_tag = $1 AND season_id=$2"
+        query = "SELECT user_id FROM players WHERE player_tag = $1 AND season_id = $2"
         for n in players:
             fetch = await ctx.db.fetchrow(query, n.tag, season_id)
             if not fetch:
@@ -473,7 +672,7 @@ class GuildConfiguration(commands.Cog):
             player = ctx.author
 
         if isinstance(player, discord.Member):
-            query = "SELECT player_tag FROM players WHERE user_id = $1 AND season_id=$2"
+            query = "SELECT player_tag FROM players WHERE user_id = $1 AND season_id = $2"
             fetch = await ctx.db.fetch(query, player.id, season_id)
             if not fetch:
                 return await ctx.send(f'{str(player)} has no claimed accounts.')
@@ -481,7 +680,7 @@ class GuildConfiguration(commands.Cog):
         else:
             player = [player]
 
-        query = "SELECT user_id FROM players WHERE player_tag = $1 AND season_id=$2"
+        query = "SELECT user_id FROM players WHERE player_tag = $1 AND season_id = $2"
 
         final = []
         for n in player:
@@ -550,7 +749,7 @@ class GuildConfiguration(commands.Cog):
         for c in clan:
             for member in c.members:
                 query = "SELECT * FROM players WHERE player_tag = $1 AND user_id IS NOT NULL " \
-                        "AND season_id=$2;"
+                        "AND season_id = $2;"
                 fetch = await ctx.db.fetchrow(query, member.tag, season_id)
                 if fetch:
                     continue
@@ -575,7 +774,7 @@ class GuildConfiguration(commands.Cog):
                                           f'Corresponding members found:\n'
                                           f'```\n{table.render()}\n```', additional_options=len(results))
                 if isinstance(result, int):
-                    query = "UPDATE players SET user_id = $1 WHERE player_tag = $2 AND season_id=$3"
+                    query = "UPDATE players SET user_id = $1 WHERE player_tag = $2 AND season_id = $3"
                     await self.bot.pool.execute(query, results[result].id, member.tag, season_id)
                 if result is None or result is False:
                     await self.bot.log_info(ctx.channel.id, f'[auto-claim]: For player {member.name} ({member.tag})\n'
@@ -606,7 +805,7 @@ class GuildConfiguration(commands.Cog):
             except commands.BadArgument:
                 await ctx.send('Discord user not found. Moving on to next clan member. Please claim them manually.')
                 continue
-            query = "UPDATE players SET user_id = $1 WHERE player_tag = $2 AND season_id=$3"
+            query = "UPDATE players SET user_id = $1 WHERE player_tag = $2 AND season_id = $3"
             await self.bot.pool.execute(query, member.id, fail.tag, season_id)
             await self.bot.log_info(ctx.channel.id, f'[auto-claim]: {fail.name} ({fail.tag}) '
                                                f'has been claimed to {str(member)} ({member.id})',
