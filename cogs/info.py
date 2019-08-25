@@ -1,6 +1,6 @@
 from discord.ext import commands, tasks
 import discord
-from .utils.paginator import Pages
+from cogs.utils.paginator import Pages
 import itertools
 from datetime import datetime, time
 from collections import Counter

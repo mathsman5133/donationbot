@@ -8,7 +8,6 @@ import creds
 import textwrap
 
 from discord.ext import commands
-from lru import LRU
 
 from cogs.utils import context
 from cogs.utils.db import Table
@@ -57,6 +56,7 @@ class DonationBot(commands.Bot):
         self.colour = discord.Colour.blurple()
         self.coc = coc_client
         self.client_id = creds.client_id
+        self.dbl_token = creds.dbl_token
         self.owner_id = 230214242618441728
         self.session = aiohttp.ClientSession(loop=self.loop)
         self.error_webhook = discord.Webhook.partial(id=creds.error_hook_id,
