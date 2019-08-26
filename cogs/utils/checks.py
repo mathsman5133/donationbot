@@ -23,7 +23,7 @@ def manage_guild():
 
 def is_patron_pred(ctx):
     return any(r.id == 605349824472154134 for
-               r in ctx.get_guild(594276321937326091).get_member(ctx.author.id).roles) \
+               r in ctx.bot.get_guild(594276321937326091).get_member(ctx.author.id).roles) \
            or ctx.author.id == ctx.bot.owner_id
 
 
