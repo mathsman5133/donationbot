@@ -1,10 +1,15 @@
 import discord
-from discord.ext import commands
-import coc
-from cogs.utils.converters import PlayerConverter, ClanConverter
+import asyncio
 import math
-from .utils import paginator, checks, formatters, fuzzy
 import typing
+import datetime
+import coc
+
+from discord.ext import commands
+from cogs.utils import checks, cache
+from cogs.utils.db_objects import DatabaseGuild
+from cogs.utils.converters import PlayerConverter, ClanConverter
+from .utils import paginator, checks, formatters, fuzzy
 
 
 class GuildConfiguration(commands.Cog):
@@ -79,6 +84,14 @@ class GuildConfiguration(commands.Cog):
             return True
 
         return [clan.get_member(name=n) for n in matches]
+
+    @cache.cache()
+    async def get_guild_config(self, guild_id):
+        # TODO get that star out of there and list the fields ;)
+        query = "SELECT * FROM guilds WHERE guild_id = $1"
+        fetch = await self.bot.pool.fetchrow(query, guild_id)
+
+        return DatabaseGuild(guild_id=guild_id, bot=self.bot, record=fetch)
 
     @commands.group(invoke_without_subcommand=True)
     @checks.manage_guild()
@@ -260,9 +273,121 @@ class GuildConfiguration(commands.Cog):
             await ctx.invoke(self.add_discord, user=user, player=n)
 
     @add.command(name="event")
-    async def add_event(self, ctx, event_name):
-        # TODO finish this function
-        pass
+    async def add_event(self, ctx, event_name: str = None):
+        """Allows user to add a new trophy push event. Trophy Push events override season statistics for trophy
+        counts.
+
+        This command is interactive and will ask you questions about the new event.  After the initial command,
+        the bot will ask you further questions about the event.
+
+        Parameters
+        ------------------
+        • Name of the event
+
+        Example
+        ------------------
+        • `+add event`
+        • `+add event Summer Mega Push`
+
+        Required Permissions
+        ----------------------------
+        • `manage_server` permissions
+        """
+        guild_config = await self.bot.get_guild_config(ctx.guild.id)
+        if guild_config.event_start > datetime.datetime.now():
+            return await ctx.send(f'This server is already set up for {guild_config.event_name}. Please use '
+                                  f'`+remove event` if you would like to remove this event and create a new one.')
+
+        def check_author(m):
+            return m.author == ctx.author
+
+        if not event_name:
+            try:
+                await ctx.send('Please enter the name of the new event.')
+                response = await ctx.bot.wait_for('message', check=check_author, timeout=60.0)
+                event_name = response.content
+            except asyncio.TimeoutError:
+                return await ctx.send('I can\'t wait all day. Try again later.')
+
+        try:
+            await ctx.send(f'What date does the {event_name} begin?  (YYYY-MM-DD)')
+            response = await ctx.bot.wait_for('message', check=check_author, timeout=60.0)
+            year, month, day = map(int, response.content.split('-'))
+            start_date = datetime.date(year, month, day)
+        except ValueError:
+            return await ctx.send(f'Date must be in the YYYY-MM-DD format.')
+            # TODO is there a way keep running this (maybe with a static method) until the user gets it right?
+        except asyncio.TimeoutError:
+            return await ctx.send('Yawn!  Time\'s up. You\'re going to have to start over some other time.')
+
+        try:
+            await ctx.send('And what time does this fantastic event begin? (Please provide HH:MM in UTC)')
+            response = await ctx.bot.wait_for('message', check=check_author, timeout=60.0)
+            hour, minute = map(int, response.content.split(':'))
+            if hour < 13:
+                try:
+                    await ctx.send('And is that AM or PM?')
+                    response = await ctx.bot.wait_for('message', check=check_author, timeout=60.0)
+                    if response.content.lower() == 'pm':
+                        hour += 12
+                except asyncio.TimeoutError:
+                    if hour < 6:
+                        await ctx.send('Well I\'ll just go with PM then.')
+                        hour += 12
+                    else:
+                        await ctx.send('I\'m going to assume you want AM.')
+            start_time = datetime.time(hour, minute)
+        except asyncio.TimeoutError:
+            return await ctx.send('I was asking for time, but you ran out of it. You\'ll have to start over again.')
+
+        event_start = datetime.datetime.combine(start_date, start_time)
+
+        try:
+            await ctx.send('What is the end date for the event? (YYYY-MM-DD)')
+            response = await ctx.bot.wait_for('message', check=check_author, timeout=60.0)
+            year, month, day = map(int, response.content.split('-'))
+            end_date = datetime.date(year, month, day)
+        except asyncio.TimeoutError:
+            return await ctx.send('I can\'t wait all day. Try again later.')
+
+        msg = await ctx.send('Does the event end at the same time?')
+        reactions = [':regional_indicator_y:',':regional_indicator_n:']
+        for r in reactions:
+            await msg.add_reaction(r)
+
+        def check(r, u):
+            return str(r) in reactions and u.id == ctx.author.id and r.message.id == msg.id
+
+        try:
+            r, u = await self.bot.wait_for('reaction_add', check=check, timeout=60.0)
+            if r == reactions[0]:
+                end_time = start_time
+            else:
+                try:
+                    await ctx.send('What time does the event end? (Please provide HH:MM in UTC)')
+                    response = await ctx.bot.wait_for('message', check=check_author, timeout=60.0)
+                    hour, minute = map(int, response.content.split(':'))
+                    end_time = datetime.time(hour, minute)
+                except asyncio.TimeoutError:
+                    end_time = start_time
+                    await ctx.send('You must have fallen asleep. I\'ll just set the end time to match the start time.')
+        except asyncio.TimeoutError:
+            end_time = start_time
+            await ctx.send('No answer? I\'ll assume that\'s a yes then!')
+
+        event_end = datetime.datetime.combine(end_date, end_time)
+
+        query = 'UPDATE guilds SET event_name = $1, event_start = $2, event_end = $3 WHERE guild_id = $4'
+        await ctx.db.execute(query, event_name, event_start, event_end, ctx.guild.id)
+        fmt = (f'**Event Created:**\n\n{event_name}\n{event_start.strftime("%d %b %Y %H:%M")}\n'
+               f'{event_end.strftime("%d %b %Y %H:%M")}\n\nEnjoy your event!')
+        e = discord.Embed(colour=discord.Colour.green(),
+                          description=fmt)
+        await ctx.send(embed=e)
+
+        # Check for existing trophy board and create one if it doesn't exist
+        if not guild_config.trophyboard:
+            await ctx.invoke(self.add_trophyboard)
 
     @add.command(name="trophyboard")
     async def add_trophyboard(self, ctx, *, name="trophyboard"):
@@ -276,8 +401,8 @@ class GuildConfiguration(commands.Cog):
 
         Example
         -----------
-        • `+trophyboard create`
-        • `+trophyboard create my cool trophyboard name`
+        • `+add trophyboard`
+        • `+add trophyboard my cool trophyboard name`
 
         Required Permissions
         ----------------------------
@@ -287,8 +412,48 @@ class GuildConfiguration(commands.Cog):
         --------------------------------
         • `manage_channels` permissions
         """
-        # TODO finish this function
-        pass
+        guild_id = ctx.guild.id
+        self.get_guild_config.invalidate(self, guild_id)
+        guild_config = await self.bot.get_guild_config(guild_id)
+
+        if guild_config.trophyboard is not None:
+            return await ctx.send(
+                f'This server already has a trophyboard ({guild_config.trophyboard.mention}')
+
+        perms = ctx.channel.permissions_for(ctx.me)
+        if not perms.manage_channels:
+            return await ctx.send(
+                'I need manage channels permission to create the donationboard!')
+
+        overwrites = {
+            ctx.me: discord.PermissionOverwrite(read_messages=True, send_messages=True,
+                                                read_message_history=True, embed_links=True,
+                                                manage_messages=True),
+            ctx.guild.default_role: discord.PermissionOverwrite(read_messages=True,
+                                                                send_messages=False,
+                                                                read_message_history=True)
+        }
+        reason = f'{str(ctx.author)} created a trophyboard channel.'
+
+        try:
+            channel = await ctx.guild.create_text_channel(name=name,
+                                                          overwrites=overwrites,
+                                                          reason=reason)
+        except discord.Forbidden:
+            return await ctx.send(
+                'I do not have permissions to create the trophyboard channel.')
+        except discord.HTTPException:
+            return await ctx.send('Creating the channel failed. Try checking the name?')
+
+        msg = await channel.send('Placeholder')
+
+        query = "INSERT INTO messages (message_id, message_type, guild_id, channel_id) VALUES ($1, $2, $3, $4)"
+        await ctx.db.execute(query, msg.id, 'trophy', ctx.guild.id, channel.id)
+        query = "UPDATE guilds SET trophy_channel_id = $1, trophy_toggle = True WHERE guild_id = $2"
+        await ctx.db.execute(query, channel.id, ctx.guild.id)
+        await ctx.send(f'Trophyboard channel created: {channel.mention}')
+
+        await ctx.invoke(self.edit_trophyboard)
 
     @add.command(name="attackboard")
     async def add_attackboard(self, ctx, *, name="attackboard"):
@@ -313,8 +478,48 @@ class GuildConfiguration(commands.Cog):
         --------------------------------
         • `manage_channels` permissions
         """
-        # TODO finish this function
-        pass
+        guild_id = ctx.guild.id
+        self.get_guild_config.invalidate(self, guild_id)
+        guild_config = await self.bot.get_guild_config(guild_id)
+
+        if guild_config.attackboard is not None:
+            return await ctx.send(
+                f'This server already has an attackboard ({guild_config.attackboard.mention}')
+
+        perms = ctx.channel.permissions_for(ctx.me)
+        if not perms.manage_channels:
+            return await ctx.send(
+                'I need manage channels permission to create the attackboard!')
+
+        overwrites = {
+            ctx.me: discord.PermissionOverwrite(read_messages=True, send_messages=True,
+                                                read_message_history=True, embed_links=True,
+                                                manage_messages=True),
+            ctx.guild.default_role: discord.PermissionOverwrite(read_messages=True,
+                                                                send_messages=False,
+                                                                read_message_history=True)
+        }
+        reason = f'{str(ctx.author)} created an attackboard channel.'
+
+        try:
+            channel = await ctx.guild.create_text_channel(name=name,
+                                                          overwrites=overwrites,
+                                                          reason=reason)
+        except discord.Forbidden:
+            return await ctx.send(
+                'I do not have permissions to create the attackboard channel.')
+        except discord.HTTPException:
+            return await ctx.send('Creating the channel failed. Try checking the name?')
+
+        msg = await channel.send('Placeholder')
+
+        query = "INSERT INTO messages (message_id, message_type, guild_id, channel_id) VALUES ($1, $2, $3, $4)"
+        await ctx.db.execute(query, msg.id, 'attack', ctx.guild.id, channel.id)
+        query = "UPDATE guilds SET attack_channel_id = $1, attack_toggle = True WHERE guild_id = $2"
+        await ctx.db.execute(query, channel.id, ctx.guild.id)
+        await ctx.send(f'Attackboard channel created: {channel.mention}')
+
+        await ctx.invoke(self.edit_attackboard)
 
     @add.command(name='donationboard')
     async def add_donationboard(self, ctx, *, name='donationboard'):
@@ -339,8 +544,47 @@ class GuildConfiguration(commands.Cog):
         --------------------------------
         • `manage_channels` permissions
         """
-        # TODO move code from donationboard.py here (will need to see get_guild_config and donationboard_edit
-        pass
+        guild_id = ctx.guild.id
+        self.get_guild_config.invalidate(self, guild_id)
+        guild_config = await self.bot.get_guild_config(guild_id)
+
+        if guild_config.donationboard is not None:
+            return await ctx.send(
+                f'This server already has a donationboard ({guild_config.donationboard.mention})')
+
+        perms = ctx.channel.permissions_for(ctx.me)
+        if not perms.manage_channels:
+            return await ctx.send(
+                'I need manage channels permission to create the donationboard!')
+
+        overwrites = {
+            ctx.me: discord.PermissionOverwrite(read_messages=True, send_messages=True,
+                                                read_message_history=True, embed_links=True,
+                                                manage_messages=True),
+            ctx.guild.default_role: discord.PermissionOverwrite(read_messages=True,
+                                                                send_messages=False,
+                                                                read_message_history=True)
+        }
+        reason = f'{str(ctx.author)} created a donationboard channel.'
+
+        try:
+            channel = await ctx.guild.create_text_channel(name=name, overwrites=overwrites,
+                                                          reason=reason)
+        except discord.Forbidden:
+            return await ctx.send(
+                'I do not have permissions to create the donationboard channel.')
+        except discord.HTTPException:
+            return await ctx.send('Creating the channel failed. Try checking the name?')
+
+        msg = await channel.send('Placeholder')
+
+        query = "INSERT INTO messages (message_id, message_type, guild_id, channel_id) VALUES ($1, $2, $3, $4)"
+        await ctx.db.execute(query, msg.id, 'donation', ctx.guild.id, channel.id)
+        query = "UPDATE guilds SET updates_channel_id=$1, updates_toggle=True WHERE guild_id=$2"
+        await ctx.db.execute(query, channel.id, ctx.guild.id)
+        await ctx.send(f'Donationboard channel created: {channel.mention}')
+
+        await ctx.invoke(self.edit_donationboard)
 
     @commands.command()
     async def claim(self, ctx, user: typing.Optional[discord.Member] = None, *,
