@@ -20,9 +20,14 @@ CREATE TABLE clans (
     clan_tag TEXT,
     clan_name TEXT,
     channel_id bigint,
-    log_interval interval DEFAULT (0 ||' minutes')::interval,
-    log_toggle boolean
-    );
+    donlog_interval interval DEFAULT (0 ||' minutes')::interval,
+    donlog_toggle boolean,
+    trophylog_interval interval DEFAULT (0 ||' minutes')::interval,
+    trophylog_toggle boolean
+);
+create index donevents_interval_idx on clans (donevents_interval);
+create index donevents_toggle_idx on clans (donevents_toggle);
+
 
 CREATE TABLE guilds (
     id serial PRIMARY KEY,
@@ -61,7 +66,7 @@ CREATE TABLE commands (
 create index author_id_idx on commands (author_id);
 create index guild_id_idx on commands (guild_id);
 
-CREATE TABLE events (
+CREATE TABLE donationevents (
     id serial PRIMARY KEY,
 
     player_tag TEXT,
@@ -73,15 +78,16 @@ CREATE TABLE events (
     reported BOOLEAN DEFAULT False,
     season_id integer
 );
-create index player_tag_idx on events (player_tag);
-create index clan_tag_idx on events (clan_tag);
-create index reported_idx on events (reported);
-create index season_id_idx on events (season_id);
+create index player_tag_idx on donationevents (player_tag);
+create index clan_tag_idx on donationevents (clan_tag);
+create index reported_idx on donationevents (reported);
+create index season_id_idx on donationevents (season_id);
 
 create table tempevents (
     id serial primary key,
     channel_id bigint,
-    fmt text
+    fmt text,
+    type text
 );
 create index channel_id_idx on tempevents (channel_id);
 

@@ -1,17 +1,13 @@
-import asyncio
-import asyncpg
 import coc
 import discord
 import logging
 import math
-import time
 import typing
 
-from datetime import datetime
-from discord.ext import commands, tasks
+from discord.ext import commands
 from cogs.utils.converters import ClanConverter, PlayerConverter
-from cogs.utils import formatters, checks, cache
-from cogs.utils.db_objects import DatabaseEvent, DatabaseClan
+from cogs.utils import formatters, checks
+from cogs.utils.db_objects import DatabaseClan
 
 log = logging.getLogger(__name__)
 
@@ -21,213 +17,6 @@ class Events(commands.Cog):
     """
     def __init__(self, bot):
         self.bot = bot
-        self._batch_data = []
-        self._batch_lock = asyncio.Lock(loop=bot.loop)
-        self.batch_insert_loop.add_exception_type(asyncpg.PostgresConnectionError)
-        self.batch_insert_loop.start()
-        self.report_task.add_exception_type(asyncpg.PostgresConnectionError)
-        self.report_task.start()
-
-        self.bot.coc.add_events(
-            self.on_clan_member_donation,
-            self.on_clan_member_received
-        )
-        self.bot.coc._clan_retry_interval = 60
-        self.bot.coc.start_updates('clan')
-
-        self._tasks = {}
-        asyncio.ensure_future(self.sync_temp_event_tasks())
-
-    def cog_unload(self):
-        self.report_task.cancel()
-        self.batch_insert_loop.cancel()
-        self.bot.coc.remove_events(
-            self.on_clan_member_donation,
-            self.on_clan_member_received
-        )
-        for k, v in self._tasks:
-            v.cancel()
-
-    @tasks.loop(seconds=30.0)
-    async def batch_insert_loop(self):
-        async with self._batch_lock:
-            await self.bulk_insert()
-
-    async def bulk_insert(self):
-        query = """INSERT INTO events (player_tag, player_name, clan_tag, donations, received, time, season_id)
-                        SELECT x.player_tag, x.player_name, x.clan_tag, x.donations, x.received, x.time, x.season_id
-                           FROM jsonb_to_recordset($1::jsonb) 
-                        AS x(player_tag TEXT, player_name TEXT, clan_tag TEXT, 
-                             donations INTEGER, received INTEGER, time TIMESTAMP, season_id INTEGER
-                             )
-                """
-
-        if self._batch_data:
-            await self.bot.pool.execute(query, self._batch_data)
-            total = len(self._batch_data)
-            if total > 1:
-                log.info('Registered %s events to the database.', total)
-            self._batch_data.clear()
-
-    @tasks.loop(seconds=30.0)
-    async def report_task(self):
-        log.info('Starting bulk report loop.')
-        start = time.perf_counter()
-        async with self._batch_lock:
-            await self.bulk_report()
-        log.info('Time taken: %s ms', (time.perf_counter() - start)*1000)
-
-    async def sync_temp_event_tasks(self):
-        query = """SELECT channel_id FROM clans WHERE log_toggle=True AND log_interval > make_interval()"""
-        fetch = await self.bot.pool.fetch(query)
-        for n in fetch:
-            channel_id = n[0]
-            task = self._tasks.get(channel_id)
-            if not task:
-                self._tasks[channel_id] = self.bot.loop.create_task(self.create_temp_event_task(channel_id))
-                continue
-            if task.done():
-                self._tasks[channel_id] = self.bot.loop.create_task(self.create_temp_event_task(channel_id))
-                continue
-        to_cancel = [n for n in self._tasks.keys() if n not in set(n[0] for n in fetch)]
-        for n in to_cancel:
-            task = self._tasks.pop(n)
-            task.cancel()
-
-        log.info('Synced channel tasks...')
-
-    async def add_temp_events(self, channel_id, fmt):
-        query = """INSERT INTO tempevents (channel_id, fmt) VALUES ($1, $2)"""
-        await self.bot.pool.execute(query, channel_id, fmt)
-        log.info(f'Added a msg for channel id {channel_id} to tempevents db')
-
-    async def create_temp_event_task(self, channel_id):
-        try:
-            while not self.bot.is_closed():
-                config = await self.get_channel_config(channel_id)
-                if not config:
-                    return await self.bot.error_webhook.send(channel_id)
-                await asyncio.sleep(config.interval_seconds)
-                query = "DELETE FROM tempevents WHERE channel_id=$1 RETURNING fmt"
-                fetch = await self.bot.pool.fetch(query, channel_id)
-                for n in fetch:
-                    asyncio.ensure_future(self.bot.channel_log(channel_id, n[0], embed=False))
-                log.info(f'Dispatching {len(fetch)} logs after sleeping for {config.interval_seconds} '
-                         f'sec to channel {config.channel} ({config.channel_id})')
-        except asyncio.CancelledError:
-            raise
-        except (OSError, discord.ConnectionClosed, asyncpg.PostgresConnectionError):
-            self._tasks[channel_id].cancel()
-            self._tasks[channel_id] = self.bot.loop.create_task(self.create_temp_event_task(channel_id))
-
-    async def bulk_report(self):
-        query = """SELECT DISTINCT clans.channel_id 
-                   FROM clans 
-                        INNER JOIN events 
-                        ON clans.clan_tag = events.clan_tag 
-                    WHERE events.reported=False
-                """
-        fetch = await self.bot.pool.fetch(query)
-
-        query = """SELECT events.clan_tag, events.donations, events.received, 
-                          events.player_name, events.time
-                    FROM events 
-                        INNER JOIN clans 
-                        ON clans.clan_tag = events.clan_tag 
-                    WHERE clans.channel_id=$1 
-                    AND events.reported=False
-                    ORDER BY events.clan_tag, 
-                             time DESC;
-                """
-
-        for n in fetch:
-            channel_config = await self.bot.get_channel_config(n[0])
-            if not channel_config:
-                continue
-            if not channel_config.log_toggle:
-                continue
-
-            events = [DatabaseEvent(bot=self.bot, record=n) for
-                      n in await self.bot.pool.fetch(query, n[0])
-                      ]
-
-            messages = []
-            for x in events:
-                clan_name = await self.bot.donationboard.get_clan_name(channel_config.guild_id,
-                                                                       x.clan_tag)
-                messages.append(formatters.format_event_log_message(x, clan_name))
-
-            group_batch = []
-            for i in range(math.ceil(len(messages) / 20)):
-                group_batch.append(messages[i*20:(i+1)*20])
-
-            for x in group_batch:
-                if channel_config.interval_seconds > 0:
-                    await self.add_temp_events(channel_config.channel_id, '\n'.join(x))
-                else:
-                    log.info('Dispatching a log to channel %s', channel_config.channel)
-                    asyncio.ensure_future(self.bot.channel_log(channel_config.channel_id,
-                                                               '\n'.join(x), embed=False))
-
-        query = """UPDATE events
-                        SET reported=True
-                   WHERE reported=False
-                """
-        removed = await self.bot.pool.execute(query)
-        log.info('Removed events from the database. Status Code %s', removed)
-
-    async def on_clan_member_donation(self, old_donations, new_donations, player, clan):
-        if old_donations > new_donations:
-            donations = new_donations
-        else:
-            donations = new_donations - old_donations
-
-        async with self._batch_lock:
-            self._batch_data.append({
-                'player_tag': player.tag,
-                'player_name': player.name,
-                'clan_tag': clan.tag,
-                'donations': donations,
-                'received': 0,
-                'time': datetime.utcnow().isoformat(),
-                'season_id': await self.bot.seasonconfig.get_season_id()
-            })
-
-    async def on_clan_member_received(self, old_received, new_received, player, clan):
-        if old_received > new_received:
-            received = new_received
-        else:
-            received = new_received - old_received
-
-        async with self._batch_lock:
-            self._batch_data.append({
-                'player_tag': player.tag,
-                'player_name': player.name,
-                'clan_tag': clan.tag,
-                'donations': 0,
-                'received': received,
-                'time': datetime.utcnow().isoformat(),
-                'season_id': await self.bot.seasonconfig.get_season_id()
-            })
-
-    @cache.cache()
-    async def get_channel_config(self, channel_id):
-        query = """SELECT id, guild_id, clan_tag, clan_name, 
-                          channel_id, log_interval, log_toggle 
-                    FROM clans WHERE channel_id=$1
-                """
-        fetch = await self.bot.pool.fetchrow(query, channel_id)
-
-        if not fetch:
-            return None
-
-        return DatabaseClan(bot=self.bot, record=fetch)
-
-    def invalidate_channel_configs(self, channel_id):
-        self.get_channel_config.invalidate(self, channel_id)
-        task = self._tasks.pop(channel_id, None)
-        if task:
-            task.cancel()
 
     async def cog_command_error(self, ctx, error):
         await ctx.send(str(error))
@@ -330,7 +119,7 @@ class Events(commands.Cog):
         await ctx.confirm()
         fmt = '\n'.join(n[0] for n in fetch)
         await ctx.send(f'Set log interval to {minutes} minutes for {fmt}.')
-        self.invalidate_channel_configs(channel.id)
+        self.bot.utils.invalidate_channel_configs(channel.id)
 
     @log.command(name='create')
     async def log_create(self, ctx, channel: typing.Optional[discord.TextChannel] = None, *,
@@ -366,7 +155,7 @@ class Events(commands.Cog):
         await ctx.send(f'Events log channel has been set to {channel.mention} for {clan[0].name} '
                        f'and logging is enabled.')
         await ctx.confirm()
-        self.invalidate_channel_configs(channel.id)
+        self.bot.utils.invalidate_channel_configs(channel.id)
 
     @log.command(name='toggle')
     async def log_toggle(self, ctx, channel: discord.TextChannel = None):
@@ -389,7 +178,7 @@ class Events(commands.Cog):
         """
         if not channel:
             channel = ctx.channel
-        config = await self.get_channel_config(channel.id)
+        config = await self.bot.utils.get_channel_config(channel.id)
         if not config:
             return await ctx.send('Please setup a log channel with `+help log create` first.')
 
@@ -404,7 +193,7 @@ class Events(commands.Cog):
         fmt = '\n'.join(n[0] for n in fetch)
         await ctx.send(f'Events logging has been {"enabled" if toggle else "disabled"} for {fmt}')
         await ctx.confirm()
-        self.invalidate_channel_configs(channel.id)
+        self.bot.utils.invalidate_channel_configs(channel.id)
 
     @commands.group(invoke_without_command=True)
     async def events(self, ctx, limit: typing.Optional[int] = 20, *,

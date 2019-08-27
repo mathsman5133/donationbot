@@ -119,7 +119,9 @@ class DatabaseMessage:
         return await self.bot.donationboard.get_message(self.channel, self.message_id)
 
 
-class DatabaseEvent:
+class DonationEvent:
+    __slots__ = ('bot', 'id', 'player_tag', 'player_name', 'clan_tag', 'donations', 'received', 'time')
+
     def __init__(self, *, bot, record=None):
         self.bot = bot
 
@@ -144,3 +146,53 @@ class DatabaseEvent:
     def delta_since(self):
         return datetime.utcnow() - self.time
 
+
+class TrophyEvent:
+    __slots__ = ('bot', 'id', 'player_tag', 'player_name', 'clan_tag', 'trophy_change', 'received', 'time')
+
+    def __init__(self, *, bot, record=None):
+        self.bot = bot
+
+        if record:
+            get = record.get
+            self.id = get('id')
+            self.player_tag = get('player_tag')
+            self.player_name = get('player_name')
+            self.clan_tag = get('clan_tag')
+            self.trophy_change = get('trophy_change')
+            self.received = get('received')
+            self.time = get('time')
+        else:
+            self.time = None
+
+    @property
+    def readable_time(self):
+        return readable_time((datetime.utcnow() - self.time).total_seconds())
+
+    @property
+    def delta_since(self):
+        return datetime.utcnow() - self.time
+
+
+class LogConfig:
+    __slots__ = ('bot', 'guild_id', 'channel_id', 'interval', 'toggle')
+
+    def __init__(self, *, bot, guild_id, channel_id, interval, toggle):
+        self.bot = bot
+
+        self.guild_id = guild_id
+        self.channel_id = channel_id
+        self.interval = interval
+        self.toggle = toggle
+
+    @property
+    def guild(self):
+        return self.bot.get_guild(self.guild_id)
+
+    @property
+    def channel(self):
+        return self.bot.get_channel(self.channel_id)
+
+    @property
+    def seconds(self):
+        return self.interval.total_seconds()

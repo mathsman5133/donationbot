@@ -8,7 +8,7 @@ import math
 from datetime import datetime
 from discord.ext import commands, tasks
 
-from cogs.utils.db_objects import DatabaseGuild, DatabaseMessage, DatabasePlayer, DatabaseClan, DatabaseEvent
+from cogs.utils.db_objects import DatabaseGuild, DatabaseMessage, DatabasePlayer
 from cogs.utils.formatters import TabularData, clean_name, CLYTable
 from cogs.utils import checks, cache
 
