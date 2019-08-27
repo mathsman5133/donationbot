@@ -1,7 +1,7 @@
 CREATE TABLE players (
     id serial PRIMARY KEY,
 
-    player_tag TEXT UNIQUE,
+    player_tag TEXT,
     donations INTEGER,
     received INTEGER,
     user_id BIGINT,
@@ -11,7 +11,22 @@ CREATE TABLE players (
     );
 create index player_tag_idx on players (player_tag);
 create index user_id_idx on players (user_id);
-create index season_idx on players (season_id)
+create index season_idx on players (season_id);
+alter table players add unique (player_tag, season_id);
+
+CREATE TABLE playerevents (
+    id serial primary key,
+    player_tag text,
+    donations integer,
+    received integer,
+    event_id integer,
+    live boolean,
+    trophies integer
+);
+create index player_tag_idx on players (player_tag);
+create index user_id_idx on players (user_id);
+create index season_idx on players (season_id);
+alter table playerevents add unique (player_tag, event_id);
 
 CREATE TABLE clans (
     id serial PRIMARY KEY,
