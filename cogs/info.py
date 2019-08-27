@@ -436,6 +436,7 @@ class Info(commands.Cog):
         await self.bot.donationboard.update_clan_tags()
         self.bot.get_guilds.invalidate(self.bot, clan.tag)
         self.bot.get_clans.invalidate(self.bot, ctx.guild.id)
+        await self.bot.events.sync_temp_event_tasks()
 
     @commands.Cog.listener()
     async def on_clan_unclaim(self, ctx, clan):
@@ -444,6 +445,7 @@ class Info(commands.Cog):
         await self.bot.donationboard.update_clan_tags()
         self.bot.get_guilds.invalidate(self.bot, clan.tag)
         self.bot.get_clans.invalidate(self.bot, ctx.guild.id)
+        await self.bot.events.sync_temp_event_tasks()
 
 
 def setup(bot):
