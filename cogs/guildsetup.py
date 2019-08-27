@@ -8,7 +8,7 @@ import coc
 from discord.ext import commands
 from cogs.utils import checks, cache
 from cogs.utils.db_objects import DatabaseGuild
-from cogs.utils.converters import PlayerConverter, ClanConverter
+from cogs.utils.converters import PlayerConverter, ClanConverter, DateConverter
 from .utils import paginator, checks, formatters, fuzzy
 
 
@@ -312,11 +312,12 @@ class GuildConfiguration(commands.Cog):
         try:
             await ctx.send(f'What date does the {event_name} begin?  (YYYY-MM-DD)')
             response = await ctx.bot.wait_for('message', check=check_author, timeout=60.0)
+            # TODO response needs to be a DateConverter
             year, month, day = map(int, response.content.split('-'))
             start_date = datetime.date(year, month, day)
         except ValueError:
             return await ctx.send(f'Date must be in the YYYY-MM-DD format.')
-            # TODO is there a way keep running this (maybe with a static method) until the user gets it right?
+            # TODO loop 5 times and then fail
         except asyncio.TimeoutError:
             return await ctx.send('Yawn!  Time\'s up. You\'re going to have to start over some other time.')
 
@@ -351,7 +352,7 @@ class GuildConfiguration(commands.Cog):
             return await ctx.send('I can\'t wait all day. Try again later.')
 
         msg = await ctx.send('Does the event end at the same time?')
-        reactions = [':regional_indicator_y:',':regional_indicator_n:']
+        reactions = [':regional_indicator_y:', ':regional_indicator_n:']
         for r in reactions:
             await msg.add_reaction(r)
 
@@ -377,8 +378,15 @@ class GuildConfiguration(commands.Cog):
 
         event_end = datetime.datetime.combine(end_date, end_time)
 
-        query = 'UPDATE guilds SET event_name = $1, event_start = $2, event_end = $3 WHERE guild_id = $4'
-        await ctx.db.execute(query, event_name, event_start, event_end, ctx.guild.id)
+        query = 'INSERT INTO trophy_events (guild_id, event_name, event_start, event_end) VALUES ($1, $2, $3, $4)'
+        await ctx.db.execute(query, ctx.guild.id, event_name, event_start, event_end)
+
+        try:
+            await ctx.send('Alright now I just need to know what clans will be in this event.  You can provide the '
+                           'clan tags all at once (separated by a space) or individually.')
+            clans = await self.bot.wait_for('message', check=check_author, timeout=180.00)
+            # TODO clans needs to be commands.Greedy[ClanConverter]
+
         fmt = (f'**Event Created:**\n\n{event_name}\n{event_start.strftime("%d %b %Y %H:%M")}\n'
                f'{event_end.strftime("%d %b %Y %H:%M")}\n\nEnjoy your event!')
         e = discord.Embed(colour=discord.Colour.green(),
