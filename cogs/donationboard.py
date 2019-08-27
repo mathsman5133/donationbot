@@ -5,6 +5,7 @@ import discord
 import logging
 import math
 
+from collections import namedtuple
 from datetime import datetime
 from discord.ext import commands, tasks
 
@@ -15,11 +16,8 @@ from cogs.utils import checks, cache
 
 log = logging.getLogger(__name__)
 
-
-class MockPlayer:
-    def __init__(self):
-        MockPlayer.name = 'Unknown'
-        MockPlayer.clan = 'Unknown'
+MockPlayer = namedtuple('MockPlayer', 'clan name')
+mock = MockPlayer('Unknown', 'Unknown')
 
 
 class DonationBoard(commands.Cog):
@@ -29,11 +27,8 @@ class DonationBoard(commands.Cog):
         self.bot = bot
 
         self.clan_updates = []
-        self.player_updates = []
 
         self._to_be_deleted = set()
-
-        self._join_prompts = {}
 
         self.bot.coc.add_events(
             self.on_clan_member_donation,
@@ -91,12 +86,24 @@ class DonationBoard(commands.Cog):
                     AND players.season_id=$2
                 """
 
+        query2 = """UPDATE playersevent SET donations = players.donations + x.donations, 
+                                              received = players.received + x.received 
+                        FROM(
+                            SELECT x.player_tag, x.donations, x.received
+                                FROM jsonb_to_recordset($1::jsonb)
+                            AS x(player_tag TEXT, donations INTEGER, received INTEGER)
+                            )
+                    AS x
+                    WHERE playersevent.player_tag = x.player_tag
+                    AND playersevent.live = true                    
+                """
         if self._data_batch:
-            await self.bot.pool.execute(query, self._data_batch,
-                                        await self.bot.seasonconfig.get_season_id())
-            total = len(self._data_batch)
-            if total > 1:
-                log.info('Registered %s donations/received to the database.', total)
+            response = await self.bot.pool.execute(query, self._data_batch,
+                                                   await self.bot.seasonconfig.get_season_id())
+            log.debug(f'Registered donations/received to the database. Status Code {response}.')
+
+            response = await self.bot.pool.execute(query2, self._data_batch)
+            log.debug(f'Registered donations/received to the events database. Status Code {response}.')
             self._data_batch.clear()
 
     @cache.cache()
@@ -218,6 +225,7 @@ class DonationBoard(commands.Cog):
                 await self.new_donationboard_message(payload.guild_id)
 
     async def on_clan_member_donation(self, old_donations, new_donations, player, clan):
+        log.debug(f'Received on_clan_member_donation event for player {player} of clan {clan}')
         if old_donations > new_donations:
             donations = new_donations
         else:
@@ -232,6 +240,7 @@ class DonationBoard(commands.Cog):
             self._clan_events.add(clan.tag)
 
     async def on_clan_member_received(self, old_received, new_received, player, clan):
+        log.debug(f'Received on_clan_member_received event for player {player} of clan {clan}')
         if old_received > new_received:
             received = new_received
         else:
@@ -251,8 +260,25 @@ class DonationBoard(commands.Cog):
                     ON CONFLICT (player_tag, season_id) 
                     DO NOTHING
                 """
-        await self.bot.pool.execute(query, member.tag, member.donations, member.received,
-                                    await self.bot.seasonconfig.get_season_id())
+        # todo: test query2
+        query2 = """INSERT INTO playerevents (player_tag, donations, received, live, event_id) 
+                        SELECT $1, $2, $3, $4, true, donationevents.id
+                        FROM donationevents
+                            INNER JOIN clans ON clans.guild_id = donationevents.guild_id
+                        WHERE clans.clan_tag = $5
+                    ON CONFLICT (player_tag, event_id) 
+                    DO NOTHING
+                """
+
+        response = await self.bot.pool.execute(query, member.tag, member.donations, member.received,
+                                               await self.bot.seasonconfig.get_season_id())
+        log.debug(f'New member {member} joined clan {clan}. Performed a query to insert them into players. '
+                  f'Status Code: {response}')
+
+        response = await self.bot.pool.execute(query2, member.tag, member.donations,
+                                               member.received, clan.tag)
+        log.debug(f'New member {member} joined clan {clan}. '
+                  f'Performed a query to insert them into eventplayers. Status Code: {response}')
 
     async def get_updates_messages(self, guild_id, number_of_msg=None):
         guild_config = await self.get_guild_config(guild_id)
@@ -289,15 +315,27 @@ class DonationBoard(commands.Cog):
         for n in clans:
             players.extend(p for p in n.itermembers)
 
-        query = """SELECT player_tag, donations, received
-                    FROM players 
-                    WHERE player_tag=ANY($1::TEXT[])
-                    AND season_id=$2
-                    ORDER BY donations DESC
-                    LIMIT 100;
-                """
-        fetch = await self.bot.pool.fetch(query, [n.tag for n in players],
-                                          await self.bot.seasonconfig.get_season_id())
+        if guild_config.donation_event:
+            query = """SELECT player_tag, donations, received
+                        FROM eventplayers 
+                        WHERE player_tag=ANY($1::TEXT[])
+                        AND live=true
+                        ORDER BY donations DESC
+                        LIMIT 100;
+                    """
+            fetch = await self.bot.pool.fetch(query, [n.tag for n in players])
+
+        else:
+            query = """SELECT player_tag, donations, received
+                        FROM players 
+                        WHERE player_tag=ANY($1::TEXT[])
+                        AND season_id=$2
+                        ORDER BY donations DESC
+                        LIMIT 100;
+                    """
+            fetch = await self.bot.pool.fetch(query, [n.tag for n in players],
+                                              await self.bot.seasonconfig.get_season_id())
+
         db_players = [DatabasePlayer(bot=self.bot, record=n) for n in fetch]
         players = {n.tag: n for n in players if n.tag in set(x.player_tag for x in db_players)}
 
@@ -316,12 +354,12 @@ class DonationBoard(commands.Cog):
                 if guild_config.donationboard_render == 2:
                     table.add_row([index,
                                    y.donations,
-                                   players.get(y.player_tag, MockPlayer()).name])
+                                   players.get(y.player_tag, mock).name])
                 else:
                     table.add_row([index,
                                    y.donations,
                                    y.received,
-                                   players.get(y.player_tag, MockPlayer()).name
+                                   players.get(y.player_tag, mock).name
                                    ]
                                   )
 
@@ -330,7 +368,8 @@ class DonationBoard(commands.Cog):
             e = discord.Embed(colour=self.bot.colour,
                               description=fmt,
                               timestamp=datetime.utcnow())
-            e.set_author(name=guild_config.donationboard_title or 'DonationBoard',
+            e.set_author(name=f'Event in Progress!' if guild_config.donation_event
+                              else guild_config.donationboard_title or 'DonationBoard',
                          icon_url=guild_config.icon_url or 'https://cdn.discordapp.com/'
                                                            'emojis/592028799768592405.png?v=1')
             e.set_footer(text='Last Updated')
