@@ -3,7 +3,7 @@ import discord
 from discord.ext import commands
 
 from cogs.utils.cache import cache
-from cogs.utils.db_objects import DatabaseClan, LogConfig
+from cogs.utils.db_objects import DatabaseClan, LogConfig, DatabaseGuild
 
 
 class Utils(commands.Cog):
@@ -60,6 +60,14 @@ class Utils(commands.Cog):
         task = self.bot.donationlogs._tasks.pop(channel_id, None)
         if task:
             task.cancel()
+
+    @cache()
+    async def get_guild_config(self, guild_id):
+        # TODO get that star out of there and list the fields ;)
+        query = "SELECT * FROM guilds WHERE guild_id = $1"
+        fetch = await self.bot.pool.fetchrow(query, guild_id)
+
+        return DatabaseGuild(guild_id=guild_id, bot=self.bot, record=fetch)
 
     @cache()
     async def get_clan_name(self, guild_id, tag):

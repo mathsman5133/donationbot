@@ -93,6 +93,18 @@ CREATE TABLE donationevents (
     reported BOOLEAN DEFAULT False,
     season_id integer
 );
+
+create table trophyevents (
+    id serial primary key,
+    player_tag text,
+    player_name text,
+    clan_tag text,
+    trophy_change integer,
+    time timestamp,
+    reported boolean default true,
+    season_id integer
+)
+
 create index player_tag_idx on donationevents (player_tag);
 create index clan_tag_idx on donationevents (clan_tag);
 create index reported_idx on donationevents (reported);

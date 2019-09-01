@@ -4,8 +4,8 @@ from cogs.utils.formatters import readable_time
 
 
 class DatabaseGuild:
-    __slots__ = ('bot', 'guild_id', 'id', 'updates_channel_id', 'updates_toggle',
-                 'auto_claim', 'donationboard_title', 'icon_url', 'donationboard_render')
+    __slots__ = ('bot', 'guild_id', 'id', 'updates_toggle', 'auto_claim', 'donationboard_title',
+                 'icon_url', 'donationboard_render')
 
     def __init__(self, *, guild_id, bot, record=None):
         self.guild_id = guild_id
@@ -14,12 +14,15 @@ class DatabaseGuild:
         if record:
             get = record.get
             self.id = get('id')
-            self.updates_channel_id = get('updates_channel_id')
             self.updates_toggle = get('updates_toggle')
             self.auto_claim = get('auto_claim')
             self.donationboard_title = get('donationboard_title')
             self.icon_url = get('icon_url')
             self.donationboard_render = get('donationboard_render')
+
+            self.donationboard_id = get('donationboard_id')
+            self.trophyboard_id = get('trophyboard_id')
+            self.attackboard_id = get('attackboard_id')
         else:
             self.updates_channel_id = None
             self.updates_toggle = False
@@ -27,7 +30,15 @@ class DatabaseGuild:
 
     @property
     def donationboard(self):
-        return self.bot.get_channel(self.updates_channel_id)
+        return self.bot.get_channel(self.donationboard_id)
+
+    @property
+    def trophyboard(self):
+        return self.bot.get_channel(self.trophyboard_id)
+
+    @property
+    def attackboard(self):
+        return self.bot.get_channel(self.attackboard_id)
 
     async def updates_messages(self):
         query = "SELECT id, message_id, guild_id, channel_id FROM messages WHERE guild_id = $1"

@@ -29,3 +29,16 @@ def is_patron_pred(ctx):
 
 def is_patron():
     return commands.check(is_patron_pred)
+
+
+def requires_config(invalidate=False):
+    async def pred(ctx):
+        if ctx.guild is None:
+            return False
+
+        if invalidate:
+            ctx.bot.utils.get_guild_config.invalidate(ctx.bot.utils, ctx.guild.id)
+
+        ctx.guild_config = await ctx.bot.utils.get_guild_config(ctx.guild.id)
+        return True
+    return commands.check(pred)

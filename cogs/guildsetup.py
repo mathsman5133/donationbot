@@ -386,6 +386,9 @@ class GuildConfiguration(commands.Cog):
                            'clan tags all at once (separated by a space) or individually.')
             clans = await self.bot.wait_for('message', check=check_author, timeout=180.00)
             # TODO clans needs to be commands.Greedy[ClanConverter]
+        except asyncio.TimeoutError:
+            # todo: add error
+            pass
 
         fmt = (f'**Event Created:**\n\n{event_name}\n{event_start.strftime("%d %b %Y %H:%M")}\n'
                f'{event_end.strftime("%d %b %Y %H:%M")}\n\nEnjoy your event!')
