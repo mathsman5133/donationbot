@@ -30,7 +30,8 @@ class DatabaseGuild:
         return self.bot.get_channel(self.updates_channel_id)
 
     async def updates_messages(self):
-        query = "SELECT id, message_id, guild_id, channel_id FROM messages WHERE guild_id = $1"
+        query = "SELECT id, message_id, guild_id, channel_id FROM messages " \
+                "WHERE guild_id = $1 ORDER BY message_id;"
         fetch = await self.bot.pool.fetch(query, self.guild_id)
         return [DatabaseMessage(bot=self.bot, record=n) for n in fetch]
 
