@@ -57,6 +57,19 @@ CREATE TABLE guilds (
     );
 create index guild_id_idx on guilds (guild_id);
 
+CREATE TABLE guilds (
+    id serial PRIMARY KEY,
+
+    guild_id BIGINT UNIQUE,
+    channel_id BIGINT,
+    icon_url TEXT,
+    title TEXT,
+    render INTEGER,
+    toggle BOOLEAN,
+    type TEXT
+    );
+
+
 CREATE TABLE messages (
     id serial PRIMARY KEY,
 
