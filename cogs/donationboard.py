@@ -43,6 +43,7 @@ class DonationBoard(commands.Cog):
         self._clan_events = set()
         self.bulk_insert_loop.add_exception_type(asyncpg.PostgresConnectionError)
         self.bulk_insert_loop.start()
+
         self.update_donationboard_loop.add_exception_type(asyncpg.PostgresConnectionError)
         self.update_donationboard_loop.add_exception_type(coc.ClashOfClansException)
         self.update_donationboard_loop.start()
@@ -106,111 +107,45 @@ class DonationBoard(commands.Cog):
             log.debug(f'Registered donations/received to the events database. Status Code {response}.')
             self._data_batch.clear()
 
-    @cache.cache()
-    async def get_guild_config(self, guild_id):
-        query = "SELECT * FROM guilds WHERE guild_id = $1"
-        fetch = await self.bot.pool.fetchrow(query, guild_id)
-
-        return DatabaseGuild(guild_id=guild_id, bot=self.bot, record=fetch)
-
-    @cache.cache()
-    async def get_clan_name(self, guild_id, tag):
-        query = "SELECT clan_name FROM clans WHERE clan_tag=$1 AND guild_id=$2"
-        fetch = await self.bot.pool.fetchrow(query, tag, guild_id)
-        if not fetch:
-            return 'Unknown'
-        return fetch[0]
-
-    @cache.cache()
-    async def get_message(self, channel, message_id):
-        try:
-            o = discord.Object(id=message_id + 1)
-            # don't wanna use get_message due to poor rate limit (1/1s) vs (50/1s)
-            msg = await channel.history(limit=1, before=o).next()
-
-            if msg.id != message_id:
-                return None
-
-            return msg
-        except Exception:
-            return None
-
-    async def new_donationboard_message(self, guild_id):
-        guild_config = await self.get_guild_config(guild_id)
-
-        new_msg = await guild_config.donationboard.send('Placeholder')
-        query = "INSERT INTO messages (guild_id, message_id, channel_id) VALUES ($1, $2, $3)"
-        await self.bot.pool.execute(query, new_msg.guild.id, new_msg.id, new_msg.channel.id)
-        return new_msg
-
-    async def safe_delete(self, message_id, delete_message=True):
-        query = "DELETE FROM messages WHERE message_id = $1 RETURNING id, guild_id, message_id, channel_id"
-        fetch = await self.bot.pool.fetchrow(query, message_id)
-        if not fetch:
-            return None
-
-        message = DatabaseMessage(bot=self.bot, record=fetch)
-        if not delete_message:
-            return message
-
-        self._to_be_deleted.add(message_id)
-        m = await message.get_message()
-        if not m:
-            return
-
-        await m.delete()
-
-    async def get_message_database(self, message_id):
-        query = "SELECT id, guild_id, message_id, channel_id FROM messages WHERE message_id = $1"
-        fetch = await self.bot.pool.fetchrow(query, message_id)
-        if not fetch:
-            return
-        return DatabaseMessage(bot=self.bot, record=fetch)
-
-    async def update_clan_tags(self):
-        query = "SELECT DISTINCT clan_tag FROM clans"
-        fetch = await self.bot.pool.fetch(query)
-        self.bot.coc._clan_updates = [n[0] for n in fetch]
-
     @commands.Cog.listener()
     async def on_guild_channel_delete(self, channel):
         if not isinstance(channel, discord.TextChannel):
             return
 
-        guild_config = await self.get_guild_config(channel.guild.id)
-        if guild_config.updates_channel_id != channel.id:
-            return
-
-        query = "DELETE FROM messages WHERE channel_id = $1;"
-        await self.bot.pool.execute(query, channel.id)
-
-        query = """UPDATE guilds 
-                    SET updates_channel_id = NULL,
-                        updates_toggle = False 
-                    WHERE guild_id = $1
+        query = """"DELETE FROM messages WHERE channel_id = $1;
+                    UPDATE channels
+                        SET channel_id = NULL,
+                            toggle     = False
+                        WHERE channel_id = $1
                 """
-        await self.bot.pool.execute(query, channel.guild.id)
+        await self.bot.pool.executemany(query, channel.id)
+        self.bot.utils.get_board_config.invalidate(self.bot.utils, channel.id)
 
     @commands.Cog.listener()
     async def on_raw_message_delete(self, payload):
-        guild_config = await self.get_guild_config(payload.guild_id)
+        config = await self.bot.utils.get_board_config(channel_id=payload.channel_id)
 
-        if guild_config.updates_channel_id != payload.channel_id:
+        if not config:
+            return
+        if config.channel_id != payload.channel_id:
             return
         if payload.message_id in self._to_be_deleted:
             self._to_be_deleted.discard(payload.message_id)
             return
 
-        self.get_message.invalidate(self, payload.message_id)
+        self.bot.utils.get_message.invalidate(self.bot.utils, payload.message_id)
 
         message = await self.safe_delete(message_id=payload.message_id, delete_message=False)
         if message:
-            await self.new_donationboard_message(payload.guild_id)
+            await self.new_board_message(payload.channel_id)
 
     @commands.Cog.listener()
     async def on_raw_bulk_message_delete(self, payload):
-        guild_config = await self.get_guild_config(payload.guild_id)
-        if guild_config.updates_channel_id != payload.channel_id:
+        config = await self.bot.utils.get_board_config(payload.channel_id)
+
+        if not config:
+            return
+        if config.channel_id != payload.channel_id:
             return
 
         for n in payload.message_ids:
@@ -218,11 +153,11 @@ class DonationBoard(commands.Cog):
                 self._to_be_deleted.discard(n)
                 continue
 
-            self.get_message.invalidate(self, n)
+            self.bot.utils.get_message.invalidate(self, n)
 
             message = await self.safe_delete(message_id=n, delete_message=False)
             if message:
-                await self.new_donationboard_message(payload.guild_id)
+                await self.new_board_message(payload.channel_id)
 
     async def on_clan_member_donation(self, old_donations, new_donations, player, clan):
         log.debug(f'Received on_clan_member_donation event for player {player} of clan {clan}')
@@ -280,9 +215,34 @@ class DonationBoard(commands.Cog):
         log.debug(f'New member {member} joined clan {clan}. '
                   f'Performed a query to insert them into eventplayers. Status Code: {response}')
 
-    async def get_updates_messages(self, guild_id, number_of_msg=None):
-        guild_config = await self.get_guild_config(guild_id)
-        fetch = await guild_config.updates_messages()
+    async def new_board_message(self, channel_id):
+        config = await self.bot.utils.get_board_config(channel_id=channel_id)
+
+        new_msg = await config.channel.send('Placeholder')
+        query = "INSERT INTO messages (guild_id, message_id, channel_id) VALUES ($1, $2, $3)"
+        await self.bot.pool.execute(query, new_msg.guild.id, new_msg.id, new_msg.channel.id)
+        return new_msg
+
+    async def safe_delete(self, message_id, delete_message=True):
+        query = "DELETE FROM messages WHERE message_id = $1 RETURNING id, guild_id, message_id, channel_id"
+        fetch = await self.bot.pool.fetchrow(query, message_id)
+        if not fetch:
+            return None
+
+        message = DatabaseMessage(bot=self.bot, record=fetch)
+        if not delete_message:
+            return message
+
+        self._to_be_deleted.add(message_id)
+        m = await message.get_message()
+        if not m:
+            return
+
+        await m.delete()
+
+    async def get_board_messages(self, channel_id, number_of_msg=None):
+        config = await self.bot.utils.get_board_config(channel_id=channel_id)
+        fetch = await config.messages()
 
         messages = [await n.get_message() for n in fetch]
         messages = [n for n in messages if n]
@@ -297,25 +257,26 @@ class DonationBoard(commands.Cog):
             return messages[:number_of_msg]
 
         for _ in range(number_of_msg - size_of):
-            messages.append(await self.new_donationboard_message(guild_id))
+            messages.append(await self.new_board_message(channel_id))
         return messages
 
-    async def update_donationboard(self, guild_id):
-        guild_config = await self.get_guild_config(guild_id)
-        if not guild_config.updates_toggle:
+    async def update_donationboard(self, channel_id):
+        config = await self.bot.utils.get_board_config(channel_id=channel_id)
+
+        if not config.toggle:
             return
-        if not guild_config.donationboard:
+        if not config.channel:
             return
 
         query = "SELECT DISTINCT clan_tag FROM clans WHERE guild_id=$1"
-        fetch = await self.bot.pool.fetch(query, guild_id)
+        fetch = await self.bot.pool.fetch(query, config.guild_id)
         clans = await self.bot.coc.get_clans((n[0] for n in fetch)).flatten()
 
         players = []
         for n in clans:
             players.extend(p for p in n.itermembers)
 
-        if guild_config.donation_event:
+        if config.in_event:
             query = """SELECT player_tag, donations, received
                         FROM eventplayers 
                         WHERE player_tag=ANY($1::TEXT[])
@@ -341,7 +302,7 @@ class DonationBoard(commands.Cog):
 
         message_count = math.ceil(len(db_players) / 20)
 
-        messages = await self.get_updates_messages(guild_id, number_of_msg=message_count)
+        messages = await self.get_board_messages(channel_id, number_of_msg=message_count)
         if not messages:
             return
 
@@ -351,7 +312,7 @@ class DonationBoard(commands.Cog):
 
             for x, y in enumerate(player_data):
                 index = i*20 + x
-                if guild_config.donationboard_render == 2:
+                if config.render == 2:
                     table.add_row([index,
                                    y.donations,
                                    players.get(y.player_tag, mock).name])
@@ -364,16 +325,187 @@ class DonationBoard(commands.Cog):
                                   )
 
             fmt = table.render_option_2() if \
-                guild_config.donationboard_render == 2 else table.render_option_1()
+                config.render == 2 else table.render_option_1()
+
             e = discord.Embed(colour=self.bot.colour,
                               description=fmt,
-                              timestamp=datetime.utcnow())
-            e.set_author(name=f'Event in Progress!' if guild_config.donation_event
-                              else guild_config.donationboard_title or 'DonationBoard',
-                         icon_url=guild_config.icon_url or 'https://cdn.discordapp.com/'
-                                                           'emojis/592028799768592405.png?v=1')
+                              timestamp=datetime.utcnow()
+                              )
+            e.set_author(name=f'Event in Progress!' if config.in_event
+                              else config.title or 'DonationBoard',
+                         icon_url=config.icon_url or 'https://cdn.discordapp.com/'
+                                                     'emojis/592028799768592405.png?v=1')
             e.set_footer(text='Last Updated')
             await v.edit(embed=e, content=None)
+
+    async def get_top_players(self, players, board_type, in_event):
+        if board_type == 'donation':
+            column_1 = 'donations'
+            column_2 = 'received'
+        elif board_type == 'attack':
+            column_1 = 'attacks'
+            column_2 = None
+        elif board_type == 'trophy':
+            column_1 = 'trophies'
+            column_2 = None
+        else:
+            return
+
+        if in_event:
+            query = f"""SELECT player_tag, {column_1}, {column_2} 
+                        FROM eventplayers 
+                        WHERE player_tag=ANY($1::TEXT[])
+                        AND live=true
+                        ORDER BY {column_1} DESC
+                        LIMIT 100;
+                    """
+            fetch = await self.bot.pool.fetch(query, [n.tag for n in players])
+
+        else:
+            query = f"""SELECT player_tag, {column_1}, {column_2}
+                        FROM players 
+                        WHERE player_tag=ANY($1::TEXT[])
+                        AND season_id=$2
+                        ORDER BY {column_1} DESC
+                        LIMIT 100;
+                    """
+            fetch = await self.bot.pool.fetch(query, [n.tag for n in players],
+                                              await self.bot.seasonconfig.get_season_id())
+        return fetch
+
+    async def update_board(self, channel_id):
+        config = await self.bot.utils.get_board_config(channel_id=channel_id)
+
+        if not config.toggle:
+            return
+        if not config.channel:
+            return
+
+        query = "SELECT DISTINCT clan_tag FROM clans WHERE guild_id=$1"
+        fetch = await self.bot.pool.fetch(query, config.guild_id)
+        clans = await self.bot.coc.get_clans((n[0] for n in fetch)).flatten()
+
+        players = []
+        for n in clans:
+            players.extend(p for p in n.itermembers)
+
+        top_players = await self.get_top_players(players, config.board_type, config.in_event)
+        players = {n.tag: n for n in players if n.tag in set(x['player_tag'] for x in top_players)}
+
+        message_count = math.ceil(len(fetch) / 20)
+
+        messages = await self.get_board_messages(channel_id, number_of_msg=message_count)
+        if not messages:
+            return
+
+        for i, v in enumerate(messages):
+            player_data = fetch[i*20:(i+1)*20]
+            table = CLYTable(board_type=config.board_type)
+
+            for x, y in enumerate(player_data):
+                index = i*20 + x
+                if config.render == 2:
+                    table.add_row([index,
+                                   y[0],
+                                   players.get(y['player_tag'], mock).name])
+                else:
+                    table.add_row([index,
+                                   y[0],
+                                   y[1],
+                                   players.get(y['player_tag'], mock).name])
+
+            fmt = table.render_option_2() if \
+                config.render == 2 else table.render_option_1()
+
+            e = discord.Embed(colour=self.bot.colour,
+                              description=fmt,
+                              timestamp=datetime.utcnow()
+                              )
+            e.set_author(name=f'Event in Progress!' if config.in_event
+                              else config.title,
+                         icon_url=config.icon_url or 'https://cdn.discordapp.com/'
+                                                     'emojis/592028799768592405.png?v=1')
+            e.set_footer(text='Last Updated')
+            await v.edit(embed=e, content=None)
+
+    async def update_donationboard(self, channel_id):
+        config = await self.bot.utils.get_board_config(channel_id=channel_id)
+
+        if not config.toggle:
+            return
+        if not config.channel:
+            return
+
+        query = "SELECT DISTINCT clan_tag FROM clans WHERE guild_id=$1"
+        fetch = await self.bot.pool.fetch(query, config.guild_id)
+        clans = await self.bot.coc.get_clans((n[0] for n in fetch)).flatten()
+
+        players = []
+        for n in clans:
+            players.extend(p for p in n.itermembers)
+
+        if config.in_event:
+            query = """SELECT player_tag, donations, received
+                        FROM eventplayers 
+                        WHERE player_tag=ANY($1::TEXT[])
+                        AND live=true
+                        ORDER BY donations DESC
+                        LIMIT 100;
+                    """
+            fetch = await self.bot.pool.fetch(query, [n.tag for n in players])
+
+        else:
+            query = """SELECT player_tag, donations, received
+                        FROM players 
+                        WHERE player_tag=ANY($1::TEXT[])
+                        AND season_id=$2
+                        ORDER BY donations DESC
+                        LIMIT 100;
+                    """
+            fetch = await self.bot.pool.fetch(query, [n.tag for n in players],
+                                              await self.bot.seasonconfig.get_season_id())
+
+        db_players = [DatabasePlayer(bot=self.bot, record=n) for n in fetch]
+        players = {n.tag: n for n in players if n.tag in set(x.player_tag for x in db_players)}
+
+        message_count = math.ceil(len(db_players) / 20)
+
+        messages = await self.get_board_messages(channel_id, number_of_msg=message_count)
+        if not messages:
+            return
+
+        for i, v in enumerate(messages):
+            player_data = db_players[i*20:(i+1)*20]
+            table = CLYTable()
+
+            for x, y in enumerate(player_data):
+                index = i*20 + x
+                if config.render == 2:
+                    table.add_row([index,
+                                   y.donations,
+                                   players.get(y.player_tag, mock).name])
+                else:
+                    table.add_row([index,
+                                   y.donations,
+                                   y.received,
+                                   players.get(y.player_tag, mock).name
+                                   ]
+                                  )
+
+            fmt = table.render_option_2() if \
+                config.render == 2 else table.render_option_1()
+
+            e = discord.Embed(colour=self.bot.colour,
+                              description=fmt,
+                              timestamp=datetime.utcnow()
+                              )
+            e.set_author(name=f'Event in Progress!' if config.in_event
+                              else config.title or 'DonationBoard',
+                         icon_url=config.icon_url or 'https://cdn.discordapp.com/'
+                                                     'emojis/592028799768592405.png?v=1')
+            e.set_footer(text='Last Updated')
+            await v.edit(embed=e, content=None)
+
 
     @commands.group(invoke_without_command=True)
     @checks.manage_guild()

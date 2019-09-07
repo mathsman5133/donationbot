@@ -70,6 +70,17 @@ class Utils(commands.Cog):
         return DatabaseGuild(guild_id=guild_id, bot=self.bot, record=fetch)
 
     @cache()
+    async def get_board_config(self, *, channel_id=None, guild_id, board_type):
+        if channel_id:
+            query = "SELECT * FROM boards WHERE channel_id = $1"
+            fetch = await self.bot.pool.fetchrow(query, channel_id)
+        else:
+            query = "SELECT * FROM boards WHERE guild_id = $1 AND type = $2"
+            fetch = await self.bot.pool.fetchrow(query, guild_id, board_type)
+
+        return DatabaseBoard(bot=self.bot, record=fetch)
+
+    @cache()
     async def get_clan_name(self, guild_id, tag):
         query = "SELECT clan_name FROM clans WHERE clan_tag=$1 AND guild_id=$2"
         fetch = await self.bot.pool.fetchrow(query, tag, guild_id)
@@ -90,4 +101,11 @@ class Utils(commands.Cog):
             return msg
         except Exception:
             return None
+
+    async def update_clan_tags(self):
+        query = "SELECT DISTINCT clan_tag FROM clans"
+        fetch = await self.bot.pool.fetch(query)
+        self.bot.coc._clan_updates = [n[0] for n in fetch]
+
+
 

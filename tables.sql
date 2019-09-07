@@ -14,7 +14,7 @@ create index user_id_idx on players (user_id);
 create index season_idx on players (season_id);
 alter table players add unique (player_tag, season_id);
 
-CREATE TABLE playerevents (
+CREATE TABLE eventplayers (
     id serial primary key,
     player_tag text,
     donations integer,
