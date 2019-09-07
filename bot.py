@@ -77,6 +77,7 @@ class DonationBot(commands.Bot):
 
         self.uptime = datetime.datetime.utcnow()
         self.prefixes = {}
+        self.dbl_token = creds.dbl_token
         coc_client.add_events(self.on_event_error)
 
         for e in initial_extensions:

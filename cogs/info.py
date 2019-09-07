@@ -224,6 +224,28 @@ class Info(commands.Cog):
     def support_invite(self):
         return 'https://discord.gg/ePt8y4V'
 
+    @property
+    def welcome_message(self):
+        fmt = '**Some handy hints:**\n' \
+            f'• My prefix is `+`, or {self.bot.user.mention}\n' \
+              '• All commands have super-detailed help commands; please use them!\n' \
+              '• Usage: `+help command_name`\n\n' \
+              'A few frequently used ones to get started:\n' \
+              '• `+help addclan`\n' \
+              '• `+help donationboard` and `+help donationboard create`\n' \
+              '• `+help log` and `+help log create`\n\n' \
+              '• There are lots of how-to\'s and other ' \
+              'support on the [support server](https://discord.gg/ePt8y4V) if you get stuck.\n' \
+            f'• Please share the bot with your friends! [Bot Invite]({self.invite})\n' \
+              '• Please support us on [Patreon](https://www.patreon.com/donationtracker)!\n' \
+              '• Have a good day!'
+        e = discord.Embed(colour=self.bot.colour,
+                          description=fmt)
+        e.set_author(name='Hello! I\'m the Donation Tracker!',
+                     icon_url=self.bot.user.avatar_url
+                     )
+        return e
+
     @commands.command(aliases=['join'])
     async def invite(self, ctx):
         """Get an invite to add the bot to your server.
@@ -280,6 +302,10 @@ class Info(commands.Cog):
     @commands.command(hidden=True)
     async def ping(self, ctx):
         await ctx.send(f'Pong! {self.bot.latency*1000:.2f}ms')
+
+    @commands.command()
+    async def welcome(self, ctx):
+        await ctx.send(embed=self.welcome_message)
 
     @commands.command(hidden=True)
     @commands.is_owner()
@@ -343,28 +369,12 @@ class Info(commands.Cog):
         await self.send_guild_stats(e, guild)
         query = "INSERT INTO guilds (guild_id) VALUES ($1) ON CONFLICT (guild_id) DO NOTHING"
         await self.bot.pool.execute(query, guild.id)
-        fmt = '**Some handy hints:**\n' \
-              f'• My prefix is `+`, or {self.bot.user.mention}\n' \
-              '• All commands have super-detailed help commands; please use them!\n' \
-              '• Usage: `+help command_name`\n\n' \
-              'A few frequently used ones to get started:\n' \
-              '• `+help addclan`\n' \
-              '• `+help donationboard` and `+help donationboard create`\n' \
-              '• `+help log` and `+help log create`\n\n' \
-              '• There are lots of how-to\'s and other ' \
-              'support on the [support server](https://discord.gg/ePt8y4V) if you get stuck.\n' \
-              f'• Please share the bot with your friends! [Bot Invite]({self.invite})\n' \
-              '• Please support us on [Patreon](https://www.patreon.com/donationtracker)!\n' \
-              '• Have a good day!'
-        e = discord.Embed(colour=self.bot.colour,
-                          description=fmt)
-        e.set_author(name='Hello! I\'m the Donation Tracker!',
-                     icon_url=self.bot.user.avatar_url
-                     )
+
+        embed = self.welcome_message
 
         if guild.system_channel:
             try:
-                await guild.system_channel.send(embed=e)
+                await guild.system_channel.send(embed=embed)
                 return
             except (discord.Forbidden, discord.HTTPException):
                 pass
@@ -373,7 +383,7 @@ class Info(commands.Cog):
                 continue
             if c.permissions_for(c.guild.get_member(self.bot.user.id)).send_messages:
                 try:
-                    await c.send(embed=e)
+                    await c.send(embed=embed)
                 except (discord.Forbidden, discord.HTTPException):
                     pass
                 return
