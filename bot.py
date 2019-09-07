@@ -138,6 +138,11 @@ class DonationBot(commands.Bot):
         if isinstance(error, (discord.Forbidden, discord.NotFound, CannotPaginate)):
             return
 
+        config = await self.get_guild_config(ctx.guild.id)
+        if not config:
+            self.dispatch('guild_join', ctx.guild)
+            return await ctx.reinvoke()
+
         e = discord.Embed(title='Command Error', colour=0xcc3366)
         e.add_field(name='Name', value=ctx.command.qualified_name)
         e.add_field(name='Author', value=f'{ctx.author} (ID: {ctx.author.id})')
