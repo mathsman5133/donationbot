@@ -4,6 +4,7 @@ CREATE TABLE players (
     player_tag TEXT,
     donations INTEGER,
     received INTEGER,
+    trophies integer,
     user_id BIGINT,
     clan_tag TEXT,
     last_updated TIMESTAMP,
@@ -28,17 +29,16 @@ create index user_id_idx on players (user_id);
 create index season_idx on players (season_id);
 alter table playerevents add unique (player_tag, event_id);
 
-CREATE TABLE clans (
+CREATE TABLE logs (
     id serial PRIMARY KEY,
 
     guild_id BIGINT,
+    channel_id bigint,
     clan_tag TEXT,
     clan_name TEXT,
-    channel_id bigint,
-    donlog_interval interval DEFAULT (0 ||' minutes')::interval,
-    donlog_toggle boolean,
-    trophylog_interval interval DEFAULT (0 ||' minutes')::interval,
-    trophylog_toggle boolean
+    interval interval DEFAULT (0 ||' minutes')::interval,
+    toggle boolean,
+    type text
 );
 create index donevents_interval_idx on clans (donevents_interval);
 create index donevents_toggle_idx on clans (donevents_toggle);
@@ -48,16 +48,11 @@ CREATE TABLE guilds (
     id serial PRIMARY KEY,
 
     guild_id BIGINT UNIQUE,
-    updates_channel_id BIGINT,
-    icon_url TEXT,
-    donationboard_title TEXT,
-    donationboard_render INTEGER,
-    updates_toggle BOOLEAN,
     auto_claim BOOLEAN
     );
 create index guild_id_idx on guilds (guild_id);
 
-CREATE TABLE guilds (
+CREATE TABLE boards (
     id serial PRIMARY KEY,
 
     guild_id BIGINT UNIQUE,
