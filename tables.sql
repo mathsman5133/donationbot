@@ -6,8 +6,6 @@ CREATE TABLE players (
     received INTEGER,
     trophies integer,
     user_id BIGINT,
-    clan_tag TEXT,
-    last_updated TIMESTAMP,
     season_id integer
     );
 create index player_tag_idx on players (player_tag);
@@ -69,7 +67,7 @@ CREATE TABLE messages (
     id serial PRIMARY KEY,
 
     guild_id BIGINT,
-    message_id BIGINT,
+    message_id BIGINT UNIQUE,
     channel_id BIGINT
 
     );
