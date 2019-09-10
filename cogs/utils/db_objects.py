@@ -3,6 +3,31 @@ from datetime import datetime
 from cogs.utils.formatters import readable_time
 
 
+class DatabaseBoard:
+    __slots__ = ('bot', 'guild_id', 'channel_id', 'icon_url', 'title', 'render', 'toggle', 'type')
+
+    def __init__(self, *, guild_id, board_type, bot, record=None):
+        self.guild_id = guild_id
+        self.type = board_type
+        self.bot = bot
+
+        if record:
+            get = record.get
+            self.channel_id = get('channel_id')
+            self.icon_url = get('icon_url')
+            self.title = get('title')
+            self.render = get('render')
+            self.toggle = get('type')
+        else:
+            self.channel_id = None
+            self.render = 1
+            self.toggle = False
+
+    @property
+    def board_channel(self):
+        return self.bot.get_channel(self.channel_id)
+
+
 class DatabaseGuild:
     __slots__ = ('bot', 'guild_id', 'id', 'updates_toggle', 'auto_claim', 'donationboard_title',
                  'icon_url', 'donationboard_render')
