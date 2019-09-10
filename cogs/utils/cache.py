@@ -74,7 +74,6 @@ def cache(maxsize=128, strategy=Strategy.lru, ignore_kwargs=False):
                     if k == 'connection':
                         continue
 
-                    key.append(_true_repr(k))
                     key.append(_true_repr(v))
 
             return ':'.join(key)

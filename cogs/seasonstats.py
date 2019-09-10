@@ -7,7 +7,7 @@ import typing
 from discord.ext import commands
 
 from cogs.donations import ClanConverter
-from cogs.donationboard import MockPlayer
+from cogs.boards import MockPlayer
 from cogs.utils.emoji_lookup import number_emojis
 from cogs.utils.paginator import SeasonStatsPaginator
 from cogs.utils.formatters import TabularData, readable_time, CLYTable
