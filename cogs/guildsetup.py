@@ -7,7 +7,7 @@ import coc
 
 from discord.ext import commands
 from cogs.utils import checks, cache
-from cogs.utils.db_objects import DatabaseGuild
+from cogs.utils.db_objects import DatabaseBoard
 from cogs.utils.converters import PlayerConverter, ClanConverter, DateConverter
 from .utils import paginator, checks, formatters, fuzzy
 
@@ -24,6 +24,9 @@ class GuildConfiguration(commands.Cog):
         if isinstance(error, commands.CheckFailure):
             await ctx.send('\N{WARNING SIGN} You must have '
                            '`manage_server` permission to run this command.')
+            return
+        if isinstance(error, commands.BadArgument):
+            await ctx.send(str(error))
             return
         if not isinstance(error, commands.CommandError):
             return
@@ -86,12 +89,12 @@ class GuildConfiguration(commands.Cog):
         return [clan.get_member(name=n) for n in matches]
 
     @cache.cache()
-    async def get_guild_config(self, guild_id):
-        # TODO get that star out of there and list the fields ;)
-        query = "SELECT * FROM guilds WHERE guild_id = $1"
-        fetch = await self.bot.pool.fetchrow(query, guild_id)
+    async def get_board_config(self, guild_id, board_type):
+        query = ("SELECT guild_id, channel_id, icon_url, title, render, toggle, type "
+                 "FROM boards WHERE guild_id = $1 and type = $2")
+        fetch = await self.bot.pool.fetchrow(query, guild_id, board_type)
 
-        return DatabaseGuild(guild_id=guild_id, bot=self.bot, record=fetch)
+        return DatabaseBoard(guild_id=guild_id, board_type=board_type, bot=self.bot, record=fetch)
 
     @commands.group(invoke_without_subcommand=True)
     @checks.manage_guild()
@@ -293,9 +296,9 @@ class GuildConfiguration(commands.Cog):
         ----------------------------
         • `manage_server` permissions
         """
-        guild_config = await self.bot.get_guild_config(ctx.guild.id)
-        if guild_config.event_start > datetime.datetime.now():
-            return await ctx.send(f'This server is already set up for {guild_config.event_name}. Please use '
+        board_config = await self.bot.get_board_config(ctx.guild.id, 'trophy')
+        if board_config.event_start > datetime.datetime.now():
+            return await ctx.send(f'This server is already set up for {board_config.event_name}. Please use '
                                   f'`+remove event` if you would like to remove this event and create a new one.')
 
         def check_author(m):
@@ -309,17 +312,21 @@ class GuildConfiguration(commands.Cog):
             except asyncio.TimeoutError:
                 return await ctx.send('I can\'t wait all day. Try again later.')
 
-        try:
-            await ctx.send(f'What date does the {event_name} begin?  (YYYY-MM-DD)')
-            response = await ctx.bot.wait_for('message', check=check_author, timeout=60.0)
-            # TODO response needs to be a DateConverter
-            year, month, day = map(int, response.content.split('-'))
-            start_date = datetime.date(year, month, day)
-        except ValueError:
-            return await ctx.send(f'Date must be in the YYYY-MM-DD format.')
-            # TODO loop 5 times and then fail
-        except asyncio.TimeoutError:
-            return await ctx.send('Yawn!  Time\'s up. You\'re going to have to start over some other time.')
+        for i in range(5):
+            try:
+                await ctx.send(f'What date does the {event_name} begin?  (YYYY-MM-DD)')
+                response = await ctx.bot.wait_for('message', check=check_author, timeout=60.0)
+                start_date = await DateConverter().convert(ctx, response)
+                break
+            except ValueError:
+                await ctx.send(f'Date must be in the YYYY-MM-DD format.')
+                if i < 4:
+                    continue
+                else:
+                    return await ctx.send('I don\'t really know what happened, but I can\'t figure out what the start '
+                                          'date is. Please start over and let\'s see what happens')
+            except asyncio.TimeoutError:
+                return await ctx.send('Yawn!  Time\'s up. You\'re going to have to start over some other time.')
 
         try:
             await ctx.send('And what time does this fantastic event begin? (Please provide HH:MM in UTC)')
@@ -351,8 +358,8 @@ class GuildConfiguration(commands.Cog):
         except asyncio.TimeoutError:
             return await ctx.send('I can\'t wait all day. Try again later.')
 
-        msg = await ctx.send('Does the event end at the same time?')
-        reactions = [':regional_indicator_y:', ':regional_indicator_n:']
+        msg = await ctx.send('Does the event end at the same time of day?')
+        reactions = ["🇾", "🇳"]
         for r in reactions:
             await msg.add_reaction(r)
 
@@ -377,27 +384,33 @@ class GuildConfiguration(commands.Cog):
             await ctx.send('No answer? I\'ll assume that\'s a yes then!')
 
         event_end = datetime.datetime.combine(end_date, end_time)
-
+        # TODO Need columns in databse for tracking event start/end
         query = 'INSERT INTO trophy_events (guild_id, event_name, event_start, event_end) VALUES ($1, $2, $3, $4)'
         await ctx.db.execute(query, ctx.guild.id, event_name, event_start, event_end)
 
         try:
             await ctx.send('Alright now I just need to know what clans will be in this event.  You can provide the '
                            'clan tags all at once (separated by a space) or individually.')
-            clans = await self.bot.wait_for('message', check=check_author, timeout=180.00)
-            # TODO clans needs to be commands.Greedy[ClanConverter]
+            response = await self.bot.wait_for('message', check=check_author, timeout=180.00)
+            clans = response.split(' ')
+            clan_names = ''
+            for clan in clans:
+                clan = await ClanConverter().convert(ctx, clan)
+                # TODO Insert clan into datebase for this trophy push event
+                clan_names += f'\n{clan.name}'
+            fmt_tag = (f'Clans added for this event:\n' 
+                       f'{clan_names}')
         except asyncio.TimeoutError:
-            # todo: add error
-            pass
+            fmt_tag = "Please use the `+add clan` command later to add clans to this event."
 
         fmt = (f'**Event Created:**\n\n{event_name}\n{event_start.strftime("%d %b %Y %H:%M")}\n'
-               f'{event_end.strftime("%d %b %Y %H:%M")}\n\nEnjoy your event!')
+               f'{event_end.strftime("%d %b %Y %H:%M")}\n\n{fmt_tag}\n\nEnjoy your event!')
         e = discord.Embed(colour=discord.Colour.green(),
                           description=fmt)
         await ctx.send(embed=e)
 
         # Check for existing trophy board and create one if it doesn't exist
-        if not guild_config.trophyboard:
+        if not board_config.board_channel:
             await ctx.invoke(self.add_trophyboard)
 
     @add.command(name="trophyboard")
@@ -424,12 +437,13 @@ class GuildConfiguration(commands.Cog):
         • `manage_channels` permissions
         """
         guild_id = ctx.guild.id
-        self.get_guild_config.invalidate(self, guild_id)
-        guild_config = await self.bot.get_guild_config(guild_id)
+        # TODO Does the invalidate function need board_type?
+        self.get_board_config.invalidate(self, guild_id)
+        board_config = await self.bot.get_board_config(guild_id, 'trophy')
 
-        if guild_config.trophyboard is not None:
+        if board_config.board_channel is not None:
             return await ctx.send(
-                f'This server already has a trophyboard ({guild_config.trophyboard.mention}')
+                f'This server already has a trophyboard ({board_config.trophyboard.mention}')
 
         perms = ctx.channel.permissions_for(ctx.me)
         if not perms.manage_channels:
@@ -458,13 +472,11 @@ class GuildConfiguration(commands.Cog):
 
         msg = await channel.send('Placeholder')
 
-        query = "INSERT INTO messages (message_id, message_type, guild_id, channel_id) VALUES ($1, $2, $3, $4)"
-        await ctx.db.execute(query, msg.id, 'trophy', ctx.guild.id, channel.id)
-        query = "UPDATE guilds SET trophy_channel_id = $1, trophy_toggle = True WHERE guild_id = $2"
-        await ctx.db.execute(query, channel.id, ctx.guild.id)
+        query = "INSERT INTO messages (message_id, guild_id, channel_id) VALUES ($1, $2, $3)"
+        await ctx.db.execute(query, msg.id, ctx.guild.id, channel.id)
+        query = "UPDATE boards SET channel_id = $1, toggle = True WHERE guild_id = $2 and type = $3"
+        await ctx.db.execute(query, channel.id, ctx.guild.id, 'trophy')
         await ctx.send(f'Trophyboard channel created: {channel.mention}')
-
-        await ctx.invoke(self.edit_trophyboard)
 
     @add.command(name="attackboard")
     async def add_attackboard(self, ctx, *, name="attackboard"):
@@ -478,8 +490,8 @@ class GuildConfiguration(commands.Cog):
 
         Example
         -----------
-        • `+attackboard create`
-        • `+attackboard create my cool attackboard name`
+        • `+add attackboard`
+        • `+add attackboard my cool attackboard name`
 
         Required Permissions
         ----------------------------
@@ -490,12 +502,13 @@ class GuildConfiguration(commands.Cog):
         • `manage_channels` permissions
         """
         guild_id = ctx.guild.id
-        self.get_guild_config.invalidate(self, guild_id)
-        guild_config = await self.bot.get_guild_config(guild_id)
+        # TODO Does the invalidate function need board_type?
+        self.get_board_config.invalidate(self, guild_id)
+        board_config = await self.bot.get_board_config(guild_id, 'attack')
 
-        if guild_config.attackboard is not None:
+        if board_config.board_channel is not None:
             return await ctx.send(
-                f'This server already has an attackboard ({guild_config.attackboard.mention}')
+                f'This server already has an attackboard ({board_config.attackboard.mention}')
 
         perms = ctx.channel.permissions_for(ctx.me)
         if not perms.manage_channels:
@@ -530,8 +543,6 @@ class GuildConfiguration(commands.Cog):
         await ctx.db.execute(query, channel.id, ctx.guild.id)
         await ctx.send(f'Attackboard channel created: {channel.mention}')
 
-        await ctx.invoke(self.edit_attackboard)
-
     @add.command(name='donationboard')
     async def add_donationboard(self, ctx, *, name='donationboard'):
         """Creates a donationboard channel for donation updates.
@@ -556,12 +567,13 @@ class GuildConfiguration(commands.Cog):
         • `manage_channels` permissions
         """
         guild_id = ctx.guild.id
-        self.get_guild_config.invalidate(self, guild_id)
-        guild_config = await self.bot.get_guild_config(guild_id)
+        # TODO Does the invalidate function need board_type?
+        self.get_board_config.invalidate(self, guild_id)
+        board_config = await self.bot.get_board_config(guild_id, 'donation')
 
-        if guild_config.donationboard is not None:
+        if board_config.board_channel is not None:
             return await ctx.send(
-                f'This server already has a donationboard ({guild_config.donationboard.mention})')
+                f'This server already has a donationboard ({board_config.donationboard.mention})')
 
         perms = ctx.channel.permissions_for(ctx.me)
         if not perms.manage_channels:
@@ -594,8 +606,6 @@ class GuildConfiguration(commands.Cog):
         query = "UPDATE guilds SET updates_channel_id=$1, updates_toggle=True WHERE guild_id=$2"
         await ctx.db.execute(query, channel.id, ctx.guild.id)
         await ctx.send(f'Donationboard channel created: {channel.mention}')
-
-        await ctx.invoke(self.edit_donationboard)
 
     @commands.command()
     async def claim(self, ctx, user: typing.Optional[discord.Member] = None, *,
