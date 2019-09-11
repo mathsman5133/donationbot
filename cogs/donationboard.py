@@ -256,6 +256,10 @@ class DonationBoard(commands.Cog):
 
     async def get_updates_messages(self, guild_id, number_of_msg=None):
         guild_config = await self.get_guild_config(guild_id)
+
+        if not guild_config.donationboard:
+            return None
+
         fetch = await guild_config.updates_messages()
 
         messages = [await n.get_message() for n in fetch]
