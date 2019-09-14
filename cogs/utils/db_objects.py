@@ -227,14 +227,14 @@ class BoardConfig:
         self.in_event: bool = record['in_event']
 
     @property
-    def guild(self):
+    def guild(self) -> discord.Guild:
         return self.bot.get_guild(self.guild_id)
 
     @property
-    def channel(self):
+    def channel(self) -> discord.TextChannel:
         return self.bot.get_channel(self.channel_id)
 
-    async def messages(self):
+    async def messages(self) -> list:
         query = """SELECT guild_id, 
                           message_id, 
                           channel_id 
@@ -256,14 +256,14 @@ class DatabaseMessage:
         self.channel_id: int = record['channel_id']
 
     @property
-    def guild(self):
+    def guild(self) -> discord.Guild:
         return self.bot.get_guild(self.guild_id)
 
     @property
-    def channel(self):
+    def channel(self) -> discord.TextChannel:
         return self.bot.get_channel(self.channel_id)
 
-    async def get_message(self):
+    async def get_message(self) -> discord.Message:
         return await self.bot.utils.get_message(self.channel, self.message_id)
 
 
