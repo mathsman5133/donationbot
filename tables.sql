@@ -32,12 +32,20 @@ CREATE TABLE logs (
 
     guild_id BIGINT,
     channel_id bigint,
-    clan_tag TEXT,
-    clan_name TEXT,
     interval interval DEFAULT (0 ||' minutes')::interval,
     toggle boolean,
-    type text
+    type text,
 );
+
+create table clans (
+    id serial primary key,
+
+    clan_tag text,
+    clan_name text,
+    channel_id bigint,
+    guild_id bigint,
+    in_event boolean default false
+)
 create index donevents_interval_idx on clans (donevents_interval);
 create index donevents_toggle_idx on clans (donevents_toggle);
 
@@ -59,7 +67,8 @@ CREATE TABLE boards (
     title TEXT,
     render INTEGER,
     toggle BOOLEAN,
-    type TEXT
+    board_type TEXT,
+    in_event boolean
     );
 
 
@@ -130,3 +139,11 @@ CREATE TABLE seasons (
     finish timestamp
 );
 create index start_idx on seasons (start);
+
+create table events (
+    id serial primary key,
+    start timestamp,
+    finish timestamp,
+    event_name text,
+    guild_id bigint
+)

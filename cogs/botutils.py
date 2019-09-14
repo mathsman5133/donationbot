@@ -3,7 +3,7 @@ import discord
 from discord.ext import commands
 
 from cogs.utils.cache import cache
-from cogs.utils.db_objects import DatabaseClan, LogConfig, DatabaseGuild
+from cogs.utils.db_objects import LogConfig, BoardConfig
 
 
 class Utils(commands.Cog):
@@ -11,74 +11,43 @@ class Utils(commands.Cog):
         self.bot = bot
 
     @cache()
-    async def donation_log_config(self, channel_id):
-        query = """SELECT guild_id, channel_id, donlog_interval, donlog_toggle 
-                   FROM clans WHERE channel_id=$1
+    async def log_config(self, channel_id, log_type):
+        query = """SELECT guild_id, 
+                          channel_id, 
+                          interval, 
+                          toggle 
+                   FROM logs 
+                   WHERE channel_id=$1 
+                   AND type=$2
                 """
-        fetch = await self.bot.pool.fetchrow(query, channel_id)
+        fetch = await self.bot.pool.fetchrow(query, channel_id, log_type)
         if not fetch:
             return None
 
-        return LogConfig(bot=self.bot,
-                         guild_id=fetch['guild_id'],
-                         channel_id=fetch['channel_id'],
-                         interval=fetch['donevents_interval'],
-                         toggle=fetch['donevents_toggle']
-                         )
-
-    @cache()
-    async def trophy_log_config(self, channel_id):
-        query = """SELECT guild_id, channel_id, trophylog_interval, trophylog_toggle 
-                       FROM clans WHERE channel_id=$1
-                    """
-        fetch = await self.bot.pool.fetchrow(query, channel_id)
-        if not fetch:
-            return None
-
-        return LogConfig(bot=self.bot,
-                         guild_id=fetch['guild_id'],
-                         channel_id=fetch['channel_id'],
-                         interval=fetch['donevents_interval'],
-                         toggle=fetch['donevents_toggle']
-                         )
-
-    @cache()
-    async def get_channel_config(self, channel_id):
-        query = """SELECT id, guild_id, clan_tag, clan_name, 
-                              channel_id, log_interval, log_toggle 
-                        FROM clans WHERE channel_id=$1
-                    """
-        fetch = await self.bot.pool.fetchrow(query, channel_id)
-
-        if not fetch:
-            return None
-
-        return DatabaseClan(bot=self.bot, record=fetch)
+        return LogConfig(bot=self.bot, record=fetch)
 
     def invalidate_channel_configs(self, channel_id):
-        self.get_channel_config.invalidate(self, channel_id)
+        self.log_config.invalidate(self, channel_id)
+        # todo: fix
         task = self.bot.donationlogs._tasks.pop(channel_id, None)
         if task:
             task.cancel()
 
     @cache()
-    async def get_guild_config(self, guild_id):
-        # TODO get that star out of there and list the fields ;)
-        query = "SELECT * FROM guilds WHERE guild_id = $1"
-        fetch = await self.bot.pool.fetchrow(query, guild_id)
-
-        return DatabaseGuild(guild_id=guild_id, bot=self.bot, record=fetch)
-
-    @cache()
-    async def get_board_config(self, *, channel_id=None, guild_id, board_type):
-        if channel_id:
-            query = "SELECT * FROM boards WHERE channel_id = $1"
-            fetch = await self.bot.pool.fetchrow(query, channel_id)
-        else:
-            query = "SELECT * FROM boards WHERE guild_id = $1 AND type = $2"
-            fetch = await self.bot.pool.fetchrow(query, guild_id, board_type)
-
-        return DatabaseBoard(bot=self.bot, record=fetch)
+    async def board_config(self, channel_id):
+        query = """SELECT guild_id, 
+                          channel_id,
+                          icon_url,
+                          title,
+                          render,
+                          toggle,
+                          type,
+                          in_event
+                   FROM boards 
+                   WHERE channel_id = $1
+                """
+        fetch = await self.bot.pool.fetchrow(query, channel_id)
+        return BoardConfig(bot=self.bot, record=fetch)
 
     @cache()
     async def get_clan_name(self, guild_id, tag):

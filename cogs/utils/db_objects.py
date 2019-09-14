@@ -1,6 +1,10 @@
-from datetime import datetime
+import discord
+
+from collections import namedtuple
+from datetime import datetime, timedelta
 
 from cogs.utils.formatters import readable_time
+
 
 
 class DatabaseBoard:
@@ -127,34 +131,6 @@ class DatabaseClan:
         return await self.bot.coc.get_clan(self.clan_tag)
 
 
-class DatabaseMessage:
-    def __init__(self, *, bot, record=None):
-        self.bot = bot
-
-        if record:
-            get = record.get
-            self.id = get('id')
-            self.guild_id = get('guild_id')
-            self.message_id = get('message_id')
-            self.channel_id = get('channel_id')
-
-        else:
-            self.guild_id = None
-            self.channel_id = None
-            self.message_id = None
-
-    @property
-    def guild(self):
-        return self.bot.get_guild(self.guild_id)
-
-    @property
-    def channel(self):
-        return self.bot.get_channel(self.channel_id)
-
-    async def get_message(self):
-        return await self.bot.donationboard.get_message(self.channel, self.message_id)
-
-
 class DonationEvent:
     __slots__ = ('bot', 'id', 'player_tag', 'player_name', 'clan_tag', 'donations', 'received', 'time')
 
@@ -213,13 +189,42 @@ class TrophyEvent:
 class LogConfig:
     __slots__ = ('bot', 'guild_id', 'channel_id', 'interval', 'toggle')
 
-    def __init__(self, *, bot, guild_id, channel_id, interval, toggle):
+    def __init__(self, *, bot, record):
         self.bot = bot
 
-        self.guild_id = guild_id
-        self.channel_id = channel_id
-        self.interval = interval
-        self.toggle = toggle
+        self.guild_id: int = record['guild_id']
+        self.channel_id: int = record['channel_id']
+        self.interval: timedelta = record['interval']
+        self.toggle: bool = record['toggle']
+
+    @property
+    def guild(self) -> discord.Guild:
+        return self.bot.get_guild(self.guild_id)
+
+    @property
+    def channel(self) -> discord.TextChannel:
+        return self.bot.get_channel(self.channel_id)
+
+    @property
+    def seconds(self) -> float:
+        return self.interval.total_seconds()
+
+
+class BoardConfig:
+    __slots__ = ('bot', 'guild_id', 'channel_id', 'icon_url', 'title',
+                 'render', 'toggle', 'board_type', 'in_event')
+
+    def __init__(self, *, bot, record):
+        self.bot = bot
+
+        self.guild_id: int = record['guild_id']
+        self.channel_id: int = record['channel_id']
+        self.icon_url: str = record['icon_url']
+        self.title: str = record['title']
+        self.render: int = record['render']
+        self.toggle: bool = record['toggle']
+        self.board_type: str = record['board_type']
+        self.in_event: bool = record['in_event']
 
     @property
     def guild(self):
@@ -229,6 +234,38 @@ class LogConfig:
     def channel(self):
         return self.bot.get_channel(self.channel_id)
 
+    async def messages(self):
+        query = """SELECT guild_id, 
+                          message_id, 
+                          channel_id 
+                   FROM messages 
+                   WHERE guild_id = $1
+                """
+        fetch = await self.bot.pool.fetch(query, self.guild_id)
+        return [DatabaseMessage(bot=self.bot, record=n) for n in fetch]
+
+
+class DatabaseMessage:
+    __slots__ = ('bot', 'guild_id', 'message_id', 'channel_id')
+
+    def __init__(self, *, bot, record):
+        self.bot = bot
+
+        self.guild_id: int = record['guild_id']
+        self.message_id: int = record['message_id']
+        self.channel_id: int = record['channel_id']
+
     @property
-    def seconds(self):
-        return self.interval.total_seconds()
+    def guild(self):
+        return self.bot.get_guild(self.guild_id)
+
+    @property
+    def channel(self):
+        return self.bot.get_channel(self.channel_id)
+
+    async def get_message(self):
+        return await self.bot.utils.get_message(self.channel, self.message_id)
+
+
+SlimDonationEvent = namedtuple('SlimDonationEvent', 'donations received name clan_tag')
+SlimTrophyEvent = namedtuple('SlimTrophyEvent', 'trophies name clan_tag')

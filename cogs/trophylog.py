@@ -8,7 +8,7 @@ import time
 from datetime import datetime
 from discord.ext import commands, tasks
 
-from cogs.utils.db_objects import TrophyEvent
+from cogs.utils.db_objects import SlimTrophyEvent
 from cogs.utils.formatters import format_trophy_log_message
 
 log = logging.getLogger(__name__)
@@ -77,11 +77,12 @@ class DonationLogs(commands.Cog):
         log.debug('Time taken: %s ms', (time.perf_counter() - start)*1000)
 
     async def sync_temp_event_tasks(self):
-        query = """SELECT channel_id FROM clans 
-                   WHERE trophylog_toggle=True 
-                   AND trophylog_interval > make_interval()
+        query = """SELECT channel_id FROM logs 
+                   WHERE toggle=True 
+                   AND interval > make_interval()
+                   AND type = $1
                 """
-        fetch = await self.bot.pool.fetch(query)
+        fetch = await self.bot.pool.fetch(query, EVENTS_TABLE_TYPE)
         for n in fetch:
             channel_id = n[0]
             log.debug(f'Syncing task for Channel ID {channel_id}')
@@ -114,20 +115,23 @@ class DonationLogs(commands.Cog):
     async def create_temp_event_task(self, channel_id):
         try:
             while not self.bot.is_closed():
-                config = await self.bot.utils.trophy_log_config(channel_id)
+                config = await self.bot.utils.log_config(channel_id)
                 if not config:
                     log.warning(f'Channel ID not found in DB or `None` '
                                 f'has been cached for Channel ID: {channel_id}')
                     return
 
                 await asyncio.sleep(config.seconds)
+
                 query = "DELETE FROM tempevents WHERE channel_id = $1 AND type = $2 RETURNING fmt"
                 fetch = await self.bot.pool.fetch(query, channel_id, EVENTS_TABLE_TYPE)
+
                 for n in fetch:
                     asyncio.ensure_future(self.bot.channel_log(channel_id, n[0], embed=False))
 
                 log.debug(f'Dispatching {len(fetch)} logs after sleeping for {config.seconds} '
                           f'sec to channel {config.channel} ({config.channel_id})')
+
         except asyncio.CancelledError:
             raise
         except (OSError, discord.ConnectionClosed, asyncpg.PostgresConnectionError):
@@ -144,32 +148,33 @@ class DonationLogs(commands.Cog):
                 """
         fetch = await self.bot.pool.fetch(query)
 
-        query = """SELECT trophyevents.clan_tag, trophyevents.trophy_change, 
-                          trophyevents.player_name, trophyevents.time
+        query = """SELECT trophyevents.clan_tag, 
+                          trophyevents.trophy_change, 
+                          trophyevents.player_name, 
+                          trophyevents.time
                     FROM trophyevents 
                         INNER JOIN clans 
                         ON clans.clan_tag = trophyevents.clan_tag 
-                    WHERE clans.channel_id=$1 
+                    WHERE clans.channel_id = $1 
                     AND trophyevents.reported=False
                     ORDER BY trophyevents.clan_tag, 
                              time DESC;
                 """
 
         for n in fetch:
-            config = await self.bot.utils.trophy_log_config(n[0])
+            config = await self.bot.utils.log_config(n[0])
             if not config:
                 continue
             if not config.toggle:
                 continue
 
-            events = [TrophyEvent(bot=self.bot, record=n) for
-                      n in await self.bot.pool.fetch(query, n[0])
-                      ]
+            events = await self.bot.pool.fetch(query, n[0])
 
             messages = []
             for x in events:
-                clan_name = await self.bot.utils.get_clan_name(config.guild_id, x.clan_tag)
-                messages.append(format_trophy_log_message(x, clan_name))
+                slim_event = SlimTrophyEvent(x['trophies'], x['player_name'], x['clan_tag'])
+                clan_name = await self.bot.utils.get_clan_name(config.guild_id, slim_event.clan_tag)
+                messages.append(format_trophy_log_message(slim_event, clan_name))
 
             group_batch = []
             for i in range(math.ceil(len(messages) / 20)):

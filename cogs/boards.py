@@ -9,9 +9,9 @@ from collections import namedtuple
 from datetime import datetime
 from discord.ext import commands, tasks
 
-from cogs.utils.db_objects import DatabaseGuild, DatabaseMessage, DatabasePlayer
-from cogs.utils.formatters import TabularData, clean_name, CLYTable
-from cogs.utils import checks, cache
+from cogs.utils.db_objects import DatabaseMessage
+from cogs.utils.formatters import CLYTable
+from cogs.utils import checks
 
 
 log = logging.getLogger(__name__)
@@ -127,11 +127,11 @@ class DonationBoard(commands.Cog):
                         WHERE channel_id = $1;
                 """
         await self.bot.pool.executemany(query, channel.id)
-        self.bot.utils.get_board_config.invalidate(self.bot.utils, channel.id)
+        self.bot.utils.board_config.invalidate(self.bot.utils, channel.id)
 
     @commands.Cog.listener()
     async def on_raw_message_delete(self, payload):
-        config = await self.bot.utils.get_board_config(channel_id=payload.channel_id)
+        config = await self.bot.utils.board_config(payload.channel_id)
 
         if not config:
             return
@@ -248,11 +248,11 @@ class DonationBoard(commands.Cog):
                   f'Performed a query to insert them into eventplayers. Status Code: {response}')
 
     async def new_board_message(self, channel_id):
-        config = await self.bot.utils.get_board_config(channel_id=channel_id)
+        new_msg = await self.bot.get_channel(channel_id).send('Placeholder')
 
-        new_msg = await config.channel.send('Placeholder')
         query = "INSERT INTO messages (guild_id, message_id, channel_id) VALUES ($1, $2, $3)"
         await self.bot.pool.execute(query, new_msg.guild.id, new_msg.id, new_msg.channel.id)
+
         return new_msg
 
     async def safe_delete(self, message_id, delete_message=True):
@@ -273,11 +273,10 @@ class DonationBoard(commands.Cog):
         await m.delete()
 
     async def get_board_messages(self, channel_id, number_of_msg=None):
-        config = await self.bot.utils.get_board_config(channel_id=channel_id)
+        config = await self.bot.utils.board_config(channel_id)
         fetch = await config.messages()
 
-        messages = [await n.get_message() for n in fetch]
-        messages = [n for n in messages if n]
+        messages = [await n.get_message() for n in fetch if await n.get_message()]
         size_of = len(messages)
 
         if not number_of_msg or size_of == number_of_msg:
@@ -302,6 +301,7 @@ class DonationBoard(commands.Cog):
         else:
             return
 
+        # this should be ok since columns can only be a choice of 4 defined names
         if in_event:
             query = f"""SELECT player_tag, {column_1}, {column_2} 
                         FROM eventplayers 
@@ -325,15 +325,15 @@ class DonationBoard(commands.Cog):
         return fetch
 
     async def update_board(self, channel_id):
-        config = await self.bot.utils.get_board_config(channel_id=channel_id)
+        config = await self.bot.utils.board_config(channel_id)
 
         if not config.toggle:
             return
         if not config.channel:
             return
 
-        query = "SELECT DISTINCT clan_tag FROM clans WHERE guild_id=$1"
-        fetch = await self.bot.pool.fetch(query, config.guild_id)
+        query = "SELECT DISTINCT clan_tag FROM clans WHERE guild_id=$1 AND in_event=$2"
+        fetch = await self.bot.pool.fetch(query, config.guild_id, config.in_event)
         clans = await self.bot.coc.get_clans((n[0] for n in fetch)).flatten()
 
         players = []

@@ -8,13 +8,12 @@ import time
 from datetime import datetime
 from discord.ext import commands, tasks
 
-from cogs.utils.db_objects import DonationEvent
+from cogs.utils.db_objects import DonationEvent, SlimDonationEvent
 from cogs.utils.formatters import format_donation_log_message
 
 log = logging.getLogger(__name__)
 
 EVENTS_TABLE_TYPE = 'donations'
-
 
 class DonationLogs(commands.Cog):
     def __init__(self, bot):
@@ -79,11 +78,13 @@ class DonationLogs(commands.Cog):
         log.debug('Time taken: %s ms', (time.perf_counter() - start)*1000)
 
     async def sync_temp_event_tasks(self):
-        query = """SELECT channel_id FROM clans 
-                   WHERE donevents_toggle=True 
-                   AND donevents_interval > make_interval()
+        query = """SELECT channel_id 
+                   FROM logs 
+                   WHERE toggle = True 
+                   AND interval > make_interval()
+                   AND type = $1
                 """
-        fetch = await self.bot.pool.fetch(query)
+        fetch = await self.bot.pool.fetch(query, EVENTS_TABLE_TYPE)
         for n in fetch:
             channel_id = n[0]
             log.debug(f'Syncing task for Channel ID {channel_id}')
@@ -109,24 +110,29 @@ class DonationLogs(commands.Cog):
         log.info(f'Successfully synced {len(fetch)} channel tasks.')
 
     async def add_temp_events(self, channel_id, fmt):
-        query = """INSERT INTO tempevents (channel_id, fmt, type) VALUES ($1, $2, $3)"""
+        query = "INSERT INTO tempevents (channel_id, fmt, type) VALUES ($1, $2, $3)"
         await self.bot.pool.execute(query, channel_id, fmt, EVENTS_TABLE_TYPE)
         log.debug(f'Added a message for channel id {channel_id} to tempevents db')
 
     async def create_temp_event_task(self, channel_id):
         try:
             while not self.bot.is_closed():
-                config = await self.bot.utils.donation_log_config(channel_id)
+                config = await self.bot.utils.log_config(channel_id)
                 if not config:
-                    return await self.bot.error_webhook.send(channel_id)
+                    log.critical(f'Requested a task creation for channel id {channel_id}'
+                                 ' but config was not found.')
 
                 await asyncio.sleep(config.seconds)
+
                 query = "DELETE FROM tempevents WHERE channel_id = $1 AND type = $2 RETURNING fmt"
                 fetch = await self.bot.pool.fetch(query, channel_id, EVENTS_TABLE_TYPE)
+
                 for n in fetch:
                     asyncio.ensure_future(self.bot.channel_log(channel_id, n[0], embed=False))
+
                 log.debug(f'Dispatching {len(fetch)} logs after sleeping for {config.seconds} '
                           f'sec to channel {config.channel} ({config.channel_id})')
+
         except asyncio.CancelledError:
             raise
         except (OSError, discord.ConnectionClosed, asyncpg.PostgresConnectionError):
@@ -137,14 +143,17 @@ class DonationLogs(commands.Cog):
     async def bulk_report(self):
         query = """SELECT DISTINCT clans.channel_id 
                    FROM clans 
-                        INNER JOIN donationevents 
-                        ON clans.clan_tag = donationevents.clan_tag 
-                    WHERE donationevents.reported=False
+                   INNER JOIN donationevents 
+                   ON clans.clan_tag = donationevents.clan_tag 
+                   WHERE donationevents.reported=False
                 """
         fetch = await self.bot.pool.fetch(query)
 
-        query = """SELECT donationevents.clan_tag, donationevents.donations, donationevents.received, 
-                          donationevents.player_name, donationevents.time
+        query = """SELECT donationevents.clan_tag, 
+                          donationevents.donations, 
+                          donationevents.received, 
+                          donationevents.player_name, 
+                          donationevents.time
                     FROM donationevents 
                         INNER JOIN clans 
                         ON clans.clan_tag = donationevents.clan_tag 
@@ -155,20 +164,20 @@ class DonationLogs(commands.Cog):
                 """
 
         for n in fetch:
-            config = await self.bot.donation_log_config(n[0])
+            config = await self.bot.utils.log_config(n[0])
+
             if not config:
                 continue
             if not config.toggle:
                 continue
 
-            events = [DonationEvent(bot=self.bot, record=n) for
-                      n in await self.bot.pool.fetch(query, n[0])
-                      ]
+            events = await self.bot.pool.fetch(query, n[0])
 
             messages = []
             for x in events:
-                clan_name = await self.bot.get_clan_name(config.guild_id, x.clan_tag)
-                messages.append(format_donation_log_message(x, clan_name))
+                slim_event = SlimDonationEvent(x['donations'], x['received'], x['player_name'], x['clan_tag'])
+                clan_name = await self.bot.utils.get_clan_name(config.guild_id, slim_event.clan_tag)
+                messages.append(format_donation_log_message(slim_event, clan_name))
 
             group_batch = []
             for i in range(math.ceil(len(messages) / 20)):
