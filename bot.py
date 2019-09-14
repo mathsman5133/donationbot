@@ -97,6 +97,10 @@ class DonationBot(commands.Bot):
     def seasonconfig(self):
         return self.get_cog('SeasonConfig')
 
+    @property
+    def utils(self):
+        return self.get_cog('Utils')
+
     async def on_message(self, message):
         if message.author.bot:
             return  # ignore bot messages

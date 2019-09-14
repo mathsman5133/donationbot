@@ -1,6 +1,7 @@
 import discord
 
 from discord.ext import commands
+from typing import Union
 
 from cogs.utils.cache import cache
 from cogs.utils.db_objects import LogConfig, BoardConfig
@@ -11,7 +12,7 @@ class Utils(commands.Cog):
         self.bot = bot
 
     @cache()
-    async def log_config(self, channel_id, log_type):
+    async def log_config(self, channel_id, log_type) -> Union[LogConfig, None]:
         query = """SELECT guild_id, 
                           channel_id, 
                           interval, 
@@ -34,7 +35,7 @@ class Utils(commands.Cog):
             task.cancel()
 
     @cache()
-    async def board_config(self, channel_id):
+    async def board_config(self, channel_id) -> Union[BoardConfig, None]:
         query = """SELECT guild_id, 
                           channel_id,
                           icon_url,
@@ -47,10 +48,14 @@ class Utils(commands.Cog):
                    WHERE channel_id = $1
                 """
         fetch = await self.bot.pool.fetchrow(query, channel_id)
+
+        if not fetch:
+            return None
+
         return BoardConfig(bot=self.bot, record=fetch)
 
     @cache()
-    async def get_clan_name(self, guild_id, tag):
+    async def get_clan_name(self, guild_id, tag) -> str:
         query = "SELECT clan_name FROM clans WHERE clan_tag=$1 AND guild_id=$2"
         fetch = await self.bot.pool.fetchrow(query, tag, guild_id)
         if not fetch:
@@ -58,7 +63,7 @@ class Utils(commands.Cog):
         return fetch[0]
 
     @cache()
-    async def get_message(self, channel, message_id):
+    async def get_message(self, channel, message_id) -> Union[discord.Message, None]:
         try:
             o = discord.Object(id=message_id + 1)
             # don't wanna use get_message due to poor rate limit (1/1s) vs (50/1s)
