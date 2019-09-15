@@ -229,6 +229,7 @@ class Admin(commands.Cog):
 
         env = {
             'bot': self.bot,
+            'coc': self.bot.coc,
             'ctx': ctx,
             'channel': ctx.channel,
             'author': ctx.author,
