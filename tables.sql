@@ -46,6 +46,8 @@ create table clans (
     guild_id bigint,
     in_event boolean default false
 )
+alter table clans add unique (clan_tag, channel_id)
+
 create index donevents_interval_idx on clans (donevents_interval);
 create index donevents_toggle_idx on clans (donevents_toggle);
 
@@ -66,7 +68,7 @@ CREATE TABLE boards (
     icon_url TEXT,
     title TEXT,
     render INTEGER,
-    toggle BOOLEAN,
+    toggle BOOLEAN default true,
     board_type TEXT,
     in_event boolean
     );

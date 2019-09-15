@@ -269,3 +269,4 @@ class DatabaseMessage:
 
 SlimDonationEvent = namedtuple('SlimDonationEvent', 'donations received name clan_tag')
 SlimTrophyEvent = namedtuple('SlimTrophyEvent', 'trophies name clan_tag')
+SlimEventConfig = namedtuple('SlimEventConfig', 'id start finish event_name')

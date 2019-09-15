@@ -4,7 +4,7 @@ from discord.ext import commands
 from typing import Union
 
 from cogs.utils.cache import cache
-from cogs.utils.db_objects import LogConfig, BoardConfig
+from cogs.utils.db_objects import LogConfig, BoardConfig, SlimEventConfig
 
 
 class Utils(commands.Cog):
@@ -53,6 +53,43 @@ class Utils(commands.Cog):
             return None
 
         return BoardConfig(bot=self.bot, record=fetch)
+
+    async def get_board_config(self, guild_id, board_type):
+        query = """SELECT guild_id, 
+                          channel_id,
+                          icon_url,
+                          title,
+                          render,
+                          toggle,
+                          type,
+                          in_event
+                   FROM boards 
+                   WHERE guild_id = $1
+                   AND type = $2
+                """
+        fetch = await self.bot.pool.fetchrow(query, guild_id, board_type)
+
+        if not fetch:
+            return None
+
+        return BoardConfig(bot=self.bot, record=fetch)
+
+    @cache()
+    async def event_config(self, guild_id) -> Union[SlimEventConfig, None]:
+        query = """SELECT id,
+                          start,
+                          finish,
+                          event_name,
+                   FROM events
+                   WHERE guild_id = $1
+                   ORDER BY start DESC
+                """
+        fetch = await self.bot.pool.fetchrow(query, guild_id)
+
+        if not fetch:
+            return None
+
+        return SlimEventConfig(fetch['id'], fetch['start'], fetch['finish'], fetch['event_name'])
 
     @cache()
     async def get_clan_name(self, guild_id, tag) -> str:
