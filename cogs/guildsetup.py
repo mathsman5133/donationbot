@@ -14,6 +14,7 @@ from .utils import paginator, checks, formatters, fuzzy
 
 log = logging.getLogger(__name__)
 
+
 class GuildConfiguration(commands.Cog):
     """All commands related to setting up the server for the first time,
     and managing configurations."""
@@ -92,7 +93,7 @@ class GuildConfiguration(commands.Cog):
 
     @cache.cache()
     async def get_board_config(self, guild_id, board_type):
-        query = ("SELECT guild_id, channel_id, icon_url, title, render, toggle, type "
+        query = ("SELECT guild_id, channel_id, icon_url, title, render, toggle, type, in_event "
                  "FROM boards WHERE guild_id = $1 and type = $2")
         fetch = await self.bot.pool.fetchrow(query, guild_id, board_type)
 
@@ -151,7 +152,7 @@ class GuildConfiguration(commands.Cog):
                                   f'{self.bot.support_invite}')
 
         clan_tag = coc.utils.correct_tag(clan_tag)
-        query = "SELECT * FROM clans WHERE clan_tag = $1 AND guild_id = $2"
+        query = "SELECT id FROM clans WHERE clan_tag = $1 AND guild_id = $2"
         fetch = await ctx.db.fetch(query, clan_tag, ctx.guild.id)
         if fetch:
             return await ctx.send('This clan has already been linked to the server.')
@@ -170,12 +171,11 @@ class GuildConfiguration(commands.Cog):
         query = "INSERT INTO clans (clan_tag, guild_id, clan_name) VALUES ($1, $2, $3)"
         await ctx.db.execute(query, clan.tag, ctx.guild.id, clan.name)
 
-        query = "INSERT INTO players (player_tag, donations, received, season_id) " \
-                "VALUES ($1, $2, $3, $4) ON CONFLICT (player_tag, season_id) DO NOTHING"
+        query = "INSERT INTO players (player_tag, donations, received, trophies, season_id) " \
+                "VALUES ($1, $2, $3, $4, $5) ON CONFLICT (player_tag, season_id) DO NOTHING"
         season_id = await self.bot.seasonconfig.get_season_id()
         for member in clan.itermembers:
-            await ctx.db.execute(query, member.tag, member.donations, member.received, season_id
-                                 )
+            await ctx.db.execute(query, member.tag, member.donations, member.received, member.trophies, season_id)
 
         await ctx.confirm()
         await ctx.send('Clan and all members have been added to the database (if not already added)')
@@ -197,9 +197,9 @@ class GuildConfiguration(commands.Cog):
         • `+add player #PLAYER_TAG`
         • `+add player my account name`
         """
-        query = "INSERT INTO players (player_tag, donations, received, season_id) " \
-                "VALUES ($1, $2, $3, $4) ON CONFLICT (player_tag, season_id) DO NOTHING"
-        await ctx.db.execute(query, player.tag, player.donations, player.received,
+        query = "INSERT INTO players (player_tag, donations, received, trophies, season_id) " \
+                "VALUES ($1, $2, $3, $4, $5) ON CONFLICT (player_tag, season_id) DO NOTHING"
+        await ctx.db.execute(query, player.tag, player.donations, player.received, player.trophies,
                              await self.bot.seasonconfig.get_season_id())
         await ctx.confirm()
 
@@ -235,10 +235,10 @@ class GuildConfiguration(commands.Cog):
         fetch = await ctx.db.fetchrow(query, player.tag, season_id)
 
         if not fetch:
-            query = "INSERT INTO players (player_tag, donations, received, user_id, season_id) " \
-                    "VALUES ($1, $2, $3, $4, $5)"
-            await ctx.db.execute(query, player.tag, player.donations, player.received, user.id,
-                                 season_id)
+            query = "INSERT INTO players (player_tag, donations, received, trophies, user_id, season_id) " \
+                    "VALUES ($1, $2, $3, $4, $5, $6)"
+            await ctx.db.execute(query, player.tag, player.donations, player.received, player.trophies,
+                                 user.id, season_id)
             return await ctx.confirm()
 
         if fetch[0]:
@@ -413,8 +413,6 @@ class GuildConfiguration(commands.Cog):
                           description=fmt)
         await ctx.send(embed=e)
 
-
-
     @add.command(name="trophyboard")
     async def add_trophyboard(self, ctx, *, name="trophyboard"):
         """Creates a trophyboard channel for trophy updates.
@@ -439,13 +437,12 @@ class GuildConfiguration(commands.Cog):
         • `manage_channels` permissions
         """
         guild_id = ctx.guild.id
-        # TODO Does the invalidate function need board_type?
-        self.get_board_config.invalidate(self, guild_id)
-        board_config = await self.bot.get_board_config(guild_id, 'trophy')
+        self.bot.utils.board_config.invalidate(self, guild_id)
+        board_config = await self.bot.utils.board_config(guild_id, 'trophy')
 
-        if board_config.board_channel is not None:
+        if board_config.channel_id is not None:
             return await ctx.send(
-                f'This server already has a trophyboard ({board_config.trophyboard.mention}')
+                f'This server already has a trophyboard ({board_config.channel.mention}')
 
         perms = ctx.channel.permissions_for(ctx.me)
         if not perms.manage_channels:
@@ -504,13 +501,12 @@ class GuildConfiguration(commands.Cog):
         • `manage_channels` permissions
         """
         guild_id = ctx.guild.id
-        # TODO Does the invalidate function need board_type?
-        self.get_board_config.invalidate(self, guild_id)
-        board_config = await self.bot.get_board_config(guild_id, 'attack')
+        self.bot.utils.board_config.invalidate(self, guild_id)
+        board_config = await self.bot.utils.board_config(guild_id, 'attack')
 
-        if board_config.board_channel is not None:
+        if board_config.channel_id is not None:
             return await ctx.send(
-                f'This server already has an attackboard ({board_config.attackboard.mention}')
+                f'This server already has an attackboard ({board_config.channel.mention}')
 
         perms = ctx.channel.permissions_for(ctx.me)
         if not perms.manage_channels:
@@ -569,13 +565,12 @@ class GuildConfiguration(commands.Cog):
         • `manage_channels` permissions
         """
         guild_id = ctx.guild.id
-        # TODO Does the invalidate function need board_type?
-        self.get_board_config.invalidate(self, guild_id)
-        board_config = await self.bot.get_board_config(guild_id, 'donation')
+        self.bot.utils.board_config.invalidate(self, guild_id)
+        board_config = await self.bot.utils.board_config(guild_id, 'donation')
 
-        if board_config.board_channel is not None:
+        if board_config.channel_id is not None:
             return await ctx.send(
-                f'This server already has a donationboard ({board_config.donationboard.mention})')
+                f'This server already has a donationboard ({board_config.channel.mention})')
 
         perms = ctx.channel.permissions_for(ctx.me)
         if not perms.manage_channels:
@@ -726,7 +721,7 @@ class GuildConfiguration(commands.Cog):
         • `+remove player #PLAYER_TAG`
         • `+remove player my account name`
         """
-        query = "DELTE FROM players WHERE player_tag = $1 and guild_id = $2"
+        query = "DELETE FROM players WHERE player_tag = $1 and guild_id = $2"
         result = await ctx.db.execute(query, player.tag, ctx.guild.id)
         if result[:-1] == 0:
             return await ctx.send(f'{player.name}({player.tag}) was not found in the database.')
