@@ -6,9 +6,8 @@ from datetime import datetime, timedelta
 from cogs.utils.formatters import readable_time
 
 
-
 class DatabaseBoard:
-    __slots__ = ('bot', 'guild_id', 'channel_id', 'icon_url', 'title', 'render', 'toggle', 'type')
+    __slots__ = ('bot', 'guild_id', 'channel_id', 'icon_url', 'title', 'render', 'toggle', 'type', 'in_event')
 
     def __init__(self, *, guild_id, board_type, bot, record=None):
         self.guild_id = guild_id
@@ -22,6 +21,7 @@ class DatabaseBoard:
             self.title = get('title')
             self.render = get('render')
             self.toggle = get('type')
+            self.in_event = get('in_event')
         else:
             self.channel_id = None
             self.render = 1
