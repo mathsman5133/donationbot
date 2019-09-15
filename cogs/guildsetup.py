@@ -4,6 +4,7 @@ import math
 import typing
 import datetime
 import coc
+import logging
 
 from discord.ext import commands
 from cogs.utils import checks, cache
@@ -11,6 +12,7 @@ from cogs.utils.db_objects import DatabaseBoard
 from cogs.utils.converters import PlayerConverter, ClanConverter, DateConverter
 from .utils import paginator, checks, formatters, fuzzy
 
+log = logging.getLogger(__name__)
 
 class GuildConfiguration(commands.Cog):
     """All commands related to setting up the server for the first time,
@@ -296,7 +298,7 @@ class GuildConfiguration(commands.Cog):
         ----------------------------
         • `manage_server` permissions
         """
-        board_config = await self.bot.get_board_config(ctx.guild.id, 'trophy')
+        board_config = await self.bot.utils.board_config(ctx.guild.id, 'trophy')
         if board_config.event_start > datetime.datetime.now():
             return await ctx.send(f'This server is already set up for {board_config.event_name}. Please use '
                                   f'`+remove event` if you would like to remove this event and create a new one.')
@@ -384,9 +386,10 @@ class GuildConfiguration(commands.Cog):
             await ctx.send('No answer? I\'ll assume that\'s a yes then!')
 
         event_end = datetime.datetime.combine(end_date, end_time)
-        # TODO Need columns in databse for tracking event start/end
-        query = 'INSERT INTO trophy_events (guild_id, event_name, event_start, event_end) VALUES ($1, $2, $3, $4)'
+
+        query = 'INSERT INTO events (guild_id, event_name, start, finish) VALUES ($1, $2, $3, $4)'
         await ctx.db.execute(query, ctx.guild.id, event_name, event_start, event_end)
+        log.info(f"{event_name} added to events table for {ctx.guild} by {ctx.author}")
 
         try:
             await ctx.send('Alright now I just need to know what clans will be in this event.  You can provide the '
@@ -397,6 +400,7 @@ class GuildConfiguration(commands.Cog):
             for clan in clans:
                 clan = await ClanConverter().convert(ctx, clan)
                 # TODO Insert clan into datebase for this trophy push event
+                query = 'INSERT INTO '
                 clan_names += f'\n{clan.name}'
             fmt_tag = (f'Clans added for this event:\n' 
                        f'{clan_names}')
@@ -409,9 +413,7 @@ class GuildConfiguration(commands.Cog):
                           description=fmt)
         await ctx.send(embed=e)
 
-        # Check for existing trophy board and create one if it doesn't exist
-        if not board_config.board_channel:
-            await ctx.invoke(self.add_trophyboard)
+
 
     @add.command(name="trophyboard")
     async def add_trophyboard(self, ctx, *, name="trophyboard"):
