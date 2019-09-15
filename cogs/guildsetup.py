@@ -9,10 +9,19 @@ import logging
 from discord.ext import commands
 from cogs.utils import checks, cache
 from cogs.utils.db_objects import DatabaseBoard
+from cogs.utils.formatters import CLYTable
 from cogs.utils.converters import PlayerConverter, ClanConverter, DateConverter
 from .utils import paginator, checks, formatters, fuzzy
 
 log = logging.getLogger(__name__)
+
+
+def requires_config(config_type, invalidate=False):
+    async def pred(ctx):
+        ctx.config_type = config_type
+        ctx.config_invalidate = invalidate
+        return True
+    return commands.check(pred)
 
 
 class GuildConfiguration(commands.Cog):
@@ -21,7 +30,68 @@ class GuildConfiguration(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
+    async def cog_before_invoke(self, ctx):
+        config_type = getattr(ctx, 'config_type', None)
+        if not config_type:
+            return
+        invalidate = getattr(ctx, 'config_invalidate', False)
+
+        key = ctx.guild.id
+        if config_type == 'donationboard':
+            if invalidate:
+                ctx.bot.utils.board_config.invalidate(ctx.bot.utils, key)
+            config = await ctx.bot.utils.board_config(key, 'donation')
+
+        elif config_type == 'trophyboard':
+            if invalidate:
+                ctx.bot.utils.board_config.invalidate(ctx.bot.utils, key)
+
+            config = await ctx.bot.utils.board_config(key, 'trophy')
+
+        elif config_type == 'log':
+            channel = getattr(ctx, 'log_channel', ctx.channel)
+            key = channel.id
+            if invalidate:
+                ctx.bot.utils.board_config.invalidate(ctx.bot.utils, key)
+
+            config = await ctx.bot.utils.log_config(key)
+
+        elif config_type == 'events':
+            if invalidate:
+                ctx.bot.utils.board_config.invalidate(ctx.bot.utils, key)
+
+            config = await ctx.bot.utils.event_config(key)
+        else:
+            return
+
+        ctx.config = config
+        ctx.config_key = key
+        return
+
+    async def cog_after_invoke(self, ctx):
+        config_type = getattr(ctx, 'config_type', None)
+        if not config_type:
+            return
+        invalidate = getattr(ctx, 'config_invalidate', False)
+        if not invalidate:
+            return
+
+        key = ctx.guild.id
+        if config_type == 'donationboard':
+            ctx.bot.utils.board_config.invalidate(ctx.bot.utils, key)
+
+        elif config_type == 'trophyboard':
+            ctx.bot.utils.board_config.invalidate(ctx.bot.utils, key)
+
+        elif config_type == 'log':
+            channel = getattr(ctx, 'log_channel', ctx.channel)
+            ctx.bot.utils.board_config.invalidate(ctx.bot.utils, channel.id)
+
+        elif config_type == 'events':
+            ctx.bot.utils.board_config.invalidate(ctx.bot.utils, key)
+
     async def cog_command_error(self, ctx, error):
+        # todo: idk make this less disgusting or move somewhere else
         error = getattr(error, 'original', error)
 
         if isinstance(error, commands.CheckFailure):
@@ -91,16 +161,7 @@ class GuildConfiguration(commands.Cog):
 
         return [clan.get_member(name=n) for n in matches]
 
-    @cache.cache()
-    async def get_board_config(self, guild_id, board_type):
-        query = ("SELECT guild_id, channel_id, icon_url, title, render, toggle, type, in_event "
-                 "FROM boards WHERE guild_id = $1 and type = $2")
-        fetch = await self.bot.pool.fetchrow(query, guild_id, board_type)
-
-        return DatabaseBoard(guild_id=guild_id, board_type=board_type, bot=self.bot, record=fetch)
-
     @commands.group(invoke_without_subcommand=True)
-    @checks.manage_guild()
     async def add(self, ctx):
         """Allows the user to add a variety of features to the bot.
 
@@ -121,6 +182,8 @@ class GuildConfiguration(commands.Cog):
             return await ctx.send_help(ctx.command)
 
     @add.command(name='clan')
+    @checks.manage_guild()
+    @requires_config('event')
     async def add_clan(self, ctx, clan_tag: str):
         """Link a clan to your server.
         This will add all accounts in clan to the database, if not already present.
@@ -168,14 +231,32 @@ class GuildConfiguration(commands.Cog):
                                   '\n\nThis is a security feature of the bot and should '
                                   'be removed once the clan has been added.')
 
-        query = "INSERT INTO clans (clan_tag, guild_id, clan_name) VALUES ($1, $2, $3)"
-        await ctx.db.execute(query, clan.tag, ctx.guild.id, clan.name)
+        if ctx.config.in_event:
+            prompt = await ctx.prompt('Would you like this clan to be in the current event?')
+
+            if prompt is True:
+                in_event = True
+            else:
+                in_event = False
+        else:
+            in_event = False
+
+        query = "INSERT INTO clans (clan_tag, guild_id, clan_name, in_event) VALUES ($1, $2, $3, $4)"
+        await ctx.db.execute(query, clan.tag, ctx.guild.id, clan.name, in_event)
 
         query = "INSERT INTO players (player_tag, donations, received, trophies, season_id) " \
                 "VALUES ($1, $2, $3, $4, $5) ON CONFLICT (player_tag, season_id) DO NOTHING"
+
         season_id = await self.bot.seasonconfig.get_season_id()
         for member in clan.itermembers:
             await ctx.db.execute(query, member.tag, member.donations, member.received, member.trophies, season_id)
+
+        if in_event:
+            query = "INSERT INTO players (player_tag, donations, received, trophies, event_id) " \
+                    "VALUES ($1, $2, $3, $4, $5) ON CONFLICT (player_tag, event_id) DO NOTHING"
+            for member in clan.itermembers:
+                await ctx.db.execute(query, member.tag, member.donations, member.received, member.trophies,
+                                     ctx.config.event_id)
 
         await ctx.confirm()
         await ctx.send('Clan and all members have been added to the database (if not already added)')
@@ -278,6 +359,8 @@ class GuildConfiguration(commands.Cog):
             await ctx.invoke(self.add_discord, user=user, player=n)
 
     @add.command(name="event")
+    @checks.manage_guild()
+    @requires_config('event', invalidate=True)
     async def add_event(self, ctx, event_name: str = None):
         """Allows user to add a new trophy push event. Trophy Push events override season statistics for trophy
         counts.
@@ -298,9 +381,8 @@ class GuildConfiguration(commands.Cog):
         ----------------------------
         • `manage_server` permissions
         """
-        board_config = await self.bot.utils.board_config(ctx.guild.id, 'trophy')
-        if board_config.event_start > datetime.datetime.now():
-            return await ctx.send(f'This server is already set up for {board_config.event_name}. Please use '
+        if ctx.config.event_start > datetime.datetime.now():
+            return await ctx.send(f'This server is already set up for {ctx.config.event_name}. Please use '
                                   f'`+remove event` if you would like to remove this event and create a new one.')
 
         def check_author(m):
@@ -322,13 +404,12 @@ class GuildConfiguration(commands.Cog):
                 break
             except ValueError:
                 await ctx.send(f'Date must be in the YYYY-MM-DD format.')
-                if i < 4:
-                    continue
-                else:
-                    return await ctx.send('I don\'t really know what happened, but I can\'t figure out what the start '
-                                          'date is. Please start over and let\'s see what happens')
             except asyncio.TimeoutError:
-                return await ctx.send('Yawn!  Time\'s up. You\'re going to have to start over some other time.')
+                return await ctx.send('Yawn! Time\'s up. You\'re going to have to start over some other time.')
+        else:
+            return await ctx.send(
+                'I don\'t really know what happened, but I can\'t figure out what the start '
+                'date is. Please start over and let\'s see what happens')
 
         try:
             await ctx.send('And what time does this fantastic event begin? (Please provide HH:MM in UTC)')
@@ -392,18 +473,23 @@ class GuildConfiguration(commands.Cog):
         log.info(f"{event_name} added to events table for {ctx.guild} by {ctx.author}")
 
         try:
-            await ctx.send('Alright now I just need to know what clans will be in this event.  You can provide the '
+            await ctx.send('Alright now I just need to know what clans will be in this event. You can provide the '
                            'clan tags all at once (separated by a space) or individually.')
             response = await self.bot.wait_for('message', check=check_author, timeout=180.00)
             clans = response.split(' ')
             clan_names = ''
             for clan in clans:
                 clan = await ClanConverter().convert(ctx, clan)
-                # TODO Insert clan into datebase for this trophy push event
-                query = 'INSERT INTO '
+
+                query = 'INSERT INTO clans (clan_tag, clan_name, channel_id, guild_id, in_event) VALUES ' \
+                        '($1, $2, $3, $4, $5) ON CONFLICT (clan_tag, guild_id) DO UPDATE SET in_event = $5'
+                await ctx.db.execute(query, clan.tag, clan.name, ctx.channel.id, ctx.guild.id, True)
+
                 clan_names += f'\n{clan.name}'
+
             fmt_tag = (f'Clans added for this event:\n' 
                        f'{clan_names}')
+
         except asyncio.TimeoutError:
             fmt_tag = "Please use the `+add clan` command later to add clans to this event."
 
@@ -414,6 +500,8 @@ class GuildConfiguration(commands.Cog):
         await ctx.send(embed=e)
 
     @add.command(name="trophyboard")
+    @checks.manage_guild()
+    @requires_config('trophyboard', invalidate=True)
     async def add_trophyboard(self, ctx, *, name="trophyboard"):
         """Creates a trophyboard channel for trophy updates.
 
@@ -436,13 +524,9 @@ class GuildConfiguration(commands.Cog):
         --------------------------------
         • `manage_channels` permissions
         """
-        guild_id = ctx.guild.id
-        self.bot.utils.board_config.invalidate(self, guild_id)
-        board_config = await self.bot.utils.board_config(guild_id, 'trophy')
-
-        if board_config.channel_id is not None:
+        if ctx.config.channel is not None:
             return await ctx.send(
-                f'This server already has a trophyboard ({board_config.channel.mention}')
+                f'This server already has a trophyboard ({ctx.config.channel.mention}')
 
         perms = ctx.channel.permissions_for(ctx.me)
         if not perms.manage_channels:
@@ -471,77 +555,24 @@ class GuildConfiguration(commands.Cog):
 
         msg = await channel.send('Placeholder')
 
-        query = "INSERT INTO messages (message_id, guild_id, channel_id) VALUES ($1, $2, $3)"
-        await ctx.db.execute(query, msg.id, ctx.guild.id, channel.id)
-        query = "UPDATE boards SET channel_id = $1, toggle = True WHERE guild_id = $2 and type = $3"
-        await ctx.db.execute(query, channel.id, ctx.guild.id, 'trophy')
+        query = """INSERT INTO messages (message_id, 
+                                         guild_id, 
+                                         channel_id) 
+                   VALUES ($1, $2, $3);
+                   INSERT INTO boards (guild_id, 
+                                       channel_id, 
+                                       board_type) 
+                   VALUES ($2, $3, $4) 
+                   ON CONFLICT (channel_id) 
+                   DO UPDATE SET channel_id = $3, 
+                                 toggle     = True;
+                """
+        await ctx.db.executemany(query, msg.id, ctx.guild.id, channel.id, 'trophy')
         await ctx.send(f'Trophyboard channel created: {channel.mention}')
 
-    @add.command(name="attackboard")
-    async def add_attackboard(self, ctx, *, name="attackboard"):
-        """Creates a attackboard channel for attack updates.
-
-        Parameters
-        ----------------
-        Pass in any of the following:
-
-            • A name for the channel. Defaults to `attackboard`
-
-        Example
-        -----------
-        • `+add attackboard`
-        • `+add attackboard my cool attackboard name`
-
-        Required Permissions
-        ----------------------------
-        • `manage_server` permissions
-
-        Bot Required Permissions
-        --------------------------------
-        • `manage_channels` permissions
-        """
-        guild_id = ctx.guild.id
-        self.bot.utils.board_config.invalidate(self, guild_id)
-        board_config = await self.bot.utils.board_config(guild_id, 'attack')
-
-        if board_config.channel_id is not None:
-            return await ctx.send(
-                f'This server already has an attackboard ({board_config.channel.mention}')
-
-        perms = ctx.channel.permissions_for(ctx.me)
-        if not perms.manage_channels:
-            return await ctx.send(
-                'I need manage channels permission to create the attackboard!')
-
-        overwrites = {
-            ctx.me: discord.PermissionOverwrite(read_messages=True, send_messages=True,
-                                                read_message_history=True, embed_links=True,
-                                                manage_messages=True),
-            ctx.guild.default_role: discord.PermissionOverwrite(read_messages=True,
-                                                                send_messages=False,
-                                                                read_message_history=True)
-        }
-        reason = f'{str(ctx.author)} created an attackboard channel.'
-
-        try:
-            channel = await ctx.guild.create_text_channel(name=name,
-                                                          overwrites=overwrites,
-                                                          reason=reason)
-        except discord.Forbidden:
-            return await ctx.send(
-                'I do not have permissions to create the attackboard channel.')
-        except discord.HTTPException:
-            return await ctx.send('Creating the channel failed. Try checking the name?')
-
-        msg = await channel.send('Placeholder')
-
-        query = "INSERT INTO messages (message_id, message_type, guild_id, channel_id) VALUES ($1, $2, $3, $4)"
-        await ctx.db.execute(query, msg.id, 'attack', ctx.guild.id, channel.id)
-        query = "UPDATE guilds SET attack_channel_id = $1, attack_toggle = True WHERE guild_id = $2"
-        await ctx.db.execute(query, channel.id, ctx.guild.id)
-        await ctx.send(f'Attackboard channel created: {channel.mention}')
-
     @add.command(name='donationboard')
+    @checks.manage_guild()
+    @requires_config('donationboard', invalidate=True)
     async def add_donationboard(self, ctx, *, name='donationboard'):
         """Creates a donationboard channel for donation updates.
 
@@ -564,13 +595,9 @@ class GuildConfiguration(commands.Cog):
         --------------------------------
         • `manage_channels` permissions
         """
-        guild_id = ctx.guild.id
-        self.bot.utils.board_config.invalidate(self, guild_id)
-        board_config = await self.bot.utils.board_config(guild_id, 'donation')
-
-        if board_config.channel_id is not None:
+        if ctx.config.channel is not None:
             return await ctx.send(
-                f'This server already has a donationboard ({board_config.channel.mention})')
+                f'This server already has a donationboard ({ctx.config.channel.mention})')
 
         perms = ctx.channel.permissions_for(ctx.me)
         if not perms.manage_channels:
@@ -598,10 +625,20 @@ class GuildConfiguration(commands.Cog):
 
         msg = await channel.send('Placeholder')
 
-        query = "INSERT INTO messages (message_id, message_type, guild_id, channel_id) VALUES ($1, $2, $3, $4)"
-        await ctx.db.execute(query, msg.id, 'donation', ctx.guild.id, channel.id)
-        query = "UPDATE guilds SET updates_channel_id=$1, updates_toggle=True WHERE guild_id=$2"
-        await ctx.db.execute(query, channel.id, ctx.guild.id)
+        query = """INSERT INTO messages (message_id, 
+                                         guild_id, 
+                                         channel_id) 
+                   VALUES ($1, $2, $3);
+                   INSERT INTO boards (guild_id, 
+                                       channel_id, 
+                                       board_type) 
+                   VALUES ($2, $3, $4) 
+                   ON CONFLICT (channel_id) 
+                   DO UPDATE SET channel_id = $3, 
+                                 toggle     = True;
+                """
+
+        await ctx.db.execute(query, msg.id, ctx.guild.id, channel.id, 'donation')
         await ctx.send(f'Donationboard channel created: {channel.mention}')
 
     @commands.command()
@@ -629,7 +666,7 @@ class GuildConfiguration(commands.Cog):
         • `+claim @user #playertag`
         """
         if await self.add_discord.can_run(ctx):
-            await ctx.invoke(self.add_discord)
+            await ctx.invoke(self.add_discord, user=user, player=player)
 
     @commands.command(name='multiclaim')
     async def multi_claim(self, ctx, user: discord.Member,
@@ -655,12 +692,11 @@ class GuildConfiguration(commands.Cog):
         • `+multiclaim @user #playertag name1`
         """
         if await self.multi_discord.can_run(ctx):
-            await ctx.invoke(self.multi_discord)
+            await ctx.invoke(self.multi_discord, user=user, players=players)
 
     @commands.group(invoke_without_subcommands=True)
-    @checks.manage_guild()
     async def remove(self, ctx):
-        """Allows the user to remove a variety of features to the bot.
+        """Allows the user to remove a variety of features from the bot.
 
         Available Commands
         ------------------
@@ -679,6 +715,7 @@ class GuildConfiguration(commands.Cog):
             return await ctx.send_help(ctx.command)
 
     @remove.command(name='clan')
+    @checks.manage_guild()
     async def remove_clan(self, ctx, clan_tag: str):
         """Unlink a clan from your server.
 
@@ -699,11 +736,13 @@ class GuildConfiguration(commands.Cog):
         clan_tag = coc.utils.correct_tag(clan_tag)
         query = "DELETE FROM clans WHERE clan_tag = $1 AND guild_id = $2"
         await ctx.db.execute(query, clan_tag, ctx.guild.id)
-        await ctx.confirm()
 
-        clan = await self.bot.coc.get_clan(clan_tag)
-        if clan:
+        try:
+            clan = await self.bot.coc.get_clan(clan_tag)
             self.bot.dispatch('clan_unclaim', ctx, clan)
+        except coc.NotFound:
+            return await ctx.send('Clan not found.')
+        await ctx.confirm()
 
     @remove.command()
     async def remove_player(self, ctx, *, player: PlayerConverter):
@@ -766,6 +805,68 @@ class GuildConfiguration(commands.Cog):
         await ctx.db.execute(query, player.tag, season_id)
         await ctx.confirm()
 
+    @remove.command(name='donationboard', aliases=['donation board', 'donboard'])
+    @checks.manage_guild()
+    @requires_config('donationboard', invalidate=True)
+    async def remove_trophyboard(self, ctx):
+        """Removes the guild donationboard.
+
+        Example
+        -----------
+        • `+remove donationboard`
+
+        Required Perimssions
+        ----------------------------
+        • `manage_server` permissions
+        """
+        if ctx.config.channel is None:
+            return await ctx.send(
+                f'This server doesn\'t have a donationboard.')
+
+        query = "SELECT message_id FROM messages WHERE channel_id=$1;"
+        messages = await self.bot.pool.fetch(query, ctx.config.channel_id)
+        for n in messages:
+            await self.bot.donationboard.safe_delete(n[0])
+
+        query = """UPDATE boards 
+                   SET channel_id = NULL,
+                       toggle     = False 
+                   WHERE channel_id = $1
+                """
+        await self.bot.pool.execute(query, ctx.config.channel_id)
+        await ctx.send('Donationboard sucessfully removed.')
+
+    @remove.command(name='trophyboard', aliases=['trophy board', 'tropboard'])
+    @checks.manage_guild()
+    @requires_config('trophyboard', invalidate=True)
+    async def remove_trophyboard(self, ctx):
+        """Removes the guild trophyboard.
+
+        Example
+        -----------
+        • `+remove trophyboard`
+
+        Required Perimssions
+        ----------------------------
+        • `manage_server` permissions
+        """
+        if ctx.config.channel is None:
+            return await ctx.send(
+                f'This server doesn\'t have a trophyboard.')
+
+        query = "SELECT message_id FROM messages WHERE channel_id=$1;"
+        messages = await self.bot.pool.fetch(query, ctx.config.channel_id)
+        for n in messages:
+            await self.bot.donationboard.safe_delete(n[0])
+
+        query = """UPDATE boards 
+                   SET channel_id = NULL,
+                       toggle     = False 
+                   WHERE channel_id = $1
+                """
+        await self.bot.pool.execute(query, ctx.config.channel_id)
+        await ctx.send('Trophyboard sucessfully removed.')
+
     @commands.command()
     async def unclaim(self, ctx, *, player: PlayerConverter):
         """Unlink a clash account from your discord account
@@ -782,7 +883,128 @@ class GuildConfiguration(commands.Cog):
         • `+unclaim my account name`
         """
         if await self.remove_discord.can_run(ctx):
-            await ctx.invoke(self.remove_discord)
+            await ctx.invoke(self.remove_discord, player=player)
+
+    @commands.group(invoke_without_command=True)
+    async def edit(self, ctx):
+        pass
+
+    @edit.group(name='donationboard')
+    @checks.manage_guild()
+    @requires_config('donationboard', invalidate=True)
+    async def edit_donationboard(self, ctx):
+        """Run through an interactive process of editting the guild's donationboard.
+
+        Example
+        -----------
+        • `+donationboard edit`
+
+        Required Perimssions
+        ----------------------------
+        • `manage_server` permissions
+        """
+        # todo: interactive process to run through all subcommands one at time
+        #  (note: need to manually convert and pass in args)
+        pass
+
+    @edit_donationboard.command(name='format')
+    @requires_config('donationboard', invalidate=True)
+    async def edit_donationboard_format(self, ctx):
+        table = CLYTable()
+        table.add_rows([[0, 9913, 12354, 'Member Name'], [1, 524, 123, 'Another Member'],
+                        [2, 321, 444, 'Yet Another'], [3, 0, 2, 'The Worst Donator']
+                        ])
+        table.title = '**Option 1 Example**'
+        option_1_render = f'**Option 1 Example**\n{table.render_option_1()}'
+        table.clear_rows()
+        table.add_rows([[0, 6532, 'Member (Awesome Clan)'], [1, 4453, 'Nearly #1 (Bad Clan)'],
+                        [2, 5589, 'Another Member (Awesome Clan)'], [3, 0, 'Winner (Bad Clan)']
+                        ])
+
+        option_2_render = f'**Option 2 Example**\n{table.render_option_2()}'
+
+        embed = discord.Embed(colour=self.bot.colour)
+        fmt = f'{option_1_render}\n\n\n{option_2_render}\n\n\n' \
+            f'These are the 2 available default options.\n' \
+            f'Please hit the reaction of the format you \nwish to display on the donationboard.'
+        embed.description = fmt
+        msg = await ctx.send(embed=embed)
+
+        query = "UPDATE guilds SET donationboard_render=$1 WHERE guild_id=$2"
+
+        reactions = ['1\N{combining enclosing keycap}', '2\N{combining enclosing keycap}']
+        for r in reactions:
+            await msg.add_reaction(r)
+
+        def check(r, u):
+            return str(r) in reactions and u.id == ctx.author.id and r.message.id == msg.id
+
+        try:
+            r, u = await self.bot.wait_for('reaction_add', check=check, timeout=60.0)
+        except asyncio.TimeoutError:
+            await ctx.db.execute(query, 1, ctx.guild.id)
+            return await ctx.send('You took too long. Option 1 was chosen.')
+
+        await ctx.db.execute(query, reactions.index(str(r)) + 1, ctx.guild.id)
+        await ctx.confirm()
+
+    @edit_donationboard.command(name='icon')
+    @requires_config('donationboard', invalidate=True)
+    async def edit_donationboard_icon(self, ctx, *, url: str = None):
+        """Specify an icon for the guild's donationboard.
+
+        Parameters
+        -----------------
+        Pass in any of the following:
+
+            • URL: url of the icon to use. Must only be JPEG, JPG or PNG.
+            • Attach/upload an image to use.
+
+        Example
+        ------------
+        • `+donationboard icon https://catsareus/thecrazycatbot/123.jpg`
+        • `+donationboard icon` (with an attached image)
+
+        Required Perimssions
+        ----------------------------
+        • `manage_server` permissions
+        """
+        # todo: better regex for this
+        if not url or not url.startswith('https://'):
+            attachments = ctx.message.attachments
+            if not attachments:
+                return await ctx.send('You must pass in a url or upload an attachment.')
+            url = attachments[0].url
+
+        query = "UPDATE boards SET icon_url = $1 WHERE channel_id = $2"
+        await ctx.db.execute(query, url, ctx.config.channel_id)
+        await ctx.confirm()
+
+    @edit_donationboard.command(name='title')
+    @requires_config('donationboard', invalidate=True)
+    async def edit_donationboard_title(self, ctx, *, title: str = None):
+        """Specify a title for the guild's donationboard.
+
+        Parameters
+        -----------------
+        Pass in any of the following:
+
+            • Title - the title you wish to use.
+
+        Example
+        ------------
+        • `+donationboard title The Donation Tracker DonationBoard`
+        • `+donationboard title My Awesome Clan Family DonatinoBoard`
+
+        Required Perimssions
+        ----------------------------
+        • `manage_server` permissions
+        """
+        query = "UPDATE boards SET title = $1 WHERE channel_id = $2"
+        await ctx.db.execute(query, title, ctx.config.channel_id)
+        await ctx.confirm()
+
+    # todo: same for trophyboard and info subcommand for both
 
     @commands.command()
     @checks.manage_guild()
@@ -1047,7 +1269,7 @@ class GuildConfiguration(commands.Cog):
                     continue
 
                 await self.bot.log_info(ctx.channel.id, f'[auto-claim]: {member.name} ({member.tag}) '
-                                           f'has been claimed to {str(results[result])} ({results[result].id})',
+                                                        f'has been claimed to {str(results[result])} ({results[result].id})',
                                         colour=discord.Colour.green())
         prompt = await ctx.prompt("Would you like to go through a list of players who weren't claimed and "
                                   "claim them now?\nI will walk you through it...")
