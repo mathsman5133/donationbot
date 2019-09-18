@@ -5,6 +5,7 @@ import typing
 
 from discord.ext import commands
 from cogs.utils import formatters
+from cogs.utils.error_handler import error_handler
 from cogs.utils.converters import ClanConverter, PlayerConverter
 
 
@@ -14,7 +15,8 @@ class Donations(commands.Cog):
         self.bot = bot
 
     async def cog_command_error(self, ctx, error):
-        await ctx.send(str(error))
+        error = getattr(error, 'original', error)
+        await error_handler(ctx, error)
 
     @commands.group(name='donations', aliases=['don'],  invoke_without_command=True)
     async def donations(self, ctx, *,

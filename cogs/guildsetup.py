@@ -3,12 +3,14 @@ import asyncio
 import math
 import typing
 import datetime
+import re
 import coc
 import logging
 
 from discord.ext import commands
 from cogs.utils import checks, cache
 from cogs.utils.db_objects import DatabaseBoard
+from cogs.utils.error_handler import error_handler
 from cogs.utils.formatters import CLYTable
 from cogs.utils.converters import PlayerConverter, ClanConverter, DateConverter
 from .utils import paginator, checks, formatters, fuzzy
@@ -91,26 +93,8 @@ class GuildConfiguration(commands.Cog):
             ctx.bot.utils.board_config.invalidate(ctx.bot.utils, key)
 
     async def cog_command_error(self, ctx, error):
-        # todo: idk make this less disgusting or move somewhere else
         error = getattr(error, 'original', error)
-
-        if isinstance(error, commands.CheckFailure):
-            await ctx.send('\N{WARNING SIGN} You must have '
-                           '`manage_server` permission to run this command.')
-            return
-        if isinstance(error, commands.BadArgument):
-            await ctx.send(str(error))
-            return
-        if not isinstance(error, commands.CommandError):
-            return
-        if isinstance(error, commands.CommandOnCooldown):
-            if ctx.author.id == self.bot.owner_id:
-                return await ctx.reinvoke()
-            time = formatters.readable_time(error.retry_after)
-            return await ctx.send(f'You\'re on cooldown. Please try again in: {time}')
-        else:
-            ctx.command.reset_cooldown(ctx)
-            await ctx.send(str(error))
+        await error_handler(ctx, error)
 
     async def match_player(self, player, guild: discord.Guild, prompt=False, ctx=None,
                            score_cutoff=20, claim=True):
@@ -969,8 +953,9 @@ class GuildConfiguration(commands.Cog):
         ----------------------------
         • `manage_server` permissions
         """
-        # todo: better regex for this
-        if not url or not url.startswith('https://'):
+        url_validator = re.compile(r"^(?:http(s)?://)?[\w.-]+(?:.[\w.-]+)+[\w\-_~:/?#[\]@!$&'()*+,;=.]+"
+                                   r"(.jpg|.jpeg|.png|.gif)+[\w\-_~:/?#[\]@!$&'()*+,;=.]*$")
+        if not url or not url_validator.match(url):
             attachments = ctx.message.attachments
             if not attachments:
                 return await ctx.send('You must pass in a url or upload an attachment.')

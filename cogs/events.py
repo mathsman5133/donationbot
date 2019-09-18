@@ -6,6 +6,7 @@ import typing
 
 from discord.ext import commands
 from cogs.utils.converters import ClanConverter, PlayerConverter
+from cogs.utils.error_handler import error_handler
 from cogs.utils import formatters, checks
 from cogs.utils.db_objects import DatabaseClan
 
@@ -19,7 +20,8 @@ class Events(commands.Cog):
         self.bot = bot
 
     async def cog_command_error(self, ctx, error):
-        await ctx.send(str(error))
+        error = getattr(error, 'original', error)
+        await error_handler(ctx, error)
 
     @commands.group(invoke_without_subcommand=True)
     @checks.manage_guild()

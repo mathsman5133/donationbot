@@ -1,14 +1,16 @@
-from discord.ext import commands, tasks
-import discord
-from cogs.utils.paginator import Pages
-import itertools
-from datetime import datetime, time
-from collections import Counter
 import logging
 import dbl
 import psutil
 import os
 import asyncio
+import discord
+import itertools
+
+from discord.ext import commands, tasks
+from cogs.utils.paginator import Pages
+from cogs.utils.error_handler import error_handler
+from datetime import datetime, time
+from collections import Counter
 
 log = logging.getLogger(__name__)
 
@@ -196,7 +198,8 @@ class Info(commands.Cog):
             log.exception('Failed to post server count\n{}: {}'.format(type(e).__name__, e))
 
     async def cog_command_error(self, ctx, error):
-        await ctx.send(str(error))
+        error = getattr(error, 'original', error)
+        await error_handler(ctx, error)
 
     async def bot_check(self, ctx):
         if ctx.guild is None:
