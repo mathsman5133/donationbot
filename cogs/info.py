@@ -9,10 +9,13 @@ import itertools
 from discord.ext import commands, tasks
 from cogs.utils.paginator import Pages
 from cogs.utils.error_handler import error_handler
+from cogs.utils.formatters import CLYTable
+from cogs.guildsetup import requires_config
 from datetime import datetime, time
 from collections import Counter
 
 log = logging.getLogger(__name__)
+
 
 class HelpPaginator(Pages):
     def __init__(self, help_command, ctx, entries, *, per_page=4):
@@ -187,6 +190,8 @@ class Info(commands.Cog):
         self.dbl_task.start()
 
         self.process = psutil.Process()
+        self.cog_before_invoke = bot.get_cog('GuildSetup').cog_before_invoke
+        self.cog_after_invoke = bot.get_cog('GuildSetup').cog_after_invoke
 
     @tasks.loop(time=time(hour=0))
     async def dbl_task(self):
@@ -319,6 +324,96 @@ class Info(commands.Cog):
     @commands.group(hidden=True)
     async def info(self, ctx):
         pass
+    # TODO: maybe need some stats on in events and what not for donationboard/trophyboard info.
+
+    @info.command(name='donationboard')
+    @requires_config('donationboard')
+    async def donationboard_info(self, ctx):
+        """Gives you info about guild's donationboard.
+        """
+        table = CLYTable()
+        if ctx.config.render == 2:
+            table.add_rows([[0, 6532, 'Member (Awesome Clan)'], [1, 4453, 'Nearly #1 (Bad Clan)'],
+                            [2, 5589, 'Another Member (Awesome Clan)'], [3, 0, 'Winner (Bad Clan)']
+                            ])
+            table.title = ctx.config.title or 'DonationBoard'
+            render = table.render_option_2()
+        else:
+            table.add_rows([[0, 9913, 12354, 'Member Name'], [1, 524, 123, 'Another Member'],
+                            [2, 321, 444, 'Yet Another'], [3, 0, 2, 'The Worst Donator']
+                            ])
+            table.title = ctx.config.title or 'DonationBoard'
+            render = table.render_option_1()
+
+        fmt = f'**DonationBoard Example Format:**\n\n{render}\n**Icon:** ' \
+            f'Please see the icon displayed above.\n'
+
+        channel = ctx.config.channel
+        data = []
+
+        if channel is None:
+            data.append('**Channel:** #deleted-channel')
+        else:
+            data.append(f'**Channel:** {channel.mention}')
+
+        query = "SELECT clan_name, clan_tag FROM clans WHERE guild_id = $1;"
+        fetch = await ctx.db.fetch(query, ctx.guild.id)
+
+        data.append(f"**Clans:** {', '.join(f'{n[0]} ({n[1]})' for n in fetch)}")
+
+        fmt += '\n'.join(data)
+
+        e = discord.Embed(colour=self.bot.colour,
+                          description=fmt)
+        e.set_author(name='DonationBoard Info',
+                     icon_url=ctx.config.icon_url or 'https://cdn.discordapp.com/emojis/592028799768592405.png?v=1')
+
+        await ctx.send(embed=e)
+
+    @info.command(name='trophyboard')
+    @requires_config('trophyboard')
+    async def donationboard_info(self, ctx):
+        """Gives you info about guild's trophyboard.
+        """
+        # TODO: fix this when we get new renders for trophyboard
+        table = CLYTable()
+        if ctx.config.render == 2:
+            table.add_rows([[0, 6532, 'Member (Awesome Clan)'], [1, 4453, 'Nearly #1 (Bad Clan)'],
+                            [2, 5589, 'Another Member (Awesome Clan)'], [3, 0, 'Winner (Bad Clan)']
+                            ])
+            table.title = ctx.config.title or 'TrophyBoard'
+            render = table.render_option_2()
+        else:
+            table.add_rows([[0, 9913, 12354, 'Member Name'], [1, 524, 123, 'Another Member'],
+                            [2, 321, 444, 'Yet Another'], [3, 0, 2, 'The Worst Donator']
+                            ])
+            table.title = ctx.config.title or 'TrophyBoard'
+            render = table.render_option_1()
+
+        fmt = f'**Trophyboard Example Format:**\n\n{render}\n**Icon:** ' \
+            f'Please see the icon displayed above.\n'
+
+        channel = ctx.config.channel
+        data = []
+
+        if channel is None:
+            data.append('**Channel:** #deleted-channel')
+        else:
+            data.append(f'**Channel:** {channel.mention}')
+
+        query = "SELECT clan_name, clan_tag FROM clans WHERE guild_id = $1;"
+        fetch = await ctx.db.fetch(query, ctx.guild.id)
+
+        data.append(f"**Clans:** {', '.join(f'{n[0]} ({n[1]})' for n in fetch)}")
+
+        fmt += '\n'.join(data)
+
+        e = discord.Embed(colour=self.bot.colour,
+                          description=fmt)
+        e.set_author(name='TrophyBoard Info',
+                     icon_url=ctx.config.icon_url or 'https://cdn.discordapp.com/emojis/592028799768592405.png?v=1')
+
+        await ctx.send(embed=e)
 
     async def send_guild_stats(self, e, guild):
         e.add_field(name='Name', value=guild.name)

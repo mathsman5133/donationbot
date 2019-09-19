@@ -8,9 +8,8 @@ async def error_handler(ctx, error):
         await ctx.send('\N{WARNING SIGN} You must have '
                        '`manage_server` permission to run this command.')
         return
-    if isinstance(error, commands.BadArgument):
-        await ctx.send(str(error))
-        return
+    if isinstance(error, (commands.BadArgument, commands.BadUnionArgument, commands.MissingRequiredArgument)):
+        return await ctx.send(str(error))
     if not isinstance(error, commands.CommandError):
         return
     if isinstance(error, commands.CommandOnCooldown):

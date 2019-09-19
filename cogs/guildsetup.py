@@ -881,7 +881,7 @@ class GuildConfiguration(commands.Cog):
 
         Example
         -----------
-        • `+donationboard edit`
+        • `+edit donationboard`
 
         Required Perimssions
         ----------------------------
@@ -894,6 +894,17 @@ class GuildConfiguration(commands.Cog):
     @edit_donationboard.command(name='format')
     @requires_config('donationboard', invalidate=True)
     async def edit_donationboard_format(self, ctx):
+        """Edit the format of the guild's donationboard. The bot will provide 2 options and you must select 1.
+
+        Example
+        -----------
+        • `+edit donationboard format`
+
+        Required Perimssions
+        ----------------------------
+        • `manage_server` permissions
+        """
+
         table = CLYTable()
         table.add_rows([[0, 9913, 12354, 'Member Name'], [1, 524, 123, 'Another Member'],
                         [2, 321, 444, 'Yet Another'], [3, 0, 2, 'The Worst Donator']
@@ -939,15 +950,16 @@ class GuildConfiguration(commands.Cog):
 
         Parameters
         -----------------
-        Pass in any of the following:
-
             • URL: url of the icon to use. Must only be JPEG, JPG or PNG.
+
+            OR:
+
             • Attach/upload an image to use.
 
         Example
         ------------
-        • `+donationboard icon https://catsareus/thecrazycatbot/123.jpg`
-        • `+donationboard icon` (with an attached image)
+        • `+edit donationboard icon https://catsareus/thecrazycatbot/123.jpg`
+        • `+edit donationboard icon` (with an attached image)
 
         Required Perimssions
         ----------------------------
@@ -967,29 +979,160 @@ class GuildConfiguration(commands.Cog):
 
     @edit_donationboard.command(name='title')
     @requires_config('donationboard', invalidate=True)
-    async def edit_donationboard_title(self, ctx, *, title: str = None):
+    async def edit_donationboard_title(self, ctx, *, title: str):
         """Specify a title for the guild's donationboard.
 
         Parameters
         -----------------
         Pass in any of the following:
 
-            • Title - the title you wish to use.
+            • Title - the title you wish to use. It must be less than 50 characters.
 
         Example
         ------------
-        • `+donationboard title The Donation Tracker DonationBoard`
-        • `+donationboard title My Awesome Clan Family DonatinoBoard`
+        • `+edit donationboard title The Donation Tracker DonationBoard`
+        • `+edit donationboard title My Awesome Clan Family DonatinoBoard`
 
         Required Perimssions
         ----------------------------
         • `manage_server` permissions
         """
+        if len(title) >= 50:
+            return await ctx.send('Titles must be less than 50 characters.')
+
         query = "UPDATE boards SET title = $1 WHERE channel_id = $2"
         await ctx.db.execute(query, title, ctx.config.channel_id)
         await ctx.confirm()
 
-    # todo: same for trophyboard and info subcommand for both
+    @edit.group(name='trophyboard')
+    @checks.manage_guild()
+    @requires_config('trophyboard', invalidate=True)
+    async def edit_trophyboard(self, ctx):
+        """Run through an interactive process of editting the guild's trophyboard.
+
+        Example
+        -----------
+        • `+edit trophyboard`
+
+        Required Perimssions
+        ----------------------------
+        • `manage_server` permissions
+        """
+        # todo: interactive process to run through all subcommands one at time
+        #  (note: need to manually convert and pass in args)
+        pass
+
+    @edit_trophyboard.command(name='format')
+    @requires_config('trophyboard', invalidate=True)
+    async def edit_trophyboard_format(self, ctx):
+        """Edit the format of the guild's trophyboard. The bot will provide 2 options and you must select 1.
+
+        Example
+        -----------
+        • `+edit trophyboard format`
+
+        Required Perimssions
+        ----------------------------
+        • `manage_server` permissions
+        """
+        # TODO: make trophy examples
+        table = CLYTable()
+        table.add_rows([[0, 9913, 12354, 'Member Name'], [1, 524, 123, 'Another Member'],
+                        [2, 321, 444, 'Yet Another'], [3, 0, 2, 'The Worst Donator']
+                        ])
+        table.title = '**Option 1 Example**'
+        option_1_render = f'**Option 1 Example**\n{table.render_option_1()}'
+        table.clear_rows()
+        table.add_rows([[0, 6532, 'Member (Awesome Clan)'], [1, 4453, 'Nearly #1 (Bad Clan)'],
+                        [2, 5589, 'Another Member (Awesome Clan)'], [3, 0, 'Winner (Bad Clan)']
+                        ])
+
+        option_2_render = f'**Option 2 Example**\n{table.render_option_2()}'
+
+        embed = discord.Embed(colour=self.bot.colour)
+        fmt = f'{option_1_render}\n\n\n{option_2_render}\n\n\n' \
+            f'These are the 2 available default options.\n' \
+            f'Please hit the reaction of the format you \nwish to display on the donationboard.'
+        embed.description = fmt
+        msg = await ctx.send(embed=embed)
+
+        query = "UPDATE guilds SET donationboard_render=$1 WHERE guild_id=$2"
+
+        reactions = ['1\N{combining enclosing keycap}', '2\N{combining enclosing keycap}']
+        for r in reactions:
+            await msg.add_reaction(r)
+
+        def check(r, u):
+            return str(r) in reactions and u.id == ctx.author.id and r.message.id == msg.id
+
+        try:
+            r, u = await self.bot.wait_for('reaction_add', check=check, timeout=60.0)
+        except asyncio.TimeoutError:
+            await ctx.db.execute(query, 1, ctx.guild.id)
+            return await ctx.send('You took too long. Option 1 was chosen.')
+
+        await ctx.db.execute(query, reactions.index(str(r)) + 1, ctx.guild.id)
+        await ctx.confirm()
+
+    @edit_trophyboard.command(name='icon')
+    @requires_config('trophyboard', invalidate=True)
+    async def edit_trophyboard_icon(self, ctx, *, url: str = None):
+        """Specify an icon for the guild's donationboard.
+
+        Parameters
+        -----------------
+        Pass in any of the following:
+
+            • URL: url of the icon to use. Must only be JPEG, JPG or PNG.
+            • Attach/upload an image to use.
+
+        Example
+        ------------
+        • `+edit trophyboard icon https://catsareus/thecrazycatbot/123.jpg`
+        • `+edit trophyboard icon` (with an attached image)
+
+        Required Perimssions
+        ----------------------------
+        • `manage_server` permissions
+        """
+        url_validator = re.compile(r"^(?:http(s)?://)?[\w.-]+(?:.[\w.-]+)+[\w\-_~:/?#[\]@!$&'()*+,;=.]+"
+                                   r"(.jpg|.jpeg|.png|.gif)+[\w\-_~:/?#[\]@!$&'()*+,;=.]*$")
+        if not url or not url_validator.match(url):
+            attachments = ctx.message.attachments
+            if not attachments:
+                return await ctx.send('You must pass in a url or upload an attachment.')
+            url = attachments[0].url
+
+        query = "UPDATE boards SET icon_url = $1 WHERE channel_id = $2"
+        await ctx.db.execute(query, url, ctx.config.channel_id)
+        await ctx.confirm()
+
+    @edit_donationboard.command(name='title')
+    @requires_config('trophyboard', invalidate=True)
+    async def edit_trophyboard_title(self, ctx, *, title: str):
+        """Specify a title for the guild's trophyboard.
+
+        Parameters
+        -----------------
+        Pass in any of the following:
+
+            • Title - the title you wish to use. This must be less than 50 characters.
+
+        Example
+        ------------
+        • `+edit trophyboard title The Donation Tracker DonationBoard`
+        • `+edit trophyboard title My Awesome Clan Family DonatinoBoard`
+
+        Required Perimssions
+        ----------------------------
+        • `manage_server` permissions
+        """
+        if len(title) >= 50:
+            return await ctx.send('Titles must be less than 50 characters.')
+
+        query = "UPDATE boards SET title = $1 WHERE channel_id = $2"
+        await ctx.db.execute(query, title, ctx.config.channel_id)
+        await ctx.confirm()
 
     @commands.command()
     @checks.manage_guild()
@@ -1040,7 +1183,10 @@ class GuildConfiguration(commands.Cog):
 
     @commands.command()
     @commands.is_owner()
-    async def reset_cooldown(self, ctx):
+    async def reset_cooldown(self, ctx, guild_id: int = None):
+        if guild_id:
+            ctx.guild = self.bot.get_guild(guild_id)
+
         self.refresh.reset_cooldown(ctx)
         await ctx.confirm()
 
