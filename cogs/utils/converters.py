@@ -191,3 +191,8 @@ class FetchedUser(commands.Converter):
         except discord.HTTPException:
             raise commands.BadArgument('An error occurred while fetching the user.') from None
 
+
+class TextChannel(commands.TextChannelConverter):
+    async def convert(self, ctx, argument):
+        channel = super().convert(ctx, argument)
+        ctx.custom_channel = channel
