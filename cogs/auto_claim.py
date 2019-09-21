@@ -139,7 +139,7 @@ class AutoClaim(commands.Cog):
         for c in clan:
             for member in c.members:
                 if self.running_commands.pop(ctx.guild.id) is False:
-                    return await ctx.send('Command stopped.')
+                    return await ctx.send('autoclaim command stopped.')
 
                 query = """SELECT id 
                            FROM players 
