@@ -138,7 +138,8 @@ class AutoClaim(commands.Cog):
 
         for c in clan:
             for member in c.members:
-                if self.running_commands.pop(ctx.guild.id) is False:
+                if self.running_commands[ctx.guild.id] is False:
+                    del self.running_commands[ctx.guild.id]
                     return await ctx.send('autoclaim command stopped.')
 
                 query = """SELECT id 
@@ -191,8 +192,9 @@ class AutoClaim(commands.Cog):
         if not prompt:
             return await ctx.confirm()
         for player, fail_msg in failed_players:
-            if self.running_commands.pop(ctx.guild.id) is False:
-                return await ctx.send('Command stopped.')
+            if self.running_commands[ctx.guild.id] is False:
+                del self.running_commands[ctx.guild.id]
+                return await ctx.send('autoclaim command stopped.')
 
             m = await ctx.send(f'Player: {player.name} ({player.tag}), Clan: {player.clan.name} ({player.clan.tag}).'
                                f'\nPlease send either a UserID, user#discrim combo, '
@@ -221,6 +223,7 @@ class AutoClaim(commands.Cog):
             except (discord.Forbidden, discord.HTTPException):
                 pass
 
+        del self.running_commands[ctx.guild.id]
         await ctx.send('All done. Thanks!')
 
     @auto_claim.command(name='cancel', aliases=['stop'])
