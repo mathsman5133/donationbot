@@ -76,7 +76,7 @@ class ClanConverter(commands.Converter):
 class DateConverter(commands.Converter):
     """Convert user input into standard format date (YYYY-MM-DD)"""
 
-    async def convert(self, ctx, *, argument):
+    async def convert(self, ctx, argument):
         error_msg = 'You may think that\'s a date, but I don\'t. Try using the DD-MM-YYYY format.'
         year_options = (f'{datetime.today().year}|{datetime.today().year + 1}|'
                         f'{str(datetime.today().year)[2:]}|{str(datetime.today().year + 1)[2:]}')

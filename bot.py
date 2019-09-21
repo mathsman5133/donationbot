@@ -133,7 +133,7 @@ class DonationBot(commands.Bot):
         await self.change_presence(activity=discord.Game('+help for commands'))
 
     async def get_clans(self, guild_id):
-        query = "SELECT clan_tag FROM clans WHERE guild_id = $1"
+        query = "SELECT DISTINCT clan_tag FROM clans WHERE guild_id = $1"
         fetch = await self.pool.fetch(query, guild_id)
         return await self.coc.get_clans(n[0].strip() for n in fetch).flatten()
 

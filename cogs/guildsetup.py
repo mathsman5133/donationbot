@@ -258,7 +258,7 @@ class GuildConfiguration(commands.Cog):
         • `manage_server` permissions
         """
         if ctx.config:
-            if ctx.config.event_start > datetime.datetime.now():
+            if ctx.config.start > datetime.datetime.now():
                 return await ctx.send(f'This server is already set up for {ctx.config.event_name}. Please use '
                                       f'`+remove event` if you would like to remove this event and create a new one.')
 
@@ -277,7 +277,7 @@ class GuildConfiguration(commands.Cog):
             try:
                 await ctx.send(f'What date does the {event_name} begin?  (YYYY-MM-DD)')
                 response = await ctx.bot.wait_for('message', check=check_author, timeout=60.0)
-                start_date = await DateConverter().convert(ctx, response)
+                start_date = await DateConverter().convert(ctx, response.clean_content)
                 break
             except (ValueError, commands.BadArgument):
                 await ctx.send(f'Date must be in the YYYY-MM-DD format.')
@@ -328,7 +328,7 @@ class GuildConfiguration(commands.Cog):
 
         try:
             r, u = await self.bot.wait_for('reaction_add', check=check, timeout=60.0)
-            if r == reactions[0]:
+            if str(r) == reactions[0]:
                 end_time = start_time
             else:
                 try:
@@ -351,18 +351,26 @@ class GuildConfiguration(commands.Cog):
 
         try:
             await ctx.send('Alright now I just need to know what clans will be in this event. You can provide the '
-                           'clan tags all at once (separated by a space) or individually.')
+                           'clan tags all at once (separated by a space) or individually. '
+                           'You can type `all` for all clans in the server.')
             response = await self.bot.wait_for('message', check=check_author, timeout=180.00)
-            clans = response.split(' ')
+            clans = response.content.split(' ')
             clan_names = ''
             for clan in clans:
-                clan = await ClanConverter().convert(ctx, clan)
-
+                try:
+                    clans = await ClanConverter().convert(ctx, clan)
+                except commands.BadArgument:
+                    await ctx.send(f'{clan} wasn\'t a valid tag or name, but I\'ll keep going...')
+                    continue
                 query = 'INSERT INTO clans (clan_tag, clan_name, channel_id, guild_id, in_event) VALUES ' \
-                        '($1, $2, $3, $4, $5) ON CONFLICT (clan_tag, guild_id) DO UPDATE SET in_event = $5'
-                await ctx.db.execute(query, clan.tag, clan.name, ctx.channel.id, ctx.guild.id, True)
+                        '($1, $2, $3, $4, $5) ON CONFLICT (clan_tag, channel_id) DO UPDATE SET in_event = $5'
 
-                clan_names += f'\n{clan.name}'
+                if len(clans) == 1:
+                    await ctx.db.execute(query, clans[0].tag, clans[0].name, ctx.channel.id, ctx.guild.id, True)
+                    clan_names += f'\n{clans[0].name}'
+                else:
+                    await ctx.db.executemany(query, [[n.tag, n.name, ctx.channel.id, ctx.guild.id, True] for n in clans])
+                    clan_names += '\n'.join(n.name for n in clans)
 
             fmt_tag = (f'Clans added for this event:\n' 
                        f'{clan_names}')
