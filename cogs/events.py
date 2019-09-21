@@ -7,8 +7,8 @@ import typing
 from discord.ext import commands
 from cogs.utils.converters import ClanConverter, PlayerConverter
 from cogs.utils.error_handler import error_handler
-from cogs.utils import formatters, checks
-from cogs.utils.db_objects import DatabaseClan
+from cogs.utils import formatters
+from cogs.utils.db_objects import SlimDummyLogConfig
 
 log = logging.getLogger(__name__)
 
@@ -18,10 +18,6 @@ class Events(commands.Cog):
     """
     def __init__(self, bot):
         self.bot = bot
-
-    async def cog_command_error(self, ctx, error):
-        error = getattr(error, 'original', error)
-        await error_handler(ctx, error)
 
     @staticmethod
     async def recent_events(table_name, ctx, limit):
@@ -134,6 +130,7 @@ class Events(commands.Cog):
         • `+donationevents 1000 all`
         • `+donationevents`
         """
+        ctx.config = SlimDummyLogConfig('donation', 'Donation Events', None)
         if ctx.invoked_subcommand is not None:
             return
 
@@ -253,6 +250,7 @@ class Events(commands.Cog):
         • `+trophyevents 1000 all`
         • `+trophyevents`
         """
+        ctx.config = SlimDummyLogConfig('trophy', 'Donation Events', None)
         if ctx.invoked_subcommand is not None:
             return
 
@@ -343,8 +341,6 @@ class Events(commands.Cog):
         parse your argument and direct it to the correct sub-command automatically.
         """
         await self.clan_events('trophyevents', ctx, clans, limit)
-
-
 
 
 def setup(bot):

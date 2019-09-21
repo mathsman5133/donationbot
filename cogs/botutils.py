@@ -1,3 +1,4 @@
+import datetime
 import discord
 
 from discord.ext import commands
@@ -57,7 +58,7 @@ class Utils(commands.Cog):
 
     @cache(maxsize=40)
     async def get_board_channel(self, guild_id: int, board_type: str) -> Union[int, None]:
-        query = "SELECT channel_id FROM boards WHERE guild_id = $1 AND type = $2;"
+        query = "SELECT channel_id FROM boards WHERE guild_id = $1 AND board_type = $2 AND toggle = True;"
         fetch = await self.bot.pool.fetchrow(query, guild_id, board_type)
         if fetch:
             return fetch['channel_id']
@@ -80,10 +81,10 @@ class Utils(commands.Cog):
         query = """SELECT id,
                           start,
                           finish,
-                          event_name,
+                          event_name
                    FROM events
                    WHERE guild_id = $1
-                   ORDER BY start DESC
+                   ORDER BY start DESC;
                 """
         fetch = await self.bot.pool.fetchrow(query, guild_id)
 
@@ -119,5 +120,26 @@ class Utils(commands.Cog):
         fetch = await self.bot.pool.fetch(query)
         self.bot.coc._clan_updates = [n[0] for n in fetch]
 
+    async def channel_log(self, channel_id, message, colour=None, embed=True):
+        config = await self.log_config(channel_id)
+        if not config.channel or not config.toggle:
+            return
+
+        if embed:
+            e = discord.Embed(colour=colour or self.bot.colour,
+                              description=message,
+                              timestamp=datetime.datetime.utcnow())
+            c = None
+        else:
+            e = None
+            c = message
+
+        try:
+            await config.channel.send(content=c, embed=e)
+        except (discord.Forbidden, discord.HTTPException):
+            return
 
 
+
+def setup(bot):
+    bot.add_cog(Utils(bot))

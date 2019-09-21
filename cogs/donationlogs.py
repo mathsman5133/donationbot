@@ -52,7 +52,7 @@ class DonationLogs(commands.Cog):
             await self.bulk_insert()
 
     async def bulk_insert(self):
-        query = """INSERT INTO donationevevents (player_tag, player_name, clan_tag, 
+        query = """INSERT INTO donationevents (player_tag, player_name, clan_tag, 
                                                  donations, received, time, season_id)
                         SELECT x.player_tag, x.player_name, x.clan_tag, 
                                x.donations, x.received, x.time, x.season_id
@@ -128,7 +128,7 @@ class DonationLogs(commands.Cog):
                 fetch = await self.bot.pool.fetch(query, channel_id, EVENTS_TABLE_TYPE)
 
                 for n in fetch:
-                    asyncio.ensure_future(self.bot.channel_log(channel_id, n[0], embed=False))
+                    asyncio.ensure_future(self.bot.utils.channel_log(channel_id, n[0], embed=False))
 
                 log.debug(f'Dispatching {len(fetch)} logs after sleeping for {config.seconds} '
                           f'sec to channel {config.channel} ({config.channel_id})')
@@ -164,7 +164,7 @@ class DonationLogs(commands.Cog):
                 """
 
         for n in fetch:
-            config = await self.bot.utils.log_config(n[0])
+            config = await self.bot.utils.log_config(n[0], 'donation')
 
             if not config:
                 continue
@@ -189,7 +189,7 @@ class DonationLogs(commands.Cog):
                 else:
                     log.debug(f'Dispatching a log to channel '
                               f'{config.channel} (ID {config.channel_id})')
-                    asyncio.ensure_future(self.bot.channel_log(config.channel_id,
+                    asyncio.ensure_future(self.bot.utils.channel_log(config.channel_id,
                                                                '\n'.join(x), embed=False))
 
         query = """UPDATE donationevents

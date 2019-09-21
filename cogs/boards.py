@@ -10,7 +10,7 @@ from datetime import datetime
 from discord.ext import commands, tasks
 
 from cogs.utils.db_objects import DatabaseMessage
-from cogs.utils.formatters import CLYTable
+from cogs.utils.formatters import CLYTable, get_render_type
 from cogs.utils import checks
 
 
@@ -106,8 +106,8 @@ class DonationBoard(commands.Cog):
                     WHERE playersevent.player_tag = x.player_tag
                     AND playersevent.live = true                    
                 """
-        if self._data_batch:  # todo: make sure values() is converted to conventional list by asyncpg
-            response = await self.bot.pool.execute(query, self._data_batch.values(),
+        if self._data_batch:
+            response = await self.bot.pool.execute(query, list(self._data_batch.values()),
                                                    await self.bot.seasonconfig.get_season_id())
             log.debug(f'Registered donations/received to the database. Status Code {response}.')
 
@@ -149,7 +149,7 @@ class DonationBoard(commands.Cog):
 
     @commands.Cog.listener()
     async def on_raw_bulk_message_delete(self, payload):
-        config = await self.bot.utils.get_board_config(payload.channel_id)
+        config = await self.bot.utils.board_config(payload.channel_id)
 
         if not config:
             return
@@ -327,6 +327,8 @@ class DonationBoard(commands.Cog):
     async def update_board(self, channel_id):
         config = await self.bot.utils.board_config(channel_id)
 
+        if not config:
+            return
         if not config.toggle:
             return
         if not config.channel:
@@ -365,10 +367,10 @@ class DonationBoard(commands.Cog):
                                    y[1],
                                    players.get(y['player_tag'], mock).name])
 
-            fmt = table.render_option_2() if \
-                config.render == 2 else table.render_option_1()
+            render = get_render_type(config, table)
+            fmt = render()
 
-            e = discord.Embed(colour=self.bot.colour,
+            e = discord.Embed(colour=self.get_colour(config.type),
                               description=fmt,
                               timestamp=datetime.utcnow()
                               )
@@ -379,266 +381,11 @@ class DonationBoard(commands.Cog):
             e.set_footer(text='Last Updated')
             await v.edit(embed=e, content=None)
 
-    # todo: organise or move these out of here, use decorator to add config to ctx attr, create same for trophyboards.
-
-    @commands.group(invoke_without_command=True)
-    @checks.manage_guild()
-    async def donationboard(self, ctx):
-        """Manage the donationboard for the guild.
-        """
-        if ctx.invoked_subcommand is None:
-            return await ctx.send_help(ctx.command)
-
-    @donationboard.command(name='create')
-    async def donationboard_create(self, ctx, *, name='donationboard'):
-        """Creates a donationboard channel for donation updates.
-
-        Parameters
-        ----------------
-        Pass in any of the following:
-
-            • A name for the channel. Defaults to `donationboard`
-
-        Example
-        -----------
-        • `+donationboard create`
-        • `+donationboard create my cool donationboard name`
-
-        Required Perimssions
-        ----------------------------
-        • `manage_server` permissions
-
-        Bot Required Permissions
-        --------------------------------
-        • `manage_channels` permissions
-        """
-        guild_id = ctx.guild.id
-        self.get_guild_config.invalidate(self, guild_id)
-        guild_config = await self.bot.get_guild_config(guild_id)
-
-        if guild_config.donationboard is not None:
-            return await ctx.send(
-                f'This server already has a donationboard ({guild_config.donationboard.mention})')
-
-        perms = ctx.channel.permissions_for(ctx.me)
-        if not perms.manage_channels:
-            return await ctx.send(
-                'I need manage channels permission to create the donationboard!')
-
-        overwrites = {
-            ctx.me: discord.PermissionOverwrite(read_messages=True, send_messages=True,
-                                                read_message_history=True, embed_links=True,
-                                                manage_messages=True),
-            ctx.guild.default_role: discord.PermissionOverwrite(read_messages=True,
-                                                                send_messages=False,
-                                                                read_message_history=True)
-        }
-        reason = f'{str(ctx.author)} created a donationboard channel.'
-
-        try:
-            channel = await ctx.guild.create_text_channel(name=name, overwrites=overwrites,
-                                                          reason=reason)
-        except discord.Forbidden:
-            return await ctx.send(
-                'I do not have permissions to create the donationboard channel.')
-        except discord.HTTPException:
-            return await ctx.send('Creating the channel failed. Try checking the name?')
-
-        msg = await channel.send('Placeholder')
-
-        query = "INSERT INTO messages (message_id, guild_id, channel_id) VALUES ($1, $2, $3)"
-        await ctx.db.execute(query, msg.id, ctx.guild.id, channel.id)
-        query = "UPDATE guilds SET updates_channel_id=$1, updates_toggle=True WHERE guild_id=$2"
-        await ctx.db.execute(query, channel.id, ctx.guild.id)
-        await ctx.send(f'Donationboard channel created: {channel.mention}')
-
-        await ctx.invoke(self.donationboard_edit)
-
-    @donationboard.command(name='delete', aliases=['remove', 'destroy'])
-    async def donationboard_delete(self, ctx):
-        """Deletes the guild donationboard.
-
-        Example
-        -----------
-        • `+donationboard delete`
-        • `+donationboard remove`
-
-        Required Perimssions
-        ----------------------------
-        • `manage_server` permissions
-        """
-        guild_id = ctx.guild.id
-        guild_config = await self.get_guild_config(guild_id)
-
-        if guild_config.donationboard is None:
-            return await ctx.send(
-                f'This server doesn\'t have a donationboard.')
-
-        query = "SELECT message_id FROM messages WHERE channel_id=$1;"
-        messages = await self.bot.pool.fetch(query, guild_config.donationboard.id)
-        for n in messages:
-            await self.safe_delete(n[0])
-
-        query = """UPDATE guilds 
-                    SET updates_channel_id = NULL,
-                        updates_toggle = False 
-                    WHERE guild_id = $1
-                """
-        await self.bot.pool.execute(query, guild_id)
-        await ctx.send('Donationboard sucessfully removed.')
-        self.get_guild_config.invalidate(self, guild_id)
-
-    @donationboard.command(name='edit')
-    async def donationboard_edit(self, ctx):
-        """Edit the format of the guild's donationboard.
-
-        Example
-        -----------
-        • `+donationboard edit`
-
-        Required Perimssions
-        ----------------------------
-        • `manage_server` permissions
-        """
-        table = CLYTable()
-        table.add_rows([[0, 9913, 12354, 'Member Name'], [1, 524, 123, 'Another Member'],
-                        [2, 321, 444, 'Yet Another'], [3, 0, 2, 'The Worst Donator']
-                        ])
-        table.title = '**Option 1 Example**'
-        option_1_render = f'**Option 1 Example**\n{table.render_option_1()}'
-        table.clear_rows()
-        table.add_rows([[0, 6532, 'Member (Awesome Clan)'], [1, 4453, 'Nearly #1 (Bad Clan)'],
-                        [2, 5589, 'Another Member (Awesome Clan)'], [3, 0, 'Winner (Bad Clan)']
-                        ])
-
-        option_2_render = f'**Option 2 Example**\n{table.render_option_2()}'
-
-        embed = discord.Embed(colour=self.bot.colour)
-        fmt = f'{option_1_render}\n\n\n{option_2_render}\n\n\n' \
-            f'These are the 2 available default options.\n' \
-            f'Please hit the reaction of the format you \nwish to display on the donationboard.'
-        embed.description = fmt
-        msg = await ctx.send(embed=embed)
-
-        query = "UPDATE guilds SET donationboard_render=$1 WHERE guild_id=$2"
-
-        reactions = ['1\N{combining enclosing keycap}', '2\N{combining enclosing keycap}']
-        for r in reactions:
-            await msg.add_reaction(r)
-
-        def check(r, u):
-            return str(r) in reactions and u.id == ctx.author.id and r.message.id == msg.id
-
-        try:
-            r, u = await self.bot.wait_for('reaction_add', check=check, timeout=60.0)
-        except asyncio.TimeoutError:
-            await ctx.db.execute(query, 1, ctx.guild.id)
-            return await ctx.send('You took too long. Option 1 was chosen.')
-
-        await ctx.db.execute(query, reactions.index(str(r)) + 1, ctx.guild.id)
-        await ctx.confirm()
-        await ctx.send('All done. Thanks!')
-        self.get_guild_config.invalidate(self, ctx.guild.id)
-
-    @donationboard.command(name='icon')
-    async def donationboard_icon(self, ctx, *, url: str = None):
-        """Specify an icon for the guild's donationboard.
-
-        Parameters
-        -----------------
-        Pass in any of the following:
-
-            • URL: url of the icon to use. Must only be JPEG, JPG or PNG.
-            • Attach/upload an image to use.
-
-        Example
-        ------------
-        • `+donationboard icon https://catsareus/thecrazycatbot/123.jpg`
-        • `+donationboard icon` (with an attached image)
-
-        Required Perimssions
-        ----------------------------
-        • `manage_server` permissions
-        """
-        if not url or not url.startswith('https://'):
-            attachments = ctx.message.attachments
-            if not attachments:
-                return await ctx.send('You must pass in a url or upload an attachment.')
-            url = attachments[0].url
-
-        query = "UPDATE guilds SET icon_url=$1 WHERE guild_id=$2"
-        await ctx.db.execute(query, url, ctx.guild.id)
-        await ctx.confirm()
-        self.get_guild_config.invalidate(self, ctx.guild.id)
-
-    @donationboard.command(name='title')
-    async def donationboard_title(self, ctx, *, title: str = None):
-        """Specify a title for the guild's donationboard.
-
-        Parameters
-        -----------------
-        Pass in any of the following:
-
-            • Title - the title you wish to use.
-
-        Example
-        ------------
-        • `+donationboard title The Donation Tracker DonationBoard`
-        • `+donationboard title My Awesome Clan Family DonatinoBoard`
-
-        Required Perimssions
-        ----------------------------
-        • `manage_server` permissions
-        """
-        query = "UPDATE guilds SET donationboard_title=$1 WHERE guild_id=$2"
-        await ctx.db.execute(query, title, ctx.guild.id)
-        await ctx.confirm()
-        self.get_guild_config.invalidate(self, ctx.guild.id)
-
-    @donationboard.command(name='info')
-    async def donationboard_info(self, ctx):
-        """Gives you info about guild's donationboard.
-        """
-        guild_config = await self.bot.get_guild_config(ctx.guild.id)
-
-        table = CLYTable()
-        if guild_config.donationboard_render == 2:
-            table.add_rows([[0, 6532, 'Member (Awesome Clan)'], [1, 4453, 'Nearly #1 (Bad Clan)'],
-                            [2, 5589, 'Another Member (Awesome Clan)'], [3, 0, 'Winner (Bad Clan)']
-                            ])
-            table.title = guild_config.donationboard_title or 'DonationBoard'
-            render = table.render_option_2()
-        else:
-            table.add_rows([[0, 9913, 12354, 'Member Name'], [1, 524, 123, 'Another Member'],
-                            [2, 321, 444, 'Yet Another'], [3, 0, 2, 'The Worst Donator']
-                            ])
-            table.title = guild_config.donationboard_title or 'DonationBoard'
-            render = table.render_option_1()
-
-        fmt = f'**DonationBoard Example Format:**\n\n{render}\n**Icon:** ' \
-            f'Please see the icon displayed above.\n'
-
-        channel = guild_config.donationboard
-        data = []
-
-        if channel is None:
-            data.append('**Channel:** #deleted-channel')
-        else:
-            data.append(f'**Channel:** {channel.mention}')
-
-        query = "SELECT clan_name, clan_tag FROM clans WHERE guild_id = $1;"
-        fetch = await ctx.db.fetch(query, ctx.guild.id)
-
-        data.append(f"**Clans:** {', '.join(f'{n[0]} ({n[1]})' for n in fetch)}")
-
-        fmt += '\n'.join(data)
-
-        e = discord.Embed(colour=self.bot.colour,
-                          description=fmt)
-        e.set_author(name='DonationBoard Info',
-                     icon_url=guild_config.icon_url or 'https://cdn.discordapp.com/emojis/592028799768592405.png?v=1')
-
-        await ctx.send(embed=e)
+    @staticmethod
+    def get_colour(board_type):
+        if board_type == 'donation':
+            return discord.Colour.blue()
+        return discord.Colour.green()
 
 
 def setup(bot):

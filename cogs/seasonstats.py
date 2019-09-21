@@ -23,10 +23,6 @@ class Season(commands.Cog):
         self.season_stats_guild_entries = {}
         self.season_stats_user_entries = {}
 
-    async def cog_command_error(self, ctx, error):
-        error = getattr(error, 'original', error)
-        await error_handler(ctx, error)
-
     @cache()
     async def build_season_clan_misc_stats(self, ctx, clans, season_id):
         clan_tags = [n.tag for n in clans]

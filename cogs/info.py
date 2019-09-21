@@ -202,10 +202,6 @@ class Info(commands.Cog):
         except Exception as e:
             log.exception('Failed to post server count\n{}: {}'.format(type(e).__name__, e))
 
-    async def cog_command_error(self, ctx, error):
-        error = getattr(error, 'original', error)
-        await error_handler(ctx, error)
-
     async def bot_check(self, ctx):
         if ctx.guild is None:
             await ctx.send(f'This command cannot be used in private messages. '

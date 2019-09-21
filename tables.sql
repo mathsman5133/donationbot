@@ -25,7 +25,7 @@ CREATE TABLE eventplayers (
 create index player_tag_idx on players (player_tag);
 create index user_id_idx on players (user_id);
 create index season_idx on players (season_id);
-alter table playerevents add unique (player_tag, event_id);
+alter table eventplayers add unique (player_tag, event_id);
 
 CREATE TABLE logs (
     id serial PRIMARY KEY,
@@ -63,8 +63,8 @@ create index guild_id_idx on guilds (guild_id);
 CREATE TABLE boards (
     id serial PRIMARY KEY,
 
-    guild_id BIGINT UNIQUE,
-    channel_id BIGINT,
+    guild_id BIGINT,
+    channel_id BIGINT unique,
     icon_url TEXT,
     title TEXT,
     render INTEGER,
