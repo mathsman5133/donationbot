@@ -8,22 +8,17 @@ import coc
 import logging
 
 from discord.ext import commands
-from cogs.utils import checks, cache
+from cogs.utils.checks import requires_config, manage_guild
 from cogs.utils.db_objects import DatabaseBoard
 from cogs.utils.error_handler import error_handler
 from cogs.utils.formatters import CLYTable
-from cogs.utils.converters import PlayerConverter, ClanConverter, DateConverter
+from cogs.utils.converters import PlayerConverter, ClanConverter, DateConverter, TextChannel
 from .utils import paginator, checks, formatters, fuzzy
 
 log = logging.getLogger(__name__)
 
-
-def requires_config(config_type, invalidate=False):
-    async def pred(ctx):
-        ctx.config_type = config_type
-        ctx.config_invalidate = invalidate
-        return True
-    return commands.check(pred)
+url_validator = re.compile(r"^(?:http(s)?://)?[\w.-]+(?:.[\w.-]+)+[\w\-_~:/?#[\]@!$&'()*+,;=.]+"
+                           r"(.jpg|.jpeg|.png|.gif)+[\w\-_~:/?#[\]@!$&'()*+,;=.]*$")
 
 
 class GuildConfiguration(commands.Cog):
@@ -33,64 +28,14 @@ class GuildConfiguration(commands.Cog):
         self.bot = bot
 
     async def cog_before_invoke(self, ctx):
-        config_type = getattr(ctx, 'config_type', None)
-        if not config_type:
-            return
-        invalidate = getattr(ctx, 'config_invalidate', False)
-
-        key = ctx.guild.id
-        if config_type == 'donationboard':
-            if invalidate:
-                ctx.bot.utils.board_config.invalidate(ctx.bot.utils, key)
-            config = await ctx.bot.utils.board_config(key, 'donation')
-
-        elif config_type == 'trophyboard':
-            if invalidate:
-                ctx.bot.utils.board_config.invalidate(ctx.bot.utils, key)
-
-            config = await ctx.bot.utils.board_config(key, 'trophy')
-
-        elif config_type == 'log':
-            channel = getattr(ctx, 'log_channel', ctx.channel)
-            key = channel.id
-            if invalidate:
-                ctx.bot.utils.board_config.invalidate(ctx.bot.utils, key)
-
-            config = await ctx.bot.utils.log_config(key)
-
-        elif config_type == 'events':
-            if invalidate:
-                ctx.bot.utils.board_config.invalidate(ctx.bot.utils, key)
-
-            config = await ctx.bot.utils.event_config(key)
-        else:
-            return
-
-        ctx.config = config
-        ctx.config_key = key
-        return
+        before_invoke = getattr(ctx, 'before_invoke', None)
+        if before_invoke:
+            await before_invoke(ctx)
 
     async def cog_after_invoke(self, ctx):
-        config_type = getattr(ctx, 'config_type', None)
-        if not config_type:
-            return
-        invalidate = getattr(ctx, 'config_invalidate', False)
-        if not invalidate:
-            return
-
-        key = ctx.guild.id
-        if config_type == 'donationboard':
-            ctx.bot.utils.board_config.invalidate(ctx.bot.utils, key)
-
-        elif config_type == 'trophyboard':
-            ctx.bot.utils.board_config.invalidate(ctx.bot.utils, key)
-
-        elif config_type == 'log':
-            channel = getattr(ctx, 'log_channel', ctx.channel)
-            ctx.bot.utils.board_config.invalidate(ctx.bot.utils, channel.id)
-
-        elif config_type == 'events':
-            ctx.bot.utils.board_config.invalidate(ctx.bot.utils, key)
+        after_invoke = getattr(ctx, 'after_invoke', None)
+        if after_invoke:
+            await after_invoke(ctx)
 
     async def cog_command_error(self, ctx, error):
         error = getattr(error, 'original', error)
@@ -156,7 +101,8 @@ class GuildConfiguration(commands.Cog):
         • `add event`
         • `add donationboard`
         • `add trophyboard`
-        • `add attackboard`
+        • `add donationlog`
+        • `add trophylog`
 
         Required Permissions
         --------------------
@@ -625,6 +571,100 @@ class GuildConfiguration(commands.Cog):
         await ctx.db.execute(query, msg.id, ctx.guild.id, channel.id, 'donation')
         await ctx.send(f'Donationboard channel created: {channel.mention}')
 
+    @add.command(name='donationlog')
+    @requires_config('donationlog', invalidate=True)
+    @manage_guild()
+    async def add_donationlog(self, ctx, channel: TextChannel = None):
+        """Create a donation log for your server.
+
+        Parameters
+        ----------------
+
+            • Channel: #channel or a channel id. This defaults to the channel you are in.
+
+        Example
+        -----------
+        • `+add donationlog #CHANNEL`
+        • `+add donationlog`
+
+        Required Perimssions
+        ----------------------------
+        • `manage_server` permissions
+        """
+        if not channel:
+            channel = ctx.channel
+
+        board_config = await self.bot.utils.board_config(channel.id)
+        if board_config:
+            return await ctx.send('You can\'t have the same channel for a board and log!')
+
+        if not (channel.permissions_for(ctx.me).send_messages or channel.permissions_for(
+                ctx.me).read_messages):
+            return await ctx.send('I need permission to send and read messages here!')
+
+        query = """INSERT INTO logs (
+                                guild_id,
+                                channel_id,
+                                toggle,
+                                type
+                                )
+                VALUES ($1, $2, True, $4) 
+                ON CONFLICT (channel_id, type)
+                DO UPDATE channel_id = $2;
+                """
+        await ctx.db.execute(query, ctx.guild.id, channel.id, 'donation')
+
+        await ctx.send(f'Donation log channel has been set to {channel.mention} '
+                       f'and enabled for all clans claimed to this channel. '
+                       f'You can find these with `+help info donationlog` ')
+
+    @add.command(name='trophylog')
+    @requires_config('trophylog', invalidate=True)
+    @manage_guild()
+    async def add_trophylog(self, ctx, channel: TextChannel = None):
+        """Create a trophy log for your server.
+
+        Parameters
+        ----------------
+
+            • Channel: #channel or a channel id. This defaults to the channel you are in.
+
+        Example
+        -----------
+        • `+add trophylog #CHANNEL`
+        • `+add trophylog`
+
+        Required Perimssions
+        ----------------------------
+        • `manage_server` permissions
+        """
+        if not channel:
+            channel = ctx.channel
+
+        board_config = await self.bot.utils.board_config(channel.id)
+        if board_config:
+            return await ctx.send('You can\'t have the same channel for a board and log!')
+
+        if not (channel.permissions_for(ctx.me).send_messages or channel.permissions_for(
+                ctx.me).read_messages):
+            return await ctx.send('I need permission to send and read messages here!')
+
+        query = """INSERT INTO logs (
+                                    guild_id,
+                                    channel_id,
+                                    toggle,
+                                    type
+                                    )
+                    VALUES ($1, $2, True, $4) 
+                    ON CONFLICT (channel_id, type)
+                    DO UPDATE channel_id = $2;
+                    """
+        await ctx.db.execute(query, ctx.guild.id, channel.id, 'trophy')
+
+        await ctx.send(f'Trophy log channel has been set to {channel.mention} '
+                       f'and enabled for all clans claimed to this channel. '
+                       f'You can find these with `+help info trophylog` ')
+
     @commands.command()
     async def claim(self, ctx, user: typing.Optional[discord.Member] = None, *,
                     player: PlayerConverter):
@@ -689,7 +729,9 @@ class GuildConfiguration(commands.Cog):
         • `remove event`
         • `remove donationboard`
         • `remove trophyboard`
-        • `remove attackboard`
+        • `remove donationlog`
+        • `remove trophylog`
+
 
         Required Permissions
         ----------------------------
@@ -851,6 +893,22 @@ class GuildConfiguration(commands.Cog):
         await self.bot.pool.execute(query, ctx.config.channel_id)
         await ctx.send('Trophyboard sucessfully removed.')
 
+    @remove.command(name='donationlog')
+    @requires_config('donationlog', invalidate=True)
+    @manage_guild()
+    async def remove_donationlog(self, ctx, channel: TextChannel = None):
+        query = "DELETE FROM logs WHERE channel_id = $1 AND type = $2"
+        await ctx.db.execute(query, ctx.config.channel_id, 'donation')
+        await ctx.confirm()
+
+    @remove.command(name='donationlog')
+    @requires_config('donationlog', invalidate=True)
+    @manage_guild()
+    async def remove_donationlog(self, ctx, channel: TextChannel = None):
+        query = "DELETE FROM logs WHERE channel_id = $1 AND type = $2"
+        await ctx.db.execute(query, ctx.config.channel_id, 'trophy')
+        await ctx.confirm()
+
     @commands.command()
     async def unclaim(self, ctx, *, player: PlayerConverter):
         """Unlink a clash account from your discord account
@@ -887,6 +945,29 @@ class GuildConfiguration(commands.Cog):
         ----------------------------
         • `manage_server` permissions
         """
+        p = await ctx.prompt('Would you like to edit all settings for the guild donationboard? '
+                             'Else please see valid subcommands with `+help edit donationboard`.')
+        if not p or p is False:
+            return
+
+        await ctx.invoke(self.edit_donationboard_format)
+
+        def check(m):
+            return m.author == ctx.author and m.channel == ctx.channel
+        await ctx.send('Please send the URL of the icon you wish to use.')
+
+        try:
+            msg = await self.bot.wait_for('message', check=check, timeout=60.0)
+        except asyncio.TimeoutError:
+            return await ctx.send('You took too long! Aborting command...')
+        await ctx.invoke(self.edit_donationboard_icon, url=msg.clean_content)
+
+        try:
+            msg = await self.bot.wait_for('message', check=check, timeout=60.0)
+        except asyncio.TimeoutError:
+            return await ctx.send('You took too long! Aborting command...')
+        await ctx.invoke(self.edit_donationboard_title, url=msg.clean_content)
+
         # todo: interactive process to run through all subcommands one at time
         #  (note: need to manually convert and pass in args)
         pass
@@ -910,13 +991,13 @@ class GuildConfiguration(commands.Cog):
                         [2, 321, 444, 'Yet Another'], [3, 0, 2, 'The Worst Donator']
                         ])
         table.title = '**Option 1 Example**'
-        option_1_render = f'**Option 1 Example**\n{table.render_option_1()}'
+        option_1_render = f'**Option 1 Example**\n{table.donationboard_1()}'
         table.clear_rows()
-        table.add_rows([[0, 6532, 'Member (Awesome Clan)'], [1, 4453, 'Nearly #1 (Bad Clan)'],
-                        [2, 5589, 'Another Member (Awesome Clan)'], [3, 0, 'Winner (Bad Clan)']
+        table.add_rows([[0, 6532, 'Member'], [1, 4453, 'Nearly #1'],
+                        [2, 5589, 'Another Member'], [3, 0, 'Winner']
                         ])
 
-        option_2_render = f'**Option 2 Example**\n{table.render_option_2()}'
+        option_2_render = f'**Option 2 Example**\n{table.donationboard_2()}'
 
         embed = discord.Embed(colour=self.bot.colour)
         fmt = f'{option_1_render}\n\n\n{option_2_render}\n\n\n' \
@@ -925,7 +1006,7 @@ class GuildConfiguration(commands.Cog):
         embed.description = fmt
         msg = await ctx.send(embed=embed)
 
-        query = "UPDATE guilds SET donationboard_render=$1 WHERE guild_id=$2"
+        query = "UPDATE boards SET render=$1 WHERE channel_id=$2"
 
         reactions = ['1\N{combining enclosing keycap}', '2\N{combining enclosing keycap}']
         for r in reactions:
@@ -937,10 +1018,10 @@ class GuildConfiguration(commands.Cog):
         try:
             r, u = await self.bot.wait_for('reaction_add', check=check, timeout=60.0)
         except asyncio.TimeoutError:
-            await ctx.db.execute(query, 1, ctx.guild.id)
+            await ctx.db.execute(query, 1, ctx.config.channel_id)
             return await ctx.send('You took too long. Option 1 was chosen.')
 
-        await ctx.db.execute(query, reactions.index(str(r)) + 1, ctx.guild.id)
+        await ctx.db.execute(query, reactions.index(str(r)) + 1, ctx.config.channel_id)
         await ctx.confirm()
 
     @edit_donationboard.command(name='icon')
@@ -965,8 +1046,6 @@ class GuildConfiguration(commands.Cog):
         ----------------------------
         • `manage_server` permissions
         """
-        url_validator = re.compile(r"^(?:http(s)?://)?[\w.-]+(?:.[\w.-]+)+[\w\-_~:/?#[\]@!$&'()*+,;=.]+"
-                                   r"(.jpg|.jpeg|.png|.gif)+[\w\-_~:/?#[\]@!$&'()*+,;=.]*$")
         if not url or not url_validator.match(url):
             attachments = ctx.message.attachments
             if not attachments:
@@ -1035,28 +1114,28 @@ class GuildConfiguration(commands.Cog):
         ----------------------------
         • `manage_server` permissions
         """
-        # TODO: make trophy examples
         table = CLYTable()
-        table.add_rows([[0, 9913, 12354, 'Member Name'], [1, 524, 123, 'Another Member'],
-                        [2, 321, 444, 'Yet Another'], [3, 0, 2, 'The Worst Donator']
+        table.add_rows([[0, 4320, 955, 'Member Name'], [1, 4500, 870, 'Another Member'],
+                        [2, 3900, -600, 'Yet Another'], [3, 1500, -1000, 'Worst Pusher']
                         ])
         table.title = '**Option 1 Example**'
-        option_1_render = f'**Option 1 Example**\n{table.render_option_1()}'
+        option_1_render = f'**Option 1 Example**\n{table.trophyboard_1()}'
+
         table.clear_rows()
-        table.add_rows([[0, 6532, 'Member (Awesome Clan)'], [1, 4453, 'Nearly #1 (Bad Clan)'],
-                        [2, 5589, 'Another Member (Awesome Clan)'], [3, 0, 'Winner (Bad Clan)']
+        table.add_rows([[0, 2000, 'Member'], [1, 1500, 'Nearly #1'],
+                        [2, 1490, 'Another Member'], [3, -600, 'Winner']
                         ])
 
-        option_2_render = f'**Option 2 Example**\n{table.render_option_2()}'
+        option_2_render = f'**Option 2 Example**\n{table.trophyboard_2()}'
 
         embed = discord.Embed(colour=self.bot.colour)
         fmt = f'{option_1_render}\n\n\n{option_2_render}\n\n\n' \
             f'These are the 2 available default options.\n' \
-            f'Please hit the reaction of the format you \nwish to display on the donationboard.'
+            f'Please hit the reaction of the format you \nwish to display on the trophyboard.'
         embed.description = fmt
         msg = await ctx.send(embed=embed)
 
-        query = "UPDATE guilds SET donationboard_render=$1 WHERE guild_id=$2"
+        query = "UPDATE boards SET render=$1 WHERE channel_id=$2"
 
         reactions = ['1\N{combining enclosing keycap}', '2\N{combining enclosing keycap}']
         for r in reactions:
@@ -1068,10 +1147,10 @@ class GuildConfiguration(commands.Cog):
         try:
             r, u = await self.bot.wait_for('reaction_add', check=check, timeout=60.0)
         except asyncio.TimeoutError:
-            await ctx.db.execute(query, 1, ctx.guild.id)
+            await ctx.db.execute(query, 1, ctx.config.channel_id)
             return await ctx.send('You took too long. Option 1 was chosen.')
 
-        await ctx.db.execute(query, reactions.index(str(r)) + 1, ctx.guild.id)
+        await ctx.db.execute(query, reactions.index(str(r)) + 1, ctx.config.channel_id)
         await ctx.confirm()
 
     @edit_trophyboard.command(name='icon')
@@ -1095,8 +1174,6 @@ class GuildConfiguration(commands.Cog):
         ----------------------------
         • `manage_server` permissions
         """
-        url_validator = re.compile(r"^(?:http(s)?://)?[\w.-]+(?:.[\w.-]+)+[\w\-_~:/?#[\]@!$&'()*+,;=.]+"
-                                   r"(.jpg|.jpeg|.png|.gif)+[\w\-_~:/?#[\]@!$&'()*+,;=.]*$")
         if not url or not url_validator.match(url):
             attachments = ctx.message.attachments
             if not attachments:
@@ -1133,6 +1210,68 @@ class GuildConfiguration(commands.Cog):
         query = "UPDATE boards SET title = $1 WHERE channel_id = $2"
         await ctx.db.execute(query, title, ctx.config.channel_id)
         await ctx.confirm()
+
+    @edit.command(name='donationlog interval', aliases=['donationlog'])
+    @requires_config('donationlog', invalidate=True)
+    @manage_guild()
+    async def edit_donationlog_interval(self, ctx, channel: typing.Optional[discord.TextChannel] = None,
+                                        minutes: int = 1):
+        """Update the interval (in minutes) for which the bot will log your donations.
+
+        Parameters
+        ----------------
+            • Channel: Optional, the channel to change log interval for.
+                       Defaults to the one you're in.
+            • Minutes: the number of minutes between logs. Defaults to 1min.
+
+        Example
+        -----------
+        • `+edit donationlog interval #channel 2`
+        • `+edit donationlog interval 1440`
+
+        Required Perimssions
+        ----------------------------
+        • `manage_server` permissions
+        """
+        query = """UPDATE logs
+                   SET interval = ($1 ||' minutes')::interval
+                   WHERE channel_id=$2
+                   AND type = $3
+                """
+        await ctx.db.execute(query, str(minutes), ctx.config.channel_id, 'donation')
+        await ctx.send(f'Logs for {ctx.config.channel.mention} have been changed to {minutes} minutes. '
+                       'Find which clans this affects with `+help info donationlog`')
+
+    @edit.command(name='trophylog interval', aliases=['trophylog'])
+    @requires_config('trophylog', invalidate=True)
+    @manage_guild()
+    async def edit_trophylog_interval(self, ctx, channel: typing.Optional[discord.TextChannel] = None,
+                                        minutes: int = 1):
+        """Update the interval (in minutes) for which the bot will log your trophies.
+
+        Parameters
+        ----------------
+            • Channel: Optional, the channel to change log interval for.
+                       Defaults to the one you're in.
+            • Minutes: the number of minutes between logs. Defaults to 1min.
+
+        Example
+        -----------
+        • `+edit trophylog interval #channel 2`
+        • `+edit trophylog interval 1440`
+
+        Required Perimssions
+        ----------------------------
+        • `manage_server` permissions
+        """
+        query = """UPDATE logs
+                   SET interval = ($1 ||' minutes')::interval
+                   WHERE channel_id=$2
+                   AND type = $3
+                """
+        await ctx.db.execute(query, str(minutes), ctx.config.channel_id, 'trophy')
+        await ctx.send(f'Logs for {ctx.config.channel.mention} have been changed to {minutes} minutes. '
+                       'Find which clans this affects with `+help info trophylog`')
 
     @commands.command()
     @checks.manage_guild()
