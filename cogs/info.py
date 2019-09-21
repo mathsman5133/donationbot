@@ -325,6 +325,57 @@ class Info(commands.Cog):
     async def info(self, ctx):
         pass
     # TODO: maybe need some stats on in events and what not for donationboard/trophyboard info.
+    # TODO: fix these up
+    @info.command(name='donationlog')
+    async def info_donationlog(self, ctx, *, channel: discord.TextChannel = None):
+        """Get information about log channels for the guild.
+
+        Parameters
+        ----------------
+            • Channel: Optional, the channel to get log info for.
+                       Defaults to all channels in the server.
+
+        Example
+        -----------
+        • `+log info #channel`
+        • `+log info`
+
+        Required Perimssions
+        ----------------------------
+        • `manage_server` permissions
+        """
+        if channel:
+            query = """SELECT clan_tag, channel_id, log_toggle, 
+                                  log_interval, clan_name 
+                           FROM clans 
+                           WHERE channel_id=$1
+                        """
+            fetch = await ctx.db.fetch(query, channel.id)
+        else:
+            query = """SELECT clan_tag, channel_id, log_toggle, 
+                                  log_interval, clan_name 
+                           FROM clans 
+                           WHERE guild_id=$1
+                        """
+            fetch = await ctx.db.fetch(query, ctx.guild.id)
+
+        if channel:
+            fmt = channel.mention
+        else:
+            fmt = ctx.guild.name
+
+        e = discord.Embed(color=self.bot.colour,
+                          description=f'Log info for {fmt}')
+
+        for n in fetch:
+            config = DatabaseClan(bot=self.bot, record=n)
+            fmt = f"Tag: {config.clan_tag}\n"
+            fmt += f"Channel: {config.channel.mention if config.channel else 'None'}\n"
+            fmt += f"Log Toggle: {'enabled' if config.log_toggle else 'disabled'}\n"
+            fmt += f"Log Interval: {config.interval_seconds} seconds\n"
+            e.add_field(name=n['clan_name'],
+                        value=fmt)
+        await ctx.send(embed=e)
 
     @info.command(name='donationboard')
     @requires_config('donationboard')
