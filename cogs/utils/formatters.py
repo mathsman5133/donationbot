@@ -5,7 +5,7 @@ from cogs.utils.emoji_lookup import number_emojis, misc
 
 
 def get_render_type(config, table):
-    if config.board_type == 'donation':
+    if config.type == 'donation':
         if config.render == 1:
             render = table.donationboard_1
         else:
@@ -285,7 +285,7 @@ class BoardPaginator(TablePaginator):
     def create_row(self, player, data):
         player_data = data[player.tag]
 
-        if self.ctx.config.board_type == 'donation':
+        if self.ctx.config.type == 'donation':
             if self.ctx.config.render == 1:
                 row = [player_data[0], player_data[1]['donations'], player_data[1]['received'], player.name]
             else:
