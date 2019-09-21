@@ -187,7 +187,7 @@ class TrophyEvent:
 
 
 class LogConfig:
-    __slots__ = ('bot', 'guild_id', 'channel_id', 'interval', 'toggle')
+    __slots__ = ('bot', 'guild_id', 'channel_id', 'interval', 'toggle', 'type')
 
     def __init__(self, *, bot, record):
         self.bot = bot
@@ -196,6 +196,7 @@ class LogConfig:
         self.channel_id: int = record['channel_id']
         self.interval: timedelta = record['interval']
         self.toggle: bool = record['toggle']
+        self.type: str = record['type']
 
     @property
     def guild(self) -> discord.Guild:
@@ -212,7 +213,7 @@ class LogConfig:
 
 class BoardConfig:
     __slots__ = ('bot', 'guild_id', 'channel_id', 'icon_url', 'title',
-                 'render', 'toggle', 'board_type', 'in_event')
+                 'render', 'toggle', 'type', 'in_event')
 
     def __init__(self, *, bot, record):
         self.bot = bot
@@ -223,7 +224,7 @@ class BoardConfig:
         self.title: str = record['title']
         self.render: int = record['render']
         self.toggle: bool = record['toggle']
-        self.board_type: str = record['board_type']
+        self.type: str = record['type']
         self.in_event: bool = record['in_event']
 
     @property
