@@ -28,69 +28,15 @@ class GuildConfiguration(commands.Cog):
         self.bot = bot
 
     async def cog_before_invoke(self, ctx):
-        before_invoke = getattr(ctx, 'before_invoke', None)
-        if before_invoke:
-            await before_invoke(ctx)
+        if hasattr(ctx, 'before_invoke'):
+            await ctx.before_invoke(ctx)
 
     async def cog_after_invoke(self, ctx):
         after_invoke = getattr(ctx, 'after_invoke', None)
         if after_invoke:
             await after_invoke(ctx)
 
-    async def cog_command_error(self, ctx, error):
-        error = getattr(error, 'original', error)
-        await error_handler(ctx, error)
-
-    async def match_player(self, player, guild: discord.Guild, prompt=False, ctx=None,
-                           score_cutoff=20, claim=True):
-        matches = fuzzy.extract_matches(player.name, [n.name for n in guild.members],
-                                        score_cutoff=score_cutoff, scorer=fuzzy.partial_ratio,
-                                        limit=9)
-        if len(matches) == 0:
-            return None
-        if len(matches) == 1:
-            user = guild.get_member_named(matches[0][0])
-            if prompt:
-                m = await ctx.prompt(f'[auto-claim]: {player.name} ({player.tag}) '
-                                     f'to be claimed to {str(user)} ({user.id}). '
-                                     f'If already claimed, this will do nothing.')
-                if m is True and claim is True:
-                    query = "UPDATE players SET user_id = $1 " \
-                            "WHERE player_tag = $2 AND user_id IS NULL AND season_id = $3"
-                    await self.bot.pool.execute(query, user.id, player.tag,
-                                                await self.bot.seasonconfig.get_season_id())
-                else:
-                    return False
-            return user
-        return [guild.get_member_named(n[0]) for n in matches]
-
-    async def match_member(self, member, clan, claim):
-        matches = fuzzy.extract_matches(member.name, [n.name for n in clan.members],
-                                        score_cutoff=60)
-        if len(matches) == 0:
-            return None
-        for i, n in enumerate(matches):
-            query = "SELECT user_id FROM players WHERE player_tag = $1 AND season_id = $2"
-            m = clan.get_member(name=n[0])
-            fetch = await self.bot.pool.fetchrow(query, m.tag,
-                                                 await self.bot.seasonconfig.get_season_id())
-            if fetch is None:
-                continue
-            del matches[i]
-
-        if len(matches) == 1 and claim is True:
-            player = clan.get_member(name=matches[0][0])
-            query = "UPDATE players SET user_id = $1 WHERE player_tag = $2 " \
-                    "AND user_id IS NULL AND season_id = $3"
-            await self.bot.pool.execute(query, member.id, player.tag,
-                                        await self.bot.seasonconfig.get_season_id())
-            return player
-        elif len(matches) == 1:
-            return True
-
-        return [clan.get_member(name=n) for n in matches]
-
-    @commands.group(invoke_without_subcommand=True)
+    @commands.group()
     async def add(self, ctx):
         """Allows the user to add a variety of features to the bot.
 
@@ -108,7 +54,7 @@ class GuildConfiguration(commands.Cog):
         --------------------
         • `manage_server` permissions
         """
-        if ctx.invoke_subcommand is None:
+        if ctx.invoked_subcommand is None:
             return await ctx.send_help(ctx.command)
 
     @add.command(name='clan')
@@ -161,7 +107,7 @@ class GuildConfiguration(commands.Cog):
                                   '\n\nThis is a security feature of the bot and should '
                                   'be removed once the clan has been added.')
 
-        if ctx.config.in_event:
+        if ctx.config:
             prompt = await ctx.prompt('Would you like this clan to be in the current event?')
 
             if prompt is True:
@@ -182,7 +128,7 @@ class GuildConfiguration(commands.Cog):
             await ctx.db.execute(query, member.tag, member.donations, member.received, member.trophies, season_id)
 
         if in_event:
-            query = "INSERT INTO players (player_tag, donations, received, trophies, event_id) " \
+            query = "INSERT INTO eventplayers (player_tag, donations, received, trophies, event_id) " \
                     "VALUES ($1, $2, $3, $4, $5) ON CONFLICT (player_tag, event_id) DO NOTHING"
             for member in clan.itermembers:
                 await ctx.db.execute(query, member.tag, member.donations, member.received, member.trophies,
@@ -311,9 +257,10 @@ class GuildConfiguration(commands.Cog):
         ----------------------------
         • `manage_server` permissions
         """
-        if ctx.config.event_start > datetime.datetime.now():
-            return await ctx.send(f'This server is already set up for {ctx.config.event_name}. Please use '
-                                  f'`+remove event` if you would like to remove this event and create a new one.')
+        if ctx.config:
+            if ctx.config.event_start > datetime.datetime.now():
+                return await ctx.send(f'This server is already set up for {ctx.config.event_name}. Please use '
+                                      f'`+remove event` if you would like to remove this event and create a new one.')
 
         def check_author(m):
             return m.author == ctx.author
@@ -332,7 +279,7 @@ class GuildConfiguration(commands.Cog):
                 response = await ctx.bot.wait_for('message', check=check_author, timeout=60.0)
                 start_date = await DateConverter().convert(ctx, response)
                 break
-            except ValueError:
+            except (ValueError, commands.BadArgument):
                 await ctx.send(f'Date must be in the YYYY-MM-DD format.')
             except asyncio.TimeoutError:
                 return await ctx.send('Yawn! Time\'s up. You\'re going to have to start over some other time.')
@@ -485,19 +432,23 @@ class GuildConfiguration(commands.Cog):
 
         msg = await channel.send('Placeholder')
 
-        query = """INSERT INTO messages (message_id, 
-                                         guild_id, 
-                                         channel_id) 
-                   VALUES ($1, $2, $3);
-                   INSERT INTO boards (guild_id, 
-                                       channel_id, 
-                                       board_type) 
-                   VALUES ($2, $3, $4) 
-                   ON CONFLICT (channel_id) 
-                   DO UPDATE SET channel_id = $3, 
-                                 toggle     = True;
+        query = """WITH t AS (
+                        INSERT INTO messages (message_id, 
+                                              guild_id, 
+                                              channel_id) 
+                        VALUES ($1, $2, $3)
+                )
+                   
+                INSERT INTO boards (guild_id, 
+                                    channel_id, 
+                                    board_type) 
+                VALUES ($2, $3, $4) 
+                ON CONFLICT (channel_id) 
+                DO UPDATE SET channel_id = $3, 
+                              toggle     = True;
+                
                 """
-        await ctx.db.executemany(query, msg.id, ctx.guild.id, channel.id, 'trophy')
+        await ctx.db.execute(query, msg.id, ctx.guild.id, channel.id, 'trophy')
         await ctx.send(f'Trophyboard channel created: {channel.mention}')
 
     @add.command(name='donationboard')
@@ -525,9 +476,10 @@ class GuildConfiguration(commands.Cog):
         --------------------------------
         • `manage_channels` permissions
         """
-        if ctx.config.channel is not None:
-            return await ctx.send(
-                f'This server already has a donationboard ({ctx.config.channel.mention})')
+        if ctx.config:
+            if ctx.config.channel is not None:
+                return await ctx.send(
+                    f'This server already has a donationboard ({ctx.config.channel.mention})')
 
         perms = ctx.channel.permissions_for(ctx.me)
         if not perms.manage_channels:
@@ -555,10 +507,12 @@ class GuildConfiguration(commands.Cog):
 
         msg = await channel.send('Placeholder')
 
-        query = """INSERT INTO messages (message_id, 
-                                         guild_id, 
-                                         channel_id) 
-                   VALUES ($1, $2, $3);
+        query = """WITH t AS (
+                        INSERT INTO messages (message_id, 
+                                              guild_id, 
+                                              channel_id)
+                        VALUES ($1, $2, $3)
+                    )
                    INSERT INTO boards (guild_id, 
                                        channel_id, 
                                        board_type) 
@@ -608,9 +562,9 @@ class GuildConfiguration(commands.Cog):
                                 toggle,
                                 type
                                 )
-                VALUES ($1, $2, True, $4) 
+                VALUES ($1, $2, True, $3) 
                 ON CONFLICT (channel_id, type)
-                DO UPDATE channel_id = $2;
+                DO UPDATE SET channel_id = $2;
                 """
         await ctx.db.execute(query, ctx.guild.id, channel.id, 'donation')
 
@@ -655,9 +609,9 @@ class GuildConfiguration(commands.Cog):
                                     toggle,
                                     type
                                     )
-                    VALUES ($1, $2, True, $4) 
+                    VALUES ($1, $2, True, $3) 
                     ON CONFLICT (channel_id, type)
-                    DO UPDATE channel_id = $2;
+                    DO UPDATE SET channel_id = $2;
                     """
         await ctx.db.execute(query, ctx.guild.id, channel.id, 'trophy')
 
@@ -737,7 +691,7 @@ class GuildConfiguration(commands.Cog):
         ----------------------------
         • `manage_server` permissions
         """
-        if ctx.invoke_subcommand is None:
+        if ctx.invoked_subcommand is None:
             return await ctx.send_help(ctx.command)
 
     @remove.command(name='clan')
@@ -834,7 +788,7 @@ class GuildConfiguration(commands.Cog):
     @remove.command(name='donationboard', aliases=['donation board', 'donboard'])
     @checks.manage_guild()
     @requires_config('donationboard', invalidate=True)
-    async def remove_trophyboard(self, ctx):
+    async def remove_donationboard(self, ctx):
         """Removes the guild donationboard.
 
         Example
@@ -845,14 +799,18 @@ class GuildConfiguration(commands.Cog):
         ----------------------------
         • `manage_server` permissions
         """
-        if ctx.config.channel is None:
-            return await ctx.send(
-                f'This server doesn\'t have a donationboard.')
+        if not ctx.config:
+            return await ctx.send(f'This server doesn\'t have a donationboard.')
 
         query = "SELECT message_id FROM messages WHERE channel_id=$1;"
         messages = await self.bot.pool.fetch(query, ctx.config.channel_id)
         for n in messages:
             await self.bot.donationboard.safe_delete(n[0])
+
+        try:
+            await ctx.config.channel.delete(reason=f'Command done by {ctx.author} ({ctx.author.id})')
+        except (discord.Forbidden, discord.HTTPException):
+            pass
 
         query = """UPDATE boards 
                    SET channel_id = NULL,
@@ -885,11 +843,12 @@ class GuildConfiguration(commands.Cog):
         for n in messages:
             await self.bot.donationboard.safe_delete(n[0])
 
-        query = """UPDATE boards 
-                   SET channel_id = NULL,
-                       toggle     = False 
-                   WHERE channel_id = $1
-                """
+        try:
+            await ctx.config.channel.delete(reason=f'Command done by {ctx.author} ({ctx.author.id})')
+        except (discord.Forbidden, discord.HTTPException):
+            pass
+
+        query = "DELETE FROM boards WHERE channel_id = $1"
         await self.bot.pool.execute(query, ctx.config.channel_id)
         await ctx.send('Trophyboard sucessfully removed.')
 
@@ -901,10 +860,10 @@ class GuildConfiguration(commands.Cog):
         await ctx.db.execute(query, ctx.config.channel_id, 'donation')
         await ctx.confirm()
 
-    @remove.command(name='donationlog')
-    @requires_config('donationlog', invalidate=True)
+    @remove.command(name='trophylog')
+    @requires_config('trophylog', invalidate=True)
     @manage_guild()
-    async def remove_donationlog(self, ctx, channel: TextChannel = None):
+    async def remove_trophylog(self, ctx, channel: TextChannel = None):
         query = "DELETE FROM logs WHERE channel_id = $1 AND type = $2"
         await ctx.db.execute(query, ctx.config.channel_id, 'trophy')
         await ctx.confirm()
@@ -929,7 +888,8 @@ class GuildConfiguration(commands.Cog):
 
     @commands.group(invoke_without_command=True)
     async def edit(self, ctx):
-        pass
+        if ctx.invoked_subcommand is None:
+            await ctx.send_help(ctx.command)
 
     @edit.group(name='donationboard')
     @checks.manage_guild()
@@ -945,6 +905,9 @@ class GuildConfiguration(commands.Cog):
         ----------------------------
         • `manage_server` permissions
         """
+        if not ctx.config:
+            return await ctx.send('Please create a donationboard with `+help add donationboard`')
+
         p = await ctx.prompt('Would you like to edit all settings for the guild donationboard? '
                              'Else please see valid subcommands with `+help edit donationboard`.')
         if not p or p is False:
@@ -954,23 +917,23 @@ class GuildConfiguration(commands.Cog):
 
         def check(m):
             return m.author == ctx.author and m.channel == ctx.channel
-        await ctx.send('Please send the URL of the icon you wish to use.')
 
+        await ctx.send('Please send the URL of the icon you wish to use.')
         try:
             msg = await self.bot.wait_for('message', check=check, timeout=60.0)
         except asyncio.TimeoutError:
             return await ctx.send('You took too long! Aborting command...')
         await ctx.invoke(self.edit_donationboard_icon, url=msg.clean_content)
 
+        await ctx.send('Please send the title message you want to display.')
         try:
             msg = await self.bot.wait_for('message', check=check, timeout=60.0)
         except asyncio.TimeoutError:
             return await ctx.send('You took too long! Aborting command...')
-        await ctx.invoke(self.edit_donationboard_title, url=msg.clean_content)
 
-        # todo: interactive process to run through all subcommands one at time
-        #  (note: need to manually convert and pass in args)
-        pass
+        await ctx.invoke(self.edit_donationboard_title, title=msg.clean_content)
+
+        return await ctx.send('All done. Thanks!')
 
     @edit_donationboard.command(name='format')
     @requires_config('donationboard', invalidate=True)
@@ -1097,9 +1060,32 @@ class GuildConfiguration(commands.Cog):
         ----------------------------
         • `manage_server` permissions
         """
-        # todo: interactive process to run through all subcommands one at time
-        #  (note: need to manually convert and pass in args)
-        pass
+        p = await ctx.prompt('Would you like to edit all settings for the guild trophyboard? '
+                             'Else please see valid subcommands with `+help edit trophyboard`.')
+        if not p or p is False:
+            return
+
+        await ctx.invoke(self.edit_trophyboard_format)
+
+        def check(m):
+            return m.author == ctx.author and m.channel == ctx.channel
+
+        await ctx.send('Please send the URL of the icon you wish to use.')
+        try:
+            msg = await self.bot.wait_for('message', check=check, timeout=60.0)
+        except asyncio.TimeoutError:
+            return await ctx.send('You took too long! Aborting command...')
+        await ctx.invoke(self.edit_trophyboard_icon, url=msg.clean_content)
+
+        await ctx.send('Please send the title message you want to display.')
+        try:
+            msg = await self.bot.wait_for('message', check=check, timeout=60.0)
+        except asyncio.TimeoutError:
+            return await ctx.send('You took too long! Aborting command...')
+
+        await ctx.invoke(self.edit_trophyboard_title, title=msg.clean_content)
+
+        return await ctx.send('All done. Thanks!')
 
     @edit_trophyboard.command(name='format')
     @requires_config('trophyboard', invalidate=True)
@@ -1184,8 +1170,9 @@ class GuildConfiguration(commands.Cog):
         await ctx.db.execute(query, url, ctx.config.channel_id)
         await ctx.confirm()
 
-    @edit_donationboard.command(name='title')
+    @edit_trophyboard.command(name='title')
     @requires_config('trophyboard', invalidate=True)
+    @manage_guild()
     async def edit_trophyboard_title(self, ctx, *, title: str):
         """Specify a title for the guild's trophyboard.
 
@@ -1246,7 +1233,7 @@ class GuildConfiguration(commands.Cog):
     @requires_config('trophylog', invalidate=True)
     @manage_guild()
     async def edit_trophylog_interval(self, ctx, channel: typing.Optional[discord.TextChannel] = None,
-                                        minutes: int = 1):
+                                      minutes: int = 1):
         """Update the interval (in minutes) for which the bot will log your trophies.
 
         Parameters
@@ -1327,257 +1314,6 @@ class GuildConfiguration(commands.Cog):
             ctx.guild = self.bot.get_guild(guild_id)
 
         self.refresh.reset_cooldown(ctx)
-        await ctx.confirm()
-
-    @commands.command()
-    async def accounts(self, ctx, *, clans: ClanConverter = None):
-        """Get accounts and claims for all accounts in clans in a server.
-
-        Parameters
-        ------------------
-        **Optional**: this command will default to all clans in guild.
-
-        Pass in a clash clan:
-            • Clan tag
-            • Clan name (must be claimed to server)
-            • `all`, `server`, `guild` for all clans in guild
-
-        Example
-        ------------
-        • `+accounts #CLAN_TAG`
-        • `+accounts all`
-        """
-        if not clans:
-            clans = await ctx.get_clans()
-
-        players = []
-        for n in clans:
-            players.extend(x for x in n.members)
-
-        final = []
-
-        season_id = await self.bot.seasonconfig.get_season_id()
-        query = "SELECT user_id FROM players WHERE player_tag = $1 AND season_id = $2"
-        for n in players:
-            fetch = await ctx.db.fetchrow(query, n.tag, season_id)
-            if not fetch:
-                final.append([n.name, n.tag, ' '])
-                continue
-            name = str(self.bot.get_user(fetch[0]))
-
-            if len(name) > 20:
-                name = name[:20] + '..'
-            final.append([n.name, n.tag, name])
-
-        table = formatters.TabularData()
-        table.set_columns(['IGN', 'Tag', 'Claimed By'])
-        table.add_rows(final)
-
-        messages = math.ceil(len(final) / 20)
-        entries = []
-
-        for i in range(int(messages)):
-
-            results = final[i*20:(i+1)*20]
-
-            table = formatters.TabularData()
-            table.set_columns(['IGN', 'Tag', "Claimed By"])
-            table.add_rows(results)
-
-            entries.append(f'```\n{table.render()}\n```')
-
-        p = paginator.Pages(ctx, entries=entries, per_page=1)
-        p.embed.colour = self.bot.colour
-        p.embed.title = f"Accounts for {', '.join(f'{c.name}' for c in clans)}"
-
-        await p.paginate()
-
-    @commands.command(name='getclaims', aliases=['gc', 'gclaims', 'get_claims'])
-    async def get_claims(self, ctx, *,
-                         player: typing.Union[discord.Member, PlayerConverter] = None):
-        """Get accounts and claims for a player or discord user.
-
-        Parameters
-        ------------------
-        **Optional**: this command will default to all accounts for the person calling the command.
-
-        Pass in a clash account, or a discord user:
-            • User ID (discord)
-            • Mention (@user, discord)
-            • user#discrim (discord)
-            • Player tag (clash account)
-            • Player name (must be in a clan claimed in server)
-
-        Example
-        --------------
-        • `+get_claims @my_friend`
-        • `+get_claims my_friend#1208
-        • `+gclaims #PLAYER_TAG`
-        • `+gc player name`
-
-        Aliases
-        -------------
-        • `+get_claims` (primary)
-        • `+gclaims`
-        • `+gc`
-        """
-        season_id = await self.bot.seasonconfig.get_season_id()
-        if not player:
-            player = ctx.author
-
-        if isinstance(player, discord.Member):
-            query = "SELECT player_tag FROM players WHERE user_id = $1 AND season_id = $2"
-            fetch = await ctx.db.fetch(query, player.id, season_id)
-            if not fetch:
-                return await ctx.send(f'{str(player)} has no claimed accounts.')
-            player = await ctx.coc.get_players(n[0] for n in fetch).flatten()
-        else:
-            player = [player]
-
-        query = "SELECT user_id FROM players WHERE player_tag = $1 AND season_id = $2"
-
-        final = []
-        for n in player:
-            fetch = await ctx.db.fetch(query, n.tag, season_id)
-            if not fetch:
-                final.append([n.name, n.tag, ' '])
-                continue
-
-            name = str(self.bot.get_user(fetch[0]))
-
-            if len(name) > 20:
-                name = name[:20] + '..'
-            final.append([n.name, n.tag, name])
-
-        table = formatters.TabularData()
-        table.set_columns(['IGN', 'Tag', 'Claimed By'])
-        table.add_rows(final)
-        await ctx.send(f'```\n{table.render()}\n```')
-
-    @commands.command(name='autoclaim', aliases=['auto_claim'])
-    @checks.manage_guild()
-    async def auto_claim(self, ctx, *, clan: ClanConverter = None):
-        """Automatically claim all accounts in server, through an interactive process.
-
-        It will go through all players in claimed clans in server, matching them to discord users where possible.
-        The interactive process is easy to use, and will try to guide you through as easily as possible
-
-        Parameters
-        -----------------
-        Pass in any of the following:
-
-            • A clan tag
-            • A clan name (must be claimed clan)
-            • `all`, `server`, `guild` will get all clans claimed in the server
-            • None passed will get all clans claimed in the server
-
-        Example
-        -------------
-        • `+auto_claim #CLAN_TAG`
-        • `+auto_claim my clan name`
-        • `+aclaim all`
-        • `+aclaim`
-
-        Aliases
-        --------------
-        • `+auto_claim` (primary)
-        • `+aclaim`
-
-        Required Permissions
-        ------------------------------
-        • `manage_server` permissions
-        """
-        season_id = await self.bot.seasonconfig.get_season_id()
-        failed_players = []
-
-        if not clan:
-            clan = await ctx.get_clans()
-
-        prompt = await ctx.prompt('Would you like to be asked to confirm before the bot claims matching accounts? '
-                                  'Else you can un-claim and reclaim if there is an incorrect claim.')
-        if prompt is None:
-            return
-
-        match_player = self.match_player
-
-        for c in clan:
-            for member in c.members:
-                query = "SELECT * FROM players WHERE player_tag = $1 AND user_id IS NOT NULL " \
-                        "AND season_id = $2;"
-                fetch = await ctx.db.fetchrow(query, member.tag, season_id)
-                if fetch:
-                    continue
-
-                results = await match_player(member, ctx.guild, prompt, ctx)
-                if not results:
-                    await self.bot.log_info(ctx.channel.id, f'[auto-claim]: No members found for {member.name} ({member.tag})',
-                                            colour=discord.Colour.red())
-                    failed_players.append(member)
-                    continue
-                    # no members found in guild with that player name
-                if isinstance(results, discord.abc.User):
-                    await self.bot.log_info(ctx.channel.id, f'[auto-claim]: {member.name} ({member.tag}) '
-                                            f'has been claimed to {str(results)} ({results.id})',
-                                            colour=discord.Colour.green())
-                    continue
-
-                table = formatters.TabularData()
-                table.set_columns(['Option', 'user#disrim', 'UserID'])
-                table.add_rows([i + 1, str(n), n.id] for i, n in enumerate(results))
-                result = await ctx.prompt(f'[auto-claim]: For player {member.name} ({member.tag})\n'
-                                          f'Corresponding members found:\n'
-                                          f'```\n{table.render()}\n```', additional_options=len(results))
-                if isinstance(result, int):
-                    query = "UPDATE players SET user_id = $1 WHERE player_tag = $2 AND season_id = $3"
-                    await self.bot.pool.execute(query, results[result].id, member.tag, season_id)
-                if result is None or result is False:
-                    await self.bot.log_info(ctx.channel.id, f'[auto-claim]: For player {member.name} ({member.tag})\n'
-                                               f'Corresponding members found, none claimed:\n'
-                                               f'```\n{table.render()}\n```',
-                                            colour=discord.Colour.gold())
-                    failed_players.append(member)
-                    continue
-
-                await self.bot.log_info(ctx.channel.id, f'[auto-claim]: {member.name} ({member.tag}) '
-                                                        f'has been claimed to {str(results[result])} ({results[result].id})',
-                                        colour=discord.Colour.green())
-        prompt = await ctx.prompt("Would you like to go through a list of players who weren't claimed and "
-                                  "claim them now?\nI will walk you through it...")
-        if not prompt:
-            await ctx.confirm()
-            return
-        for fail in failed_players:
-            m = await ctx.send(f'Player: {fail.name} ({fail.tag}), Clan: {fail.clan.name} ({fail.clan.tag}).'
-                               f'\nPlease send either a UserID, user#discrim combo, '
-                               f'or mention of the person you wish to claim this account to.')
-
-            def check(m):
-                return m.author == ctx.author and m.channel == ctx.channel
-            msg = await self.bot.wait_for('message', check=check)
-            try:
-                member = await commands.MemberConverter().convert(ctx, msg.content)
-            except commands.BadArgument:
-                await ctx.send('Discord user not found. Moving on to next clan member. Please claim them manually.')
-                continue
-            query = "UPDATE players SET user_id = $1 WHERE player_tag = $2 AND season_id = $3"
-            await self.bot.pool.execute(query, member.id, fail.tag, season_id)
-            await self.bot.log_info(ctx.channel.id, f'[auto-claim]: {fail.name} ({fail.tag}) '
-                                               f'has been claimed to {str(member)} ({member.id})',
-                                    colour=discord.Colour.green())
-            try:
-                await m.delete()
-                await msg.delete()
-            except (discord.Forbidden, discord.HTTPException):
-                pass
-
-        prompt = await ctx.prompt('Would you like to have the bot to search for players to claim when '
-                                  'someone joins the clan/server? I will let you know what I find '
-                                  'and you must confirm/deny if you want them claimed.')
-        if prompt is True:
-            query = "UPDATE guilds SET auto_claim = True WHERE guild_id = $1;"
-            await ctx.db.execute(query, ctx.guild.id)
-
-        await ctx.send('All done. Thanks!')
         await ctx.confirm()
 
 
