@@ -36,6 +36,70 @@ class GuildConfiguration(commands.Cog):
         if after_invoke:
             await after_invoke(ctx)
 
+    @staticmethod
+    async def insert_player(connection, player, season_id, in_event: bool = False, event_id: int = None):
+        query = """INSERT INTO players (
+                                    player_tag,
+                                    donations,
+                                    received,
+                                    trophies,
+                                    season_id,
+                                    start_friend_in_need,
+                                    start_sharing_is_caring,
+                                    start_attacks,
+                                    start_defenses,
+                                    start_best_trophies,
+                                    start_update
+                                    )
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, True)
+                    ON CONFLICT (player_tag, season_id) 
+                    DO NOTHING
+                """
+        await connection.execute(query,
+                                 player.tag,
+                                 player.donations,
+                                 player.received,
+                                 player.trophies,
+                                 season_id,
+                                 player.achievements_dict['Friend in Need'].value,
+                                 player.achievements_dict['Sharing is caring'].value,
+                                 player.attack_wins,
+                                 player.defense_wins,
+                                 player.best_trophies
+                                 )
+        if in_event:
+            event_query = """INSERT INTO eventplayers (
+                                            player_tag,
+                                            donations,
+                                            received,
+                                            trophies,
+                                            event_id,
+                                            start_friend_in_need,
+                                            start_sharing_is_caring,
+                                            start_attacks,
+                                            start_defenses,
+                                            start_best_trophies,
+                                            start_update
+                                            )
+                            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, True)
+                            ON CONFLICT (player_tag, event_id)
+                            DO NOTHING
+                        """
+            await connection.execute(event_query,
+                                     player.tag,
+                                     player.donations,
+                                     player.received,
+                                     player.trophies,
+                                     event_id,
+                                     player.achievements_dict['Friend in Need'].value,
+                                     player.achievements_dict['Sharing is caring'].value,
+                                     player.attack_wins,
+                                     player.defense_wins,
+                                     player.best_trophies
+                                     )
+
+
+
     @commands.group()
     async def add(self, ctx):
         """Allows the user to add a variety of features to the bot.
@@ -120,25 +184,18 @@ class GuildConfiguration(commands.Cog):
         query = "INSERT INTO clans (clan_tag, guild_id, clan_name, in_event) VALUES ($1, $2, $3, $4)"
         await ctx.db.execute(query, clan.tag, ctx.guild.id, clan.name, in_event)
 
-        query = "INSERT INTO players (player_tag, donations, received, trophies, season_id) " \
-                "VALUES ($1, $2, $3, $4, $5) ON CONFLICT (player_tag, season_id) DO NOTHING"
+        await ctx.send('Clan has been added. Please wait a moment while all players are added.')
 
         season_id = await self.bot.seasonconfig.get_season_id()
-        for member in clan.itermembers:
-            await ctx.db.execute(query, member.tag, member.donations, member.received, member.trophies, season_id)
+        async for member in clan.get_detailed_members():
+            await self.insert_player(ctx.db, member, season_id, in_event,
+                                     getattr(ctx.config, 'event_id', None))
 
-        if in_event:
-            query = "INSERT INTO eventplayers (player_tag, donations, received, trophies, event_id) " \
-                    "VALUES ($1, $2, $3, $4, $5) ON CONFLICT (player_tag, event_id) DO NOTHING"
-            for member in clan.itermembers:
-                await ctx.db.execute(query, member.tag, member.donations, member.received, member.trophies,
-                                     ctx.config.event_id)
-
-        await ctx.confirm()
         await ctx.send('Clan and all members have been added to the database (if not already added)')
         self.bot.dispatch('clan_claim', ctx, clan)
 
     @add.command(name='player')
+    @requires_config('event')
     async def add_player(self, ctx, *, player: PlayerConverter):
         """Manually add a clash account to the database. This does not claim the account.
 
@@ -154,13 +211,17 @@ class GuildConfiguration(commands.Cog):
         • `+add player #PLAYER_TAG`
         • `+add player my account name`
         """
-        query = "INSERT INTO players (player_tag, donations, received, trophies, season_id) " \
-                "VALUES ($1, $2, $3, $4, $5) ON CONFLICT (player_tag, season_id) DO NOTHING"
-        await ctx.db.execute(query, player.tag, player.donations, player.received, player.trophies,
-                             await self.bot.seasonconfig.get_season_id())
-        await ctx.confirm()
+        if ctx.config:
+            prompt = await ctx.prompt(f'Do you wish to add {player} to the current event?')
+
+        season_id = await self.bot.seasonconfig.get_season_id()
+        await self.insert_player(ctx.db, player, season_id, prompt,
+                                 getattr(ctx.config, 'event_id', None))
+
+        await ctx.send('All done!')
 
     @add.command(name='discord', aliases=['claim', 'link'])
+    @requires_config('event')
     async def add_discord(self, ctx, user: typing.Optional[discord.Member] = None, *,
                           player: PlayerConverter):
         """Link a clash account to your discord account
@@ -192,13 +253,10 @@ class GuildConfiguration(commands.Cog):
         fetch = await ctx.db.fetchrow(query, player.tag, season_id)
 
         if not fetch:
-            query = "INSERT INTO players (player_tag, donations, received, trophies, user_id, season_id) " \
-                    "VALUES ($1, $2, $3, $4, $5, $6)"
-            await ctx.db.execute(query, player.tag, player.donations, player.received, player.trophies,
-                                 user.id, season_id)
-            return await ctx.confirm()
-
-        if fetch[0]:
+            prompt = await ctx.prompt(f'Do you wish to add {player} to the current event?')
+            await self.insert_player(ctx.db, player, season_id, prompt,
+                                     getattr(ctx.config, 'event_id', None))
+        else:
             user = self.bot.get_user(fetch[0])
             raise commands.BadArgument(f'Player {player.name} '
                                        f'({player.tag}) has already been claimed by {str(user)}')
@@ -345,8 +403,8 @@ class GuildConfiguration(commands.Cog):
 
         event_end = datetime.datetime.combine(end_date, end_time)
 
-        query = 'INSERT INTO events (guild_id, event_name, start, finish) VALUES ($1, $2, $3, $4)'
-        await ctx.db.execute(query, ctx.guild.id, event_name, event_start, event_end)
+        query = 'INSERT INTO events (guild_id, event_name, start, finish) VALUES ($1, $2, $3, $4) RETURNING id'
+        event_id = await ctx.db.fetchrow(query, ctx.guild.id, event_name, event_start, event_end)
         log.info(f"{event_name} added to events table for {ctx.guild} by {ctx.author}")
 
         try:
@@ -371,6 +429,13 @@ class GuildConfiguration(commands.Cog):
                 else:
                     await ctx.db.executemany(query, [[n.tag, n.name, ctx.channel.id, ctx.guild.id, True] for n in clans])
                     clan_names += '\n'.join(n.name for n in clans)
+
+                await ctx.send('Adding players to the database... please be patient; this may take a while.')
+
+                season_id = await self.bot.seasonconfig.get_season_id()
+                for n in clans:
+                    async for player in n.get_detailed_members:
+                        await self.insert_player(ctx.db, player, season_id, True, event_id[0])
 
             fmt_tag = (f'Clans added for this event:\n' 
                        f'{clan_names}')
@@ -1305,14 +1370,16 @@ class GuildConfiguration(commands.Cog):
         if not clans:
             clans = await ctx.get_clans()
         query = """UPDATE players 
-                   SET donations = $1, received = $2
-                   WHERE player_tag = $3
+                   SET donations = $1, 
+                       received = $2,
+                       trophies = $3
+                   WHERE player_tag = $4
                    AND donations <= $1
                    AND received <= $2
                 """
         for clan in clans:
             for member in clan.members:
-                await ctx.db.execute(query, member.donations, member.received, member.tag)
+                await ctx.db.execute(query, member.donations, member.received, member.trophies, member.tag)
         await ctx.confirm()
 
     @commands.command()

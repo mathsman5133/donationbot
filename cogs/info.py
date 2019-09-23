@@ -180,13 +180,14 @@ class Info(commands.Cog):
     """Misc commands related to the bot."""
     def __init__(self, bot):
         self.bot = bot
+
         bot.help_command = HelpCommand()
         bot.help_command.cog = self
-        self.bot.invite = self.invite_link
-        self.bot.support_invite = self.support_invite
-        self.bot.front_help_page_false = []
+        bot.invite = self.invite_link
+        bot.support_invite = self.support_invite
+        bot.front_help_page_false = []
 
-        self.dblpy = dbl.DBLClient(self.bot, self.bot.dbl_token)
+        self.dbl_client = dbl.DBLClient(self.bot, self.bot.dbl_token)
         self.dbl_task.start()
 
         self.process = psutil.Process()
@@ -197,8 +198,8 @@ class Info(commands.Cog):
     async def dbl_task(self):
         log.info('Attempting to post server count')
         try:
-            await self.dblpy.post_guild_count()
-            log.info('Posted server count ({})'.format(self.dblpy.guild_count()))
+            await self.dbl_client.post_guild_count()
+            log.info('Posted server count ({})'.format(self.dbl_client.guild_count()))
         except Exception as e:
             log.exception('Failed to post server count\n{}: {}'.format(type(e).__name__, e))
 

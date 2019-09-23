@@ -6,7 +6,19 @@ CREATE TABLE players (
     received INTEGER,
     trophies integer,
     user_id BIGINT,
-    season_id integer
+    season_id integer,
+    start_update boolean default false,
+    final_update boolean default false,
+    start_friend_in_need integer default 0,
+    end_friend_in_need integer default 0,
+    start_sharing_is_caring integer default 0,
+    end_friend_in_need integer default 0,
+    start_attacks integer default 0,
+    end_attacks integer default 0,
+    start_defenses integer default 0,
+    end_defenses integer default 0,
+    start_best_trophies integer default 0,
+    end_best_trophies integer default 0
     );
 create index player_tag_idx on players (player_tag);
 create index user_id_idx on players (user_id);
@@ -20,7 +32,19 @@ CREATE TABLE eventplayers (
     received integer,
     event_id integer,
     live boolean,
-    trophies integer
+    trophies integer,
+    start_update boolean default false,
+    final_update boolean default false,
+    start_friend_in_need integer default 0,
+    end_friend_in_need integer default 0,
+    start_sharing_is_caring integer default 0,
+    end_friend_in_need integer default 0,
+    start_attacks integer default 0,
+    end_attacks integer default 0,
+    start_defenses integer default 0,
+    end_defenses integer default 0,
+    start_best_trophies integer default 0,
+    end_best_trophies integer default 0
 );
 create index player_tag_idx on players (player_tag);
 create index user_id_idx on players (user_id);

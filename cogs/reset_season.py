@@ -1,82 +1,122 @@
-import asyncio
-import discord
 import datetime
+import logging
 from dateutil import relativedelta
 
-from discord.ext import commands
+from discord.ext import commands, tasks
+
+log = logging.getLogger(__name__)
 
 
 class SeasonConfig(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.season_id = 0
-        self.season_sleeper_task = bot.loop.create_task(self.next_season_sleeper())
-
-    def cog_unload(self):
-        self.season_sleeper_task.cancel()
-
-    async def get_season_id(self):
-        if not self.season_id:
-            query = "SELECT id FROM seasons WHERE start < CURRENT_TIMESTAMP " \
-                    "ORDER BY start DESC LIMIT 1;"
-            fetch = await self.bot.pool.fetchrow(query)
-            if not fetch:
-                await self.new_season()
-                return await self.get_season_id()
-
-            self.season_id = fetch[0]
-        return self.season_id
 
     @staticmethod
     def next_last_monday():
         return datetime.datetime.utcnow() + \
                relativedelta.relativedelta(day=31, weekday=relativedelta.MO(-1))
 
+    @tasks.loop(time=datetime.time(hour=16))
+    async def start_new_season(self):
+        log.debug('Starting season reset loop.')
+        now = datetime.datetime.utcnow()
+        next_monday = self.next_last_monday()
+
+        if now.day != next_monday.day:
+            return
+
+        log.critical('New season starting - via loop.')
+        await self.new_season()
+
     async def new_season(self):
         query = "INSERT INTO seasons (start, finish) VALUES ($1, $2)"
         await self.bot.pool.execute(query, datetime.datetime.utcnow(), self.next_last_monday())
-        self.season_id = await self.get_season_id()
-        query = "INSERT INTO players (player_tag, donations, received, user_id, season_id) " \
-                "SELECT player_tag, 0, 0, user_id, season_id+1 FROM players WHERE season_id=$1"
-        await self.bot.pool.execute(query, await self.get_season_id())
-        await self.update_fin_sic()
+
+        self.season_id = await self.get_season_id(refresh=True)
+
+        query = """INSERT INTO players (
+                            player_tag,
+                            donations,
+                            received,
+                            user_id,
+                            season_id
+                            )
+                    SELECT player_tag,
+                           0,
+                           0,
+                           user_id,
+                           season_id + 1
+                    FROM players
+                    WHERE season_id = $1
+                """
+        await self.bot.pool.execute(query, self.season_id - 1)
+
+    async def get_season_id(self, refresh: bool = False):
+        if self.season_id and not refresh:
+            return self.season_id
+
+        query = "SELECT id FROM seasons WHERE start < CURRENT_TIMESTAMP ORDER BY start DESC;"
+        fetch = await self.bot.pool.fetchrow(query)
+        if not fetch:
+            return
+
+        self.season_id = fetch[0]
+        return self.season_id
 
     async def update_fin_sic(self):
-        query = "SELECT DISTINCT player_tag FROM players WHERE season_id=$1"
+        query = "SELECT DISTINCT player_tag FROM players WHERE season_id = $1 AND start_update = False"
         fetch = await self.bot.pool.fetch(query, await self.get_season_id())
+
+        query = """UPDATE players SET friend_in_need = x.friend_in_need, 
+                                      sharing_is_caring = x.sharing_is_caring,
+                                      start_attacks = x.start_attacks,
+                                      start_defenses = x.start_defenses,
+                                      start_best_trophies = x.start_best_trophies
+                                       
+                    FROM(
+                        SELECT x.player_tag, 
+                               x.friend_in_need, 
+                               x.sharing_is_caring,
+                               x.start_attacks,
+                               x.start_defenses,
+                               x.start_best_trophies
+                               
+                        FROM jsonb_to_recordset($1::jsonb)
+                        AS x(
+                            player_tag TEXT, 
+                            friend_in_need INTEGER, 
+                            sharing_is_caring INTEGER,
+                            start_attacks INTEGER,
+                            start_defenses INTEGER,
+                            start_best_trophies INTEGER
+                            )
+                        )
+                AS x
+                WHERE players.player_tag = x.player_tag
+                AND players.season_id=$2
+                """
+        season_id = await self.get_season_id()
+
+        counter = 0
         data = []
         async for player in self.bot.coc.get_players((n[0] for n in fetch)):
+            if counter == 100:
+                # This is basically to ensure we don't have 10k records in memory at any one time.
+                # Safety net incase something fails, too.
+                await self.bot.pool.execute(query, data, season_id)
+                data.clear()
+                counter = 0
+
             data.append({
                 'player_tag': player.tag,
                 'friend_in_need': player.achievements_dict['Friend in Need'].value,
-                'sharing_is_caring': player.achievements_dict['Sharing is caring'].value
+                'sharing_is_caring': player.achievements_dict['Sharing is caring'].value,
+                'start_attacks': player.attack_wins,
+                'start_defenses': player.defense_wins,
+                'start_best_trophies': player.best_trophies
             })
-        query = """UPDATE players SET friend_in_need = x.friend_in_need, 
-                                      sharing_is_caring = x.sharing_is_caring 
-                        FROM(
-                            SELECT x.player_tag, x.friend_in_need, x.sharing_is_caring
-                                FROM jsonb_to_recordset($1::jsonb)
-                            AS x(player_tag TEXT, friend_in_need INTEGER, sharing_is_caring INTEGER)
-                            )
-                    AS x
-                    WHERE players.player_tag = x.player_tag
-                    AND players.season_id=$2
-                """
-        await self.bot.pool.execute(query, data, await self.get_season_id())
-
-    async def next_season_sleeper(self):
-        try:
-            while not self.bot.is_closed():
-                delta = datetime.datetime.utcnow() - self.next_last_monday()
-                await asyncio.sleep(delta.total_seconds())
-                self.season_id = 0
-                await self.get_season_id()
-
-        except asyncio.CancelledError:
-            raise
-        except (OSError, discord.ConnectionClosed):
-            self.season_sleeper_task.cancel()
-            self.season_sleeper_task = self.bot.loop.create_task(self.next_season_sleeper())
+            counter += 1
 
     @commands.command()
     @commands.is_owner()
@@ -84,17 +124,19 @@ class SeasonConfig(commands.Cog):
         prompt = await ctx.prompt('Are you sure?')
         if not prompt:
             return
-        self.season_id = 0
-        season_id = await self.get_season_id()
+
+        season_id = await self.get_season_id(refresh=True)
         if not season_id:
-            return await ctx.confirm()
-        prompt = await ctx.prompt('Current season found. '
-                                  'Would you like to create a new one anyway?')
+            return await ctx.send('Something strange happened...')
+
+        prompt = await ctx.prompt(f'Current season found: ID {season_id}.\n'
+                                  f'Would you like to create a new one anyway?')
+
         if not prompt:
             return
+
         await self.new_season()
-        self.season_id = 0
-        await self.get_season_id()
+        await self.get_season_id(refresh=True)
         await ctx.confirm()
 
     @commands.command()
@@ -102,6 +144,9 @@ class SeasonConfig(commands.Cog):
     async def refreshfin(self, ctx):
         await self.update_fin_sic()
         await ctx.confirm()
+
+    async def event_management(self):
+        pass  # todo: management for start and end of events
 
 
 def setup(bot):
