@@ -9,28 +9,13 @@ import textwrap
 
 from discord.ext import commands
 
+from botlog import setup_logging
 from cogs.utils import context
 from cogs.utils.db import Table
 from cogs.utils.error_handler import error_handler, discord_event_error, clash_event_error
 from cogs.utils.paginator import CannotPaginate
 from cogs.utils.emoji_lookup import misc
 from cogs.utils.cache import cache
-
-import logging
-
-logging.basicConfig(level=logging.INFO)
-log = logging.getLogger(__name__)
-
-#
-# class Cache(coc.Cache):
-#     @staticmethod
-#     def create_default_cache(max_size, ttl):
-#         return LRU(max_size)
-#
-#     @property
-#     def player_config(self):
-#         return coc.CacheConfig(1, None)
-
 
 coc_client = coc.login(creds.email, creds.password, client=coc.EventsClient,
                        key_names='windows', throttle_limit=40)
@@ -147,6 +132,7 @@ if __name__ == '__main__':
 
         bot = DonationBot()
         bot.pool = pool  # add db as attribute
+        setup_logging(bot)
         bot.run(creds.bot_token)  # run bot
 
     except Exception:
