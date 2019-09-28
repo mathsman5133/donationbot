@@ -6,6 +6,7 @@ import time
 from functools import wraps
 
 from lru import LRU
+from coc import Cache, SearchClan, SearchPlayer
 
 def _wrap_and_store_coroutine(cache, key, coro):
     async def func():
@@ -42,8 +43,9 @@ class Strategy(enum.Enum):
     lru = 1
     raw = 2
     timed = 3
+    redis = 4
 
-def cache(maxsize=128, strategy=Strategy.lru, ignore_kwargs=False):
+def cache(maxsize=128, strategy=Strategy.redis, ignore_kwargs=False):
     def decorator(func):
         if strategy is Strategy.lru:
             _internal_cache = LRU(maxsize)
@@ -53,6 +55,9 @@ def cache(maxsize=128, strategy=Strategy.lru, ignore_kwargs=False):
             _stats = lambda: (0, 0)
         elif strategy is Strategy.timed:
             _internal_cache = ExpiringCache(maxsize)
+            _stats = lambda: (0, 0)
+        else:
+            _internal_cache = None
             _stats = lambda: (0, 0)
 
         def _make_key(args, kwargs):
@@ -77,6 +82,29 @@ def cache(maxsize=128, strategy=Strategy.lru, ignore_kwargs=False):
                     key.append(_true_repr(v))
 
             return ':'.join(key)
+
+        @wraps(func)
+        async def async_wrapper(*args, **kwargs):
+            redis = args[0].bot.redis
+
+            key = _make_key(args, kwargs)
+
+            try:
+                value = await redis.get(key)
+            except KeyError:
+                value = func(*args, **kwargs)
+
+                if inspect.isawaitable(value):
+                    value = await value
+                    await redis.set(key, value)
+                    return value
+
+                await redis.set(key, value)
+                return value
+            else:
+                if asyncio.iscoroutinefunction(func):
+                    return await value
+                return value
 
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -115,10 +143,88 @@ def cache(maxsize=128, strategy=Strategy.lru, ignore_kwargs=False):
                 except KeyError:
                     continue
 
-        wrapper.cache = _internal_cache
-        wrapper.get_key = lambda *args, **kwargs: _make_key(args, kwargs)
-        wrapper.invalidate = _invalidate
-        wrapper.get_stats = _stats
-        wrapper.invalidate_containing = _invalidate_containing
-        return wrapper
+        if strategy is Strategy.redis:
+            wrap = async_wrapper
+        else:
+            wrap = wrapper
+
+        wrap.cache = _internal_cache
+        wrap.get_key = lambda *args, **kwargs: _make_key(args, kwargs)
+        wrap.invalidate = _invalidate
+        wrap.get_stats = _stats
+        wrap.invalidate_containing = _invalidate_containing
+        return wrap
+
     return decorator
+
+
+class COCCustomCache(Cache):
+    @staticmethod
+    def create_default_cache(max_size, ttl):
+        return
+
+    @staticmethod
+    def make_key(cache_type, key):
+        return f'{cache_type}:{key}'
+
+    @staticmethod
+    def object_type(cache_type):
+        lookup = {
+            'search_clans': SearchClan,
+            'search_players': SearchPlayer
+        }
+        return lookup[cache_type]
+
+    async def get(self, cache_type, key, new_key=True):
+        if new_key:
+            key = self.make_key(cache_type, key)
+
+        value = await self.client.redis.get(key, encoding='utf-8')
+        if not value:
+            return None
+
+        if cache_type == 'search_clans':
+            return self.object_type(cache_type)(data=value, client=self.client)
+        return self.object_type(cache_type)(data=value, http=self.client.http)
+
+    async def set(self, cache_type, key, value, new_key=True):
+        if new_key:
+            key = self.make_key(cache_type, key)
+        expiry = self.get_ttl(cache_type)
+        await self.client.redis.set(key, value._data, expire=expiry)
+
+    async def pop(self, cache_type, key, new_key=True):
+        if new_key:
+            key = self.make_key(cache_type, key)
+        value = await self.client.redis.lpop(key, encoding='utf-8')
+        if not value:
+            return None
+
+        if cache_type == 'search_clans':
+            return self.object_type(cache_type)(data=value, client=self.client)
+        return self.object_type(cache_type)(data=value, http=self.client.http)
+
+    async def keys(self, cache_type, limit=0):
+        cur, keys = await self.client.redis.scan(match=f'{cache_type}*', count=limit)
+        return keys
+
+    async def values(self, cache_type):
+        keys = await self.keys(cache_type)
+
+        return (self.get(cache_type, k, new_key=False) for k in keys
+                if self.get(cache_type, k, new_key=False))
+
+    async def items(self, cache_type):
+        keys = await self.keys(cache_type)
+        return ((k, self.get(cache_type, k, new_key=False)) for k in keys
+                if self.get(cache_type, k, new_key=False))
+
+    async def clear(self, cache_type):
+        await self.client.redis.flushdb()
+
+    async def get_limit(self, cache_type, limit: int = None):
+        keys = await self.keys(cache_type, limit=limit)
+        return ((k, self.get(cache_type, k, new_key=False)) for k in keys
+                if self.get(cache_type, k, new_key=False))
+
+

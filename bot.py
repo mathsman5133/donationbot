@@ -1,3 +1,4 @@
+import aioredis
 import asyncio
 import datetime
 import coc
@@ -15,10 +16,25 @@ from cogs.utils.db import Table
 from cogs.utils.error_handler import error_handler, discord_event_error, clash_event_error
 from cogs.utils.paginator import CannotPaginate
 from cogs.utils.emoji_lookup import misc
-from cogs.utils.cache import cache
+from cogs.utils.cache import cache, COCCustomCache
 
-coc_client = coc.login(creds.email, creds.password, client=coc.EventsClient,
-                       key_names='windows', throttle_limit=40)
+
+class CustomCOC(coc.EventsClient):
+    def __init__(self, **options):
+        super().__init__(**options)
+        self.redis = self.loop.run_until_complete(aioredis.create_redis('redis://localhost'))
+
+    async def on_client_close(self):
+        self.redis.close()
+        await self.redis.wait_closed()
+
+    async def on_event_error(self, event_name, exception, *args, **kwargs):
+        await clash_event_error(self, event_name, exception, *args, **kwargs)
+
+
+coc_client = coc.login(creds.email, creds.password, client=CustomCOC,
+                       key_names='windows', throttle_limit=40, cache=COCCustomCache)
+
 
 initial_extensions = (
     'cogs.admin',
@@ -29,6 +45,7 @@ initial_extensions = (
     'cogs.donations',
     'cogs.events',
     'cogs.guildsetup',
+    'cogs.info',
     'cogs.reset_season',
     'cogs.seasonstats',
     #'cogs.trophies',
@@ -44,7 +61,10 @@ class DonationBot(commands.Bot):
                          fetch_offline_members=True)
 
         self.colour = discord.Colour.blurple()
+
         self.coc = coc_client
+        self.coc.bot = self
+
         self.client_id = creds.client_id
         self.dbl_token = creds.dbl_token
         self.owner_id = 230214242618441728
@@ -70,7 +90,6 @@ class DonationBot(commands.Bot):
         # error handlers
         self.on_command_error = error_handler
         self.on_error = discord_event_error
-        coc_client.add_events(clash_event_error)
 
         for e in initial_extensions:
             try:

@@ -191,8 +191,18 @@ class Info(commands.Cog):
         self.dbl_task.start()
 
         self.process = psutil.Process()
-        self.cog_before_invoke = bot.get_cog('GuildSetup').cog_before_invoke
-        self.cog_after_invoke = bot.get_cog('GuildSetup').cog_after_invoke
+
+    async def cog_command_error(self, ctx, error):
+        print(error)
+        log.critical(error)
+
+    async def cog_before_invoke(self, ctx):
+        if hasattr(ctx, 'before_invoke'):
+            await ctx.before_invoke(ctx)
+
+    async def cog_after_invoke(self, ctx):
+        if hasattr(ctx, 'before_invoke'):
+            await ctx.after_invoke(ctx)
 
     @tasks.loop(time=time(hour=0))
     async def dbl_task(self):
@@ -318,60 +328,55 @@ class Info(commands.Cog):
         embed.add_field(name='Events Waiting', value=f'Total: {len(event_tasks)}', inline=False)
         await ctx.send(embed=embed)
 
-    @commands.group(hidden=True)
+    @commands.group(invoke_without_subcommand=True)
     async def info(self, ctx):
-        pass
-    # TODO: maybe need some stats on in events and what not for donationboard/trophyboard info.
-    # TODO: fix these up
-    @info.command(name='donationlog')
-    async def info_donationlog(self, ctx, *, channel: discord.TextChannel = None):
-        """Get information about log channels for the guild.
+        if ctx.invoked_subcommand is None:
+            await ctx.send_help(ctx.command)
 
-        Parameters
-        ----------------
-            • Channel: Optional, the channel to get log info for.
-                       Defaults to all channels in the server.
+    @info.command(name='log')
+    async def info_log(self, ctx):
+        """Get information about donation log channels for the guild.
 
         Example
         -----------
-        • `+log info #channel`
         • `+log info`
 
         Required Perimssions
         ----------------------------
         • `manage_server` permissions
         """
-        if channel:
-            query = """SELECT clan_tag, channel_id, log_toggle, 
-                                  log_interval, clan_name 
-                           FROM clans 
-                           WHERE channel_id=$1
-                        """
-            fetch = await ctx.db.fetch(query, channel.id)
-        else:
-            query = """SELECT clan_tag, channel_id, log_toggle, 
-                                  log_interval, clan_name 
-                           FROM clans 
-                           WHERE guild_id=$1
-                        """
-            fetch = await ctx.db.fetch(query, ctx.guild.id)
-
-        if channel:
-            fmt = channel.mention
-        else:
-            fmt = ctx.guild.name
-
         e = discord.Embed(color=self.bot.colour,
-                          description=f'Log info for {fmt}')
+                          description=f'Donation Log info for {ctx.guild}.')
+
+        query = """SELECT channel_id,
+                          interval,
+                          toggle,
+                          type
+                   FROM logs
+                   WHERE guild_id = $1
+                   ORDER BY type
+                """
+        fetch = await ctx.db.fetch(query, ctx.guild.id)
 
         for n in fetch:
-            config = DatabaseClan(bot=self.bot, record=n)
-            fmt = f"Tag: {config.clan_tag}\n"
-            fmt += f"Channel: {config.channel.mention if config.channel else 'None'}\n"
-            fmt += f"Log Toggle: {'enabled' if config.log_toggle else 'disabled'}\n"
-            fmt += f"Log Interval: {config.interval_seconds} seconds\n"
-            e.add_field(name=n['clan_name'],
-                        value=fmt)
+            fmt = f"Channel: <#{n['channel_id']}> (ID: {n['channel_id']})\n" \
+                f"Toggle: {'Enabled' if n['toggle'] else 'Disabled'}\n" \
+                f"Interval: {int(n['interval'].total_seconds() / 60)}min"
+            e.add_field(name=f"{n['type'].capitalize()} Log", value=fmt)
+
+        query = """SELECT clan_tag, 
+                          clan_name,
+                          channel_id 
+                   FROM clans 
+                   WHERE guild_id=$1
+                   ORDER BY channel_id
+                """
+        fetch = await ctx.db.fetch(query, ctx.guild.id)
+
+        fmt = '\n'.join(f"• {n['clan_name']} ({n['clan_tag']}) --> <#{n['channel_id']}>" for n in fetch)
+        e.add_field(name='Clans',
+                    value=fmt if len(fmt) < 1024 else f'{fmt[:1000]}...')
+
         await ctx.send(embed=e)
 
     @info.command(name='donationboard')
@@ -379,19 +384,22 @@ class Info(commands.Cog):
     async def donationboard_info(self, ctx):
         """Gives you info about guild's donationboard.
         """
+        if not ctx.config:
+            return await ctx.send('Please setup a donationboard.')
+
         table = CLYTable()
         if ctx.config.render == 2:
             table.add_rows([[0, 6532, 'Member (Awesome Clan)'], [1, 4453, 'Nearly #1 (Bad Clan)'],
                             [2, 5589, 'Another Member (Awesome Clan)'], [3, 0, 'Winner (Bad Clan)']
                             ])
             table.title = ctx.config.title or 'DonationBoard'
-            render = table.render_option_2()
+            render = table.donationboard_2()
         else:
             table.add_rows([[0, 9913, 12354, 'Member Name'], [1, 524, 123, 'Another Member'],
                             [2, 321, 444, 'Yet Another'], [3, 0, 2, 'The Worst Donator']
                             ])
             table.title = ctx.config.title or 'DonationBoard'
-            render = table.render_option_1()
+            render = table.donationboard_1()
 
         fmt = f'**DonationBoard Example Format:**\n\n{render}\n**Icon:** ' \
             f'Please see the icon displayed above.\n'
@@ -412,7 +420,8 @@ class Info(commands.Cog):
         fmt += '\n'.join(data)
 
         e = discord.Embed(colour=self.bot.colour,
-                          description=fmt)
+                          description=fmt if len(fmt) < 2048 else f'{fmt[:2040]}...')
+
         e.set_author(name='DonationBoard Info',
                      icon_url=ctx.config.icon_url or 'https://cdn.discordapp.com/emojis/592028799768592405.png?v=1')
 
@@ -423,20 +432,24 @@ class Info(commands.Cog):
     async def donationboard_info(self, ctx):
         """Gives you info about guild's trophyboard.
         """
-        # TODO: fix this when we get new renders for trophyboard
+        if not ctx.config:
+            return await ctx.send('Please setup a donationboard.')
+
         table = CLYTable()
         if ctx.config.render == 2:
-            table.add_rows([[0, 6532, 'Member (Awesome Clan)'], [1, 4453, 'Nearly #1 (Bad Clan)'],
-                            [2, 5589, 'Another Member (Awesome Clan)'], [3, 0, 'Winner (Bad Clan)']
+            table.add_rows([[0, 4320, 955, 'Member Name'], [1, 4500, 870, 'Another Member'],
+                            [2, 3900, -600, 'Yet Another'], [3, 1500, -1000, 'Worst Pusher']
                             ])
+
             table.title = ctx.config.title or 'TrophyBoard'
-            render = table.render_option_2()
+            render = table.trophyboard_2()
         else:
-            table.add_rows([[0, 9913, 12354, 'Member Name'], [1, 524, 123, 'Another Member'],
-                            [2, 321, 444, 'Yet Another'], [3, 0, 2, 'The Worst Donator']
+            table.add_rows([[0, 2000, 'Member'], [1, 1500, 'Nearly #1'],
+                            [2, 1490, 'Another Member'], [3, -600, 'Winner']
                             ])
+
             table.title = ctx.config.title or 'TrophyBoard'
-            render = table.render_option_1()
+            render = table.trophyboard_1()
 
         fmt = f'**Trophyboard Example Format:**\n\n{render}\n**Icon:** ' \
             f'Please see the icon displayed above.\n'
@@ -457,141 +470,11 @@ class Info(commands.Cog):
         fmt += '\n'.join(data)
 
         e = discord.Embed(colour=self.bot.colour,
-                          description=fmt)
+                          description=fmt if len(fmt) < 2048 else f'{fmt[:2040]}...')
         e.set_author(name='TrophyBoard Info',
                      icon_url=ctx.config.icon_url or 'https://cdn.discordapp.com/emojis/592028799768592405.png?v=1')
 
         await ctx.send(embed=e)
-
-    async def send_guild_stats(self, e, guild):
-        e.add_field(name='Name', value=guild.name)
-        e.add_field(name='ID', value=guild.id)
-        e.add_field(name='Owner', value=f'{guild.owner} (ID: {guild.owner.id})')
-
-        bots = sum(m.bot for m in guild.members)
-        total = guild.member_count
-        online = sum(m.status is discord.Status.online for m in guild.members)
-        e.add_field(name='Members', value=str(total))
-        e.add_field(name='Bots', value=f'{bots} ({bots/total:.2%})')
-        e.add_field(name='Online', value=f'{online} ({online/total:.2%})')
-
-        if guild.icon:
-            e.set_thumbnail(url=guild.icon_url)
-
-        if guild.me:
-            e.timestamp = guild.me.joined_at
-
-        await self.bot.join_log_webhook.send(embed=e)
-
-    @commands.Cog.listener()
-    async def on_guild_join(self, guild):
-        e = discord.Embed(colour=0x53dda4, title='New Guild')  # green colour
-        await self.send_guild_stats(e, guild)
-        query = "INSERT INTO guilds (guild_id) VALUES ($1) ON CONFLICT (guild_id) DO NOTHING"
-        await self.bot.pool.execute(query, guild.id)
-        fmt = '**Some handy hints:**\n' \
-              f'• My prefix is `+`, or {self.bot.user.mention}\n' \
-              '• All commands have super-detailed help commands; please use them!\n' \
-              '• Usage: `+help command_name`\n\n' \
-              'A few frequently used ones to get started:\n' \
-              '• `+help addclan`\n' \
-              '• `+help donationboard` and `+help donationboard create`\n' \
-              '• `+help log` and `+help log create`\n\n' \
-              '• There are lots of how-to\'s and other ' \
-              'support on the [support server](https://discord.gg/ePt8y4V) if you get stuck.\n' \
-              f'• Please share the bot with your friends! [Bot Invite]({self.invite})\n' \
-              '• Please support us on [Patreon](https://www.patreon.com/donationtracker)!\n' \
-              '• Have a good day!'
-        e = discord.Embed(colour=self.bot.colour,
-                          description=fmt)
-        e.set_author(name='Hello! I\'m the Donation Tracker!',
-                     icon_url=self.bot.user.avatar_url
-                     )
-
-        if guild.system_channel:
-            try:
-                await guild.system_channel.send(embed=e)
-                return
-            except (discord.Forbidden, discord.HTTPException):
-                pass
-        for c in guild.channels:
-            if not isinstance(c, discord.TextChannel):
-                continue
-            if c.permissions_for(c.guild.get_member(self.bot.user.id)).send_messages:
-                try:
-                    await c.send(embed=e)
-                except (discord.Forbidden, discord.HTTPException):
-                    pass
-                return
-
-    @commands.Cog.listener()
-    async def on_guild_remove(self, guild):
-        e = discord.Embed(colour=0xdd5f53, title='Left Guild')  # red colour
-        await self.send_guild_stats(e, guild)
-        query = "UPDATE guilds SET log_toggle = False, updates_toggle = False WHERE guild_id = $1"
-        await self.bot.pool.execute(query, guild.id)
-
-    @commands.Cog.listener()
-    async def on_command(self, ctx):
-        command = ctx.command.qualified_name
-        self.bot.command_stats[command] += 1
-        message = ctx.message
-        if ctx.guild is None:
-            guild_id = None
-        else:
-            guild_id = ctx.guild.id
-
-        query = """INSERT INTO commands (guild_id, channel_id, author_id, used, prefix, command)
-                           VALUES ($1, $2, $3, $4, $5, $6)
-                """
-
-        await self.bot.pool.execute(query, guild_id, ctx.channel.id, ctx.author.id,
-                                    message.created_at, ctx.prefix, command
-                                    )
-
-    async def send_claim_clan_stats(self, e, clan, guild):
-        e.add_field(name='Name', value=clan.name)
-        e.add_field(name='Tag', value=clan.tag)
-
-        total = len(clan.members)
-        e.add_field(name='Member Count', value=str(total))
-
-        if clan.badge:
-            e.set_thumbnail(url=clan.badge.url)
-
-        e.add_field(name='Guild Name', value=guild.name)
-        e.add_field(name='Guild ID', value=guild.id)
-        e.add_field(name='Guild Owner', value=f'{guild.owner} (ID: {guild.owner.id})')
-
-        bots = sum(m.bot for m in guild.members)
-        total = guild.member_count
-        online = sum(m.status is discord.Status.online for m in guild.members)
-        e.add_field(name='Guild Members', value=str(total))
-        e.add_field(name='Guild Bots', value=f'{bots} ({bots / total:.2%})')
-        e.add_field(name='Guild Online', value=f'{online} ({online / total:.2%})')
-
-        if guild.me:
-            e.set_footer(text='Bot Added').timestamp = guild.me.joined_at
-
-        await self.bot.join_log_webhook.send(embed=e)
-
-    @commands.Cog.listener()
-    async def on_clan_claim(self, ctx, clan):
-        e = discord.Embed(colour=0x53dda4, title='Clan Claimed')  # green colour
-        await self.send_claim_clan_stats(e, clan, ctx.guild)
-        await self.bot.donationboard.update_clan_tags()
-        self.bot.get_guilds.invalidate(self.bot, clan.tag)
-        self.bot.get_clans.invalidate(self.bot, ctx.guild.id)
-        await self.bot.events.sync_temp_event_tasks()
-
-    @commands.Cog.listener()
-    async def on_clan_unclaim(self, ctx, clan):
-        e = discord.Embed(colour=0xdd5f53, title='Clan Unclaimed')  # green colour
-        await self.send_claim_clan_stats(e, clan, ctx.guild)
-        await self.bot.donationboard.update_clan_tags()
-        self.bot.get_guilds.invalidate(self.bot, clan.tag)
-        self.bot.get_clans.invalidate(self.bot, ctx.guild.id)
-        await self.bot.events.sync_temp_event_tasks()
 
 
 def setup(bot):

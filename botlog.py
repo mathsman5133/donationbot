@@ -13,8 +13,10 @@ def setup_logging(bot):
 
     log = logging.getLogger()
     log.setLevel(logging.DEBUG)
-    handler = logging.FileHandler(filename='donationtracker.log', encoding='utf-8', mode='w').setLevel(logging.INFO)
-    stream_handler = logging.StreamHandler().setLevel(logging.DEBUG)
+    handler = logging.FileHandler(filename='donationtracker.log', encoding='utf-8', mode='w')
+    handler.setLevel(logging.INFO)
+    stream_handler = logging.StreamHandler()
+    stream_handler.setLevel(logging.DEBUG)
     dt_fmt = '%d-%m-%Y %H:%M:%S'
     fmt = logging.Formatter('[{asctime}] [{levelname:<7}] {name}: {message}', dt_fmt, style='{')
     handler.setFormatter(fmt)
@@ -27,13 +29,21 @@ def setup_logging(bot):
         token=creds.log_hook_token,
         adapter=discord.AsyncWebhookAdapter(session=bot.session)
                                             )
+    requests_hook = discord.Webhook.partial(
+        id = creds.log_hook_id,
+        token=creds.log_hook_token,
+        adapter=discord.RequestsWebhookAdapter()
+    )
 
     class DiscordHandler(logging.NullHandler):
         def handle(self, record):
             if record.levelno < 30:
                 return
 
-            asyncio.ensure_future(error_webhook.send(fmt.format(record)))
+            try:
+                asyncio.ensure_future(error_webhook.send(fmt.format(record)))
+            except:
+                requests_hook.send(fmt.format(record))
 
     log.addHandler(DiscordHandler())
 
