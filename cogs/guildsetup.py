@@ -1,6 +1,5 @@
 import discord
 import asyncio
-import math
 import typing
 import datetime
 import re
@@ -9,11 +8,9 @@ import logging
 
 from discord.ext import commands
 from cogs.utils.checks import requires_config, manage_guild
-from cogs.utils.db_objects import DatabaseBoard
-from cogs.utils.error_handler import error_handler
 from cogs.utils.formatters import CLYTable
 from cogs.utils.converters import PlayerConverter, ClanConverter, DateConverter, TextChannel
-from .utils import paginator, checks, formatters, fuzzy
+from .utils import checks
 
 log = logging.getLogger(__name__)
 
@@ -97,8 +94,6 @@ class GuildConfiguration(commands.Cog):
                                      player.defense_wins,
                                      player.best_trophies
                                      )
-
-
 
     @commands.group()
     async def add(self, ctx):
@@ -940,6 +935,65 @@ class GuildConfiguration(commands.Cog):
         query = "DELETE FROM logs WHERE channel_id = $1 AND type = $2"
         await ctx.db.execute(query, ctx.config.channel_id, 'trophy')
         await ctx.confirm()
+
+    @remove.command(name='event')
+    @manage_guild()
+    async def remove_event(self, ctx, event_name: str = None):
+        if event_name:
+            # Event name provided
+            query = """SELECT id FROM events 
+                       WHERE guild_id = $1 AND event_name = $2"""
+            fetch = await self.bot.pool.fetchrow(query, ctx.guild.id, event_name)
+            if fetch:
+                query = "DELETE FROM events WHERE id = $1"
+                await ctx.db.execute(query, fetch['id'])
+                return await ctx.send(f"{event_name} has been removed.")
+
+        # No event name provided or I didn't understand the name I was given
+        query = """SELECT id, event_name, start 
+                   FROM events
+                   WHERE guild_id = $1 
+                   ORDER BY start"""
+        fetch = await self.bot.pool.fetch(query, ctx.guild.id)
+        if len(fetch) == 0 or not fetch:
+            return await ctx.send("I have no events to remove. You should create one... then remove it.")
+        elif len(fetch) == 1:
+            query = "DELETE FROM events WHERE id = $1"
+            await ctx.db.execute(query, fetch[0]['id'])
+            return await ctx.send(f"{fetch[0]['event_name']} has been removed.")
+        else:
+            table = CLYTable()
+            fmt = f"Events on {ctx.guild}:\n\n"
+            reactions = []
+            counter = 0
+            for event in fetch:
+                days_until = event['start'].date() - datetime.datetime.utcnow().date()
+                table.add_row([counter, days_until.days, event['event_name']])
+                counter += 1
+                reactions.append(f"{counter}\N{combining enclosing keycap}")
+            render = table.events_list()
+            fmt += f'{render}\n\nPlease select the reaction that corresponds with the event you would ' \
+                   f'like to remove.'
+            e = discord.Embed(colour=self.bot.colour,
+                              description=fmt)
+            msg = await ctx.send(embed=e)
+            for r in reactions:
+                await msg.add_reaction(r)
+
+            def check(r, u):
+                return str(r) in reactions and u.id == ctx.author.id and r.message.id == msg.id
+
+            try:
+                r, u = await self.bot.wait_for('reaction_add', check=check, timeout=60.0)
+            except asyncio.TimeoutError:
+                await msg.clear_reactions()
+                return await ctx.send("We'll just hang on to all the events we have for now.")
+
+            index = reactions.index(str(r))
+            query = "DELETE FROM events WHERE id = $1"
+            await ctx.db.execute(query, fetch[index]['id'])
+            await msg.delete()
+            return await ctx.send(f"{fetch[index]['event_name']} has been removed.")
 
     @commands.command()
     async def unclaim(self, ctx, *, player: PlayerConverter):
