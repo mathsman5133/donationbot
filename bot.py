@@ -39,6 +39,7 @@ coc_client = coc.login(creds.email, creds.password, client=CustomCOC,
 initial_extensions = (
     'cogs.admin',
     'cogs.auto_claim',
+    'cogs.background_management',
     'cogs.boards',
     'cogs.botutils',
     'cogs.donationlogs',
@@ -64,6 +65,8 @@ class DonationBot(commands.Bot):
 
         self.coc = coc_client
         self.coc.bot = self
+
+        self.redis = self.coc.redis
 
         self.client_id = creds.client_id
         self.dbl_token = creds.dbl_token
@@ -102,8 +105,12 @@ class DonationBot(commands.Bot):
         return self.get_cog('DonationBoard')
 
     @property
-    def events(self):
-        return self.get_cog('Events')
+    def donationlogs(self):
+        return self.get_cog('DonationLogs')
+
+    @property
+    def trophylogs(self):
+        return self.get_cog('TrophyLogs')
 
     @property
     def seasonconfig(self):

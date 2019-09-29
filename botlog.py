@@ -37,13 +37,20 @@ def setup_logging(bot):
 
     class DiscordHandler(logging.NullHandler):
         def handle(self, record):
-            if record.levelno < 30:
+            if record.levelno < 29:
                 return
 
-            try:
-                asyncio.ensure_future(error_webhook.send(fmt.format(record)))
-            except:
-                requests_hook.send(fmt.format(record))
+            to_send = fmt.format(record)
+
+            messages = []
+            for i in range(int(len(to_send) / 2000)):
+                messages.append(to_send[i*2000:(i+1)*2000])
+
+            for n in messages:
+                try:
+                    asyncio.ensure_future(error_webhook.send(f'```\n{n}\n```'))
+                except:
+                    requests_hook.send(f'```\n{n}\n```')
 
     log.addHandler(DiscordHandler())
 

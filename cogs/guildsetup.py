@@ -160,24 +160,18 @@ class GuildConfiguration(commands.Cog):
         except coc.NotFound:
             return await ctx.send(f'Clan not found with `{clan_tag}` tag.')
 
-        if not clan.description.strip().endswith('dt'):
+        if not clan.description.strip().endswith('dt') and not await self.bot.is_owner(ctx.author):
             return await ctx.send('Please add the letters `dt` to the end of '
                                   f'`{clan.name}`\'s clan description. Wait 5 minutes and try again.'
                                   '\n\nThis is a security feature of the bot and should '
                                   'be removed once the clan has been added.')
-
+        in_event = False
         if ctx.config:
-            prompt = await ctx.prompt('Would you like this clan to be in the current event?')
+            if ctx.config.start < datetime.datetime.utcnow():
+                in_event = await ctx.prompt('Would you like this clan to be in the current event?')
 
-            if prompt is True:
-                in_event = True
-            else:
-                in_event = False
-        else:
-            in_event = False
-
-        query = "INSERT INTO clans (clan_tag, guild_id, clan_name, in_event) VALUES ($1, $2, $3, $4)"
-        await ctx.db.execute(query, clan.tag, ctx.guild.id, clan.name, in_event)
+        query = "INSERT INTO clans (clan_tag, guild_id, channel_id, clan_name, in_event) VALUES ($1, $2, $3, $4, $5)"
+        await ctx.db.execute(query, clan.tag, ctx.guild.id, ctx.channel.id, clan.name, in_event)
 
         await ctx.send('Clan has been added. Please wait a moment while all players are added.')
 
@@ -208,6 +202,8 @@ class GuildConfiguration(commands.Cog):
         """
         if ctx.config:
             prompt = await ctx.prompt(f'Do you wish to add {player} to the current event?')
+        else:
+            prompt = False
 
         season_id = await self.bot.seasonconfig.get_season_id()
         await self.insert_player(ctx.db, player, season_id, prompt,
@@ -247,14 +243,14 @@ class GuildConfiguration(commands.Cog):
         query = "SELECT user_id FROM players WHERE player_tag = $1 AND season_id = $2"
         fetch = await ctx.db.fetchrow(query, player.tag, season_id)
 
-        if not fetch:
-            prompt = await ctx.prompt(f'Do you wish to add {player} to the current event?')
-            await self.insert_player(ctx.db, player, season_id, prompt,
-                                     getattr(ctx.config, 'event_id', None))
-        else:
-            user = self.bot.get_user(fetch[0])
-            raise commands.BadArgument(f'Player {player.name} '
-                                       f'({player.tag}) has already been claimed by {str(user)}')
+        if fetch:
+            return await ctx.send(f'Player {player.name} ({player.tag}) '
+                                  f'has already been claimed by {self.bot.get_user(fetch[0])}')
+
+        if ctx.config:
+            if ctx.config.start < datetime.datetime.utcnow():
+                prompt = await ctx.prompt(f'Do you wish to add {player} to the current event?')
+                await self.insert_player(ctx.db, player, season_id, prompt, ctx.config.event_id)
 
         query = "UPDATE players SET user_id = $1 WHERE player_tag = $2 AND season_id = $3"
         await ctx.db.execute(query, user.id, player.tag, season_id)
@@ -424,13 +420,6 @@ class GuildConfiguration(commands.Cog):
                 else:
                     await ctx.db.executemany(query, [[n.tag, n.name, ctx.channel.id, ctx.guild.id, True] for n in clans])
                     clan_names += '\n'.join(n.name for n in clans)
-
-                await ctx.send('Adding players to the database... please be patient; this may take a while.')
-
-                season_id = await self.bot.seasonconfig.get_season_id()
-                for n in clans:
-                    async for player in n.get_detailed_members:
-                        await self.insert_player(ctx.db, player, season_id, True, event_id[0])
 
             fmt_tag = (f'Clans added for this event:\n' 
                        f'{clan_names}')
@@ -941,12 +930,13 @@ class GuildConfiguration(commands.Cog):
     async def remove_event(self, ctx, event_name: str = None):
         if event_name:
             # Event name provided
-            query = """SELECT id FROM events 
-                       WHERE guild_id = $1 AND event_name = $2"""
+            query = """DELETE FROM events
+                       WHERE guild_id = $1 
+                       AND event_name = $2
+                       RETURNING id;
+                    """
             fetch = await self.bot.pool.fetchrow(query, ctx.guild.id, event_name)
             if fetch:
-                query = "DELETE FROM events WHERE id = $1"
-                await ctx.db.execute(query, fetch['id'])
                 return await ctx.send(f"{event_name} has been removed.")
 
         # No event name provided or I didn't understand the name I was given
@@ -961,39 +951,40 @@ class GuildConfiguration(commands.Cog):
             query = "DELETE FROM events WHERE id = $1"
             await ctx.db.execute(query, fetch[0]['id'])
             return await ctx.send(f"{fetch[0]['event_name']} has been removed.")
-        else:
-            table = CLYTable()
-            fmt = f"Events on {ctx.guild}:\n\n"
-            reactions = []
-            counter = 0
-            for event in fetch:
-                days_until = event['start'].date() - datetime.datetime.utcnow().date()
-                table.add_row([counter, days_until.days, event['event_name']])
-                counter += 1
-                reactions.append(f"{counter}\N{combining enclosing keycap}")
-            render = table.events_list()
-            fmt += f'{render}\n\nPlease select the reaction that corresponds with the event you would ' \
-                   f'like to remove.'
-            e = discord.Embed(colour=self.bot.colour,
-                              description=fmt)
-            msg = await ctx.send(embed=e)
-            for r in reactions:
-                await msg.add_reaction(r)
 
-            def check(r, u):
-                return str(r) in reactions and u.id == ctx.author.id and r.message.id == msg.id
+        table = CLYTable()
+        fmt = f"Events on {ctx.guild}:\n\n"
+        reactions = []
+        counter = 0
+        for event in fetch:
+            days_until = event['start'].date() - datetime.datetime.utcnow().date()
+            table.add_row([counter, days_until.days, event['event_name']])
+            counter += 1
+            reactions.append(f"{counter}\N{combining enclosing keycap}")
+        render = table.events_list()
+        fmt += f'{render}\n\nPlease select the reaction that corresponds with the event you would ' \
+               f'like to remove.'
+        e = discord.Embed(colour=self.bot.colour,
+                          description=fmt)
+        msg = await ctx.send(embed=e)
+        for r in reactions:
+            await msg.add_reaction(r)
 
-            try:
-                r, u = await self.bot.wait_for('reaction_add', check=check, timeout=60.0)
-            except asyncio.TimeoutError:
-                await msg.clear_reactions()
-                return await ctx.send("We'll just hang on to all the events we have for now.")
+        def check(r, u):
+            return str(r) in reactions and u.id == ctx.author.id and r.message.id == msg.id
 
-            index = reactions.index(str(r))
-            query = "DELETE FROM events WHERE id = $1"
-            await ctx.db.execute(query, fetch[index]['id'])
-            await msg.delete()
-            return await ctx.send(f"{fetch[index]['event_name']} has been removed.")
+        try:
+            r, u = await self.bot.wait_for('reaction_add', check=check, timeout=60.0)
+        except asyncio.TimeoutError:
+            await msg.clear_reactions()
+            return await ctx.send("We'll just hang on to all the events we have for now.")
+
+        index = reactions.index(str(r))
+        query = "DELETE FROM events WHERE id = $1"
+        await ctx.db.execute(query, fetch[index]['id'])
+        await msg.delete()
+        ctx.bot.utils.event_config.invalidate(ctx.bot.utils, ctx.guild.id)
+        return await ctx.send(f"{fetch[index]['event_name']} has been removed.")
 
     @commands.command()
     async def unclaim(self, ctx, *, player: PlayerConverter):

@@ -16,7 +16,7 @@ log = logging.getLogger(__name__)
 EVENTS_TABLE_TYPE = 'trophy'
 
 
-class DonationLogs(commands.Cog):
+class TrophyLogs(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self._batch_data = []
@@ -29,7 +29,7 @@ class DonationLogs(commands.Cog):
         self.bot.coc.add_events(
             self.on_clan_member_trophy_change,
         )
-        self.bot.coc._clan_retry_interval = 60
+        self.bot.coc._clan_retry_interval = 20
         self.bot.coc.start_updates('clan')
 
         self._tasks = {}
@@ -127,7 +127,8 @@ class DonationLogs(commands.Cog):
                 fetch = await self.bot.pool.fetch(query, channel_id, EVENTS_TABLE_TYPE)
 
                 for n in fetch:
-                    asyncio.ensure_future(self.bot.utils.channel_log(channel_id, n[0], embed=False))
+                    asyncio.ensure_future(self.bot.utils.channel_log(channel_id, EVENTS_TABLE_TYPE,
+                                                                     n[0], embed=False))
 
                 log.debug(f'Dispatching {len(fetch)} logs after sleeping for {config.seconds} '
                           f'sec to channel {config.channel} ({config.channel_id})')
@@ -186,8 +187,8 @@ class DonationLogs(commands.Cog):
                 else:
                     log.debug(f'Dispatching a log to channel '
                               f'{config.channel} (ID {config.channel_id})')
-                    asyncio.ensure_future(self.bot.utils.channel_log(config.channel_id,
-                                                               '\n'.join(x), embed=False))
+                    asyncio.ensure_future(self.bot.utils.channel_log(config.channel_id, EVENTS_TABLE_TYPE,
+                                                                     '\n'.join(x), embed=False))
 
         query = """UPDATE trophyevents
                         SET reported=True
@@ -212,4 +213,4 @@ class DonationLogs(commands.Cog):
 
 
 def setup(bot):
-    bot.add_cog(DonationLogs(bot))
+    bot.add_cog(TrophyLogs(bot))

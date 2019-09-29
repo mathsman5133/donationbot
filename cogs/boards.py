@@ -35,7 +35,7 @@ class DonationBoard(commands.Cog):
             self.on_clan_member_received,
             self.on_clan_member_join
                                 )
-        self.bot.coc._clan_retry_interval = 60
+        self.bot.coc._clan_retry_interval = 20
         self.bot.coc.start_updates('clan')
 
         self._batch_lock = asyncio.Lock(loop=bot.loop)
@@ -79,7 +79,7 @@ class DonationBoard(commands.Cog):
                                       received = players.received + x.received, 
                                       trophies = players.trophies + x.trophies
                         FROM(
-                            SELECT x.player_tag, x.donations, x.received, x.attacks, x.trophies
+                            SELECT x.player_tag, x.donations, x.received, x.trophies
                                 FROM jsonb_to_recordset($1::jsonb)
                             AS x(player_tag TEXT, 
                                  donations INTEGER, 
@@ -91,27 +91,27 @@ class DonationBoard(commands.Cog):
                     AND players.season_id=$2
                 """
 
-        query2 = """UPDATE playersevent SET donations = players.donations + x.donations, 
-                                            received = players.received + x.received,
-                                            trophies = players.trophies + x.trophies   
+        query2 = """UPDATE eventplayers SET donations = eventplayers.donations + x.donations, 
+                                             received = eventplayers.received + x.received,
+                                             trophies = eventplayers.trophies + x.trophies   
                         FROM(
-                            SELECT x.player_tag, x.donations, x.received
-                                FROM jsonb_to_recordset($1::jsonb)
+                            SELECT x.player_tag, x.donations, x.received, x.trophies
+                            FROM jsonb_to_recordset($1::jsonb)
                             AS x(player_tag TEXT, 
                                  donations INTEGER, 
                                  received INTEGER, 
                                  trophies INTEGER)
                             )
                     AS x
-                    WHERE playersevent.player_tag = x.player_tag
-                    AND playersevent.live = true                    
+                    WHERE eventplayers.player_tag = x.player_tag
+                    AND eventplayers.live = true                    
                 """
         if self._data_batch:
             response = await self.bot.pool.execute(query, list(self._data_batch.values()),
                                                    await self.bot.seasonconfig.get_season_id())
             log.debug(f'Registered donations/received to the database. Status Code {response}.')
 
-            response = await self.bot.pool.execute(query2, self._data_batch.values())
+            response = await self.bot.pool.execute(query2, list(self._data_batch.values()))
             log.debug(f'Registered donations/received to the events database. Status Code {response}.')
             self._data_batch.clear()
 
@@ -228,10 +228,11 @@ class DonationBoard(commands.Cog):
                     DO NOTHING
                 """
         # todo: test query2
-        query2 = """INSERT INTO playerevents (player_tag, donations, received, live, event_id) 
-                        SELECT $1, $2, $3, $4, true, donationevents.id
+        query2 = """INSERT INTO eventplayers (player_tag, donations, received, live, event_id) 
+                        SELECT $1, $2, $3, $4, true, events.id
                         FROM donationevents
-                            INNER JOIN clans ON clans.guild_id = donationevents.guild_id
+                        INNER JOIN clans 
+                        ON clans.guild_id = events.guild_id
                         WHERE clans.clan_tag = $5
                     ON CONFLICT (player_tag, event_id) 
                     DO NOTHING
@@ -342,7 +343,7 @@ class DonationBoard(commands.Cog):
         for n in clans:
             players.extend(p for p in n.itermembers)
 
-        top_players = await self.get_top_players(players, config.board_type, config.in_event)
+        top_players = await self.get_top_players(players, config.type, config.in_event)
         players = {n.tag: n for n in players if n.tag in set(x['player_tag'] for x in top_players)}
 
         message_count = math.ceil(len(fetch) / 20)
@@ -386,6 +387,12 @@ class DonationBoard(commands.Cog):
         if board_type == 'donation':
             return discord.Colour.blue()
         return discord.Colour.green()
+
+    @commands.command()
+    @commands.is_owner()
+    async def forceboard(self, ctx, channel_id: int = None):
+        await self.update_board(channel_id or ctx.channel.id)
+        await ctx.confirm()
 
 
 def setup(bot):

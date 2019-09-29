@@ -1,6 +1,7 @@
 import inspect
 import asyncio
 import enum
+import json
 import time
 
 from functools import wraps
@@ -89,21 +90,16 @@ def cache(maxsize=128, strategy=Strategy.redis, ignore_kwargs=False):
 
             key = _make_key(args, kwargs)
 
-            try:
-                value = await redis.get(key)
-            except KeyError:
-                value = func(*args, **kwargs)
+            value = await redis.get(key, encoding='utf-8')
 
-                if inspect.isawaitable(value):
-                    value = await value
-                    await redis.set(key, value)
-                    return value
+            if not value:
+                value = await func(*args, **kwargs)
+                if not value:
+                    return
 
                 await redis.set(key, value)
                 return value
             else:
-                if asyncio.iscoroutinefunction(func):
-                    return await value
                 return value
 
         @wraps(func)
@@ -132,6 +128,9 @@ def cache(maxsize=128, strategy=Strategy.redis, ignore_kwargs=False):
             else:
                 return True
 
+        async def async_invalidate(*args, **kwargs):
+            return await args[0].bot.redis.delete(_make_key(args, kwargs))
+
         def _invalidate_containing(key):
             to_remove = []
             for k in _internal_cache.keys():
@@ -145,12 +144,14 @@ def cache(maxsize=128, strategy=Strategy.redis, ignore_kwargs=False):
 
         if strategy is Strategy.redis:
             wrap = async_wrapper
+            wrap.invalidate = async_invalidate
+
         else:
             wrap = wrapper
+            wrap.invalidate = _invalidate
 
         wrap.cache = _internal_cache
         wrap.get_key = lambda *args, **kwargs: _make_key(args, kwargs)
-        wrap.invalidate = _invalidate
         wrap.get_stats = _stats
         wrap.invalidate_containing = _invalidate_containing
         return wrap
@@ -182,16 +183,24 @@ class COCCustomCache(Cache):
         value = await self.client.redis.get(key, encoding='utf-8')
         if not value:
             return None
+        value = json.loads(value)
 
         if cache_type == 'search_clans':
             return self.object_type(cache_type)(data=value, client=self.client)
+        if cache_type == 'events':
+            return [value[0], *(self.object_type(cache_type)(data=n, http=self.client.http) for n in value[1:])]
         return self.object_type(cache_type)(data=value, http=self.client.http)
 
     async def set(self, cache_type, key, value, new_key=True):
         if new_key:
             key = self.make_key(cache_type, key)
-        expiry = self.get_ttl(cache_type)
-        await self.client.redis.set(key, value._data, expire=expiry)
+        value = getattr(value, '_data', value)
+        if isinstance(value, list):
+            value = [json.dumps(getattr(n, '_data', n)) for n in value]
+
+        value = json.dumps(value)
+
+        await self.client.redis.set(key, value)
 
     async def pop(self, cache_type, key, new_key=True):
         if new_key:
@@ -205,8 +214,8 @@ class COCCustomCache(Cache):
         return self.object_type(cache_type)(data=value, http=self.client.http)
 
     async def keys(self, cache_type, limit=0):
-        cur, keys = await self.client.redis.scan(match=f'{cache_type}*', count=limit)
-        return keys
+        cur, keys = await self.client.redis.scan(match=f'{cache_type}*')
+        return (str(n) for n in keys)
 
     async def values(self, cache_type):
         keys = await self.keys(cache_type)

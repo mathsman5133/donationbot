@@ -11,6 +11,7 @@ class BackgroundManagement(commands.Cog):
         self.bot = bot
 
     @commands.command()
+    @commands.is_owner()
     async def forceguild(self, ctx, guild_id: int):
         self.bot.dispatch('guild_join', self.bot.get_guild(guild_id))
 
@@ -62,11 +63,44 @@ class BackgroundManagement(commands.Cog):
         await asyncio.sleep(event['until_finish'].total_seconds())
         await self.on_event_start(slim_config, event['guild_id'], event['until_finish'])
 
-    async def on_event_start(self, event, guild_id, delta_ago):
-        pass
-
-    async def on_event_finish(self, event, guild_id, delta_ago):
-        pass
+    # async def on_event_start(self, event, guild_id, delta_ago):
+    #     if in_event:
+    #         event_query = """INSERT INTO eventplayers (
+    #                                         player_tag,
+    #                                         donations,
+    #                                         received,
+    #                                         trophies,
+    #                                         event_id,
+    #                                         start_friend_in_need,
+    #                                         start_sharing_is_caring,
+    #                                         start_attacks,
+    #                                         start_defenses,
+    #                                         start_best_trophies,
+    #                                         start_update
+    #                                         )
+    #                         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, True)
+    #                         ON CONFLICT (player_tag, event_id)
+    #                         DO NOTHING
+    #                     """
+    #         await connection.execute(event_query,
+    #                                  player.tag,
+    #                                  player.donations,
+    #                                  player.received,
+    #                                  player.trophies,
+    #                                  event_id,
+    #                                  player.achievements_dict['Friend in Need'].value,
+    #                                  player.achievements_dict['Sharing is caring'].value,
+    #                                  player.attack_wins,
+    #                                  player.defense_wins,
+    #                                  player.best_trophies
+    #                                  )
+    #         season_id = await self.bot.seasonconfig.get_season_id()
+    #         for n in clans:
+    #             async for player in n.get_detailed_members:
+    #                 await self.insert_player(ctx.db, player, season_id, True, event_id[0])
+    #
+    # async def on_event_finish(self, event, guild_id, delta_ago):
+    #     pass
 
     @commands.Cog.listener()
     async def on_guild_join(self, guild):
@@ -146,19 +180,17 @@ class BackgroundManagement(commands.Cog):
     async def on_clan_claim(self, ctx, clan):
         e = discord.Embed(colour=discord.Colour.blue(), title='Clan Claimed')
         await self.send_claim_clan_stats(e, clan, ctx.guild)
-        await self.bot.donationboard.update_clan_tags()
-        self.bot.get_guilds.invalidate(self.bot, clan.tag)
-        self.bot.get_clans.invalidate(self.bot, ctx.guild.id)
-        await self.bot.events.sync_temp_event_tasks()
+        await self.bot.utils.update_clan_tags()
+        await self.bot.donationlogs.sync_temp_event_tasks()
+        await self.bot.trophylogs.sync_temp_event_tasks()
 
     @commands.Cog.listener()
     async def on_clan_unclaim(self, ctx, clan):
         e = discord.Embed(colour=discord.Colour.dark_blue(), title='Clan Unclaimed')
         await self.send_claim_clan_stats(e, clan, ctx.guild)
-        await self.bot.donationboard.update_clan_tags()
-        self.bot.get_guilds.invalidate(self.bot, clan.tag)
-        self.bot.get_clans.invalidate(self.bot, ctx.guild.id)
-        await self.bot.events.sync_temp_event_tasks()
+        await self.bot.utils.update_clan_tags()
+        await self.bot.donationlogs.sync_temp_event_tasks()
+        await self.bot.trophylogs.sync_temp_event_tasks()
 
     async def send_guild_stats(self, e, guild):
         e.add_field(name='Name', value=guild.name)
@@ -190,16 +222,15 @@ class BackgroundManagement(commands.Cog):
         if clan.badge:
             e.set_thumbnail(url=clan.badge.url)
 
-        query = """SELECT COUNT(DISTINCT clan_tag) AS "count",
-                   DISTINCT clan_tag,
-                   clan_name
+        query = """SELECT clan_tag, clan_name
                    FROM clans WHERE guild_id = $1
+                   GROUP BY clan_tag, clan_name
                 """
         clan_info = await self.bot.pool.fetch(query, guild.id)
         if clan_info:
-            e.add_field(name=f"Clans Claimed: {clan_info[0]['count']}",
+            e.add_field(name=f"Clans Claimed: {len(clan_info)}",
                         value='\n'.join(f"{n['clan_name']} ({n['clan_tag']})" for n in clan_info),
-                        inline=True)
+                        inline=False)
 
         e.add_field(name='Guild Name', value=guild.name)
         e.add_field(name='Guild ID', value=guild.id)

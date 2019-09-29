@@ -13,7 +13,7 @@ from cogs.utils.formatters import format_donation_log_message
 
 log = logging.getLogger(__name__)
 
-EVENTS_TABLE_TYPE = 'donations'
+EVENTS_TABLE_TYPE = 'donation'
 
 class DonationLogs(commands.Cog):
     def __init__(self, bot):
@@ -29,7 +29,7 @@ class DonationLogs(commands.Cog):
             self.on_clan_member_donation,
             self.on_clan_member_received
         )
-        self.bot.coc._clan_retry_interval = 60
+        self.bot.coc._clan_retry_interval = 20
         self.bot.coc.start_updates('clan')
 
         self._tasks = {}
@@ -117,7 +117,7 @@ class DonationLogs(commands.Cog):
     async def create_temp_event_task(self, channel_id):
         try:
             while not self.bot.is_closed():
-                config = await self.bot.utils.log_config(channel_id)
+                config = await self.bot.utils.log_config(channel_id, EVENTS_TABLE_TYPE)
                 if not config:
                     log.critical(f'Requested a task creation for channel id {channel_id}'
                                  ' but config was not found.')
@@ -128,7 +128,7 @@ class DonationLogs(commands.Cog):
                 fetch = await self.bot.pool.fetch(query, channel_id, EVENTS_TABLE_TYPE)
 
                 for n in fetch:
-                    asyncio.ensure_future(self.bot.utils.channel_log(channel_id, n[0], embed=False))
+                    asyncio.ensure_future(self.bot.utils.channel_log(channel_id, EVENTS_TABLE_TYPE, n[0], embed=False))
 
                 log.debug(f'Dispatching {len(fetch)} logs after sleeping for {config.seconds} '
                           f'sec to channel {config.channel} ({config.channel_id})')
@@ -189,8 +189,8 @@ class DonationLogs(commands.Cog):
                 else:
                     log.debug(f'Dispatching a log to channel '
                               f'{config.channel} (ID {config.channel_id})')
-                    asyncio.ensure_future(self.bot.utils.channel_log(config.channel_id,
-                                                               '\n'.join(x), embed=False))
+                    asyncio.ensure_future(self.bot.utils.channel_log(config.channel_id, EVENTS_TABLE_TYPE,
+                                                                     '\n'.join(x), embed=False))
 
         query = """UPDATE donationevents
                         SET reported=True

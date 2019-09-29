@@ -192,10 +192,6 @@ class Info(commands.Cog):
 
         self.process = psutil.Process()
 
-    async def cog_command_error(self, ctx, error):
-        print(error)
-        log.critical(error)
-
     async def cog_before_invoke(self, ctx):
         if hasattr(ctx, 'before_invoke'):
             await ctx.before_invoke(ctx)
@@ -381,7 +377,7 @@ class Info(commands.Cog):
 
     @info.command(name='donationboard')
     @requires_config('donationboard')
-    async def donationboard_info(self, ctx):
+    async def info_donationboard(self, ctx):
         """Gives you info about guild's donationboard.
         """
         if not ctx.config:
@@ -429,7 +425,7 @@ class Info(commands.Cog):
 
     @info.command(name='trophyboard')
     @requires_config('trophyboard')
-    async def donationboard_info(self, ctx):
+    async def info_trophyboard(self, ctx):
         """Gives you info about guild's trophyboard.
         """
         if not ctx.config:

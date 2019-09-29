@@ -256,7 +256,11 @@ class Admin(commands.Cog):
                 ret = await func()
         except Exception as e:
             value = stdout.getvalue()
-            await ctx.send(f'```py\n{value}{traceback.format_exc()}\n```')
+            fmt = f'```py\n{value}{traceback.format_exc()}\n```'
+            if len(fmt) > 2000:
+                fp = io.BytesIO(fmt.encode('utf-8'))
+                await ctx.send('Too many results...', file=discord.File(fp, 'results.txt'))
+            return await ctx.send()
         else:
             value = stdout.getvalue()
             try:

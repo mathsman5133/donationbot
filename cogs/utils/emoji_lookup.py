@@ -160,7 +160,6 @@ townhall_emojis = \
         5: "<:rcsth5:506863668819001345>",
         8: "<:rcsth8:506863668827258919>"
     }
-print(townhall_emojis[12])
 troop_emojis = \
     {
         "babydragon": "<:babydragon:531661745031348235>",

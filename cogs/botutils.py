@@ -4,7 +4,7 @@ import discord
 from discord.ext import commands
 from typing import Union
 
-from cogs.utils.cache import cache
+from cogs.utils.cache import cache, Strategy
 from cogs.utils.db_objects import LogConfig, BoardConfig, SlimEventConfig
 
 
@@ -12,7 +12,7 @@ class Utils(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @cache()
+    @cache(strategy=Strategy.lru)
     async def log_config(self, channel_id: int, log_type: str) -> Union[LogConfig, None]:
         query = """SELECT guild_id, 
                           channel_id, 
@@ -36,7 +36,7 @@ class Utils(commands.Cog):
         if task:
             task.cancel()
 
-    @cache()
+    @cache(strategy=Strategy.lru)
     async def board_config(self, channel_id: int) -> Union[BoardConfig, None]:
         query = """SELECT guild_id, 
                           channel_id,
@@ -56,7 +56,7 @@ class Utils(commands.Cog):
 
         return BoardConfig(bot=self.bot, record=fetch)
 
-    @cache(maxsize=40)
+    @cache()
     async def get_board_channel(self, guild_id: int, board_type: str) -> Union[int, None]:
         query = "SELECT channel_id FROM boards WHERE guild_id = $1 AND board_type = $2 AND toggle = True;"
         fetch = await self.bot.pool.fetchrow(query, guild_id, board_type)
@@ -65,7 +65,7 @@ class Utils(commands.Cog):
 
     async def get_board_config(self, guild_id: int, board_type: str, invalidate=False):
         if invalidate:
-            self.get_board_channel.invalidate(self, guild_id, board_type)
+            await self.get_board_channel.invalidate(self, guild_id, board_type)
 
         channel_id = await self.get_board_channel(guild_id, board_type)
         if not channel_id:
@@ -76,7 +76,7 @@ class Utils(commands.Cog):
 
         return await self.board_config(channel_id)
 
-    @cache()
+    @cache(strategy=Strategy.lru)
     async def event_config(self, guild_id: int) -> Union[SlimEventConfig, None]:
         query = """SELECT id,
                           start,
@@ -101,7 +101,7 @@ class Utils(commands.Cog):
             return 'Unknown'
         return fetch[0]
 
-    @cache()
+    @cache(strategy=Strategy.lru)
     async def get_message(self, channel: discord.TextChannel, message_id: int) -> Union[discord.Message, None]:
         try:
             o = discord.Object(id=message_id + 1)
@@ -120,8 +120,8 @@ class Utils(commands.Cog):
         fetch = await self.bot.pool.fetch(query)
         self.bot.coc._clan_updates = [n[0] for n in fetch]
 
-    async def channel_log(self, channel_id, message, colour=None, embed=True):
-        config = await self.log_config(channel_id)
+    async def channel_log(self, channel_id, log_type, message, colour=None, embed=True):
+        config = await self.log_config(channel_id, log_type)
         if not config.channel or not config.toggle:
             return
 
