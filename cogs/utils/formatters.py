@@ -189,6 +189,14 @@ class CLYTable:
             fmt += f"{index}`⠀{str(v[1]):\u00A0>4.4}⠀`⠀{str(v[2]):\u00A0<18.18}⠀`\n"
         return fmt
 
+    def events_list(self):
+        fmt = f"{misc['number']}` {'Starts In':\u00A0^9} `⠀{'Name':\u00A0<15.15}⠀`\n"
+        for v in self._rows:
+            index = int(v[0]) + 1
+            index = number_emojis[index] if index <= 100 else misc['idle']
+            fmt += f"{index}`⠀{str(v[1]):\u00A0^9}⠀`⠀{str(v[2]):\u00A0<15.15}⠀`\n"
+        return fmt
+
     def donation_log_command(self):
         fmt = f"{misc['number']}⠀`⠀{'Don/Rec':\u00A0>7.7}⠀`  `⠀{'Name':\u00A0<12.12}⠀`  `⠀{'Age':\u00A0<5.5}⠀`\n"
         for v in self._rows:
