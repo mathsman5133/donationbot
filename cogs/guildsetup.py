@@ -329,7 +329,7 @@ class GuildConfiguration(commands.Cog):
                 start_date = await DateConverter().convert(ctx, response.clean_content)
                 break
             except (ValueError, commands.BadArgument):
-                await ctx.send(f'Date must be in the YYYY-MM-DD format.')
+                await ctx.send('Date must be in the YYYY-MM-DD format.')
             except asyncio.TimeoutError:
                 return await ctx.send('Yawn! Time\'s up. You\'re going to have to start over some other time.')
         else:
@@ -367,30 +367,21 @@ class GuildConfiguration(commands.Cog):
         except asyncio.TimeoutError:
             return await ctx.send('I can\'t wait all day. Try again later.')
 
-        msg = await ctx.send('Does the event end at the same time of day?')
-        reactions = ["🇾", "🇳"]
-        for r in reactions:
-            await msg.add_reaction(r)
-
-        def check(r, u):
-            return str(r) in reactions and u.id == ctx.author.id and r.message.id == msg.id
-
-        try:
-            r, u = await self.bot.wait_for('reaction_add', check=check, timeout=60.0)
-            if str(r) == reactions[0]:
-                end_time = start_time
-            else:
-                try:
-                    await ctx.send('What time does the event end? (Please provide HH:MM in UTC)')
-                    response = await ctx.bot.wait_for('message', check=check_author, timeout=60.0)
-                    hour, minute = map(int, response.content.split(':'))
-                    end_time = datetime.time(hour, minute)
-                except asyncio.TimeoutError:
-                    end_time = start_time
-                    await ctx.send('You must have fallen asleep. I\'ll just set the end time to match the start time.')
-        except asyncio.TimeoutError:
+        answer = await ctx.prompt('Does the event end at the same time of day?')
+        if answer:
             end_time = start_time
-            await ctx.send('No answer? I\'ll assume that\'s a yes then!')
+        elif answer is None:
+            end_time = start_time
+            await ctx.send('You must have fallen asleep. I\'ll just set the end time to match the start time.')
+        else:
+            try:
+                await ctx.send('What time does the event end? (Please provide HH:MM in UTC)')
+                response = await ctx.bot.wait_for('message', check=check_author, timeout=60.0)
+                hour, minute = map(int, response.content.split(':'))
+                end_time = datetime.time(hour, minute)
+            except asyncio.TimeoutError:
+                end_time = start_time
+                await ctx.send('You must have fallen asleep. I\'ll just set the end time to match the start time.')
 
         event_end = datetime.datetime.combine(end_date, end_time)
 
@@ -398,37 +389,11 @@ class GuildConfiguration(commands.Cog):
         event_id = await ctx.db.fetchrow(query, ctx.guild.id, event_name, event_start, event_end)
         log.info(f"{event_name} added to events table for {ctx.guild} by {ctx.author}")
 
-        try:
-            await ctx.send('Alright now I just need to know what clans will be in this event. You can provide the '
-                           'clan tags all at once (separated by a space) or individually. '
-                           'You can type `all` for all clans in the server.')
-            response = await self.bot.wait_for('message', check=check_author, timeout=180.00)
-            clans = response.content.split(' ')
-            clan_names = ''
-            for clan in clans:
-                try:
-                    clans = await ClanConverter().convert(ctx, clan)
-                except commands.BadArgument:
-                    await ctx.send(f'{clan} wasn\'t a valid tag or name, but I\'ll keep going...')
-                    continue
-                query = 'INSERT INTO clans (clan_tag, clan_name, channel_id, guild_id, in_event) VALUES ' \
-                        '($1, $2, $3, $4, $5) ON CONFLICT (clan_tag, channel_id) DO UPDATE SET in_event = $5'
-
-                if len(clans) == 1:
-                    await ctx.db.execute(query, clans[0].tag, clans[0].name, ctx.channel.id, ctx.guild.id, True)
-                    clan_names += f'\n{clans[0].name}'
-                else:
-                    await ctx.db.executemany(query, [[n.tag, n.name, ctx.channel.id, ctx.guild.id, True] for n in clans])
-                    clan_names += '\n'.join(n.name for n in clans)
-
-            fmt_tag = (f'Clans added for this event:\n' 
-                       f'{clan_names}')
-
-        except asyncio.TimeoutError:
-            fmt_tag = "Please use the `+add clan` command later to add clans to this event."
+        query = 'UPDATE clans SET in_event = True WHERE guild_id = $1'
+        await ctx.db.execute(query, ctx.guild.id)
 
         fmt = (f'**Event Created:**\n\n{event_name}\n{event_start.strftime("%d %b %Y %H:%M")}\n'
-               f'{event_end.strftime("%d %b %Y %H:%M")}\n\n{fmt_tag}\n\nEnjoy your event!')
+               f'{event_end.strftime("%d %b %Y %H:%M")}\n\nEnjoy your event!')
         e = discord.Embed(colour=discord.Colour.green(),
                           description=fmt)
         await ctx.send(embed=e)
@@ -1377,6 +1342,184 @@ class GuildConfiguration(commands.Cog):
         await ctx.db.execute(query, str(minutes), ctx.config.channel_id, 'trophy')
         await ctx.send(f'Logs for {ctx.config.channel.mention} have been changed to {minutes} minutes. '
                        'Find which clans this affects with `+help info trophylog`')
+
+    @edit.command(name='event')
+    @manage_guild()
+    async def edit_event(self, ctx, event_name: str = None):
+        if event_name:
+            query = """SELECT id FROM events 
+                       WHERE guild_id = $1 
+                       AND event_name = $2"""
+            fetch = await self.bot.pool.fetchrow(query, ctx.guild.id, event_name)
+            if fetch:
+                event_id = fetch['id']
+            else:
+                # ideally this would just display a list of events and let the user pick, but I
+                # couldn't figure out the proper sequence of if event_name/if event_id
+                return await ctx.send("There is no event on this server with that name. Try `+edit event` "
+                                      "to pick from a list of events on this server.")
+        else:
+            # No event name provided or I didn't understand the name I was given
+            query = """SELECT id, event_name, start 
+                               FROM events
+                               WHERE guild_id = $1 
+                               ORDER BY start"""
+            fetch = await self.bot.pool.fetch(query, ctx.guild.id)
+            if len(fetch) == 0 or not fetch:
+                return await ctx.send("There are no events currently set up on this server. "
+                                      "Try `+add event`")
+            elif len(fetch) == 1:
+                event_id = fetch[0]['id']
+            else:
+                table = CLYTable()
+                fmt = f"Events on {ctx.guild}:\n\n"
+                reactions = []
+                counter = 0
+                for event in fetch:
+                    days_until = event['start'].date() - datetime.datetime.utcnow().date()
+                    table.add_row([counter, days_until.days, event['event_name']])
+                    counter += 1
+                    reactions.append(f"{counter}\N{combining enclosing keycap}")
+                render = table.events_list()
+                fmt += f'{render}\n\nPlease select the reaction that corresponds with the event you would ' \
+                       f'like to remove.'
+                e = discord.Embed(colour=self.bot.colour,
+                                  description=fmt)
+                msg = await ctx.send(embed=e)
+                for r in reactions:
+                    await msg.add_reaction(r)
+
+                def check(r, u):
+                    return str(r) in reactions and u.id == ctx.author.id and r.message.id == msg.id
+
+                try:
+                    r, u = await self.bot.wait_for('reaction_add', check=check, timeout=60.0)
+                except asyncio.TimeoutError:
+                    await msg.clear_reactions()
+                    return await ctx.send("I feel like I'm being ignored. MAybe try again later?")
+
+                index = reactions.index(str(r))
+                event_id = fetch[index]['id']
+
+            # Now that we have the event_id, let's edit things
+            query = """SELECT event_name, start, finish 
+                       FROM events
+                       WHERE id = $1"""
+            event = await self.bot.pool.fetchrow(query, event_id)
+
+            def check_author(m):
+                return m.author == ctx.author
+
+            answer = await ctx.prompt(f"Event Name: **{event['event_name']}**\n"
+                                      f"Would you like to edit the event name?")
+            if answer:
+                try:
+                    await ctx.send('Please enter the new name for this event.')
+                    response = await ctx.bot.wait_for('message', check=check_author, timeout=60.0)
+                    new_event_name = response.content
+                except asyncio.TimeoutError:
+                    new_event_name = event['event_name']
+            else:
+                new_event_name = event['event_name']
+            answer = await ctx.prompt(f"Start Date: **{event['start'].date()}\n"
+                                      f"Would you like to edit the date?")
+            if answer:
+                try:
+                    await ctx.send('Please enter the new start date.  (YYYY-MM-DD)')
+                    response = await ctx.bot.wait_for('message', check=check_author, timeout=60.0)
+                    new_start_date = await DateConverter().convert(ctx, response.clean_content)
+                except (ValueError, commands.BadArgument):
+                    await ctx.send('Date must be in the YYYY-MM-DD format. I\'m going to keep '
+                                   'the current start date and you can change it later if you like.')
+                    new_start_date = event['start'].date()
+                except asyncio.TimeoutError:
+                    await ctx.send('Seems as though you don\'t really know the answer. I\'m just going '
+                                   'to keep the date I have for now.')
+                    new_start_date = event['start'].date()
+            else:
+                new_start_date = event['start'].date()
+            answer = await ctx.prompt(f"Start Time: **{event['start'].time()}\n"
+                                      f"Would you like to edit the time?")
+            if answer:
+                try:
+                    await ctx.send('Please enter the new start time. (Please provide HH:MM in UTC)')
+                    response = await ctx.bot.wait_for('message', check=check_author, timeout=60.0)
+                    hour, minute = map(int, response.content.split(':'))
+                    if hour < 13:
+                        try:
+                            await ctx.send('And is that AM or PM?')
+                            response = await ctx.bot.wait_for('message', check=check_author, timeout=60.0)
+                            if response.content.lower() == 'pm':
+                                hour += 12
+                        except asyncio.TimeoutError:
+                            if hour < 6:
+                                await ctx.send('Well I\'ll just go with PM then.')
+                                hour += 12
+                            else:
+                                await ctx.send('I\'m going to assume you want AM.')
+                    new_start_time = datetime.time(hour, minute)
+                except asyncio.TimeoutError:
+                    await ctx.send('Time\'s up my friend. Start time will remain the same!')
+                    new_start_time = event['start'].time()
+            else:
+                new_start_time = event['start'].time()
+            answer = await ctx.prompt(f"End Date: **{event['finish'].date()}\n"
+                                      f"Would you like to edit the date?")
+            if answer:
+                try:
+                    await ctx.send('Please enter the new end date.  (YYYY-MM-DD)')
+                    response = await ctx.bot.wait_for('message', check=check_author, timeout=60.0)
+                    new_end_date = await DateConverter().convert(ctx, response.clean_content)
+                except (ValueError, commands.BadArgument):
+                    await ctx.send('Date must be in the YYYY-MM-DD format. I\'m going to keep '
+                                   'the current end date and you can change it later if you like.')
+                    new_end_date = event['finish'].date()
+                except asyncio.TimeoutError:
+                    await ctx.send('Seems as though you don\'t really know the answer. I\'m just going '
+                                   'to keep the date I have for now.')
+                    new_end_date = event['finish'].date()
+            else:
+                new_end_date = event['finish'].date()
+            answer = await ctx.prompt(f"End Time: **{event['finish'].time()}\n"
+                                      f"Would you like to edit the time?")
+            if answer:
+                try:
+                    await ctx.send('Please enter the new end time. (Please provide HH:MM in UTC)')
+                    response = await ctx.bot.wait_for('message', check=check_author, timeout=60.0)
+                    hour, minute = map(int, response.content.split(':'))
+                    if hour < 13:
+                        try:
+                            await ctx.send('And is that AM or PM?')
+                            response = await ctx.bot.wait_for('message', check=check_author, timeout=60.0)
+                            if response.content.lower() == 'pm':
+                                hour += 12
+                        except asyncio.TimeoutError:
+                            if hour < 6:
+                                await ctx.send('Well I\'ll just go with PM then.')
+                                hour += 12
+                            else:
+                                await ctx.send('I\'m going to assume you want AM.')
+                    new_end_time = datetime.time(hour, minute)
+                except asyncio.TimeoutError:
+                    await ctx.send('Time\'s up my friend. Start time will remain the same!')
+                    new_end_time = event['finish'].time()
+            else:
+                new_end_time = event['finish'].time()
+
+            # Assemble answers and update db
+            new_start = datetime.datetime.combine(new_start_date, new_start_time)
+            new_finish = datetime.datetime.combine(new_end_date, new_end_time)
+            query = """UPDATE events 
+                       SET event_name = $1, start = $2, finish = $3 
+                       WHERE id = $4"""
+            await ctx.db.execute(query, new_event_name, new_start, new_finish, event_id)
+
+            fmt = (f'**Event Info:**\n\n{new_event_name}\n{new_start.strftime("%d %b %Y %H:%M")}\n'
+                   f'{new_finish.strftime("%d %b %Y %H:%M")}')
+            e = discord.Embed(colour=discord.Colour.green(),
+                              description=fmt)
+            await ctx.send(embed=e)
+
 
     @commands.command()
     @checks.manage_guild()
