@@ -316,7 +316,7 @@ class BoardPaginator(TablePaginator):
         async for player in self.bot.coc.get_players(tags):
             self.create_row(player, data_by_tag)
 
-        render = get_render_type(self.ctx, self.table)
+        render = get_render_type(self.ctx.config, self.table)
         return render()
 
 
