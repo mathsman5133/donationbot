@@ -35,6 +35,7 @@ class SeasonConfig(commands.Cog):
 
         log.critical('New season starting - via loop.')
         await self.new_season()
+        await self.new_season_pull()
 
     async def new_season(self):
         query = "INSERT INTO seasons (start, finish) VALUES ($1, $2)"
