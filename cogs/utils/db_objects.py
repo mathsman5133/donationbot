@@ -84,6 +84,7 @@ class BoardConfig:
                           channel_id 
                    FROM messages 
                    WHERE channel_id = $1
+                   ORDER BY message_id DESC
                 """
         fetch = await self.bot.pool.fetch(query, self.channel_id)
         return [DatabaseMessage(bot=self.bot, record=n) for n in fetch]

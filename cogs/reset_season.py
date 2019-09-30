@@ -73,7 +73,7 @@ class SeasonConfig(commands.Cog):
         return self.season_id
 
     async def new_season_pull(self):
-        query = "SELECT DISTINCT player_tag FROM players WHERE season_id = $1 AND start_update = False LIMIT 5000;"
+        query = "SELECT DISTINCT player_tag FROM players WHERE season_id = $1 AND start_update = False LIMIT 1000;"
         fetch = await self.bot.pool.fetch(query, await self.get_season_id())
 
         query = """UPDATE players SET start_friend_in_need = x.friend_in_need, 
