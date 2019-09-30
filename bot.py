@@ -57,7 +57,7 @@ description = "A simple discord bot to track donations of clan families in clash
 
 class DonationBot(commands.Bot):
     def __init__(self):
-        super().__init__(command_prefix=commands.when_mentioned_or('maths!'), case_insensitive=True,
+        super().__init__(command_prefix=commands.when_mentioned_or('++'), case_insensitive=True,
                          description=description, pm_help=None, help_attrs=dict(hidden=True),
                          fetch_offline_members=True)
 
@@ -138,10 +138,10 @@ class DonationBot(commands.Bot):
 
     async def on_ready(self):
         await self.utils.update_clan_tags()
-        await self.change_presence(activity=discord.Game('+help for commands'))
+        await self.change_presence(activity=discord.Game('++help for commands'))
 
     async def on_resumed(self):
-        await self.change_presence(activity=discord.Game('+help for commands'))
+        await self.change_presence(activity=discord.Game('++help for commands'))
 
     async def get_clans(self, guild_id):
         query = "SELECT DISTINCT clan_tag FROM clans WHERE guild_id = $1"

@@ -14,10 +14,17 @@ class SeasonConfig(commands.Cog):
 
     @staticmethod
     def next_last_monday():
-        return datetime.datetime.utcnow() + \
-               relativedelta.relativedelta(day=31, weekday=relativedelta.MO(-1))
+        now = datetime.datetime.utcnow()
+        day = now + relativedelta.relativedelta(month=now.month,
+                                                weekday=relativedelta.MO(-1),
+                                                day=31,
+                                                hour=(-now.hour + 6),
+                                                minutes=-now.minute,
+                                                seconds=-now.second
+                                                )
+        return day
 
-    @tasks.loop(time=datetime.time(hour=16))
+    @tasks.loop(time=datetime.time(hour=6, tzinfo=datetime.timezone.utc))
     async def start_new_season(self):
         log.debug('Starting season reset loop.')
         now = datetime.datetime.utcnow()
@@ -64,12 +71,12 @@ class SeasonConfig(commands.Cog):
         self.season_id = fetch[0]
         return self.season_id
 
-    async def update_fin_sic(self):
+    async def new_season_pull(self):
         query = "SELECT DISTINCT player_tag FROM players WHERE season_id = $1 AND start_update = False"
         fetch = await self.bot.pool.fetch(query, await self.get_season_id())
 
-        query = """UPDATE players SET friend_in_need = x.friend_in_need, 
-                                      sharing_is_caring = x.sharing_is_caring,
+        query = """UPDATE players SET start_friend_in_need = x.friend_in_need, 
+                                      start_sharing_is_caring = x.sharing_is_caring,
                                       start_attacks = x.start_attacks,
                                       start_defenses = x.start_defenses,
                                       start_best_trophies = x.start_best_trophies
@@ -105,6 +112,7 @@ class SeasonConfig(commands.Cog):
                 # This is basically to ensure we don't have 10k records in memory at any one time.
                 # Safety net incase something fails, too.
                 await self.bot.pool.execute(query, data, season_id)
+                await self.insert_final(self.bot.pool, data, season_id)
                 data.clear()
                 counter = 0
 
@@ -112,11 +120,44 @@ class SeasonConfig(commands.Cog):
                 'player_tag': player.tag,
                 'friend_in_need': player.achievements_dict['Friend in Need'].value,
                 'sharing_is_caring': player.achievements_dict['Sharing is caring'].value,
-                'start_attacks': player.attack_wins,
-                'start_defenses': player.defense_wins,
-                'start_best_trophies': player.best_trophies
+                'attacks': player.attack_wins,
+                'defenses': player.defense_wins,
+                'best_trophies': player.best_trophies
             })
             counter += 1
+
+    @staticmethod
+    async def insert_final(con, data, season_id):
+        query = """UPDATE players SET end_friend_in_need    = x.friend_in_need, 
+                                      end_sharing_is_caring = x.sharing_is_caring,
+                                      end_attacks           = x.attacks,
+                                      end_defenses          = x.defenses,
+                                      end_best_trophies     = x.best_trophies,
+                                      final_update          = True
+
+                    FROM(
+                        SELECT x.player_tag, 
+                               x.friend_in_need, 
+                               x.sharing_is_caring,
+                               x.attacks,
+                               x.defenses,
+                               x.best_trophies
+                               
+                        FROM jsonb_to_recordset($1::jsonb)
+                        AS x(
+                            player_tag TEXT, 
+                            friend_in_need INTEGER, 
+                            sharing_is_caring INTEGER,
+                            attacks INTEGER,
+                            defenses INTEGER,
+                            best_trophies INTEGER
+                            )
+                        )
+                AS x
+                WHERE players.player_tag = x.player_tag
+                AND players.season_id=$2
+                """
+        await con.execute(query, data, season_id - 1)
 
     @commands.command()
     @commands.is_owner()
@@ -141,8 +182,8 @@ class SeasonConfig(commands.Cog):
 
     @commands.command()
     @commands.is_owner()
-    async def refreshfin(self, ctx):
-        await self.update_fin_sic()
+    async def startingdump(self, ctx):
+        await self.new_season_pull()
         await ctx.confirm()
 
     async def event_management(self):

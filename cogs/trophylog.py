@@ -27,7 +27,7 @@ class TrophyLogs(commands.Cog):
         self.report_task.start()
 
         self.bot.coc.add_events(
-            self.on_clan_member_trophy_change,
+            self.on_clan_member_trophies_change,
         )
         self.bot.coc._clan_retry_interval = 20
         self.bot.coc.start_updates('clan')
@@ -39,7 +39,7 @@ class TrophyLogs(commands.Cog):
         self.report_task.cancel()
         self.batch_insert_loop.cancel()
         self.bot.coc.remove_events(
-            self.on_clan_member_trophy_change
+            self.on_clan_member_trophies_change
         )
         for k, v in self._tasks:
             v.cancel()
@@ -51,7 +51,7 @@ class TrophyLogs(commands.Cog):
             await self.bulk_insert()
 
     async def bulk_insert(self):
-        query = """INSERT INTO trophyevevents (player_tag, player_name, clan_tag, 
+        query = """INSERT INTO trophyevents (player_tag, player_name, clan_tag, 
                                                  trophy_change, time, season_id)
                         SELECT x.player_tag, x.player_name, x.clan_tag, 
                                x.trophy_change, x.time, x.season_id
@@ -115,7 +115,7 @@ class TrophyLogs(commands.Cog):
     async def create_temp_event_task(self, channel_id):
         try:
             while not self.bot.is_closed():
-                config = await self.bot.utils.log_config(channel_id)
+                config = await self.bot.utils.log_config(channel_id, EVENTS_TABLE_TYPE)
                 if not config:
                     log.warning(f'Channel ID not found in DB or `None` '
                                 f'has been cached for Channel ID: {channel_id}')
@@ -163,7 +163,7 @@ class TrophyLogs(commands.Cog):
                 """
 
         for n in fetch:
-            config = await self.bot.utils.log_config(n[0])
+            config = await self.bot.utils.log_config(n[0], EVENTS_TABLE_TYPE)
             if not config:
                 continue
             if not config.toggle:
@@ -197,7 +197,7 @@ class TrophyLogs(commands.Cog):
         removed = await self.bot.pool.execute(query)
         log.debug('Removed events from the database. Status Code %s', removed)
 
-    async def on_clan_member_trophy_change(self, old_trophies, new_trophies, player, clan):
+    async def on_clan_member_trophies_change(self, old_trophies, new_trophies, player, clan):
         log.debug(f'Received on_clan_member_trophy_change event for player {player} of clan {clan}')
         change = new_trophies - old_trophies
 

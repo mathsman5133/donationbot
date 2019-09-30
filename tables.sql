@@ -38,7 +38,7 @@ CREATE TABLE eventplayers (
     start_friend_in_need integer default 0,
     end_friend_in_need integer default 0,
     start_sharing_is_caring integer default 0,
-    end_friend_in_need integer default 0,
+    end_sharing_is_caring integer default 0,
     start_attacks integer default 0,
     end_attacks integer default 0,
     start_defenses integer default 0,
@@ -58,7 +58,7 @@ CREATE TABLE logs (
     channel_id bigint,
     interval interval DEFAULT (0 ||' minutes')::interval,
     toggle boolean,
-    type text,
+    type text
 );
 
 create table clans (
@@ -91,10 +91,10 @@ CREATE TABLE boards (
     channel_id BIGINT unique,
     icon_url TEXT,
     title TEXT,
-    render INTEGER,
+    render INTEGER default 1,
     toggle BOOLEAN default true,
-    board_type TEXT,
-    in_event boolean
+    type TEXT,
+    in_event boolean default false
     );
 
 
@@ -171,5 +171,6 @@ create table events (
     start timestamp,
     finish timestamp,
     event_name text,
-    guild_id bigint
+    guild_id bigint,
+    channel_id bigint
 )

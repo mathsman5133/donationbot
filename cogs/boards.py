@@ -33,6 +33,7 @@ class DonationBoard(commands.Cog):
         self.bot.coc.add_events(
             self.on_clan_member_donation,
             self.on_clan_member_received,
+            self.on_clan_member_trophies_change,
             self.on_clan_member_join
                                 )
         self.bot.coc._clan_retry_interval = 20
@@ -54,6 +55,7 @@ class DonationBoard(commands.Cog):
         self.bot.coc.remove_events(
             self.on_clan_member_donation,
             self.on_clan_member_received,
+            self.on_clan_member_trophies_change,
             self.on_clan_member_join
         )
 
@@ -68,7 +70,12 @@ class DonationBoard(commands.Cog):
             clan_tags = list(self._clan_events)
             self._clan_events.clear()
 
-        query = "SELECT DISTINCT channel_id FROM clans WHERE clan_tag = ANY($1::TEXT[])"
+        query = """SELECT DISTINCT boards.channel_id
+                    FROM boards
+                    INNER JOIN clans
+                    ON clans.guild_id = boards.guild_id
+                    WHERE clans.clan_tag = ANY($1::TEXT[])
+                """
         fetch = await self.bot.pool.fetch(query, clan_tags)
 
         for n in fetch:
@@ -76,8 +83,8 @@ class DonationBoard(commands.Cog):
 
     async def bulk_insert(self):
         query = """UPDATE players SET donations = players.donations + x.donations, 
-                                      received = players.received + x.received, 
-                                      trophies = players.trophies + x.trophies
+                                      received  = players.received + x.received, 
+                                      trophies  = x.trophies
                         FROM(
                             SELECT x.player_tag, x.donations, x.received, x.trophies
                                 FROM jsonb_to_recordset($1::jsonb)
@@ -205,19 +212,18 @@ class DonationBoard(commands.Cog):
                 }
             self._clan_events.add(clan.tag)
 
-    async def on_clan_member_trophy_change(self, old_trophies, new_trophies, player, clan):
+    async def on_clan_member_trophies_change(self, old_trophies, new_trophies, player, clan):
         log.debug(f'Received on_clan_member_trophy_change event for player {player} of clan {clan}')
-        trophies = new_trophies - old_trophies
 
         async with self._batch_lock:
             try:
-                self._data_batch[player.tag]['trophies'] = trophies
+                self._data_batch[player.tag]['trophies'] = new_trophies
             except KeyError:
                 self._data_batch[player.tag] = {
                     'player_tag': player.tag,
                     'donations': 0,
                     'received': 0,
-                    'trophies': trophies
+                    'trophies': new_trophies
                 }
             self._clan_events.add(clan.tag)
 
@@ -227,13 +233,13 @@ class DonationBoard(commands.Cog):
                     ON CONFLICT (player_tag, season_id) 
                     DO NOTHING
                 """
-        # todo: test query2
+
         query2 = """INSERT INTO eventplayers (player_tag, donations, received, live, event_id) 
-                        SELECT $1, $2, $3, $4, true, events.id
-                        FROM donationevents
+                        SELECT $1, $2, $3, true, events.id
+                        FROM events
                         INNER JOIN clans 
                         ON clans.guild_id = events.guild_id
-                        WHERE clans.clan_tag = $5
+                        WHERE clans.clan_tag = $4
                     ON CONFLICT (player_tag, event_id) 
                     DO NOTHING
                 """
@@ -298,7 +304,7 @@ class DonationBoard(commands.Cog):
             column_2 = 'received'
         elif board_type == 'trophy':
             column_1 = 'trophies'
-            column_2 = None
+            column_2 = 'trophies - start_best_trophies'
         else:
             return
 
@@ -335,8 +341,13 @@ class DonationBoard(commands.Cog):
         if not config.channel:
             return
 
-        query = "SELECT DISTINCT clan_tag FROM clans WHERE guild_id=$1 AND in_event=$2"
-        fetch = await self.bot.pool.fetch(query, config.guild_id, config.in_event)
+        if config.in_event:
+            query = """SELECT DISTINCT clan_tag FROM clans WHERE guild_id=$1 AND in_event=$2"""
+            fetch = await self.bot.pool.fetch(query, config.guild_id, config.in_event)
+        else:
+            query = "SELECT DISTINCT clan_tag FROM clans WHERE guild_id=$1"
+            fetch = await self.bot.pool.fetch(query, config.guild_id)
+
         clans = await self.bot.coc.get_clans((n[0] for n in fetch)).flatten()
 
         players = []
@@ -346,26 +357,26 @@ class DonationBoard(commands.Cog):
         top_players = await self.get_top_players(players, config.type, config.in_event)
         players = {n.tag: n for n in players if n.tag in set(x['player_tag'] for x in top_players)}
 
-        message_count = math.ceil(len(fetch) / 20)
+        message_count = math.ceil(len(top_players) / 20)
 
         messages = await self.get_board_messages(channel_id, number_of_msg=message_count)
         if not messages:
             return
 
         for i, v in enumerate(messages):
-            player_data = fetch[i*20:(i+1)*20]
+            player_data = top_players[i*20:(i+1)*20]
             table = CLYTable()
 
             for x, y in enumerate(player_data):
                 index = i*20 + x
                 if config.render == 2:
                     table.add_row([index,
-                                   y[0],
+                                   y[1],
                                    players.get(y['player_tag'], mock).name])
                 else:
                     table.add_row([index,
-                                   y[0],
                                    y[1],
+                                   y[2],
                                    players.get(y['player_tag'], mock).name])
 
             render = get_render_type(config, table)

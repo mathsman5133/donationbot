@@ -174,11 +174,11 @@ class CLYTable:
         return fmt
 
     def trophyboard_1(self):
-        fmt = f"{misc['number']}`⠀{'Cups':\u00A0>4.4}⠀` ` {'Gain':\u00A0>4.4} `⠀{'Name':\u00A0<10.10}⠀`\n"
+        fmt = f"{misc['number']}`⠀{'Cups':\u00A0>4.4}⠀` ` {'Gain':\u00A0>4.4} ` `⠀{'Name':\u00A0<10.10}⠀`\n"
         for v in self._rows:
             index = int(v[0]) + 1
             index = number_emojis[index] if index <= 100 else misc['idle']
-            fmt += f"{index}`⠀{str(v[1]):\u00A0>4.4}⠀` ` {str(v[2]):\u00A0>4.4} `⠀{str(v[2]):\u00A0<10.10}⠀`\n"
+            fmt += f"{index}`⠀{str(v[1]):\u00A0>4.4}⠀` ` {str(v[2]):\u00A0>4.4} ` `⠀{str(v[2]):\u00A0<10.10}⠀`\n"
         return fmt
 
     def trophyboard_2(self):

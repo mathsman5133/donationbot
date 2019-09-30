@@ -8,7 +8,7 @@ import time
 from datetime import datetime
 from discord.ext import commands, tasks
 
-from cogs.utils.db_objects import DonationEvent, SlimDonationEvent
+from cogs.utils.db_objects import SlimDonationEvent
 from cogs.utils.formatters import format_donation_log_message
 
 log = logging.getLogger(__name__)

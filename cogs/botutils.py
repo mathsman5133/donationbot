@@ -29,13 +29,6 @@ class Utils(commands.Cog):
 
         return LogConfig(bot=self.bot, record=fetch)
 
-    def invalidate_channel_configs(self, channel_id: int):
-        self.log_config.invalidate(self, channel_id)
-        # todo: fix
-        task = self.bot.donationlogs._tasks.pop(channel_id, None)
-        if task:
-            task.cancel()
-
     @cache(strategy=Strategy.lru)
     async def board_config(self, channel_id: int) -> Union[BoardConfig, None]:
         query = """SELECT guild_id, 
@@ -58,7 +51,7 @@ class Utils(commands.Cog):
 
     @cache()
     async def get_board_channel(self, guild_id: int, board_type: str) -> Union[int, None]:
-        query = "SELECT channel_id FROM boards WHERE guild_id = $1 AND board_type = $2 AND toggle = True;"
+        query = "SELECT channel_id FROM boards WHERE guild_id = $1 AND type = $2 AND toggle = True;"
         fetch = await self.bot.pool.fetchrow(query, guild_id, board_type)
         if fetch:
             return fetch['channel_id']
@@ -81,7 +74,8 @@ class Utils(commands.Cog):
         query = """SELECT id,
                           start,
                           finish,
-                          event_name
+                          event_name,
+                          channel_id
                    FROM events
                    WHERE guild_id = $1
                    ORDER BY start DESC;
@@ -91,7 +85,8 @@ class Utils(commands.Cog):
         if not fetch:
             return None
 
-        return SlimEventConfig(fetch['id'], fetch['start'], fetch['finish'], fetch['event_name'])
+        return SlimEventConfig(fetch['id'], fetch['start'],
+                               fetch['finish'], fetch['event_name'], fetch['channel_id'])
 
     @cache()
     async def get_clan_name(self, guild_id: int, tag: str) -> str:

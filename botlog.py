@@ -8,7 +8,7 @@ def setup_logging(bot):
     logging.getLogger('discord').setLevel(logging.INFO)
     logging.getLogger('discord.http').setLevel(logging.WARNING)
     logging.getLogger('websockets.protocol').setLevel(logging.WARNING)
-    logging.getLogger('coc').setLevel(logging.INFO)
+    logging.getLogger('coc').setLevel(logging.DEBUG)
     logging.getLogger('coc.http').setLevel(logging.WARNING)
 
     log = logging.getLogger()
@@ -43,8 +43,8 @@ def setup_logging(bot):
             to_send = fmt.format(record)
 
             messages = []
-            for i in range(int(len(to_send) / 2000)):
-                messages.append(to_send[i*2000:(i+1)*2000])
+            for i in range(int(len(to_send) / 1950)):
+                messages.append(to_send[i*1950:(i+1)*1950])
 
             for n in messages:
                 try:

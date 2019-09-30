@@ -1,9 +1,15 @@
 import asyncio
+import datetime
 import discord
+import logging
+import textwrap
 
 from discord.ext import commands, tasks
 
 from cogs.utils.db_objects import SlimEventConfig
+from cogs.utils.formatters import readable_time
+
+log = logging.getLogger(__name__)
 
 
 class BackgroundManagement(commands.Cog):
@@ -63,44 +69,110 @@ class BackgroundManagement(commands.Cog):
         await asyncio.sleep(event['until_finish'].total_seconds())
         await self.on_event_start(slim_config, event['guild_id'], event['until_finish'])
 
-    # async def on_event_start(self, event, guild_id, delta_ago):
-    #     if in_event:
-    #         event_query = """INSERT INTO eventplayers (
-    #                                         player_tag,
-    #                                         donations,
-    #                                         received,
-    #                                         trophies,
-    #                                         event_id,
-    #                                         start_friend_in_need,
-    #                                         start_sharing_is_caring,
-    #                                         start_attacks,
-    #                                         start_defenses,
-    #                                         start_best_trophies,
-    #                                         start_update
-    #                                         )
-    #                         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, True)
-    #                         ON CONFLICT (player_tag, event_id)
-    #                         DO NOTHING
-    #                     """
-    #         await connection.execute(event_query,
-    #                                  player.tag,
-    #                                  player.donations,
-    #                                  player.received,
-    #                                  player.trophies,
-    #                                  event_id,
-    #                                  player.achievements_dict['Friend in Need'].value,
-    #                                  player.achievements_dict['Sharing is caring'].value,
-    #                                  player.attack_wins,
-    #                                  player.defense_wins,
-    #                                  player.best_trophies
-    #                                  )
-    #         season_id = await self.bot.seasonconfig.get_season_id()
-    #         for n in clans:
-    #             async for player in n.get_detailed_members:
-    #                 await self.insert_player(ctx.db, player, season_id, True, event_id[0])
-    #
-    # async def on_event_finish(self, event, guild_id, delta_ago):
-    #     pass
+    @staticmethod
+    async def insert_member(con, player, event_id):
+        query = """INSERT INTO eventplayers (
+                                    player_tag,
+                                    donations,
+                                    received,
+                                    trophies,
+                                    event_id,
+                                    start_friend_in_need,
+                                    start_sharing_is_caring,
+                                    start_attacks,
+                                    start_defenses,
+                                    start_best_trophies,
+                                    start_update
+                                    )
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, True)
+                    ON CONFLICT (player_tag, event_id)
+                    DO NOTHING
+                """
+        await con.execute(query,
+                          player.tag,
+                          player.donations,
+                          player.received,
+                          player.trophies,
+                          event_id,
+                          player.achievements_dict['Friend in Need'].value,
+                          player.achievements_dict['Sharing is caring'].value,
+                          player.attack_wins,
+                          player.defense_wins,
+                          player.best_trophies
+                          )
+
+    @staticmethod
+    async def finalise_member(con, player, event_id):
+        query = """UPDATE eventplayers SET 
+                                end_friend_in_need = $1,
+                                end_sharing_is_caring = $2,
+                                end_attacks = $3,
+                                end_defenses = $4,
+                                end_best_trophies = $5
+                                WHERE player_tag = $6
+                                AND event_id = $7
+                    """
+        await con.execute(query,
+                          player.achievements_dict['Friend in Need'].value,
+                          player.achievements_dict['Sharing is caring'].value,
+                          player.attack_wins,
+                          player.defense_wins,
+                          player.best_trophies,
+                          player.tag,
+                          event_id
+                          )
+
+    async def on_event_start(self, event, guild_id, delta_to_go):
+        channel = self.bot.get_channel(event.channel_id)
+        await channel.send(':tada: Event starting! I am adding members to the database...')
+
+        query = "SELECT clan_tag FROM clans WHERE in_event = True AND guild_id = $1"
+        fetch = await self.bot.pool.fetch(query, guild_id)
+        clans = await self.bot.coc.get_clans((n[0] for n in fetch)).flatten()
+
+        for n in clans:
+            async for player in n.get_detailed_members:
+                await self.insert_member(self.bot.pool, player, event.id)
+        await channel.send('All members have been added... '
+                           'configuring the donation and trophy boards to be in the event!')
+        query = "UPDATE boards SET in_event = True WHERE guild_id = $1"
+        await self.bot.pool.execute(query, guild_id)
+
+        donationboard_config = await self.bot.utils.get_board_config(guild_id, 'donation')
+        await self.bot.donationboard.update_board(donationboard_config.channel_id)
+
+        trophyboard_config = await self.bot.utils.get_board_config(guild_id, 'trophy')
+        await self.bot.donationboard.update_board(trophyboard_config.channel_id)
+
+        await channel.send(f'Boards have been updated. Enjoy your event! '
+                           f'It ends in {readable_time(delta_to_go.total_seconds())}.')
+
+    async def on_event_finish(self, event, guild_id, delta_ago):
+        channel = self.bot.get_channel(event.channel_id)
+        await channel.send(':tada: Aaaand thats it! The event has finished. I am crunching the numbers, '
+                           'working out who the champs and chumps are, and will get back to you shortly.')
+
+        query = "SELECT clan_tag FROM clans WHERE in_event = True AND guild_id = $1"
+        fetch = await self.bot.pool.fetch(query, guild_id)
+        clans = await self.bot.coc.get_clans((n[0] for n in fetch)).flatten()
+
+        for n in clans:
+            async for player in n.get_detailed_members:
+                await self.finalise_member(self.bot.pool, player, event.id)
+        await channel.send('All members have been finalised, updating your boards!')
+        query = "UPDATE boards SET in_event = False WHERE guild_id = $1"
+        await self.bot.pool.execute(query, guild_id)
+
+        donationboard_config = await self.bot.utils.get_board_config(guild_id, 'donation')
+        await self.bot.donationboard.update_board(donationboard_config.channel_id)
+
+        trophyboard_config = await self.bot.utils.get_board_config(guild_id, 'trophy')
+        await self.bot.donationboard.update_board(trophyboard_config.channel_id)
+
+        # todo: crunch some numbers.
+        await channel.send(f'Boards have been updated. I will cruch some more numbers and '
+                           f'get back to you later when the owner has fixed this, lol.')
+
 
     @commands.Cog.listener()
     async def on_guild_join(self, guild):
@@ -108,19 +180,7 @@ class BackgroundManagement(commands.Cog):
         await self.send_guild_stats(e, guild)
         query = "INSERT INTO guilds (guild_id) VALUES ($1) ON CONFLICT (guild_id) DO NOTHING"
         await self.bot.pool.execute(query, guild.id)
-        fmt = '**Some handy hints:**\n' \
-            f'• My prefix is `+`, or {self.bot.user.mention}\n' \
-              '• All commands have super-detailed help commands; please use them!\n' \
-              '• Usage: `+help command_name`\n\n' \
-              'A few frequently used ones to get started:\n' \
-              '• `+help addclan`\n' \
-              '• `+help donationboard` and `+help donationboard create`\n' \
-              '• `+help log` and `+help log create`\n\n' \
-              '• There are lots of how-to\'s and other ' \
-              'support on the [support server](https://discord.gg/ePt8y4V) if you get stuck.\n' \
-            f'• Please share the bot with your friends! [Bot Invite]({self.bot.invite})\n' \
-              '• Please support us on [Patreon](https://www.patreon.com/donationtracker)!\n' \
-              '• Have a good day!'
+        fmt = self.bot.get_cog('Info').welcome_message
         e = discord.Embed(colour=self.bot.colour,
                           description=fmt)
         e.set_author(name='Hello! I\'m the Donation Tracker!',
@@ -170,7 +230,21 @@ class BackgroundManagement(commands.Cog):
 
         query = """INSERT INTO commands (guild_id, channel_id, author_id, used, prefix, command)
                                VALUES ($1, $2, $3, $4, $5, $6)
-                    """
+                """
+
+        e = discord.Embed(title='Command', colour=discord.Colour.green())
+        e.add_field(name='Name', value=ctx.command.qualified_name)
+        e.add_field(name='Author', value=f'{ctx.author} (ID: {ctx.author.id})')
+
+        fmt = f'Channel: {ctx.channel} (ID: {ctx.channel.id})'
+        if ctx.guild:
+            fmt = f'{fmt}\nGuild: {ctx.guild} (ID: {ctx.guild.id})'
+
+        e.add_field(name='Location', value=fmt, inline=False)
+        e.add_field(name='Content', value=textwrap.shorten(ctx.message.content, width=512))
+
+        e.timestamp = datetime.datetime.utcnow()
+        await self.bot.error_webhook.send(embed=e)
 
         await self.bot.pool.execute(query, guild_id, ctx.channel.id, ctx.author.id,
                                     message.created_at, ctx.prefix, command

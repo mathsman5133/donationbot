@@ -235,6 +235,28 @@ class Info(commands.Cog):
     def support_invite(self):
         return 'https://discord.gg/ePt8y4V'
 
+    @property
+    def welcome_message(self):
+        fmt = '**Some handy hints:**\n' \
+            f'• My prefix is `+`, or {self.bot.user.mention}\n' \
+              '• All commands have super-detailed help commands; please use them!\n' \
+              '• Usage: `+help command_name`\n\n' \
+              'A few frequently used ones to get started:\n' \
+              '• `+help add` (check out the subcommands)\n' \
+              '• `+help info` (check out the subcommands)\n\n' \
+              '• There are lots of how-to\'s and other ' \
+              'support on the [support server](https://discord.gg/ePt8y4V) if you get stuck.\n' \
+            f'• Please share the bot with your friends! [Bot Invite]({self.invite})\n' \
+              '• Please support us on [Patreon](https://www.patreon.com/donationtracker)!\n' \
+              '• Have a good day!'
+        e = discord.Embed(colour=self.bot.colour,
+                          description=fmt)
+        e.set_author(name='Hello! I\'m the Donation Tracker!',
+                     icon_url=self.bot.user.avatar_url
+                     )
+        return e
+
+
     @commands.command(aliases=['join'])
     async def invite(self, ctx):
         """Get an invite to add the bot to your server.
