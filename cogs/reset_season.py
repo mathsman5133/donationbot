@@ -72,9 +72,9 @@ class SeasonConfig(commands.Cog):
         self.season_id = fetch[0]
         return self.season_id
 
-    async def new_season_pull(self):
-        query = "SELECT DISTINCT player_tag FROM players WHERE season_id = $1 AND start_update = False LIMIT 1000;"
-        fetch = await self.bot.pool.fetch(query, await self.get_season_id())
+    async def new_season_pull(self, number=1000):
+        query = "SELECT DISTINCT player_tag FROM players WHERE season_id = $1 AND start_update = False LIMIT $1;"
+        fetch = await self.bot.pool.fetch(query, await self.get_season_id(), number)
 
         query = """UPDATE players SET start_friend_in_need = x.friend_in_need, 
                                       start_sharing_is_caring = x.sharing_is_caring,
@@ -184,8 +184,8 @@ class SeasonConfig(commands.Cog):
 
     @commands.command()
     @commands.is_owner()
-    async def startingdump(self, ctx):
-        await self.new_season_pull()
+    async def startingdump(self, ctx, number: int = 1000):
+        await self.new_season_pull(number)
         await ctx.confirm()
 
     async def event_management(self):
