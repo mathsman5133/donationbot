@@ -138,10 +138,10 @@ class DonationBot(commands.Bot):
 
     async def on_ready(self):
         await self.utils.update_clan_tags()
-        await self.change_presence(activity=discord.Game('++help for commands'))
+        await self.change_presence(activity=discord.Game('+help for commands'))
 
     async def on_resumed(self):
-        await self.change_presence(activity=discord.Game('++help for commands'))
+        await self.change_presence(activity=discord.Game('+help for commands'))
 
     async def get_clans(self, guild_id):
         query = "SELECT DISTINCT clan_tag FROM clans WHERE guild_id = $1"
