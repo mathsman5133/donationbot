@@ -14,7 +14,7 @@ def setup_logging(bot):
     log = logging.getLogger()
     log.setLevel(logging.DEBUG)
     handler = logging.FileHandler(filename='donationtracker.log', encoding='utf-8', mode='w')
-    handler.setLevel(logging.INFO)
+    handler.setLevel(logging.DEBUG)
     stream_handler = logging.StreamHandler()
     stream_handler.setLevel(logging.INFO)
     dt_fmt = '%d-%m-%Y %H:%M:%S'
