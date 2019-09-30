@@ -80,7 +80,8 @@ class SeasonConfig(commands.Cog):
                                       start_sharing_is_caring = x.sharing_is_caring,
                                       start_attacks = x.start_attacks,
                                       start_defenses = x.start_defenses,
-                                      start_best_trophies = x.start_best_trophies
+                                      start_best_trophies = x.start_best_trophies,
+                                      start_update = True
                                        
                     FROM(
                         SELECT x.player_tag, 
