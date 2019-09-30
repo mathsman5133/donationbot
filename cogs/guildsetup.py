@@ -394,8 +394,20 @@ class GuildConfiguration(commands.Cog):
 
         event_end = datetime.datetime.combine(end_date, end_time)
 
-        query = 'INSERT INTO events (guild_id, event_name, start, finish) VALUES ($1, $2, $3, $4) RETURNING id'
-        event_id = await ctx.db.fetchrow(query, ctx.guild.id, event_name, event_start, event_end)
+        try:
+            await ctx.send('Which #channel do you want me to send updates '
+                           '(event starting, ending, records broken etc.) to?')
+            response = await ctx.bot.wait_for('message', check=check_author, timeout=60.0)
+            try:
+                channel = await commands.TextChannelConverter().convert(ctx, response.content)
+            except commands.BadArgument:
+                return await ctx.send('Uh oh.. I didn\'t like that channel! '
+                                      'Try the command again with a channel # mention or ID.')
+        except asyncio.TimeoutError:
+            return await ctx.send('I can\'t wait all day. Try again later.')
+
+        query = 'INSERT INTO events (guild_id, event_name, start, finish, channel_id) VALUES ($1, $2, $3, $4, $5) RETURNING id'
+        event_id = await ctx.db.fetchrow(query, ctx.guild.id, event_name, event_start, event_end, channel.id)
         log.info(f"{event_name} added to events table for {ctx.guild} by {ctx.author}")
 
         try:
@@ -458,14 +470,15 @@ class GuildConfiguration(commands.Cog):
         --------------------------------
         • `manage_channels` permissions
         """
-        if ctx.config.channel is not None:
+        if ctx.config is not None:
             return await ctx.send(
-                f'This server already has a trophyboard ({ctx.config.channel.mention}')
+                f'This server already has a trophyboard (#{ctx.config.channel}). '
+                f'If this has been deleted, please use `+remove trophyboard`.')
 
         perms = ctx.channel.permissions_for(ctx.me)
         if not perms.manage_channels:
             return await ctx.send(
-                'I need manage channels permission to create the donationboard!')
+                'I need manage channels permission to create the trophyboard!')
 
         overwrites = {
             ctx.me: discord.PermissionOverwrite(read_messages=True, send_messages=True,
@@ -498,7 +511,7 @@ class GuildConfiguration(commands.Cog):
                    
                 INSERT INTO boards (guild_id, 
                                     channel_id, 
-                                    board_type) 
+                                    type) 
                 VALUES ($2, $3, $4) 
                 ON CONFLICT (channel_id) 
                 DO UPDATE SET channel_id = $3, 
@@ -536,7 +549,8 @@ class GuildConfiguration(commands.Cog):
         if ctx.config:
             if ctx.config.channel is not None:
                 return await ctx.send(
-                    f'This server already has a donationboard ({ctx.config.channel.mention})')
+                    f'This server already has a donationboard (#{ctx.config.channel}).'
+                    f'If this channel has been deleted, use `+remove donationboard`.')
 
         perms = ctx.channel.permissions_for(ctx.me)
         if not perms.manage_channels:
@@ -572,7 +586,7 @@ class GuildConfiguration(commands.Cog):
                     )
                    INSERT INTO boards (guild_id, 
                                        channel_id, 
-                                       board_type) 
+                                       type) 
                    VALUES ($2, $3, $4) 
                    ON CONFLICT (channel_id) 
                    DO UPDATE SET channel_id = $3, 
@@ -781,7 +795,7 @@ class GuildConfiguration(commands.Cog):
             return await ctx.send('Clan not found.')
         await ctx.confirm()
 
-    @remove.command()
+    @remove.command(name='player')
     async def remove_player(self, ctx, *, player: PlayerConverter):
         """Manually remove a clash account from the database.
 
@@ -803,7 +817,7 @@ class GuildConfiguration(commands.Cog):
             return await ctx.send(f'{player.name}({player.tag}) was not found in the database.')
         await ctx.confirm()
 
-    @remove.command()
+    @remove.command(name='discord')
     async def remove_discord(self, ctx, *, player: PlayerConverter):
         """Unlink a clash account from your discord account
 
@@ -862,7 +876,7 @@ class GuildConfiguration(commands.Cog):
         query = "SELECT message_id FROM messages WHERE channel_id=$1;"
         messages = await self.bot.pool.fetch(query, ctx.config.channel_id)
         for n in messages:
-            await self.bot.donationboard.safe_delete(n[0])
+            await self.bot.donationboard.safe_delete(n[0], delete_message=False)
 
         try:
             await ctx.config.channel.delete(reason=f'Command done by {ctx.author} ({ctx.author.id})')
@@ -891,14 +905,14 @@ class GuildConfiguration(commands.Cog):
         ----------------------------
         • `manage_server` permissions
         """
-        if ctx.config.channel is None:
+        if not ctx.config:
             return await ctx.send(
                 f'This server doesn\'t have a trophyboard.')
 
         query = "SELECT message_id FROM messages WHERE channel_id=$1;"
         messages = await self.bot.pool.fetch(query, ctx.config.channel_id)
         for n in messages:
-            await self.bot.donationboard.safe_delete(n[0])
+            await self.bot.donationboard.safe_delete(n[0], delete_message=False)
 
         try:
             await ctx.config.channel.delete(reason=f'Command done by {ctx.author} ({ctx.author.id})')
