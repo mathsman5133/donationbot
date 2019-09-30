@@ -7,8 +7,9 @@ import typing
 from discord.ext import commands
 
 from cogs.donations import ClanConverter
-from cogs.donationboard import MockPlayer
+from cogs.boards import MockPlayer
 from cogs.utils.emoji_lookup import number_emojis
+from cogs.utils.error_handler import error_handler
 from cogs.utils.paginator import SeasonStatsPaginator
 from cogs.utils.formatters import TabularData, readable_time, CLYTable
 from cogs.utils.cache import cache
@@ -21,10 +22,6 @@ class Season(commands.Cog):
 
         self.season_stats_guild_entries = {}
         self.season_stats_user_entries = {}
-
-    async def cog_command_error(self, ctx, error):
-        await ctx.send(str(error))
-        traceback.print_exc()
 
     @cache()
     async def build_season_clan_misc_stats(self, ctx, clans, season_id):

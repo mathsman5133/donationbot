@@ -229,6 +229,7 @@ class Admin(commands.Cog):
 
         env = {
             'bot': self.bot,
+            'coc': self.bot.coc,
             'ctx': ctx,
             'channel': ctx.channel,
             'author': ctx.author,
@@ -255,7 +256,12 @@ class Admin(commands.Cog):
                 ret = await func()
         except Exception as e:
             value = stdout.getvalue()
-            await ctx.send(f'```py\n{value}{traceback.format_exc()}\n```')
+            fmt = f'```py\n{value}{traceback.format_exc()}\n```'
+            if len(fmt) > 2000:
+                fp = io.BytesIO(fmt.encode('utf-8'))
+                await ctx.send('Too many results...', file=discord.File(fp, 'results.txt'))
+
+            return await ctx.send(fmt)
         else:
             value = stdout.getvalue()
             try:
@@ -409,6 +415,55 @@ class Admin(commands.Cog):
                 """
 
         results = await ctx.db.fetch(query, table_name)
+
+        headers = list(results[0].keys())
+        table = TabularData()
+        table.set_columns(headers)
+        table.add_rows(list(r.values()) for r in results)
+        render = table.render()
+
+        fmt = f'```\n{render}\n```'
+        if len(fmt) > 2000:
+            fp = io.BytesIO(fmt.encode('utf-8'))
+            await ctx.send('Too many results...', file=discord.File(fp, 'results.txt'))
+        else:
+            await ctx.send(fmt)
+
+    @commands.command(hidden=True)
+    @commands.is_owner()
+    async def sql_tables(self, ctx):
+        query = """SELECT table_name
+                   FROM information_schema.tables
+                   WHERE table_schema='public'
+                   AND table_type='BASE TABLE';
+                """
+        results = await ctx.db.fetch(query)
+
+        headers = list(results[0].keys())
+        table = TabularData()
+        table.set_columns(headers)
+        table.add_rows(list(r.values()) for r in results)
+        render = table.render()
+
+        fmt = f'```\n{render}\n```'
+        if len(fmt) > 2000:
+            fp = io.BytesIO(fmt.encode('utf-8'))
+            await ctx.send('Too many results...', file=discord.File(fp, 'results.txt'))
+        else:
+            await ctx.send(fmt)
+
+    @commands.command(hidden=True)
+    @commands.is_owner()
+    async def sql_constraints(self, ctx, *, table: str):
+        query = """SELECT conname
+                   FROM pg_constraint
+                   WHERE conrelid =
+                            (SELECT oid
+                             FROM pg_class
+                             WHERE relname LIKE $1
+                             );
+                """
+        results = await ctx.db.fetch(query, table)
 
         headers = list(results[0].keys())
         table = TabularData()

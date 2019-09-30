@@ -3,25 +3,24 @@ import discord
 import math
 import typing
 
-from collections import namedtuple
 from discord.ext import commands
-from cogs.utils import formatters, checks
+from cogs.utils import formatters
 from cogs.utils.error_handler import error_handler
 from cogs.utils.converters import ClanConverter, PlayerConverter
-from cogs.utils.db_objects import SlimDummyBoardConfig
 
 
-class Donations(commands.Cog):
+class Trophies(commands.Cog):
     """All commands related to donations of clans, players, users and servers."""
     def __init__(self, bot):
         self.bot = bot
 
-    async def cog_before_invoke(self, ctx):
-        ctx.config = SlimDummyBoardConfig('donation', 1, 'Top Donations', None)
+    async def cog_command_error(self, ctx, error):
+        error = getattr(error, 'original', error)
+        await error_handler(ctx, error)
 
-    @commands.group(name='donations', aliases=['don'],  invoke_without_command=True)
-    async def donations(self, ctx, *,
-                        arg: typing.Union[discord.Member, ClanConverter, PlayerConverter] = None):
+    @commands.group(name='trophies', aliases=['troph', 'trop'],  invoke_without_command=True)
+    async def trophies(self, ctx, *,
+                       arg: typing.Union[discord.Member, ClanConverter, PlayerConverter] = None):
         """Check donations for a player, user, clan or guild.
 
         For a mobile-friendly table that is guaranteed to fit on a mobile screen,

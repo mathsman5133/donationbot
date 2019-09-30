@@ -1,3 +1,4 @@
+import aioredis
 import asyncio
 import datetime
 import coc
@@ -8,42 +9,48 @@ import creds
 import textwrap
 
 from discord.ext import commands
-from lru import LRU
 
+from botlog import setup_logging
 from cogs.utils import context
 from cogs.utils.db import Table
+from cogs.utils.error_handler import error_handler, discord_event_error, clash_event_error
 from cogs.utils.paginator import CannotPaginate
 from cogs.utils.emoji_lookup import misc
-from cogs.utils.cache import cache
-
-import logging
-
-logging.basicConfig(level=logging.INFO)
-log = logging.getLogger(__name__)
-
-#
-# class Cache(coc.Cache):
-#     @staticmethod
-#     def create_default_cache(max_size, ttl):
-#         return LRU(max_size)
-#
-#     @property
-#     def player_config(self):
-#         return coc.CacheConfig(1, None)
+from cogs.utils.cache import cache, COCCustomCache
 
 
-coc_client = coc.login(creds.email, creds.password, client=coc.EventsClient,
-                       key_names='test', throttle_limit=40)
+class CustomCOC(coc.EventsClient):
+    def __init__(self, **options):
+        super().__init__(**options)
+        self.redis = self.loop.run_until_complete(aioredis.create_redis('redis://localhost'))
+
+    async def on_client_close(self):
+        self.redis.close()
+        await self.redis.wait_closed()
+
+    async def on_event_error(self, event_name, exception, *args, **kwargs):
+        await clash_event_error(self, event_name, exception, *args, **kwargs)
+
+
+coc_client = coc.login(creds.email, creds.password, client=CustomCOC,
+                       key_names='test', throttle_limit=40, cache=COCCustomCache)
+
 
 initial_extensions = (
-    'cogs.guildsetup',
+    'cogs.admin',
+    'cogs.auto_claim',
+    'cogs.background_management',
+    'cogs.boards',
+    'cogs.botutils',
+    'cogs.donationlogs',
     'cogs.donations',
     'cogs.events',
-    'cogs.donationboard',
-    'cogs.admin',
+    'cogs.guildsetup',
     'cogs.info',
+    'cogs.reset_season',
     'cogs.seasonstats',
-    'cogs.reset_season'
+    #'cogs.trophies',
+    'cogs.trophylog'
 )
 description = "A simple discord bot to track donations of clan families in clash of clans."
 
@@ -55,8 +62,14 @@ class DonationBot(commands.Bot):
                          fetch_offline_members=True)
 
         self.colour = discord.Colour.blurple()
+
         self.coc = coc_client
+        self.coc.bot = self
+
+        self.redis = self.coc.redis
+
         self.client_id = creds.client_id
+        self.dbl_token = creds.dbl_token
         self.owner_id = 230214242618441728
         self.session = aiohttp.ClientSession(loop=self.loop)
         self.error_webhook = discord.Webhook.partial(id=creds.error_hook_id,
@@ -76,9 +89,10 @@ class DonationBot(commands.Bot):
                                                         )
 
         self.uptime = datetime.datetime.utcnow()
-        self.prefixes = {}
-        self.dbl_token = creds.dbl_token
-        coc_client.add_events(self.on_event_error)
+
+        # error handlers
+        self.on_command_error = error_handler
+        self.on_error = discord_event_error
 
         for e in initial_extensions:
             try:
@@ -91,12 +105,20 @@ class DonationBot(commands.Bot):
         return self.get_cog('DonationBoard')
 
     @property
-    def events(self):
-        return self.get_cog('Events')
+    def donationlogs(self):
+        return self.get_cog('DonationLogs')
+
+    @property
+    def trophylogs(self):
+        return self.get_cog('TrophyLogs')
 
     @property
     def seasonconfig(self):
         return self.get_cog('SeasonConfig')
+
+    @property
+    def utils(self):
+        return self.get_cog('Utils')
 
     async def on_message(self, message):
         if message.author.bot:
@@ -114,137 +136,17 @@ class DonationBot(commands.Bot):
         async with ctx.acquire():
             await self.invoke(ctx)
 
-    async def on_error(self, event_method, *args, **kwargs):
-        e = discord.Embed(title='Discord Event Error', colour=0xa32952)
-        e.add_field(name='Event', value=event_method)
-        e.description = f'```py\n{traceback.format_exc()}\n```'
-        e.timestamp = datetime.datetime.utcnow()
-
-        args_str = ['```py']
-        for index, arg in enumerate(args):
-            args_str.append(f'[{index}]: {arg!r}')
-        args_str.append('```')
-        e.add_field(name='Args', value='\n'.join(args_str), inline=False)
-
-        try:
-            await self.error_webhook.send(embed=e)
-        except:
-            pass
-
-    async def on_command_error(self, ctx, error):
-        if not isinstance(error, commands.CommandInvokeError):
-            return
-
-        error = error.original
-        if isinstance(error, (discord.Forbidden, discord.NotFound, CannotPaginate)):
-            return
-
-        config = await self.get_guild_config(ctx.guild.id)
-        if not config:
-            self.dispatch('guild_join', ctx.guild)
-            return await ctx.reinvoke()
-
-        e = discord.Embed(title='Command Error', colour=0xcc3366)
-        e.add_field(name='Name', value=ctx.command.qualified_name)
-        e.add_field(name='Author', value=f'{ctx.author} (ID: {ctx.author.id})')
-
-        fmt = f'Channel: {ctx.channel} (ID: {ctx.channel.id})'
-        if ctx.guild:
-            fmt = f'{fmt}\nGuild: {ctx.guild} (ID: {ctx.guild.id})'
-
-        e.add_field(name='Location', value=fmt, inline=False)
-        e.add_field(name='Content', value=textwrap.shorten(ctx.message.content, width=512))
-
-        exc = ''.join(
-            traceback.format_exception(type(error), error, error.__traceback__, chain=False))
-        e.description = f'```py\n{exc}\n```'
-        e.timestamp = datetime.datetime.utcnow()
-        await self.error_webhook.send(embed=e)
-        try:
-            await ctx.send('Uh oh! Something broke. This error has been reported; '
-                           'the owner is working on it. Please join the support server: '
-                           'https://discord.gg/ePt8y4V to stay updated!')
-        except discord.Forbidden:
-            pass
-
-    async def on_event_error(self, event_name, exception, *args, **kwargs):
-        e = discord.Embed(title='COC Event Error', colour=0xa32952)
-        e.add_field(name='Event', value=event_name)
-        e.description = f'```py\n{traceback.format_exc()}\n```'
-        e.timestamp = datetime.datetime.utcnow()
-
-        args_str = ['```py']
-        for index, arg in enumerate(args):
-            args_str.append(f'[{index}]: {arg!r}')
-        args_str.append('```')
-        e.add_field(name='Args', value='\n'.join(args_str), inline=False)
-
-        try:
-            await self.error_webhook.send(embed=e)
-        except:
-            pass
-
     async def on_ready(self):
-        cog = self.get_cog('DonationBoard')
-        await cog.update_clan_tags()
-        await self.change_presence(activity=discord.Game('+help for commands'))
+        await self.utils.update_clan_tags()
+        await self.change_presence(activity=discord.Game('++help for commands'))
 
-    async def log_info(self, channel_id, message, colour=None, prompt=False):
-        channel = self.get_channel(channel_id)
-        if not channel:
-            return
+    async def on_resumed(self):
+        await self.change_presence(activity=discord.Game('++help for commands'))
 
-        e = discord.Embed(colour=colour or self.colour,
-                          description=message,
-                          timestamp=datetime.datetime.utcnow())
-        try:
-            msg = await channel.send(embed=e)
-        except (discord.Forbidden, discord.HTTPException):
-            return
-        if prompt:
-            for n in (misc['greentick'], misc['redtick']):
-                try:
-                    await msg.add_reaction(n)
-                except (discord.Forbidden, discord.HTTPException):
-                    return msg.id
-        return msg.id
-
-    async def channel_log(self, channel_id, message, colour=None, embed=True):
-        channel_config = await self.events.get_channel_config(channel_id)
-        if not channel_config.channel or not channel_config.log_toggle:
-            return
-
-        if embed:
-            e = discord.Embed(colour=colour or self.colour,
-                              description=message,
-                              timestamp=datetime.datetime.utcnow())
-            c = None
-        else:
-            e = None
-            c = message
-
-        try:
-            await channel_config.channel.send(content=c, embed=e)
-        except (discord.Forbidden, discord.HTTPException):
-            return
-
-    @cache()
-    async def get_guilds(self, clan_tag):
-        query = "SELECT guild_id FROM clans WHERE clan_tag = $1"
-        fetch = await self.pool.fetch(query, clan_tag)
-        return [self.get_guild(n[0]) for n in fetch if self.get_guild(n[0])]
-
-    @cache()
     async def get_clans(self, guild_id):
-        query = "SELECT clan_tag FROM clans WHERE guild_id = $1"
+        query = "SELECT DISTINCT clan_tag FROM clans WHERE guild_id = $1"
         fetch = await self.pool.fetch(query, guild_id)
         return await self.coc.get_clans(n[0].strip() for n in fetch).flatten()
-
-    async def get_channel_config(self, channel_id):
-        return await self.events.get_channel_config(channel_id)
-
-    async def get_guild_config(self, guild_id):
-        return await self.donationboard.get_guild_config(guild_id)
 
 
 if __name__ == '__main__':
@@ -256,6 +158,7 @@ if __name__ == '__main__':
 
         bot = DonationBot()
         bot.pool = pool  # add db as attribute
+        setup_logging(bot)
         bot.run(creds.bot_token)  # run bot
 
     except Exception:
