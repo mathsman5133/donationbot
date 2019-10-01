@@ -46,20 +46,20 @@ async def before_invoke(ctx):
 
     elif config_type == 'event':
         if invalidate:
-            await ctx.bot.utils.event_config.invalidate(ctx.bot.utils, ctx.guild.id)
+            ctx.bot.utils.event_config.invalidate(ctx.bot.utils, ctx.guild.id)
 
         ctx.config = await ctx.bot.utils.event_config(ctx.guild.id)
 
     elif config_type == 'donationlog':
         channel = getattr(ctx, 'custom_channel', ctx.channel)
         if invalidate:
-            await ctx.bot.utils.log_config.invalidate(ctx.bot.utils, channel.id, 'donation')
+            ctx.bot.utils.log_config.invalidate(ctx.bot.utils, channel.id, 'donation')
         ctx.config = await ctx.bot.utils.log_config(channel.id, 'donation')
 
     elif config_type == 'trophylog':
         channel = getattr(ctx, 'custom_channel', ctx.channel)
         if invalidate:
-            await ctx.bot.utils.log_config.invalidate(ctx.bot.utils, channel.id, 'trophy')
+            ctx.bot.utils.log_config.invalidate(ctx.bot.utils, channel.id, 'trophy')
         ctx.config = await ctx.bot.utils.log_config(channel.id, 'trophy')
 
 async def after_invoke(ctx):

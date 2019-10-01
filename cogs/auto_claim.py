@@ -79,9 +79,10 @@ class AutoClaim(commands.Cog):
         The interactive process is easy to use, and will try to guide you through as easily as possible
         """
         if ctx.invoked_subcommand is None:
-            return await ctx.send_help(ctx.command)
+            return ctx.send_help(ctx.command)
 
     @auto_claim.command(name='start')
+    @checks.manage_guild()
     async def auto_claim_start(self, ctx, *, clan: ClanConverter = None):
         """Automatically claim all accounts in server, through an interactive process.
 
@@ -227,6 +228,7 @@ class AutoClaim(commands.Cog):
         await ctx.send('All done. Thanks!')
 
     @auto_claim.command(name='cancel', aliases=['stop'])
+    @checks.manage_guild()
     async def auto_claim_cancel(self, ctx):
         """Cancel an on-going auto-claim command."""
         self.running_commands[ctx.guild.id] = False

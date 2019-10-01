@@ -15,6 +15,8 @@ async def error_handler(ctx, error):
                        '`manage_server` permission to run this command.')
         return
     if isinstance(error, (commands.BadArgument, commands.BadUnionArgument, commands.MissingRequiredArgument)):
+        return await ctx.send(f'Oops! That didn\'t look right... '
+                              f'please see how to use the command with `+help {ctx.command.qualified_name}`')
         return await ctx.send(str(error))
     if not isinstance(error, commands.CommandError):
         return
