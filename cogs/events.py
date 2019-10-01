@@ -138,21 +138,21 @@ class Events(commands.Cog):
             arg = limit
 
         if isinstance(arg, int):
-            await ctx.invoke(self.events_recent, limit=arg)
+            await ctx.invoke(self.donation_events_recent, limit=arg)
         elif isinstance(arg, coc.BasicPlayer):
-            await ctx.invoke(self.events_player, player=arg, limit=limit)
+            await ctx.invoke(self.donation_events_player, player=arg, limit=limit)
         elif isinstance(arg, discord.Member):
-            await ctx.invoke(self.events_user, user=arg, limit=limit)
+            await ctx.invoke(self.donation_events_user, user=arg, limit=limit)
         elif isinstance(arg, list):
             if isinstance(arg[0], coc.Clan):
-                await ctx.invoke(self.events_clan, clans=arg, limit=limit)
+                await ctx.invoke(self.donation_events_clan, clans=arg, limit=limit)
 
     @donationevents.command(name='recent', hidden=True)
-    async def events_recent(self, ctx, limit: int = None):
+    async def donation_events_recent(self, ctx, limit: int = None):
         await self.recent_events('donationevents', ctx, limit)
 
     @donationevents.command(name='user', hidden=True)
-    async def events_user(self, ctx, limit: typing.Optional[int] = 20, *,
+    async def donation_events_user(self, ctx, limit: typing.Optional[int] = 20, *,
                           user: discord.Member = None):
         """Get donation history/events for a discord user.
 
@@ -178,7 +178,7 @@ class Events(commands.Cog):
         await self.user_events('donationevents', ctx, user, limit)
 
     @donationevents.command(name='player', hidden=True)
-    async def events_player(self, ctx, limit: typing.Optional[int] = 20,
+    async def donation_events_player(self, ctx, limit: typing.Optional[int] = 20,
                             *, player: PlayerConverter):
         """Get donation history/events for a player.
 
@@ -200,7 +200,7 @@ class Events(commands.Cog):
         await self.player_events('donationevents', ctx, player, limit)
 
     @donationevents.command(name='clan', hidden=True)
-    async def events_clan(self, ctx, limit: typing.Optional[int] = 20, *, clans: ClanConverter):
+    async def donation_events_clan(self, ctx, limit: typing.Optional[int] = 20, *, clans: ClanConverter):
         """Get donation history/events for a clan.
 
         Parameters
@@ -258,21 +258,21 @@ class Events(commands.Cog):
             arg = limit
 
         if isinstance(arg, int):
-            await ctx.invoke(self.events_recent, limit=arg)
+            await ctx.invoke(self.trophy_events_recent, limit=arg)
         elif isinstance(arg, coc.BasicPlayer):
-            await ctx.invoke(self.events_player, player=arg, limit=limit)
+            await ctx.invoke(self.trophy_events_player, player=arg, limit=limit)
         elif isinstance(arg, discord.Member):
-            await ctx.invoke(self.events_user, user=arg, limit=limit)
+            await ctx.invoke(self.trophy_events_user, user=arg, limit=limit)
         elif isinstance(arg, list):
             if isinstance(arg[0], coc.Clan):
-                await ctx.invoke(self.events_clan, clans=arg, limit=limit)
+                await ctx.invoke(self.trophy_events_clan, clans=arg, limit=limit)
 
     @trophyevents.command(name='recent', hidden=True)
-    async def events_recent(self, ctx, limit: int = None):
+    async def trophy_events_recent(self, ctx, limit: int = None):
         await self.recent_events('trophyevents', ctx, limit)
 
     @trophyevents.command(name='user', hidden=True)
-    async def events_user(self, ctx, limit: typing.Optional[int] = 20, *,
+    async def trophy_events_user(self, ctx, limit: typing.Optional[int] = 20, *,
                           user: discord.Member = None):
         """Get trophy history/events for a discord user.
 
@@ -298,7 +298,7 @@ class Events(commands.Cog):
         await self.user_events('trophyevents', ctx, user, limit)
 
     @trophyevents.command(name='player', hidden=True)
-    async def events_player(self, ctx, limit: typing.Optional[int] = 20,
+    async def trophy_events_player(self, ctx, limit: typing.Optional[int] = 20,
                             *, player: PlayerConverter):
         """Get trophy history/events for a player.
 
@@ -320,7 +320,7 @@ class Events(commands.Cog):
         await self.player_events('trophyevents', ctx, player, limit)
 
     @trophyevents.command(name='clan', hidden=True)
-    async def events_clan(self, ctx, limit: typing.Optional[int] = 20, *, clans: ClanConverter):
+    async def trophy_events_clan(self, ctx, limit: typing.Optional[int] = 20, *, clans: ClanConverter):
         """Get trophy history/events for a clan.
 
         Parameters
