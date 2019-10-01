@@ -32,6 +32,10 @@ class CustomCOC(coc.EventsClient):
         await clash_event_error(self, event_name, exception, *args, **kwargs)
 
 
+coc_client = coc.login(creds.email, creds.password, client=coc.EventsClient,
+                               key_names='test', throttle_limit=120, key_count=3)
+
+
 initial_extensions = (
     'cogs.admin',
     'cogs.auto_claim',
@@ -58,6 +62,8 @@ class DonationBot(commands.Bot):
                          fetch_offline_members=True)
 
         self.colour = discord.Colour.blurple()
+
+        self.coc = coc_client
 
         self.client_id = creds.client_id
         self.dbl_token = creds.dbl_token
@@ -148,13 +154,9 @@ if __name__ == '__main__':
         pool = loop.run_until_complete(Table.create_pool(creds.postgres, command_timeout=60))
         redis = loop.run_until_complete(aioredis.create_redis('redis://localhost'))
 
-        coc_client = coc.login(creds.email, creds.password, client=coc.EventsClient,
-                               key_names='test', throttle_limit=120, key_count=3)
-
         bot = DonationBot()
         bot.pool = pool  # add db as attribute
         bot.redis = redis
-        bot.coc = coc_client
         setup_logging(bot)
         bot.run(creds.bot_token)  # run bot
 
