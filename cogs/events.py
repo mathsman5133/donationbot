@@ -105,7 +105,7 @@ class Events(commands.Cog):
     @commands.group(invoke_without_command=True)
     async def donationevents(self, ctx, limit: typing.Optional[int] = 20, *,
                              arg: typing.Union[discord.Member, ClanConverter, PlayerConverter] = None):
-        """Check recent donation events for a player, user, clan or guild.
+        """[Group] Check recent donation events for a player, user, clan or guild.
 
         Parameters
         ----------------
@@ -225,7 +225,7 @@ class Events(commands.Cog):
     @commands.group(invoke_without_command=True)
     async def trophyevents(self, ctx, limit: typing.Optional[int] = 20, *,
                            arg: typing.Union[discord.Member, ClanConverter, PlayerConverter] = None):
-        """Check recent trophy events for a player, user, clan or guild.
+        """[Group] Check recent trophy events for a player, user, clan or guild.
 
         Parameters
         ----------------

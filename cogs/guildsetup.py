@@ -97,7 +97,7 @@ class GuildConfiguration(commands.Cog):
 
     @commands.group()
     async def add(self, ctx):
-        """Allows the user to add a variety of features to the bot.
+        """[Group] Allows the user to add a variety of features to the bot.
 
         Available Commands
         ------------------
@@ -710,7 +710,7 @@ class GuildConfiguration(commands.Cog):
 
     @commands.group(invoke_without_subcommands=True)
     async def remove(self, ctx):
-        """Allows the user to remove a variety of features from the bot.
+        """[Group] Allows the user to remove a variety of features from the bot.
 
         Available Commands
         ------------------
@@ -985,6 +985,8 @@ class GuildConfiguration(commands.Cog):
 
     @commands.group(invoke_without_command=True)
     async def edit(self, ctx):
+        """[Group] Allows a user to edit a variety of the bot's features.
+        """
         if ctx.invoked_subcommand is None:
             await ctx.send_help(ctx.command)
 

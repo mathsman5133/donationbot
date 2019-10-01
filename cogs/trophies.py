@@ -21,7 +21,7 @@ class Trophies(commands.Cog):
     @commands.group(name='trophies', aliases=['troph', 'trop'],  invoke_without_command=True)
     async def trophies(self, ctx, *,
                        arg: typing.Union[discord.Member, ClanConverter, PlayerConverter] = None):
-        """Check donations for a player, user, clan or guild.
+        """[Group] Check donations for a player, user, clan or guild.
 
         For a mobile-friendly table that is guaranteed to fit on a mobile screen,
         please use `+donmob`.

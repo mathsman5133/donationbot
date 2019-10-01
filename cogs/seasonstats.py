@@ -385,7 +385,7 @@ class Season(commands.Cog):
 
     @commands.group(invoke_without_subcommand=True)
     async def season(self, ctx):
-        """Group command to manage historical stats for seasons past."""
+        """[Group] command to manage historical stats for seasons past."""
         if ctx.invoked_subcommand is None:
             await ctx.send_help(ctx.command)
 

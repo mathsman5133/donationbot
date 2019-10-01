@@ -22,7 +22,7 @@ class Donations(commands.Cog):
     @commands.group(name='donations', aliases=['don'],  invoke_without_command=True)
     async def donations(self, ctx, *,
                         arg: typing.Union[discord.Member, ClanConverter, PlayerConverter] = None):
-        """Check donations for a player, user, clan or guild.
+        """[Group] Check donations for a player, user, clan or guild.
 
         For a mobile-friendly table that is guaranteed to fit on a mobile screen,
         please use `+donmob`.

@@ -71,7 +71,7 @@ class AutoClaim(commands.Cog):
     @commands.group(name='autoclaim')
     @checks.manage_guild()
     async def auto_claim(self, ctx):
-        """Manage a currently running auto-claim command.
+        """[Group] Manage a currently running auto-claim command.
 
         Automatically claim all accounts in server, through an interactive process.
 
