@@ -257,6 +257,7 @@ class GuildConfiguration(commands.Cog):
         await ctx.confirm()
 
     @add.command(name='multidiscord', aliases=['multi_discord', 'multiclaim', 'multi_claim', 'multilink', 'multi_link'])
+    @requires_config('event')
     async def multi_discord(self, ctx, user: discord.Member,
                             players: commands.Greedy[PlayerConverter]):
         """Helper command to link many clas accounts to a user's discord.
@@ -656,6 +657,7 @@ class GuildConfiguration(commands.Cog):
                        f'You can find these with `+help info trophylog` ')
 
     @commands.command()
+    @requires_config('event')
     async def claim(self, ctx, user: typing.Optional[discord.Member] = None, *,
                     player: PlayerConverter):
         """Link a clash account to your discord account

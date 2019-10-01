@@ -133,7 +133,7 @@ class HelpCommand(commands.HelpCommand):
                 fmt = f'{self.clean_prefix}{command.name} {fmt}'
             alias = fmt
         else:
-            alias = f'{self.clean_prefix}{parent}{command.name}'
+            alias = f'{self.clean_prefix}{parent} {command.name}'
         return alias
 
     async def send_bot_help(self, mapping):

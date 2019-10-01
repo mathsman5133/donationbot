@@ -3,8 +3,7 @@ from discord.ext import commands
 
 def deprecated(fmt):
     async def pred(ctx):
-        await ctx.send(f'This command has been deprecated. Please use `{ctx.prefix}{fmt}` instead.')
-        return False
+        raise commands.CheckFailure(f'This command has been deprecated. Please use `{ctx.prefix}{fmt}` instead.')
     return commands.check(pred)
 
 

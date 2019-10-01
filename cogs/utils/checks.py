@@ -9,7 +9,7 @@ async def check_guild_permissions(ctx, perms, check=all):
         return True
 
     if ctx.guild is None:
-        return False
+        raise commands.CheckFailure('You must be in a guild to run this command!')
 
     resolved = ctx.author.guild_permissions
     return check(getattr(resolved, name, None) == value for name, value in perms.items())
@@ -17,7 +17,9 @@ async def check_guild_permissions(ctx, perms, check=all):
 
 def manage_guild():
     async def pred(ctx):
-        return await check_guild_permissions(ctx, {'manage_guild': True})
+        perms = await check_guild_permissions(ctx, {'manage_guild': True})
+        if not perms:
+            raise commands.CheckFailure('You must have `Manage Server` permissions to use this command!')
     return commands.check(pred)
 
 
