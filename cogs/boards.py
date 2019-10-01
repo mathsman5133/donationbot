@@ -304,7 +304,7 @@ class DonationBoard(commands.Cog):
             column_2 = 'received'
         elif board_type == 'trophy':
             column_1 = 'trophies'
-            column_2 = 'trophies - start_best_trophies'
+            column_2 = 'trophies - start_trophies'
         else:
             return
 
