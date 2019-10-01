@@ -29,7 +29,7 @@ class DonationLogs(commands.Cog):
             self.on_clan_member_donation,
             self.on_clan_member_received
         )
-        self.bot.coc._clan_retry_interval = 20
+        self.bot.coc._clan_retry_interval = 60
         self.bot.coc.start_updates('clan')
 
         self._tasks = {}

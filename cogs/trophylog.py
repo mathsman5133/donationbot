@@ -29,7 +29,7 @@ class TrophyLogs(commands.Cog):
         self.bot.coc.add_events(
             self.on_clan_member_trophies_change,
         )
-        self.bot.coc._clan_retry_interval = 20
+        self.bot.coc._clan_retry_interval = 60
         self.bot.coc.start_updates('clan')
 
         self._tasks = {}

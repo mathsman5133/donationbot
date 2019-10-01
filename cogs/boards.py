@@ -36,7 +36,7 @@ class DonationBoard(commands.Cog):
             self.on_clan_member_trophies_change,
             self.on_clan_member_join
                                 )
-        self.bot.coc._clan_retry_interval = 20
+        self.bot.coc._clan_retry_interval = 60
         self.bot.coc.start_updates('clan')
 
         self._batch_lock = asyncio.Lock(loop=bot.loop)
