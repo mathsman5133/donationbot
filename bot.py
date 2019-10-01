@@ -33,7 +33,7 @@ class CustomCOC(coc.EventsClient):
 
 
 coc_client = coc.login(creds.email, creds.password, client=coc.EventsClient,
-                               key_names='test', throttle_limit=120, key_count=3)
+                               key_names='test', throttle_limit=40, key_count=3)
 
 
 initial_extensions = (
