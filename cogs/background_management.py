@@ -81,10 +81,11 @@ class BackgroundManagement(commands.Cog):
                                     start_sharing_is_caring,
                                     start_attacks,
                                     start_defenses,
+                                    start_trophies,
                                     start_best_trophies,
                                     start_update
                                     )
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, True)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11 True)
                     ON CONFLICT (player_tag, event_id)
                     DO NOTHING
                 """
@@ -98,6 +99,7 @@ class BackgroundManagement(commands.Cog):
                           player.achievements_dict['Sharing is caring'].value,
                           player.attack_wins,
                           player.defense_wins,
+                          player.trophies,
                           player.best_trophies
                           )
 
@@ -244,7 +246,8 @@ class BackgroundManagement(commands.Cog):
         e.add_field(name='Content', value=textwrap.shorten(ctx.message.content, width=512))
 
         e.timestamp = datetime.datetime.utcnow()
-        await self.bot.error_webhook.send(embed=e)
+        if not await self.bot.is_owner(ctx.author):
+            await self.bot.error_webhook.send(embed=e)
 
         await self.bot.pool.execute(query, guild_id, ctx.channel.id, ctx.author.id,
                                     message.created_at, ctx.prefix, command

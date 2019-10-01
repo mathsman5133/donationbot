@@ -1534,7 +1534,6 @@ class GuildConfiguration(commands.Cog):
                               description=fmt)
             await ctx.send(embed=e)
 
-
     @commands.command()
     @checks.manage_guild()
     @commands.cooldown(1, 43200, commands.BucketType.guild)

@@ -365,7 +365,6 @@ class Admin(commands.Cog):
             except discord.HTTPException as e:
                 await ctx.send(f'Unexpected error: `{e}`')
 
-
     @commands.command(hidden=True)
     async def sql(self, ctx, *, query: str):
         """Run some SQL."""

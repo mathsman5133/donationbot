@@ -73,32 +73,35 @@ class SeasonConfig(commands.Cog):
         return self.season_id
 
     async def new_season_pull(self, number=1000):
-        query = "SELECT DISTINCT player_tag FROM players WHERE season_id = $1 AND start_update = False LIMIT $1;"
+        query = "SELECT DISTINCT player_tag FROM players WHERE season_id = $1 AND start_update = False LIMIT $2;"
         fetch = await self.bot.pool.fetch(query, await self.get_season_id(), number)
 
         query = """UPDATE players SET start_friend_in_need = x.friend_in_need, 
                                       start_sharing_is_caring = x.sharing_is_caring,
-                                      start_attacks = x.start_attacks,
-                                      start_defenses = x.start_defenses,
-                                      start_best_trophies = x.start_best_trophies,
+                                      start_attacks = x.attacks,
+                                      start_defenses = x.defenses,
+                                      start_trophies = x.trophies,
+                                      start_best_trophies = x.best_trophies,
                                       start_update = True
                                        
                     FROM(
                         SELECT x.player_tag, 
                                x.friend_in_need, 
                                x.sharing_is_caring,
-                               x.start_attacks,
-                               x.start_defenses,
-                               x.start_best_trophies
+                               x.attacks,
+                               x.defenses,
+                               x.trophies,
+                               x.best_trophies
                                
                         FROM jsonb_to_recordset($1::jsonb)
                         AS x(
                             player_tag TEXT, 
                             friend_in_need INTEGER, 
                             sharing_is_caring INTEGER,
-                            start_attacks INTEGER,
-                            start_defenses INTEGER,
-                            start_best_trophies INTEGER
+                            attacks INTEGER,
+                            defenses INTEGER,
+                            trophies INTEGER,
+                            best_trophies INTEGER
                             )
                         )
                 AS x
@@ -124,6 +127,7 @@ class SeasonConfig(commands.Cog):
                 'sharing_is_caring': player.achievements_dict['Sharing is caring'].value,
                 'attacks': player.attack_wins,
                 'defenses': player.defense_wins,
+                'trophies': player.trophies,
                 'best_trophies': player.best_trophies
             })
             counter += 1

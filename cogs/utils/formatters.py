@@ -178,7 +178,7 @@ class CLYTable:
         for v in self._rows:
             index = int(v[0]) + 1
             index = number_emojis[index] if index <= 100 else misc['idle']
-            fmt += f"{index}`⠀{str(v[1]):\u00A0>4.4}⠀` ` {str(v[2]):\u00A0>4.4} ` `⠀{str(v[2]):\u00A0<10.10}⠀`\n"
+            fmt += f"{index}`⠀{str(v[1]):\u00A0>4.4}⠀` ` {str(v[2]):\u00A0>4.4} ` `⠀{str(v[3]):\u00A0<10.10}⠀`\n"
         return fmt
 
     def trophyboard_2(self):
