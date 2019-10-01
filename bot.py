@@ -66,8 +66,6 @@ class DonationBot(commands.Bot):
         self.coc = coc_client
         self.coc.bot = self
 
-        self.redis = self.loop.run_until_complete(aioredis.create_redis('redis://localhost'))
-
         self.client_id = creds.client_id
         self.dbl_token = creds.dbl_token
         self.owner_id = 230214242618441728
@@ -155,9 +153,12 @@ if __name__ == '__main__':
     try:
         # configure the database connection
         pool = loop.run_until_complete(Table.create_pool(creds.postgres, command_timeout=60))
+        redis = loop.run_until_complete(aioredis.create_redis('redis://localhost'))
+
 
         bot = DonationBot()
         bot.pool = pool  # add db as attribute
+        bot.redis = redis
         setup_logging(bot)
         bot.run(creds.bot_token)  # run bot
 
