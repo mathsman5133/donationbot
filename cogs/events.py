@@ -23,11 +23,11 @@ class Events(commands.Cog):
     async def recent_events(table_name, ctx, limit):
         query = f"""SELECT player_tag, donations, received, time, player_name
                     FROM {table_name}
-                    WHERE events.clan_tag = ANY(
+                    WHERE {table_name}.clan_tag = ANY(
                                 SELECT DISTINCT clan_tag FROM clans
                                 WHERE guild_id=$1
                                 )
-                    ORDER BY events.time DESC
+                    ORDER BY {table_name}.time DESC
                     LIMIT $2
                 """
         fetch = await ctx.db.fetch(query, ctx.guild.id, limit)
