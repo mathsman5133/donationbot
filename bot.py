@@ -32,8 +32,8 @@ class CustomCOC(coc.EventsClient):
         await clash_event_error(self, event_name, exception, *args, **kwargs)
 
 
-coc_client = coc.login(creds.email, creds.password, client=CustomCOC,
-                       key_names='windows', throttle_limit=40)
+coc_client = coc.login(creds.email, creds.password, client=coc.EventsClient,
+                       key_names='test', throttle_limit=120, key_count=3)
 
 
 initial_extensions = (
