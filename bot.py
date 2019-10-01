@@ -66,7 +66,7 @@ class DonationBot(commands.Bot):
         self.coc = coc_client
         self.coc.bot = self
 
-        self.redis = self.coc.redis
+        self.redis = self.loop.run_until_complete(aioredis.create_redis('redis://localhost'))
 
         self.client_id = creds.client_id
         self.dbl_token = creds.dbl_token
