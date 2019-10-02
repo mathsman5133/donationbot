@@ -228,29 +228,29 @@ class DonationBoard(commands.Cog):
             self._clan_events.add(clan.tag)
 
     async def on_clan_member_join(self, member, clan):
-        query = """INSERT INTO players (player_tag, donations, received, season_id) 
-                    VALUES ($1,$2,$3, $4) 
+        query = """INSERT INTO players (player_tag, donations, received, trophies, season_id) 
+                    VALUES ($1,$2,$3,$4,$5) 
                     ON CONFLICT (player_tag, season_id) 
                     DO NOTHING
                 """
 
-        query2 = """INSERT INTO eventplayers (player_tag, donations, received, live, event_id) 
-                        SELECT $1, $2, $3, true, events.id
+        query2 = """INSERT INTO eventplayers (player_tag, donations, received, trophies, live, event_id) 
+                        SELECT $1, $2, $3, $4, true, events.id
                         FROM events
                         INNER JOIN clans 
                         ON clans.guild_id = events.guild_id
-                        WHERE clans.clan_tag = $4
+                        WHERE clans.clan_tag = $5
                     ON CONFLICT (player_tag, event_id) 
                     DO NOTHING
                 """
 
         response = await self.bot.pool.execute(query, member.tag, member.donations, member.received,
-                                               await self.bot.seasonconfig.get_season_id())
+                                               member.trophies, await self.bot.seasonconfig.get_season_id())
         log.debug(f'New member {member} joined clan {clan}. Performed a query to insert them into players. '
                   f'Status Code: {response}')
 
         response = await self.bot.pool.execute(query2, member.tag, member.donations,
-                                               member.received, clan.tag)
+                                               member.received, member.trophies, clan.tag)
         log.debug(f'New member {member} joined clan {clan}. '
                   f'Performed a query to insert them into eventplayers. Status Code: {response}')
 

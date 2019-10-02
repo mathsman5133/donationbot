@@ -12,6 +12,12 @@ from cogs.utils.db_objects import SlimDummyLogConfig
 
 log = logging.getLogger(__name__)
 
+def columns(table_name):
+    if table_name == 'trophyevents':
+        return 'trophy_change', 'id'
+    else:
+        return 'donations', 'received'
+
 
 class Events(commands.Cog):
     """Find historical clan donation or trophy data for your clan."""
@@ -20,7 +26,9 @@ class Events(commands.Cog):
 
     @staticmethod
     async def recent_events(table_name, ctx, limit):
-        query = f"""SELECT player_tag, donations, received, time, player_name
+        col, col2 = columns(table_name)
+
+        query = f"""SELECT player_tag, {col}, {col2}, time, player_name
                     FROM {table_name}
                     WHERE {table_name}.clan_tag = ANY(
                                 SELECT DISTINCT clan_tag FROM clans
@@ -42,9 +50,10 @@ class Events(commands.Cog):
 
     @staticmethod
     async def user_events(table_name, ctx, user, limit):
+        col, col2 = columns(table_name)
         query = f"""SELECT {table_name}.player_tag, 
-                           {table_name}.donations, 
-                           {table_name}.received, 
+                           {table_name}.{col}, 
+                           {table_name}.{col2}, 
                            {table_name}.time, 
                            {table_name}.player_name
                     FROM {table_name} 
@@ -66,7 +75,9 @@ class Events(commands.Cog):
 
     @staticmethod
     async def player_events(table_name, ctx, player, limit):
-        query = f"""SELECT player_tag, donations, received, time, player_name
+        col, col2 = columns(table_name)
+
+        query = f"""SELECT player_tag, {col}, {col2}, time, player_name
                     FROM {table_name} 
                     WHERE player_tag = $1 
                     ORDER BY time DESC 
@@ -85,7 +96,8 @@ class Events(commands.Cog):
 
     @staticmethod
     async def clan_events(table_name, ctx, clans, limit):
-        query = f"""SELECT player_tag, donations, received, time, player_name
+        col, col2 = columns(table_name)
+        query = f"""SELECT player_tag, {col}, {col2}, time, player_name
                     FROM {table_name}
                     WHERE clan_tag = ANY($1::TEXT[])
                     ORDER BY time DESC 

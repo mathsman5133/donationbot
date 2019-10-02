@@ -132,8 +132,8 @@ class GuildConfiguration(commands.Cog, name='Server Setup'):
                                   f'{self.bot.support_invite}')
 
         clan_tag = coc.utils.correct_tag(clan_tag)
-        query = "SELECT id FROM clans WHERE clan_tag = $1 AND guild_id = $2"
-        fetch = await ctx.db.fetch(query, clan_tag, ctx.guild.id)
+        query = "SELECT id FROM clans WHERE clan_tag = $1 AND channel_id = $2"
+        fetch = await ctx.db.fetch(query, clan_tag, ctx.channel.id)
         if fetch:
             return await ctx.send('This clan has already been linked to the server.')
 
@@ -435,14 +435,15 @@ class GuildConfiguration(commands.Cog, name='Server Setup'):
                    
                 INSERT INTO boards (guild_id, 
                                     channel_id, 
-                                    type) 
-                VALUES ($2, $3, $4) 
+                                    type,
+                                    title) 
+                VALUES ($2, $3, $4, $5) 
                 ON CONFLICT (channel_id) 
                 DO UPDATE SET channel_id = $3, 
                               toggle     = True;
                 
                 """
-        await ctx.db.execute(query, msg.id, ctx.guild.id, channel.id, 'trophy')
+        await ctx.db.execute(query, msg.id, ctx.guild.id, channel.id, 'trophy', 'TrophyBoard')
         await ctx.send(f'Trophyboard channel created: {channel.mention}')
 
     @add.command(name='donationboard')
@@ -500,14 +501,15 @@ class GuildConfiguration(commands.Cog, name='Server Setup'):
                     )
                    INSERT INTO boards (guild_id, 
                                        channel_id, 
-                                       type) 
-                   VALUES ($2, $3, $4) 
+                                       type,
+                                       title) 
+                   VALUES ($2, $3, $4, $5) 
                    ON CONFLICT (channel_id) 
                    DO UPDATE SET channel_id = $3, 
                                  toggle     = True;
                 """
 
-        await ctx.db.execute(query, msg.id, ctx.guild.id, channel.id, 'donation')
+        await ctx.db.execute(query, msg.id, ctx.guild.id, channel.id, 'donation', 'DonationBoard')
         await ctx.send(f'Donationboard channel created: {channel.mention}')
 
     @add.command(name='donationlog')

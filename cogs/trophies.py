@@ -62,7 +62,7 @@ class Trophies(commands.Cog):
             if isinstance(arg[0], coc.BasicClan):
                 await ctx.invoke(self.trophies_clan, clans=arg)
 
-    @trophies.command(name='user', hidden=True)
+    @trophies.command(name='user')
     async def trophies_user(self, ctx, *, user: discord.Member = None):
         """Get trophies for a discord user.
 
@@ -101,7 +101,7 @@ class Trophies(commands.Cog):
 
         await p.paginate()
 
-    @trophies.command(name='player', hidden=True)
+    @trophies.command(name='player')
     async def trophies_player(self, ctx, *, player: PlayerConverter):
         """Get trophies for a player.
 
@@ -137,7 +137,7 @@ class Trophies(commands.Cog):
 
         await p.paginate()
 
-    @trophies.command(name='clan', hidden=True)
+    @trophies.command(name='clan')
     async def trophies_clan(self, ctx, *, clans: ClanConverter):
         """Get trophies for a clan.
 

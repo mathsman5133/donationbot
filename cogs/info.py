@@ -480,20 +480,20 @@ class Info(commands.Cog, name='\u200bInfo'):
             return await ctx.send('Please setup a donationboard.')
 
         table = CLYTable()
-        if ctx.config.render == 2:
+        if ctx.config.render == 1:
             table.add_rows([[0, 4320, 955, 'Member Name'], [1, 4500, 870, 'Another Member'],
                             [2, 3900, -600, 'Yet Another'], [3, 1500, -1000, 'Worst Pusher']
                             ])
 
             table.title = ctx.config.title or 'TrophyBoard'
-            render = table.trophyboard_2()
+            render = table.trophyboard_1()
         else:
             table.add_rows([[0, 2000, 'Member'], [1, 1500, 'Nearly #1'],
                             [2, 1490, 'Another Member'], [3, -600, 'Winner']
                             ])
 
             table.title = ctx.config.title or 'TrophyBoard'
-            render = table.trophyboard_1()
+            render = table.trophyboard_2()
 
         fmt = f'**Trophyboard Example Format:**\n\n{render}\n**Icon:** ' \
             f'Please see the icon displayed above.\n'

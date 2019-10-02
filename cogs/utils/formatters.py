@@ -343,8 +343,8 @@ class LogsPaginator(TablePaginator):
                 player_data = player_data[1]
                 time = events_time((datetime.utcnow() - player_data[3]).total_seconds())
                 row = [
-                    misc['trophygain'] if player_data[1] > 0 else misc['trophyloss'],
-                    abs(player_data[1]),
+                    misc['trophygreen'] if player_data[1] > 0 else misc['trophyred'],
+                    player_data[1],
                     player_data[4],
                     time
                 ]
@@ -354,5 +354,5 @@ class LogsPaginator(TablePaginator):
             return f"{self.table.donation_log_command()}\nKey: {misc['donated']} - Donated," \
                    f" {misc['received']} - Received"
         else:
-            return f"{self.table.trophy_log_command()}\nKey: {misc['trophies_gained']} - Trophies Gained," \
-                   f" {misc['trophies_lost']} - Trophies Lost"
+            return f"{self.table.trophy_log_command()}\nKey: {misc['trophygreen']} - Trophies Gained," \
+                   f" {misc['trophyred']} - Trophies Lost"

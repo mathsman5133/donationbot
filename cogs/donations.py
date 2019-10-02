@@ -62,7 +62,7 @@ class Donations(commands.Cog):
             if isinstance(arg[0], coc.BasicClan):
                 await ctx.invoke(self.donations_clan, clans=arg)
 
-    @donations.command(name='user', hidden=True)
+    @donations.command(name='user')
     async def donations_user(self, ctx, *, user: discord.Member = None):
         """Get donations for a discord user.
 
@@ -101,7 +101,7 @@ class Donations(commands.Cog):
 
         await p.paginate()
 
-    @donations.command(name='player', hidden=True)
+    @donations.command(name='player')
     async def donations_player(self, ctx, *, player: PlayerConverter):
         """Get donations for a player.
 
@@ -137,7 +137,7 @@ class Donations(commands.Cog):
 
         await p.paginate()
 
-    @donations.command(name='clan', hidden=True)
+    @donations.command(name='clan')
     async def donations_clan(self, ctx, *, clans: ClanConverter):
         """Get donations for a clan.
 
