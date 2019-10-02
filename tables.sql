@@ -144,7 +144,7 @@ create table trophyevents (
     clan_tag text,
     trophy_change integer,
     time timestamp,
-    reported boolean default true,
+    reported boolean default false,
     season_id integer
 )
 

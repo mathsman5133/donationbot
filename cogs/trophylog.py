@@ -65,7 +65,7 @@ class TrophyLogs(commands.Cog):
             await self.bot.pool.execute(query, self._batch_data)
             total = len(self._batch_data)
             if total > 1:
-                log.info('Registered %s trophy events to the database.', total)
+                log.debug('Registered %s trophy events to the database.', total)
             self._batch_data.clear()
 
     @tasks.loop(seconds=60.0)
@@ -145,7 +145,7 @@ class TrophyLogs(commands.Cog):
                    FROM clans 
                         INNER JOIN trophyevents 
                         ON clans.clan_tag = trophyevents.clan_tag 
-                    WHERE trophyevents.reported=False
+                   WHERE trophyevents.reported=False
                 """
         fetch = await self.bot.pool.fetch(query)
 

@@ -66,7 +66,7 @@ class DonationLogs(commands.Cog):
             await self.bot.pool.execute(query, self._batch_data)
             total = len(self._batch_data)
             if total > 1:
-                log.info('Registered %s donation events to the database.', total)
+                log.debug('Registered %s donation events to the database.', total)
             self._batch_data.clear()
 
     @tasks.loop(seconds=60.0)
