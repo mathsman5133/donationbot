@@ -228,14 +228,14 @@ class DonationBoard(commands.Cog):
             self._clan_events.add(clan.tag)
 
     async def on_clan_member_join(self, member, clan):
-        query = """INSERT INTO players (player_tag, donations, received, trophies, season_id) 
-                    VALUES ($1,$2,$3,$4,$5) 
+        query = """INSERT INTO players (player_tag, donations, received, trophies, start_trophies, season_id) 
+                    VALUES ($1,$2,$3,$4,$4,$5) 
                     ON CONFLICT (player_tag, season_id) 
                     DO NOTHING
                 """
 
-        query2 = """INSERT INTO eventplayers (player_tag, donations, received, trophies, live, event_id) 
-                        SELECT $1, $2, $3, $4, true, events.id
+        query2 = """INSERT INTO eventplayers (player_tag, donations, received, trophies, start_trophies, live, event_id) 
+                        SELECT $1, $2, $3, $4, $4, true, events.id
                         FROM events
                         INNER JOIN clans 
                         ON clans.guild_id = events.guild_id

@@ -73,7 +73,7 @@ def format_donation_log_message(player, clan_name):
 
 
 def format_trophy_log_message(player, clan_name):
-    trophies = player.tropies
+    trophies = player.trophies
     abs_trophies = abs(trophies)
 
     if 0 < abs_trophies <= 100:
