@@ -182,19 +182,19 @@ class CLYTable:
         return fmt
 
     def trophyboard_2(self):
-        fmt = f"{misc['number']}` {'Gain':\u00A0>4.4} `⠀{'Name':\u00A0<18.18}⠀`\n"
+        fmt = f"{misc['number']}` {'Gain':\u00A0>4.4}⠀` ` {'Name':\u00A0<18.18}⠀`\n"
         for v in self._rows:
             index = int(v[0]) + 1
             index = number_emojis[index] if index <= 100 else misc['idle']
-            fmt += f"{index}`⠀{str(v[1]):\u00A0>4.4}⠀`⠀{str(v[2]):\u00A0<18.18}⠀`\n"
+            fmt += f"{index}`⠀{str(v[1]):\u00A0>4.4}⠀` ` {str(v[2]):\u00A0<18.18}⠀`\n"
         return fmt
 
     def events_list(self):
-        fmt = f"{misc['number']}` {'Starts In':\u00A0^9} `⠀{'Name':\u00A0<15.15}⠀`\n"
+        fmt = f"{misc['number']}` {'Starts In':\u00A0^9}⠀` ` {'Name':\u00A0<15.15}⠀`\n"
         for v in self._rows:
             index = int(v[0]) + 1
             index = number_emojis[index] if index <= 100 else misc['idle']
-            fmt += f"{index}`⠀{str(v[1]):\u00A0^9}⠀`⠀{str(v[2]):\u00A0<15.15}⠀`\n"
+            fmt += f"{index}`⠀{str(v[1]):\u00A0^9}⠀` ` {str(v[2]):\u00A0<15.15}⠀`\n"
         return fmt
 
     def donation_log_command(self):
