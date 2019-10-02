@@ -8,6 +8,7 @@ import math
 def setup_logging(bot):
     logging.getLogger('discord').setLevel(logging.INFO)
     logging.getLogger('discord.http').setLevel(logging.WARNING)
+    logging.getLogger('discord.state').setLevel(logging.WARNING)
     logging.getLogger('websockets.protocol').setLevel(logging.WARNING)
     logging.getLogger('coc').setLevel(logging.INFO)
     logging.getLogger('coc.http').setLevel(logging.WARNING)
