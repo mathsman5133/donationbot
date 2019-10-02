@@ -14,8 +14,7 @@ log = logging.getLogger(__name__)
 
 
 class Events(commands.Cog):
-    """Find historical clan donation or trophy data for your clan, or setup logging and events.
-    """
+    """Find historical clan donation or trophy data for your clan."""
     def __init__(self, bot):
         self.bot = bot
 
@@ -103,32 +102,31 @@ class Events(commands.Cog):
         await p.paginate()
 
     @commands.group(invoke_without_command=True)
-    async def donationevents(self, ctx, limit: typing.Optional[int] = 20, *,
+    async def donationevents(self, ctx, limit: typing.Optional[int] = 1000, *,
                              arg: typing.Union[discord.Member, ClanConverter, PlayerConverter] = None):
         """[Group] Check recent donation events for a player, user, clan or guild.
 
-        Parameters
-        ----------------
-        • Optional: Pass in a limit (number of events) to get. Defaults to 20.
+        **Parameters**
+        :key: Discord user **OR**
+        :key: Clash player tag or name **OR**
+        :key: Clash clan tag or name **OR**
+        :key: `all` for all clans claimed.
 
-        Then pass in any of the following:
+        **Format**
+        :information_source: `+donationevents @MENTION`
+        :information_source: `+donationevents #PLAYER_TAG`
+        :information_source: `+donationevents Player Name`
+        :information_source: `+donationevents #CLAN_TAG`
+        :information_source: `+donationevents Clan Name`
+        :information_source: `+donationevents all`
 
-            • A clan tag
-            • A clan name (clan must be claimed to the server)
-            • A discord @mention, user#discrim or user id
-            • A player tag
-            • A player name (must be in clan claimed to server)
-            • `all`, `server`, `guild` for all clans in guild
-            • None passed will divert to donations for your discord account
-
-        Example
-        -----------
-        • `+donationevents 20 #CLAN_TAG`
-        • `+donationevents @mention`
-        • `+donationevents #PLAYER_TAG`
-        • `+donationevents player name`
-        • `+donationevents 1000 all`
-        • `+donationevents`
+        **Example**
+        :white_check_mark: `+donationevents @mathsman`
+        :white_check_mark: `+donationevents #JJ6C8PY`
+        :white_check_mark: `+donationevents mathsman`
+        :white_check_mark: `+donationevents #P0LYJC8C`
+        :white_check_mark: `+donationevents Rock Throwers`
+        :white_check_mark: `+donationevents all`
         """
         ctx.config = SlimDummyLogConfig('donation', 'Donation Events', None)
         if ctx.invoked_subcommand is not None:
@@ -151,104 +149,99 @@ class Events(commands.Cog):
     async def donation_events_recent(self, ctx, limit: int = None):
         await self.recent_events('donationevents', ctx, limit)
 
-    @donationevents.command(name='user', hidden=True)
+    @donationevents.command(name='user')
     async def donation_events_user(self, ctx, limit: typing.Optional[int] = 20, *,
                           user: discord.Member = None):
         """Get donation history/events for a discord user.
 
-        Parameters
-        ----------------
-        Pass in any of the following:
-
-            • A discord @mention, user#discrim or user id
-            • None passed will divert to donations for your discord account
-
-        Example
-        ------------
-        • `+donationevents user @mention`
-        • `+donationevents user USER_ID`
-        • `+donationevents user`
-
         By default, you shouldn't need to call these sub-commands as the bot will
         parse your argument and direct it to the correct sub-command automatically.
+
+        **Parameters**
+        :key: Discord user (optional - defaults to yourself)
+
+        **Format**
+        :information_source: `+donationevents user @MENTION`
+        :information_source: `+donationevents user`
+
+        **Example**
+        :white_check_mark: `+donationevents user @mathsman`
+        :white_check_mark: `+donationevents user`
         """
         if not user:
             user = ctx.author
 
         await self.user_events('donationevents', ctx, user, limit)
 
-    @donationevents.command(name='player', hidden=True)
+    @donationevents.command(name='player')
     async def donation_events_player(self, ctx, limit: typing.Optional[int] = 20,
                             *, player: PlayerConverter):
         """Get donation history/events for a player.
 
-        Parameters
-        -----------------
-        Pass in any of the following:
-
-            • A player tag
-            • A player name (must be in a clan claimed to server)
-
-        Example
-        ------------
-        • `+donationevents player #PLAYER_TAG`
-        • `+donationevents player player name`
-
         By default, you shouldn't need to call these sub-commands as the bot will
         parse your argument and direct it to the correct sub-command automatically.
+
+        **Parameters**
+        :key: Player name OR tag
+
+        **Format**
+        :information_source: `+donationevents player #PLAYER_TAG`
+        :information_source: `+donationevents player Player Name`
+
+        **Example**
+        :white_check_mark: `+donationevents player #P0LYJC8C`
+        :white_check_mark: `+donationevents player mathsman`
         """
         await self.player_events('donationevents', ctx, player, limit)
 
-    @donationevents.command(name='clan', hidden=True)
+    @donationevents.command(name='clan')
     async def donation_events_clan(self, ctx, limit: typing.Optional[int] = 20, *, clans: ClanConverter):
         """Get donation history/events for a clan.
 
-        Parameters
-        ----------------
-        Pass in any of the following:
-
-            • A clan tag
-            • A clan name (must be claimed to server)
-            • `all`, `server`, `guild`: all clans claimed to server
-
-        Example
-        ------------
-        • `+donationevents clan #CLAN_TAG`
-        • `+donationevents clan clan name`
-        • `+donationevents clan all`
-
         By default, you shouldn't need to call these sub-commands as the bot will
         parse your argument and direct it to the correct sub-command automatically.
+
+        **Parameters**
+        :key: Clan name OR tag OR `all` to get all clans.
+
+        **Format**
+        :information_source: `+donationevents clan #CLAN_TAG`
+        :information_source: `+donationevents clan Clan Name`
+        :information_source: `+donationevents clan all`
+
+        **Example**
+        :white_check_mark: `+donationevents clan #P0LYJC8C`
+        :white_check_mark: `+donationevents clan Rock Throwers`
+        :white_check_mark: `+donationevents clan all`
         """
         await self.clan_events('donationevents', ctx, clans, limit)
 
     @commands.group(invoke_without_command=True)
-    async def trophyevents(self, ctx, limit: typing.Optional[int] = 20, *,
+    async def trophyevents(self, ctx, limit: typing.Optional[int] = 1000, *,
                            arg: typing.Union[discord.Member, ClanConverter, PlayerConverter] = None):
-        """[Group] Check recent trophy events for a player, user, clan or guild.
+        """[Group] Check recent trophy events for a player, user or clan(s).
 
-        Parameters
-        ----------------
-        • Optional: Pass in a limit (number of events) to get. Defaults to 20.
+        **Parameters**
+        :key: Discord user **OR**
+        :key: Clash player tag or name **OR**
+        :key: Clash clan tag or name **OR**
+        :key: `all` for all clans claimed.
 
-        Then pass in any of the following:
+        **Format**
+        :information_source: `+trophyevents @MENTION`
+        :information_source: `+trophyevents #PLAYER_TAG`
+        :information_source: `+trophyevents Player Name`
+        :information_source: `+trophyevents #CLAN_TAG`
+        :information_source: `+trophyevents Clan Name`
+        :information_source: `+trophyevents all`
 
-            • A clan tag
-            • A clan name (clan must be claimed to the server)
-            • A discord @mention, user#discrim or user id
-            • A player tag
-            • A player name (must be in clan claimed to server)
-            • `all`, `server`, `guild` for all clans in guild
-            • None passed will divert to donations for your discord account
-
-        Example
-        -----------
-        • `+trophyevents 20 #CLAN_TAG`
-        • `+trophyevents @mention`
-        • `+trophyevents #PLAYER_TAG`
-        • `+trophyevents player name`
-        • `+trophyevents 1000 all`
-        • `+trophyevents`
+        **Example**
+        :white_check_mark: `+trophyevents @mathsman`
+        :white_check_mark: `+trophyevents #JJ6C8PY`
+        :white_check_mark: `+trophyevents mathsman`
+        :white_check_mark: `+trophyevents #P0LYJC8C`
+        :white_check_mark: `+trophyevents Rock Throwers`
+        :white_check_mark: `+trophyevents all`
         """
         ctx.config = SlimDummyLogConfig('trophy', 'Donation Events', None)
         if ctx.invoked_subcommand is not None:
@@ -274,23 +267,21 @@ class Events(commands.Cog):
     @trophyevents.command(name='user', hidden=True)
     async def trophy_events_user(self, ctx, limit: typing.Optional[int] = 20, *,
                           user: discord.Member = None):
-        """Get trophy history/events for a discord user.
-
-        Parameters
-        ----------------
-        Pass in any of the following:
-
-            • A discord @mention, user#discrim or user id
-            • None passed will divert to donations for your discord account
-
-        Example
-        ------------
-        • `+trophyevents user @mention`
-        • `+trophyevents user USER_ID`
-        • `+trophyevents user`
+        """Get donation history/events for a discord user.
 
         By default, you shouldn't need to call these sub-commands as the bot will
         parse your argument and direct it to the correct sub-command automatically.
+
+        **Parameters**
+        :key: Discord user (optional - defaults to yourself)
+
+        **Format**
+        :information_source: `+trophyevents user @MENTION`
+        :information_source: `+trophyevents user`
+
+        **Example**
+        :white_check_mark: `+trophyevents user @mathsman`
+        :white_check_mark: `+trophyevents user`
         """
         if not user:
             user = ctx.author
@@ -302,20 +293,19 @@ class Events(commands.Cog):
                             *, player: PlayerConverter):
         """Get trophy history/events for a player.
 
-        Parameters
-        -----------------
-        Pass in any of the following:
-
-            • A player tag
-            • A player name (must be in a clan claimed to server)
-
-        Example
-        ------------
-        • `+trophyevents player #PLAYER_TAG`
-        • `+trophyevents player player name`
-
         By default, you shouldn't need to call these sub-commands as the bot will
         parse your argument and direct it to the correct sub-command automatically.
+
+        **Parameters**
+        :key: Player name OR tag
+
+        **Format**
+        :information_source: `+trophyevents player #PLAYER_TAG`
+        :information_source: `+trophyevents player Player Name`
+
+        **Example**
+        :white_check_mark: `+trophyevents player #P0LYJC8C`
+        :white_check_mark: `+trophyevents player mathsman`
         """
         await self.player_events('trophyevents', ctx, player, limit)
 
@@ -323,22 +313,21 @@ class Events(commands.Cog):
     async def trophy_events_clan(self, ctx, limit: typing.Optional[int] = 20, *, clans: ClanConverter):
         """Get trophy history/events for a clan.
 
-        Parameters
-        ----------------
-        Pass in any of the following:
-
-            • A clan tag
-            • A clan name (must be claimed to server)
-            • `all`, `server`, `guild`: all clans claimed to server
-
-        Example
-        ------------
-        • `+trophyevents clan #CLAN_TAG`
-        • `+trophyevents clan clan name`
-        • `+trophyevents clan all`
-
         By default, you shouldn't need to call these sub-commands as the bot will
         parse your argument and direct it to the correct sub-command automatically.
+
+        **Parameters**
+        :key: Clan name OR tag OR `all` to get all clans.
+
+        **Format**
+        :information_source: `+trophyevents clan #CLAN_TAG`
+        :information_source: `+trophyevents clan Clan Name`
+        :information_source: `+trophyevents clan all`
+
+        **Example**
+        :white_check_mark: `+trophyevents clan #P0LYJC8C`
+        :white_check_mark: `+trophyevents clan Rock Throwers`
+        :white_check_mark: `+trophyevents clan all`
         """
         await self.clan_events('trophyevents', ctx, clans, limit)
 
