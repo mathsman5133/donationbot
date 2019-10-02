@@ -626,6 +626,7 @@ class GuildConfiguration(commands.Cog, name='Server Setup'):
             await ctx.invoke(self.add_discord, user=user, player=player)
 
     @commands.command(name='multiclaim')
+    @requires_config('event')
     async def multi_claim(self, ctx, user: discord.Member,
                           players: commands.Greedy[PlayerConverter]):
         """Helper command to link many clash accounts to a user's discord.
@@ -1259,10 +1260,18 @@ class GuildConfiguration(commands.Cog, name='Server Setup'):
         await ctx.db.execute(query, title, ctx.config.channel_id)
         await ctx.confirm()
 
-    @edit.command(name='donationlog interval', aliases=['donationlog'])
+    @edit.group(name='donationlog')
+    @manage_guild()
+    async def edit_donationlog(self, ctx, channel: typing.Optional[TextChannel] = None,
+                                        minutes: int = 1):
+        """[Group] Edit the donationlog settings."""
+        if ctx.invoked_subcommand is None:
+            await ctx.send_help(ctx.command)
+
+    @edit_donationlog.command(name='interval')
     @requires_config('donationlog', invalidate=True)
     @manage_guild()
-    async def edit_donationlog_interval(self, ctx, channel: typing.Optional[discord.TextChannel] = None,
+    async def edit_donationlog_interval(self, ctx, channel: typing.Optional[TextChannel] = None,
                                         minutes: int = 1):
         """Update the interval (in minutes) for which the bot will log your donations.
 
@@ -1288,10 +1297,17 @@ class GuildConfiguration(commands.Cog, name='Server Setup'):
         await ctx.send(f'Logs for {ctx.config.channel.mention} have been changed to {minutes} minutes. '
                        'Find which clans this affects with `+help info donationlog`')
 
-    @edit.command(name='trophylog interval', aliases=['trophylog'])
+    @edit.group(name='trophylog')
+    @checks.manage_guild()
+    async def edit_trophylog(self, ctx):
+        """[Group] Edit the trophylog settings."""
+        if ctx.invoked_subcommand is None:
+            await ctx.send_help(ctx.command)
+
+    @edit_trophylog.command(name='interval')
     @requires_config('trophylog', invalidate=True)
     @manage_guild()
-    async def edit_trophylog_interval(self, ctx, channel: typing.Optional[discord.TextChannel] = None,
+    async def edit_trophylog_interval(self, ctx, channel: typing.Optional[TextChannel] = None,
                                       minutes: int = 1):
         """Update the interval (in minutes) for which the bot will log your trophies.
 
