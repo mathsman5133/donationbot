@@ -135,7 +135,7 @@ class GuildConfiguration(commands.Cog, name='Server Setup'):
         query = "SELECT id FROM clans WHERE clan_tag = $1 AND channel_id = $2"
         fetch = await ctx.db.fetch(query, clan_tag, ctx.channel.id)
         if fetch:
-            return await ctx.send('This clan has already been linked to the server.')
+            return await ctx.send('This clan has already been linked to the channel.')
 
         try:
             clan = await ctx.bot.coc.get_clan(clan_tag, cache=False, update_cache=False)

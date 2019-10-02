@@ -268,7 +268,7 @@ class Info(commands.Cog, name='\u200bInfo'):
               '• `+help info` (check out the subcommands)\n\n' \
               '• There are lots of how-to\'s and other ' \
               'support on the [support server](https://discord.gg/ePt8y4V) if you get stuck.\n' \
-            f'• Please share the bot with your friends! [Bot Invite]({self.invite})\n' \
+            f'• Please share the bot with your friends! [Bot Invite]({self.invite_link})\n' \
               '• Please support us on [Patreon](https://www.patreon.com/donationtracker)!\n' \
               '• Have a good day!'
         e = discord.Embed(colour=self.bot.colour,

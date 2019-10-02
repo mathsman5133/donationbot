@@ -173,7 +173,7 @@ class TrophyLogs(commands.Cog):
 
             messages = []
             for x in events:
-                slim_event = SlimTrophyEvent(x['trophies'], x['player_name'], x['clan_tag'])
+                slim_event = SlimTrophyEvent(x['trophy_change'], x['player_name'], x['clan_tag'])
                 clan_name = await self.bot.utils.get_clan_name(config.guild_id, slim_event.clan_tag)
                 messages.append(format_trophy_log_message(slim_event, clan_name))
 
