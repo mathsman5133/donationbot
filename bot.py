@@ -59,7 +59,7 @@ description = "A simple discord bot to track donations of clan families in clash
 
 class DonationBot(commands.Bot):
     def __init__(self):
-        super().__init__(command_prefix=commands.when_mentioned_or('//'), case_insensitive=True,
+        super().__init__(command_prefix=commands.when_mentioned_or('+'), case_insensitive=True,
                          description=description, pm_help=None, help_attrs=dict(hidden=True),
                          fetch_offline_members=True)
 
