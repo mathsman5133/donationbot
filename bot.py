@@ -33,7 +33,7 @@ class CustomCOC(coc.EventsClient):
 
 
 coc_client = coc.login(creds.email, creds.password, client=coc.EventsClient,
-                       key_names='test', throttle_limit=40, key_count=3)
+                       key_names='test', throttle_limit=30, key_count=3)
 
 
 initial_extensions = (
@@ -59,7 +59,7 @@ description = "A simple discord bot to track donations of clan families in clash
 
 class DonationBot(commands.Bot):
     def __init__(self):
-        super().__init__(command_prefix=commands.when_mentioned_or('+'), case_insensitive=True,
+        super().__init__(command_prefix=commands.when_mentioned_or('//'), case_insensitive=True,
                          description=description, pm_help=None, help_attrs=dict(hidden=True),
                          fetch_offline_members=True)
 
