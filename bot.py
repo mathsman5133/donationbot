@@ -33,15 +33,17 @@ class CustomCOC(coc.EventsClient):
 
 
 coc_client = coc.login(creds.email, creds.password, client=coc.EventsClient,
-                               key_names='test', throttle_limit=40, key_count=3)
+                       key_names='test', throttle_limit=40, key_count=3)
 
 
 initial_extensions = (
     'cogs.admin',
+    'cogs.aliases',
     'cogs.auto_claim',
     'cogs.background_management',
     'cogs.boards',
     'cogs.botutils',
+    'cogs.deprecated',
     'cogs.donationlogs',
     'cogs.donations',
     'cogs.events',
@@ -49,7 +51,7 @@ initial_extensions = (
     'cogs.info',
     'cogs.reset_season',
     'cogs.seasonstats',
-    #'cogs.trophies',
+    'cogs.trophies',
     'cogs.trophylog'
 )
 description = "A simple discord bot to track donations of clan families in clash of clans."

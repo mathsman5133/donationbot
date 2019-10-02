@@ -20,6 +20,7 @@ def manage_guild():
         perms = await check_guild_permissions(ctx, {'manage_guild': True})
         if not perms:
             raise commands.CheckFailure('You must have `Manage Server` permissions to use this command!')
+        return True
     return commands.check(pred)
 
 

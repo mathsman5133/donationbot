@@ -81,9 +81,9 @@ def format_trophy_log_message(player, clan_name):
     else:
         number = abs_trophies
 
-    emoji = misc['trophies_gained'] if trophies > 0 else misc['trophies_lost']
+    emoji = (misc['trophygreen'], misc['trophygain']) if trophies > 0 else (misc['trophyred'], misc['trophyloss'])
 
-    return f"{misc['trophies']}{player.name} {emoji} {number} ({clan_name})"
+    return f"{emoji[0]}{player.name} {emoji[1]} {number} ({clan_name})"
 
 
 class TabularData:
@@ -343,7 +343,7 @@ class LogsPaginator(TablePaginator):
                 player_data = player_data[1]
                 time = events_time((datetime.utcnow() - player_data[3]).total_seconds())
                 row = [
-                    misc['trophies_gained'] if player_data[1] > 0 else misc['trophies_lost'],
+                    misc['trophygain'] if player_data[1] > 0 else misc['trophyloss'],
                     abs(player_data[1]),
                     player_data[4],
                     time

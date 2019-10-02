@@ -9,7 +9,7 @@ from cogs.utils import fuzzy, checks, formatters, paginator
 from cogs.utils.converters import ClanConverter, PlayerConverter
 
 
-class AutoClaim(commands.Cog):
+class AutoClaim(commands.Cog, name='\u200bAutoClaim'):
     def __init__(self, bot):
         self.bot = bot
         self.running_commands = {}

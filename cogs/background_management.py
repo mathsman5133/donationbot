@@ -16,7 +16,7 @@ class BackgroundManagement(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.command()
+    @commands.command(hidden=True)
     @commands.is_owner()
     async def forceguild(self, ctx, guild_id: int):
         self.bot.dispatch('guild_join', self.bot.get_guild(guild_id))

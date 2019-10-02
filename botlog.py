@@ -37,7 +37,7 @@ def setup_logging(bot):
 
     class DiscordHandler(logging.NullHandler):
         def handle(self, record):
-            if record.levelno < 29:
+            if record.levelno < 19:
                 return
 
             to_send = fmt.format(record)

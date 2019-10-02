@@ -7,7 +7,7 @@ from discord.ext import commands, tasks
 log = logging.getLogger(__name__)
 
 
-class SeasonConfig(commands.Cog):
+class SeasonConfig(commands.Cog, command_attrs=dict(hidden=True)):
     def __init__(self, bot):
         self.bot = bot
         self.season_id = 0
