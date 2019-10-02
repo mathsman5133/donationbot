@@ -1262,8 +1262,7 @@ class GuildConfiguration(commands.Cog, name='Server Setup'):
 
     @edit.group(name='donationlog')
     @manage_guild()
-    async def edit_donationlog(self, ctx, channel: typing.Optional[TextChannel] = None,
-                                        minutes: int = 1):
+    async def edit_donationlog(self, ctx):
         """[Group] Edit the donationlog settings."""
         if ctx.invoked_subcommand is None:
             await ctx.send_help(ctx.command)
@@ -1271,8 +1270,7 @@ class GuildConfiguration(commands.Cog, name='Server Setup'):
     @edit_donationlog.command(name='interval')
     @requires_config('donationlog', invalidate=True)
     @manage_guild()
-    async def edit_donationlog_interval(self, ctx, channel: typing.Optional[TextChannel] = None,
-                                        minutes: int = 1):
+    async def edit_donationlog_interval(self, ctx, channel: typing.Optional[TextChannel], minutes: int = 1):
         """Update the interval (in minutes) for which the bot will log your donations.
 
         **Parameters**
@@ -1288,6 +1286,10 @@ class GuildConfiguration(commands.Cog, name='Server Setup'):
         **Required Permissions**
         :warning: Manage Server
         """
+        if not ctx.config:
+            return await ctx.send('Oops! It doesn\'t look like a donationlog is setup here. '
+                                  'Try `+info log` to find where the registered channels are!')
+
         query = """UPDATE logs
                    SET interval = ($1 ||' minutes')::interval
                    WHERE channel_id=$2
@@ -1307,8 +1309,7 @@ class GuildConfiguration(commands.Cog, name='Server Setup'):
     @edit_trophylog.command(name='interval')
     @requires_config('trophylog', invalidate=True)
     @manage_guild()
-    async def edit_trophylog_interval(self, ctx, channel: typing.Optional[TextChannel] = None,
-                                      minutes: int = 1):
+    async def edit_trophylog_interval(self, ctx, channel: typing.Optional[TextChannel], minutes: int = 1):
         """Update the interval (in minutes) for which the bot will log your trophies.
 
         **Parameters**
@@ -1324,6 +1325,10 @@ class GuildConfiguration(commands.Cog, name='Server Setup'):
         **Required Permissions**
         :warning: Manage Server
         """
+        if not ctx.config:
+            return await ctx.send('Oops! It doesn\'t look like a trophylog is setup here. '
+                                  'Try `+info log` to find where the registered channels are!')
+
         query = """UPDATE logs
                    SET interval = ($1 ||' minutes')::interval
                    WHERE channel_id=$2
