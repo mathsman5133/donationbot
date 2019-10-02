@@ -399,7 +399,7 @@ class DonationBoard(commands.Cog):
             return discord.Colour.blue()
         return discord.Colour.green()
 
-    @commands.command()
+    @commands.command(hidden=True)
     @commands.is_owner()
     async def forceboard(self, ctx, channel_id: int = None):
         await self.update_board(channel_id or ctx.channel.id)
