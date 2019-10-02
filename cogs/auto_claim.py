@@ -79,7 +79,7 @@ class AutoClaim(commands.Cog, name='\u200bAutoClaim'):
         The interactive process is easy to use, and will try to guide you through as easily as possible
         """
         if ctx.invoked_subcommand is None:
-            return ctx.send_help(ctx.command)
+            return await ctx.send_help(ctx.command)
 
     @auto_claim.command(name='start')
     @checks.manage_guild()
