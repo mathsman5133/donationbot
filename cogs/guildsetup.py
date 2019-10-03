@@ -142,11 +142,10 @@ class GuildConfiguration(commands.Cog, name='Server Setup'):
         except coc.NotFound:
             return await ctx.send(f'Clan not found with `{clan_tag}` tag.')
 
-        def check():
-            return clan.description.strip().endswith('dt') \
-                   or await self.bot.is_owner(ctx.author) or clan_tag in (n.tag for n in current_clans)
+        check = clan.description.strip().endswith('dt') \
+                or await self.bot.is_owner(ctx.author) or clan_tag in (n.tag for n in current_clans)
 
-        if not check():
+        if not check:
             return await ctx.send('Please add the letters `dt` to the end of '
                                   f'`{clan.name}`\'s clan description. Wait 5 minutes and try again.'
                                   '\n\nThis is a security feature of the bot and should '
