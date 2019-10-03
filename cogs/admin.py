@@ -259,7 +259,7 @@ class Admin(commands.Cog):
             fmt = f'```py\n{value}{traceback.format_exc()}\n```'
             if len(fmt) > 2000:
                 fp = io.BytesIO(fmt.encode('utf-8'))
-                await ctx.send('Too many results...', file=discord.File(fp, 'results.txt'))
+                return await ctx.send('Too many results...', file=discord.File(fp, 'results.txt'))
 
             return await ctx.send(fmt)
         else:

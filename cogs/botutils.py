@@ -63,6 +63,7 @@ class Utils(commands.Cog):
         channel_id = await self.get_board_channel(guild_id, board_type)
         if not channel_id:
             return
+        channel_id = int(channel_id)
 
         if invalidate:
             self.board_config.invalidate(self, channel_id)

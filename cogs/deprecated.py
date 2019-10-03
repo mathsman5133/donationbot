@@ -11,63 +11,53 @@ class Deprecated(commands.Cog, command_attrs=dict(hidden=True)):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.group()
+    @commands.command(name='donationboard create')
     @deprecated('add donationboard')
     async def donationboard(self, ctx):
         return
 
-    @donationboard.command()
-    @deprecated('add donationboard')
-    async def create(self, ctx):
-        return
-
-    @donationboard.command()
+    @commands.command(name='donationboard edit')
     @deprecated('edit donationboard')
     async def edit(self, ctx):
         return
 
-    @donationboard.command()
+    @commands.command(name='donationboard remove')
     @deprecated('remove donationboard')
     async def remove(self, ctx):
         return
 
-    @donationboard.command()
+    @commands.command(name='donationboard icon')
     @deprecated('edit donationboard icon')
     async def icon(self, ctx):
         return
 
-    @donationboard.command()
+    @commands.command(name='donationboard title')
     @deprecated('edit donationboard title')
     async def title(self, ctx):
         return
 
-    @donationboard.command()
+    @commands.command(name='donationboard info')
     @deprecated('info donationboard')
     async def info(self, ctx):
         return
 
-    @commands.group()
-    @deprecated('add log')
+    @commands.command(name='log create')
+    @deprecated('add donationlog')
     async def log(self, ctx):
         return
 
-    @log.command(name='create')
-    @deprecated('add log')
-    async def log_add(self, ctx):
-        return
-
-    @log.command(name='info')
+    @commands.command(name='log info')
     @deprecated('info log')
     async def log_info(self, ctx):
         return
 
-    @log.command(name='interval')
-    @deprecated('edit log interval')
+    @commands.command(name='log interval')
+    @deprecated('edit donationlog interval')
     async def edit_log_interval(self, ctx):
         return
 
-    @log.command(name='toggle')
-    @deprecated('edit log toggle')
+    @commands.command(name='log toggle')
+    @deprecated('remove donationlog')
     async def edit_log_toggle(self, ctx):
         return
 
