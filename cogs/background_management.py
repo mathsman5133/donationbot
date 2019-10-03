@@ -52,7 +52,7 @@ class BackgroundManagement(commands.Cog):
         await asyncio.sleep(event['until_start'].total_seconds())
         await self.on_event_start(slim_config, event['guild_id'], event['until_start'])
 
-        query = "UPDATE events SET start_report = True WHERE event_id = $1"
+        query = "UPDATE events SET start_report = True WHERE id = $1"
         await self.bot.pool.execute(query, event['id'])
 
     @tasks.loop()
