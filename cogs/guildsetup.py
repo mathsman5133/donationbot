@@ -381,7 +381,7 @@ class GuildConfiguration(commands.Cog, name='Server Setup'):
         e = discord.Embed(colour=discord.Colour.green(),
                           description=fmt)
         await ctx.send(embed=e)
-        await self.bot.dispatch('event_register')
+        self.bot.dispatch('event_register')
 
     @add.command(name="trophyboard")
     @checks.manage_guild()
@@ -993,7 +993,7 @@ class GuildConfiguration(commands.Cog, name='Server Setup'):
         await ctx.db.execute(query, fetch[index]['id'])
         await msg.delete()
         ctx.bot.utils.event_config.invalidate(ctx.bot.utils, ctx.guild.id)
-        await self.bot.dispatch('event_register')
+        self.bot.dispatch('event_register')
         return await ctx.send(f"{fetch[index]['event_name']} has been removed.")
 
     @commands.command()
@@ -1592,7 +1592,7 @@ class GuildConfiguration(commands.Cog, name='Server Setup'):
             e = discord.Embed(colour=discord.Colour.green(),
                               description=fmt)
             await ctx.send(embed=e)
-            await self.bot.dispatch('event_register')
+            self.bot.dispatch('event_register')
 
     @commands.command()
     @checks.manage_guild()

@@ -14,7 +14,7 @@ def get_render_type(config, table):
         if config.render == 1:
             render = table.trophyboard_1
         else:
-            render = table.donationboard_2
+            render = table.trophyboard_2
 
     return render
 

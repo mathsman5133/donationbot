@@ -14,7 +14,7 @@ class PlayerConverter(commands.Converter):
             return argument
 
         tag = coc.utils.correct_tag(argument)
-        name = argument.strip()
+        name = argument.strip().lower()
 
         if tag_validator.match(argument):
             try:
@@ -27,13 +27,16 @@ class PlayerConverter(commands.Converter):
                                            )
         guild_clans = await ctx.get_clans()
         for g in guild_clans:
-            if g.name == name or g.tag == tag:
+            if g.name.lower() == name or g.tag == tag:
                 raise commands.BadArgument(f'You appear to be passing '
                                            f'the clan tag/name for `{str(g)}`')
 
-            member = g.get_member(name=name)
-            if member:
+            clan_members = {n.name.lower(): n for n in g.itermembers}
+            try:
+                member = clan_members[name]
                 return member
+            except KeyError:
+                pass
 
             member_by_tag = g.get_member(tag=tag)
             if member_by_tag:
@@ -51,7 +54,7 @@ class ClanConverter(commands.Converter):
             return argument
 
         tag = coc.utils.correct_tag(argument)
-        name = argument.strip()
+        name = argument.strip().lower()
 
         if tag_validator.match(tag):
             try:
@@ -65,7 +68,7 @@ class ClanConverter(commands.Converter):
             raise commands.BadArgument(f'{tag} is not a valid clan tag.')
 
         guild_clans = await ctx.get_clans()
-        matches = [n for n in guild_clans if n.name == name or n.tag == tag]
+        matches = [n for n in guild_clans if n.name.lower() == name or n.tag == tag]
 
         if not matches:
             raise commands.BadArgument(f'Clan name or tag `{argument}` not found')
