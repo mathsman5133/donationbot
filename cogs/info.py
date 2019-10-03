@@ -429,7 +429,7 @@ class Info(commands.Cog, name='\u200bInfo'):
         """Gives you info about guild's donationboard.
         """
         if not ctx.config:
-            return await ctx.send('Please setup a donationboard.')
+            return await ctx.send('Please setup a donationboard using `+add donationboard`.')
 
         table = CLYTable()
         if ctx.config.render == 2:
@@ -477,7 +477,7 @@ class Info(commands.Cog, name='\u200bInfo'):
         """Gives you info about guild's trophyboard.
         """
         if not ctx.config:
-            return await ctx.send('Please setup a donationboard.')
+            return await ctx.send('Please setup a trophyboard using `+add trophyboard`.')
 
         table = CLYTable()
         if ctx.config.render == 1:
@@ -517,6 +517,36 @@ class Info(commands.Cog, name='\u200bInfo'):
                           description=fmt if len(fmt) < 2048 else f'{fmt[:2040]}...')
         e.set_author(name='TrophyBoard Info',
                      icon_url=ctx.config.icon_url or 'https://cdn.discordapp.com/emojis/592028799768592405.png?v=1')
+
+        await ctx.send(embed=e)
+
+    @info.command(name='event')
+    @requires_config('event')
+    async def info_event(self, ctx):
+        """Gives you info about guild's event.
+        """
+        if not ctx.config:
+            return await ctx.send('Please setup an event using `+add event`.')
+
+        fmt = '**Event Information:**\n'
+
+        channel = ctx.config.channel
+        data = []
+
+        if channel is None:
+            data.append('**Channel:** #deleted-channel')
+        else:
+            data.append(f'**Channel:** {channel.mention}')
+
+        query = "SELECT clan_name, clan_tag FROM clans WHERE guild_id = $1;"
+        fetch = await ctx.db.fetch(query, ctx.guild.id)
+
+        data.append(f"**Clans:** {', '.join(f'{n[0]} ({n[1]})' for n in fetch)}")
+
+        fmt += '\n'.join(data)
+
+        e = discord.Embed(colour=self.bot.colour,
+                          description=fmt if len(fmt) < 2048 else f'{fmt[:2040]}...')
 
         await ctx.send(embed=e)
 
