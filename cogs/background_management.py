@@ -15,6 +15,10 @@ log = logging.getLogger(__name__)
 class BackgroundManagement(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.next_event_starts.start()
+
+    def cog_unload(self):
+        self.next_event_starts.cancel()
 
     @commands.command(hidden=True)
     @commands.is_owner()
@@ -28,7 +32,7 @@ class BackgroundManagement(commands.Cog):
                           finish,
                           event_name,
                           guild_id,
-                          start - CURRENT_TIMESTAMP as "until_start"
+                          start - CURRENT_TIMESTAMP AS "until_start"
                    FROM events
                    ORDER BY "until_start" DESC
                    LIMIT 1;
