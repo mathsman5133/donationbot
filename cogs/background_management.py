@@ -264,7 +264,7 @@ class BackgroundManagement(commands.Cog):
 
         e.timestamp = datetime.datetime.utcnow()
         if not await self.bot.is_owner(ctx.author):
-            await self.bot.error_webhook.send(embed=e)
+            await self.bot.command_webhook.send(embed=e)
 
         await self.bot.pool.execute(query, guild_id, ctx.channel.id, ctx.author.id,
                                     message.created_at, ctx.prefix, command
