@@ -293,6 +293,7 @@ class BoardPaginator(TablePaginator):
     def create_row(self, player, data):
         player_data = data[player.tag]
 
+        # TODO need to update this to accomodate attacks, trophy gains, defenses OR create new paginators for those
         if self.ctx.config.type == 'donation':
             if self.ctx.config.render == 1:
                 row = [player_data[0], player_data[1]['donations'], player_data[1]['received'], player.name]
