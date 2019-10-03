@@ -29,7 +29,7 @@ class TrophyLogs(commands.Cog):
         self.bot.coc.add_events(
             self.on_clan_member_trophies_change,
         )
-        self.bot.coc._clan_retry_interval = 20
+        self.bot.coc._clan_retry_interval = 60
         self.bot.coc.start_updates('clan')
 
         self._tasks = {}
@@ -65,7 +65,7 @@ class TrophyLogs(commands.Cog):
             await self.bot.pool.execute(query, self._batch_data)
             total = len(self._batch_data)
             if total > 1:
-                log.info('Registered %s trophy events to the database.', total)
+                log.debug('Registered %s trophy events to the database.', total)
             self._batch_data.clear()
 
     @tasks.loop(seconds=60.0)
@@ -145,7 +145,7 @@ class TrophyLogs(commands.Cog):
                    FROM clans 
                         INNER JOIN trophyevents 
                         ON clans.clan_tag = trophyevents.clan_tag 
-                    WHERE trophyevents.reported=False
+                   WHERE trophyevents.reported=False
                 """
         fetch = await self.bot.pool.fetch(query)
 
@@ -173,7 +173,7 @@ class TrophyLogs(commands.Cog):
 
             messages = []
             for x in events:
-                slim_event = SlimTrophyEvent(x['trophies'], x['player_name'], x['clan_tag'])
+                slim_event = SlimTrophyEvent(x['trophy_change'], x['player_name'], x['clan_tag'])
                 clan_name = await self.bot.utils.get_clan_name(config.guild_id, slim_event.clan_tag)
                 messages.append(format_trophy_log_message(slim_event, clan_name))
 

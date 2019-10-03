@@ -9,7 +9,7 @@ from cogs.utils import fuzzy, checks, formatters, paginator
 from cogs.utils.converters import ClanConverter, PlayerConverter
 
 
-class AutoClaim(commands.Cog):
+class AutoClaim(commands.Cog, name='\u200bAutoClaim'):
     def __init__(self, bot):
         self.bot = bot
         self.running_commands = {}
@@ -71,7 +71,7 @@ class AutoClaim(commands.Cog):
     @commands.group(name='autoclaim')
     @checks.manage_guild()
     async def auto_claim(self, ctx):
-        """Manage a currently running auto-claim command.
+        """[Group] Manage a currently running auto-claim command.
 
         Automatically claim all accounts in server, through an interactive process.
 
@@ -82,36 +82,28 @@ class AutoClaim(commands.Cog):
             return await ctx.send_help(ctx.command)
 
     @auto_claim.command(name='start')
+    @checks.manage_guild()
     async def auto_claim_start(self, ctx, *, clan: ClanConverter = None):
         """Automatically claim all accounts in server, through an interactive process.
 
         It will go through all players in claimed clans in server, matching them to discord users where possible.
         The interactive process is easy to use, and will try to guide you through as easily as possible
 
-        Parameters
-        -----------------
-        Pass in any of the following:
+        **Parameters**
+        :key: Clan tag, name or `all` for all clans claimed.
 
-            • A clan tag
-            • A clan name (must be claimed clan)
-            • `all`, `server`, `guild` will get all clans claimed in the server
-            • None passed will get all clans claimed in the server
+        **Format**
+        :information_source: `+autoclaim start #CLAN_TAG`
+        :information_source: `+autoclaim start CLAN NAME`
+        :information_source: `+autoclaim start all`
 
-        Example
-        -------------
-        • `+autoclaim start #CLAN_TAG`
-        • `+auto_claim start my clan name`
-        • `+aclaim all`
-        • `+aclaim`
+        **Example**
+        :white_check_mark: `+autoclaim start #P0LYJC8C`
+        :white_check_mark: `+autoclaim start Rock Throwers`
+        :white_check_mark: `+autoclaim start all`
 
-        Aliases
-        --------------
-        • `+autoclaim` (primary)
-        • `+aclaim`
-
-        Required Permissions
-        ------------------------------
-        • `manage_server` permissions
+        **Required Permissions**
+        :warning: Manage Server
         """
         if ctx.guild.id in self.running_commands:
             return await ctx.send('You already have an auto-claim command running. '
@@ -227,27 +219,31 @@ class AutoClaim(commands.Cog):
         await ctx.send('All done. Thanks!')
 
     @auto_claim.command(name='cancel', aliases=['stop'])
+    @checks.manage_guild()
     async def auto_claim_cancel(self, ctx):
-        """Cancel an on-going auto-claim command."""
+        """Cancel an on-going auto-claim command.
+
+        **Required Permissions**
+        :warning: Manage Server
+        """
         self.running_commands[ctx.guild.id] = False
 
     @commands.command()
     async def accounts(self, ctx, *, clans: ClanConverter = None):
         """Get accounts and claims for all accounts in clans in a server.
 
-        Parameters
-        ------------------
-        **Optional**: this command will default to all clans in guild.
+        **Parameters**
+        :key: Clan name or tag, or `all` for all clans claimed.
 
-        Pass in a clash clan:
-            • Clan tag
-            • Clan name (must be claimed to server)
-            • `all`, `server`, `guild` for all clans in guild
+        **Format**
+        :information_source: `+accounts #CLAN_TAG`
+        :information_source: `+accounts CLAN NAME`
+        :information_source: `+accounts all`
 
-        Example
-        ------------
-        • `+accounts #CLAN_TAG`
-        • `+accounts all`
+        **Example**
+        :white_check_mark: `+accounts #P0LYJC8C`
+        :white_check_mark: `+accounts Rock Throwers`
+        :white_check_mark: `+accounts all`
         """
         if not clans:
             clans = await ctx.get_clans()
@@ -298,29 +294,18 @@ class AutoClaim(commands.Cog):
                          player: typing.Union[discord.Member, PlayerConverter] = None):
         """Get accounts and claims for a player or discord user.
 
-        Parameters
-        ------------------
-        **Optional**: this command will default to all accounts for the person calling the command.
+        **Parameters**
+        :key: Player name, tag OR discord mention
 
-        Pass in a clash account, or a discord user:
-            • User ID (discord)
-            • Mention (@user, discord)
-            • user#discrim (discord)
-            • Player tag (clash account)
-            • Player name (must be in a clan claimed in server)
+        **Format**
+        :information_source: `+getclaims #PLAYER_TAG`
+        :information_source: `+getclaims Player Name`
+        :information_source: `+getclaims @MENTION`
 
-        Example
-        --------------
-        • `+get_claims @my_friend`
-        • `+get_claims my_friend#1208
-        • `+gclaims #PLAYER_TAG`
-        • `+gc player name`
-
-        Aliases
-        -------------
-        • `+get_claims` (primary)
-        • `+gclaims`
-        • `+gc`
+        **Example**
+        :white_check_mark: `+getclaims #P0LYJC8C`
+        :white_check_mark: `+getclaims mathsman`
+        :white_check_mark: `+getclaims @mathsman`
         """
         season_id = await self.bot.seasonconfig.get_season_id()
         if not player:

@@ -73,7 +73,7 @@ def format_donation_log_message(player, clan_name):
 
 
 def format_trophy_log_message(player, clan_name):
-    trophies = player.tropies
+    trophies = player.trophies
     abs_trophies = abs(trophies)
 
     if 0 < abs_trophies <= 100:
@@ -81,9 +81,9 @@ def format_trophy_log_message(player, clan_name):
     else:
         number = abs_trophies
 
-    emoji = misc['trophies_gained'] if trophies > 0 else misc['trophies_lost']
+    emoji = (misc['trophygreen'], misc['trophygain']) if trophies > 0 else (misc['trophyred'], misc['trophyloss'])
 
-    return f"{misc['trophies']}{player.name} {emoji} {number} ({clan_name})"
+    return f"{emoji[0]} {player.name} {emoji[1]} {number} ({clan_name})"
 
 
 class TabularData:
@@ -178,7 +178,7 @@ class CLYTable:
         for v in self._rows:
             index = int(v[0]) + 1
             index = number_emojis[index] if index <= 100 else misc['idle']
-            fmt += f"{index}`⠀{str(v[1]):\u00A0>4.4}⠀` ` {str(v[2]):\u00A0>4.4} ` `⠀{str(v[2]):\u00A0<10.10}⠀`\n"
+            fmt += f"{index}`⠀{str(v[1]):\u00A0>4.4}⠀` ` {str(v[2]):\u00A0>4.4} ` `⠀{str(v[3]):\u00A0<10.10}⠀`\n"
         return fmt
 
     def trophyboard_2(self):
@@ -301,7 +301,7 @@ class BoardPaginator(TablePaginator):
                 row = [player_data[0], player_data[1]['donations'], player.name]
         else:
             if self.ctx.config.render == 1:
-                row = [player_data[0], player_data[1]['trophies'], player_data[1]['gained'], player.name]
+                row = [player_data[0], player_data[1]['trophies'], player_data[1][2], player.name]
             else:
                 row = [player_data[0], player_data[1]['trophies'], player.name]
 
@@ -317,7 +317,7 @@ class BoardPaginator(TablePaginator):
         async for player in self.bot.coc.get_players(tags):
             self.create_row(player, data_by_tag)
 
-        render = get_render_type(self.ctx, self.table)
+        render = get_render_type(self.ctx.config, self.table)
         return render()
 
 
@@ -344,8 +344,8 @@ class LogsPaginator(TablePaginator):
                 player_data = player_data[1]
                 time = events_time((datetime.utcnow() - player_data[3]).total_seconds())
                 row = [
-                    misc['trophies_gained'] if player_data[1] > 0 else misc['trophies_lost'],
-                    abs(player_data[1]),
+                    misc['trophygreen'] if player_data[1] > 0 else misc['trophyred'],
+                    player_data[1],
                     player_data[4],
                     time
                 ]
@@ -355,5 +355,5 @@ class LogsPaginator(TablePaginator):
             return f"{self.table.donation_log_command()}\nKey: {misc['donated']} - Donated," \
                    f" {misc['received']} - Received"
         else:
-            return f"{self.table.trophy_log_command()}\nKey: {misc['trophies_gained']} - Trophies Gained," \
-                   f" {misc['trophies_lost']} - Trophies Lost"
+            return f"{self.table.trophy_log_command()}\nKey: {misc['trophygreen']} - Trophies Gained," \
+                   f" {misc['trophyred']} - Trophies Lost"

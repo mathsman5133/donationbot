@@ -22,36 +22,29 @@ class Donations(commands.Cog):
     @commands.group(name='donations', aliases=['don'],  invoke_without_command=True)
     async def donations(self, ctx, *,
                         arg: typing.Union[discord.Member, ClanConverter, PlayerConverter] = None):
-        """Check donations for a player, user, clan or guild.
+        """[Group] Check donations for a player, user, clan or guild.
 
-        For a mobile-friendly table that is guaranteed to fit on a mobile screen,
-        please use `+donmob`.
+        **Parameters**
+        :key: Discord user **OR**
+        :key: Clash player tag or name **OR**
+        :key: Clash clan tag or name **OR**
+        :key: `all` for all clans claimed.
 
-        Parameters
-        ----------------
-        Pass in any of the following:
+        **Format**
+        :information_source: `+don @MENTION`
+        :information_source: `+don #PLAYER_TAG`
+        :information_source: `+don Player Name`
+        :information_source: `+don #CLAN_TAG`
+        :information_source: `+don Clan Name`
+        :information_source: `+don all`
 
-            • A clan tag
-            • A clan name (clan must be claimed to the server)
-            • A discord @mention, user#discrim or user id
-            • A player tag
-            • A player name (must be in clan claimed to server)
-            • `all`, `server`, `guild` for all clans in guild
-            • None passed will divert to donations for your guild
-
-        Example
-        -----------
-        • `+donations #CLAN_TAG`
-        • `+donations @mention`
-        • `+don #PLAYER_TAG`
-        • `+don player name`
-        • `+don all`
-        • `+don`
-
-        Aliases
-        -----------
-        • `+donations` (primary)
-        • `+don`
+        **Example**
+        :white_check_mark: `+don @mathsman`
+        :white_check_mark: `+don #JJ6C8PY`
+        :white_check_mark: `+don mathsman`
+        :white_check_mark: `+don #P0LYJC8C`
+        :white_check_mark: `+don Rock Throwers`
+        :white_check_mark: `+don all`
         """
         if ctx.invoked_subcommand is not None:
             return
@@ -69,30 +62,23 @@ class Donations(commands.Cog):
             if isinstance(arg[0], coc.BasicClan):
                 await ctx.invoke(self.donations_clan, clans=arg)
 
-    @donations.command(name='user', hidden=True)
+    @donations.command(name='user')
     async def donations_user(self, ctx, *, user: discord.Member = None):
         """Get donations for a discord user.
 
-        Parameters
-        ----------------
-        Pass in any of the following:
-
-            • A discord @mention, user#discrim or user id
-            • None passed will divert to donations for your discord account
-
-        Example
-        ------------
-        • `+donations user @mention`
-        • `+don user USER_ID`
-        • `+don user`
-
-        Aliases
-        -----------
-        • `+donations user` (primary)
-        • `+don user`
-
         By default, you shouldn't need to call these sub-commands as the bot will
         parse your argument and direct it to the correct sub-command automatically.
+
+        **Parameters**
+        :key: Discord user (optional - defaults to yourself)
+
+        **Format**
+        :information_source: `+don user @MENTION`
+        :information_source: `+don user`
+
+        **Example**
+        :white_check_mark: `+don user @mathsman`
+        :white_check_mark: `+don user`
         """
         if not user:
             user = ctx.author
@@ -115,29 +101,23 @@ class Donations(commands.Cog):
 
         await p.paginate()
 
-    @donations.command(name='player', hidden=True)
+    @donations.command(name='player')
     async def donations_player(self, ctx, *, player: PlayerConverter):
         """Get donations for a player.
 
-        Parameters
-        -----------------
-        Pass in any of the following:
-
-            • A player tag
-            • A player name (must be in a clan claimed to server)
-
-        Example
-        ------------
-        • `+donations player #PLAYER_TAG`
-        • `+don player player name`
-
-        Aliases
-        -----------
-        • `+donations player` (primary)
-        • `+don player`
-
         By default, you shouldn't need to call these sub-commands as the bot will
         parse your argument and direct it to the correct sub-command automatically.
+
+        **Parameters**
+        :key: Player name OR tag
+
+        **Format**
+        :information_source: `+don player #PLAYER_TAG`
+        :information_source: `+don player Player Name`
+
+        **Example**
+        :white_check_mark: `+don player #P0LYJC8C`
+        :white_check_mark: `+don player mathsman`
         """
         query = """SELECT player_tag, donations, received, user_id 
                     FROM players 
@@ -157,31 +137,25 @@ class Donations(commands.Cog):
 
         await p.paginate()
 
-    @donations.command(name='clan', hidden=True)
+    @donations.command(name='clan')
     async def donations_clan(self, ctx, *, clans: ClanConverter):
         """Get donations for a clan.
 
-        Parameters
-        ----------------
-        Pass in any of the following:
-
-            • A clan tag
-            • A clan name (must be claimed to server)
-            • `all`, `server`, `guild`: all clans claimed to server
-
-        Example
-        ------------
-        • `+donations clan #CLAN_TAG`
-        • `+don clan clan name`
-        • `+don clan all`
-
-        Aliases
-        -----------
-        • `+donations clan` (primary)
-        • `+don clan`
-
         By default, you shouldn't need to call these sub-commands as the bot will
         parse your argument and direct it to the correct sub-command automatically.
+
+        **Parameters**
+        :key: Clan name OR tag OR `all` to get all clans.
+
+        **Format**
+        :information_source: `+don clan #CLAN_TAG`
+        :information_source: `+don clan Clan Name`
+        :information_source: `+don clan all`
+
+        **Example**
+        :white_check_mark: `+don clan #P0LYJC8C`
+        :white_check_mark: `+don clan Rock Throwers`
+        :white_check_mark: `+don clan all`
         """
         query = """SELECT player_tag, donations, received, user_id 
                     FROM players 

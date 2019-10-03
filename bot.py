@@ -32,16 +32,18 @@ class CustomCOC(coc.EventsClient):
         await clash_event_error(self, event_name, exception, *args, **kwargs)
 
 
-coc_client = coc.login(creds.email, creds.password, client=CustomCOC,
-                       key_names='test', throttle_limit=40, cache=COCCustomCache)
+coc_client = coc.login(creds.email, creds.password, client=coc.EventsClient,
+                       key_names='test', throttle_limit=30, key_count=3)
 
 
 initial_extensions = (
     'cogs.admin',
+    'cogs.aliases',
     'cogs.auto_claim',
     'cogs.background_management',
     'cogs.boards',
     'cogs.botutils',
+    'cogs.deprecated',
     'cogs.donationlogs',
     'cogs.donations',
     'cogs.events',
@@ -49,7 +51,7 @@ initial_extensions = (
     'cogs.info',
     'cogs.reset_season',
     'cogs.seasonstats',
-    #'cogs.trophies',
+    'cogs.trophies',
     'cogs.trophylog'
 )
 description = "A simple discord bot to track donations of clan families in clash of clans."
@@ -64,9 +66,6 @@ class DonationBot(commands.Bot):
         self.colour = discord.Colour.blurple()
 
         self.coc = coc_client
-        self.coc.bot = self
-
-        self.redis = self.coc.redis
 
         self.client_id = creds.client_id
         self.dbl_token = creds.dbl_token
@@ -138,10 +137,10 @@ class DonationBot(commands.Bot):
 
     async def on_ready(self):
         await self.utils.update_clan_tags()
-        await self.change_presence(activity=discord.Game('++help for commands'))
+        await self.change_presence(activity=discord.Game('+help for commands'))
 
     async def on_resumed(self):
-        await self.change_presence(activity=discord.Game('++help for commands'))
+        await self.change_presence(activity=discord.Game('+help for commands'))
 
     async def get_clans(self, guild_id):
         query = "SELECT DISTINCT clan_tag FROM clans WHERE guild_id = $1"
@@ -155,9 +154,11 @@ if __name__ == '__main__':
     try:
         # configure the database connection
         pool = loop.run_until_complete(Table.create_pool(creds.postgres, command_timeout=60))
+        redis = loop.run_until_complete(aioredis.create_redis('redis://localhost'))
 
         bot = DonationBot()
         bot.pool = pool  # add db as attribute
+        bot.redis = redis
         setup_logging(bot)
         bot.run(creds.bot_token)  # run bot
 

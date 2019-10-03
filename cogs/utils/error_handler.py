@@ -11,11 +11,12 @@ from discord.ext import commands
 async def error_handler(ctx, error):
     if isinstance(error, commands.CheckFailure):
         # TODO are there any other checks that might end up here?
-        await ctx.send('\N{WARNING SIGN} You must have '
-                       '`manage_server` permission to run this command.')
-        return
-    if isinstance(error, (commands.BadArgument, commands.BadUnionArgument, commands.MissingRequiredArgument)):
         return await ctx.send(str(error))
+    if isinstance(error, (commands.BadArgument, commands.BadUnionArgument)):
+        return await ctx.send(str(error))
+    if isinstance(error, commands.MissingRequiredArgument):
+        return await ctx.send(f'Oops! That didn\'t look right... '
+                              f'please see how to use the command with `+help {ctx.command.qualified_name}`')
     if not isinstance(error, commands.CommandError):
         return
     if isinstance(error, commands.CommandOnCooldown):

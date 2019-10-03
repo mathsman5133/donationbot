@@ -15,29 +15,36 @@ log = logging.getLogger(__name__)
 class BackgroundManagement(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.next_event_starts.start()
 
-    @commands.command()
+    def cog_unload(self):
+        self.next_event_starts.cancel()
+
+    @commands.command(hidden=True)
     @commands.is_owner()
     async def forceguild(self, ctx, guild_id: int):
         self.bot.dispatch('guild_join', self.bot.get_guild(guild_id))
 
     @tasks.loop()
     async def next_event_starts(self):
+        await self.bot.wait_until_ready()
         query = """SELECT id,
                           start,
                           finish,
                           event_name,
                           guild_id,
-                          start - CURRENT_TIMESTAMP as "until_start"
+                          channel_id,
+                          start - CURRENT_TIMESTAMP AS "until_start"
                    FROM events
-                   ORDER BY "until_start" DESC
+                   WHERE start_report = False
+                   ORDER BY "until_start" 
                    LIMIT 1;
                 """
         event = await self.bot.pool.fetchrow(query)
         if not event:
             return await asyncio.sleep(3600)
 
-        slim_config = SlimEventConfig(event['id'], event['start'], event['finish'], event['event_name'])
+        slim_config = SlimEventConfig(event['id'], event['start'], event['finish'], event['event_name'], event['channel_id'])
 
         if event['until_start'].total_seconds() < 0:
             await self.on_event_start(slim_config, event['guild_id'], event['until_start'])
@@ -45,29 +52,39 @@ class BackgroundManagement(commands.Cog):
         await asyncio.sleep(event['until_start'].total_seconds())
         await self.on_event_start(slim_config, event['guild_id'], event['until_start'])
 
+        query = "UPDATE events SET start_report = True WHERE event_id = $1"
+        await self.bot.pool.execute(query, event['id'])
+
     @tasks.loop()
-    async def next_event_starts(self):
+    async def next_event_finish(self):
+        await self.bot.wait_until_ready()
         query = """SELECT id,
                           start,
                           finish,
                           event_name,
                           guild_id,
-                          finish - CURRENT_TIMESTAMP as "until_finish"
+                          channel_id,
+                          finish - CURRENT_TIMESTAMP AS "until_finish"
                    FROM events
-                   ORDER BY "until_start" DESC
+                   ORDER BY "until_finish"
                    LIMIT 1;
                 """
         event = await self.bot.pool.fetchrow(query)
         if not event:
             return await asyncio.sleep(3600)
 
-        slim_config = SlimEventConfig(event['id'], event['start'], event['finish'], event['event_name'])
+        slim_config = SlimEventConfig(event['id'], event['start'], event['finish'], event['event_name'], event['channel_id'])
 
         if event['until_start'].total_seconds() < 0:
             await self.on_event_start(slim_config, event['guild_id'], event['until_finish'])
 
         await asyncio.sleep(event['until_finish'].total_seconds())
         await self.on_event_start(slim_config, event['guild_id'], event['until_finish'])
+
+    @commands.Cog.listener()
+    async def on_event_register(self):
+        self.next_event_starts.cancel()
+        self.next_event_starts.start()
 
     @staticmethod
     async def insert_member(con, player, event_id):
@@ -81,10 +98,11 @@ class BackgroundManagement(commands.Cog):
                                     start_sharing_is_caring,
                                     start_attacks,
                                     start_defenses,
+                                    start_trophies,
                                     start_best_trophies,
                                     start_update
                                     )
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, True)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, True)
                     ON CONFLICT (player_tag, event_id)
                     DO NOTHING
                 """
@@ -98,6 +116,7 @@ class BackgroundManagement(commands.Cog):
                           player.achievements_dict['Sharing is caring'].value,
                           player.attack_wins,
                           player.defense_wins,
+                          player.trophies,
                           player.best_trophies
                           )
 
@@ -131,7 +150,7 @@ class BackgroundManagement(commands.Cog):
         clans = await self.bot.coc.get_clans((n[0] for n in fetch)).flatten()
 
         for n in clans:
-            async for player in n.get_detailed_members:
+            async for player in n.get_detailed_members():
                 await self.insert_member(self.bot.pool, player, event.id)
         await channel.send('All members have been added... '
                            'configuring the donation and trophy boards to be in the event!')
@@ -244,7 +263,8 @@ class BackgroundManagement(commands.Cog):
         e.add_field(name='Content', value=textwrap.shorten(ctx.message.content, width=512))
 
         e.timestamp = datetime.datetime.utcnow()
-        await self.bot.error_webhook.send(embed=e)
+        if not await self.bot.is_owner(ctx.author):
+            await self.bot.error_webhook.send(embed=e)
 
         await self.bot.pool.execute(query, guild_id, ctx.channel.id, ctx.author.id,
                                     message.created_at, ctx.prefix, command

@@ -29,7 +29,7 @@ class DonationLogs(commands.Cog):
             self.on_clan_member_donation,
             self.on_clan_member_received
         )
-        self.bot.coc._clan_retry_interval = 20
+        self.bot.coc._clan_retry_interval = 60
         self.bot.coc.start_updates('clan')
 
         self._tasks = {}
@@ -66,7 +66,7 @@ class DonationLogs(commands.Cog):
             await self.bot.pool.execute(query, self._batch_data)
             total = len(self._batch_data)
             if total > 1:
-                log.info('Registered %s donation events to the database.', total)
+                log.debug('Registered %s donation events to the database.', total)
             self._batch_data.clear()
 
     @tasks.loop(seconds=60.0)

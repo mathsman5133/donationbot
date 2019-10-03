@@ -4,6 +4,7 @@ CREATE TABLE players (
     player_tag TEXT,
     donations INTEGER,
     received INTEGER,
+    start_trophies integer,
     trophies integer,
     user_id BIGINT,
     season_id integer,
@@ -32,6 +33,7 @@ CREATE TABLE eventplayers (
     received integer,
     event_id integer,
     live boolean,
+    start_trophies integer default 0,
     trophies integer,
     start_update boolean default false,
     final_update boolean default false,
@@ -142,7 +144,7 @@ create table trophyevents (
     clan_tag text,
     trophy_change integer,
     time timestamp,
-    reported boolean default true,
+    reported boolean default false,
     season_id integer
 )
 
@@ -172,5 +174,6 @@ create table events (
     finish timestamp,
     event_name text,
     guild_id bigint,
-    channel_id bigint
+    channel_id bigint,
+    start_report boolean default false
 )

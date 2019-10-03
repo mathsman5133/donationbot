@@ -18,9 +18,8 @@ url_validator = re.compile(r"^(?:http(s)?://)?[\w.-]+(?:.[\w.-]+)+[\w\-_~:/?#[\]
                            r"(.jpg|.jpeg|.png|.gif)+[\w\-_~:/?#[\]@!$&'()*+,;=.]*$")
 
 
-class GuildConfiguration(commands.Cog):
-    """All commands related to setting up the server for the first time,
-    and managing configurations."""
+class GuildConfiguration(commands.Cog, name='Server Setup'):
+    """Setup and manage the bot's configurations for your server."""
     def __init__(self, bot):
         self.bot = bot
 
@@ -97,22 +96,7 @@ class GuildConfiguration(commands.Cog):
 
     @commands.group()
     async def add(self, ctx):
-        """Allows the user to add a variety of features to the bot.
-
-        Available Commands
-        ------------------
-        • `add clan`
-        • `add player`
-        • `add event`
-        • `add donationboard`
-        • `add trophyboard`
-        • `add donationlog`
-        • `add trophylog`
-
-        Required Permissions
-        --------------------
-        • `manage_server` permissions
-        """
+        """[Group] Allows the user to add a variety of features to the bot."""
         if ctx.invoked_subcommand is None:
             return await ctx.send_help(ctx.command)
 
@@ -121,7 +105,7 @@ class GuildConfiguration(commands.Cog):
     @requires_config('event')
     async def add_clan(self, ctx, clan_tag: str):
         """Link a clan to your server.
-        This will add all accounts in clan to the database, if not already present.
+        This will add all accounts in clan to the database, if not already added.
 
         Note: As a security feature, the clan must have the letters `dt` added
         at the end of the clan's description.
@@ -129,19 +113,17 @@ class GuildConfiguration(commands.Cog):
         This is a security feature of the bot to ensure you have proper (co)ownership of the clan.
         `dt` should be removed once the command has been sucessfully run.
 
-        Parameters
-        ----------------
-        Pass in any of the following:
+        **Parameters**
+        :key: A clan tag
 
-            • A clan tag
+        **Format**
+        :information_source: `+add clan #CLAN_TAG`
 
-        Example
-        -----------
-        • `+add clan #CLAN_TAG`
+        **Example**
+        :white_check_mark: `+add clan #P0LYJC8C`
 
-        Required Permissions
-        ------------------------------
-        • `manage_server` permissions
+        **Required Permissions**
+        :warning: Manage Server
         """
         current_clans = await self.bot.get_clans(ctx.guild.id)
         if len(current_clans) > 3 and not checks.is_patron_pred(ctx):
@@ -150,17 +132,20 @@ class GuildConfiguration(commands.Cog):
                                   f'{self.bot.support_invite}')
 
         clan_tag = coc.utils.correct_tag(clan_tag)
-        query = "SELECT id FROM clans WHERE clan_tag = $1 AND guild_id = $2"
-        fetch = await ctx.db.fetch(query, clan_tag, ctx.guild.id)
+        query = "SELECT id FROM clans WHERE clan_tag = $1 AND channel_id = $2"
+        fetch = await ctx.db.fetch(query, clan_tag, ctx.channel.id)
         if fetch:
-            return await ctx.send('This clan has already been linked to the server.')
+            return await ctx.send('This clan has already been linked to the channel.')
 
         try:
             clan = await ctx.bot.coc.get_clan(clan_tag, cache=False, update_cache=False)
         except coc.NotFound:
             return await ctx.send(f'Clan not found with `{clan_tag}` tag.')
 
-        if not clan.description.strip().endswith('dt') and not await self.bot.is_owner(ctx.author):
+        check = clan.description.strip().endswith('dt') \
+                or await self.bot.is_owner(ctx.author) or clan_tag in (n.tag for n in current_clans)
+
+        if not check:
             return await ctx.send('Please add the letters `dt` to the end of '
                                   f'`{clan.name}`\'s clan description. Wait 5 minutes and try again.'
                                   '\n\nThis is a security feature of the bot and should '
@@ -188,17 +173,17 @@ class GuildConfiguration(commands.Cog):
     async def add_player(self, ctx, *, player: PlayerConverter):
         """Manually add a clash account to the database. This does not claim the account.
 
-        Parameters
-        -----------------
-        Pass in any of the following:
 
-            • A player tag
-            • A player name (must be in clan claimed in server)
+        **Parameters**
+        :key: A player name OR tag
 
-        Example
-        ------------
-        • `+add player #PLAYER_TAG`
-        • `+add player my account name`
+        **Format**
+        :information_source: `+add player #PLAYER_TAG`
+        :information_source: `+add player PLAYER NAME`
+
+        **Example**
+        :white_check_mark: `+add player #P0LYJC8C`
+        :white_check_mark: `+add player mathsman`
         """
         if ctx.config:
             prompt = await ctx.prompt(f'Do you wish to add {player} to the current event?')
@@ -217,24 +202,17 @@ class GuildConfiguration(commands.Cog):
                           player: PlayerConverter):
         """Link a clash account to your discord account
 
-        Parameters
-        ------------------
-        First, pass in an optional discord user:
-            • User ID
-            • Mention (@user)
-            • user#discrim (must be 1-word)
+        **Parameters**
+        :key: A discord user (mention etc.)
+        :key: A player name OR tag
 
-            • **Optional**: Defaults to the user calling the command.
+        **Format**
+        :information_source: `+add discord @MENTION #PLAYER_TAG`
+        :information_source: `+add discord @MENTION PLAYER NAME`
 
-        Then, pass in a clash account:
-            • Player tag
-            • Player name (must be in clan claimed in server)
-
-        Examples
-        -------------
-        • `+add discord #PLAYER_TAG`
-        • `+add discord @user my account name`
-        • `+add discord @user #playertag`
+        **Example**
+        :white_check_mark: `+add discord @mathsman #P0LYJC8C`
+        :white_check_mark: `+add discord @mathsman mathsman`
         """
         if not user:
             user = ctx.author
@@ -257,27 +235,22 @@ class GuildConfiguration(commands.Cog):
         await ctx.confirm()
 
     @add.command(name='multidiscord', aliases=['multi_discord', 'multiclaim', 'multi_claim', 'multilink', 'multi_link'])
-    async def multi_discord(self, ctx, user: discord.Member,
+    @requires_config('event')
+    async def add_multi_discord(self, ctx, user: discord.Member,
                             players: commands.Greedy[PlayerConverter]):
-        """Helper command to link many clas accounts to a user's discord.
+        """Helper command to link many clash accounts to a user's discord.
 
-        Note: unlike `+claim`, a discord mention **is not optional** - mention yourself if you want.
+        **Parameters**
+        :key: A discord user (mention etc.)
+        :key: Player tags OR names
 
-        Parameters
-        ------------------
-        First, pass in a discord member:
-            • User ID
-            • Mention
-            • user#discrim (can only be 1-word)
+        **Format**
+        :information_source: `+add discord @MENTION #PLAYER_TAG #PLAYER_TAG2 #PLAYER_TAG3`
+        :information_source: `+add discord @MENTION PLAYERNAME PLAYERNAME2 PLAYERNAME3`
 
-        Second, pass in a clash player:
-            • Player tag
-            • Player name (must be in clan claimed in server, can only be 1-word)
-
-        Example
-        -------------
-        • `+multiclaim @mathsman #PLAYER_TAG #PLAYER_TAG2 name1 name2 #PLAYER_TAG3`
-        • `+multiclaim @user #playertag name1`
+        **Example**
+        :white_check_mark: `+add discord @mathsman #P0LYJC8C #C0LLJC8 #P0CC8JY`
+        :white_check_mark: `+add discord @mathsman mathsman raptor217 johnny36`
         """
         for n in players:
             # TODO: fix this
@@ -286,25 +259,24 @@ class GuildConfiguration(commands.Cog):
     @add.command(name="event")
     @checks.manage_guild()
     @requires_config('event', invalidate=True)
-    async def add_event(self, ctx, event_name: str = None):
+    async def add_event(self, ctx, *, event_name: str = None):
         """Allows user to add a new trophy push event. Trophy Push events override season statistics for trophy
         counts.
 
-        This command is interactive and will ask you questions about the new event.  After the initial command,
+        This command is interactive and will ask you questions about the new event. After the initial command,
         the bot will ask you further questions about the event.
 
-        Parameters
-        ------------------
-        • Name of the event
+        **Parameters**
+        :key: Name of the event
 
-        Example
-        ------------------
-        • `+add event`
-        • `+add event Summer Mega Push`
+        **Format**
+        :information_source: `+add event EVENT NAME`
 
-        Required Permissions
-        ----------------------------
-        • `manage_server` permissions
+        **Example**
+        :white_check_mark: `+add event Donation Bot Event`
+
+        **Required Permissions**
+        :warning: Manage Server
         """
         if ctx.config:
             if ctx.config.start > datetime.datetime.now():
@@ -409,6 +381,7 @@ class GuildConfiguration(commands.Cog):
         e = discord.Embed(colour=discord.Colour.green(),
                           description=fmt)
         await ctx.send(embed=e)
+        await self.bot.dispatch('event_register')
 
     @add.command(name="trophyboard")
     @checks.manage_guild()
@@ -416,24 +389,14 @@ class GuildConfiguration(commands.Cog):
     async def add_trophyboard(self, ctx, *, name="trophyboard"):
         """Creates a trophyboard channel for trophy updates.
 
-        Parameters
-        ----------------
-        Pass in any of the following:
+        **Format**
+        :information_source: `+add trophyboard`
 
-            • A name for the channel. Defaults to `trophyboard`
+        **Example**
+        :white_check_mark: `+add trophyboard`
 
-        Example
-        -----------
-        • `+add trophyboard`
-        • `+add trophyboard my cool trophyboard name`
-
-        Required Permissions
-        ----------------------------
-        • `manage_server` permissions
-
-        Bot Required Permissions
-        --------------------------------
-        • `manage_channels` permissions
+        **Required Permissions**
+        :warning: Manage Server
         """
         if ctx.config is not None:
             return await ctx.send(
@@ -476,14 +439,15 @@ class GuildConfiguration(commands.Cog):
                    
                 INSERT INTO boards (guild_id, 
                                     channel_id, 
-                                    type) 
-                VALUES ($2, $3, $4) 
+                                    type,
+                                    title) 
+                VALUES ($2, $3, $4, $5) 
                 ON CONFLICT (channel_id) 
                 DO UPDATE SET channel_id = $3, 
                               toggle     = True;
                 
                 """
-        await ctx.db.execute(query, msg.id, ctx.guild.id, channel.id, 'trophy')
+        await ctx.db.execute(query, msg.id, ctx.guild.id, channel.id, 'trophy', 'TrophyBoard')
         await ctx.send(f'Trophyboard channel created: {channel.mention}')
 
     @add.command(name='donationboard')
@@ -492,24 +456,14 @@ class GuildConfiguration(commands.Cog):
     async def add_donationboard(self, ctx, *, name='donationboard'):
         """Creates a donationboard channel for donation updates.
 
-        Parameters
-        ----------------
-        Pass in any of the following:
+        **Format**
+        :information_source: `+add donationboard`
 
-            • A name for the channel. Defaults to `donationboard`
+        **Example**
+        :white_check_mark: `+add donationboard`
 
-        Example
-        -----------
-        • `+add donationboard`
-        • `+add donationboard my cool donationboard name`
-
-        Required Perimssions
-        ----------------------------
-        • `manage_server` permissions
-
-        Bot Required Permissions
-        --------------------------------
-        • `manage_channels` permissions
+        **Required Permissions**
+        :warning: Manage Server
         """
         if ctx.config:
             if ctx.config.channel is not None:
@@ -551,14 +505,15 @@ class GuildConfiguration(commands.Cog):
                     )
                    INSERT INTO boards (guild_id, 
                                        channel_id, 
-                                       type) 
-                   VALUES ($2, $3, $4) 
+                                       type,
+                                       title) 
+                   VALUES ($2, $3, $4, $5) 
                    ON CONFLICT (channel_id) 
                    DO UPDATE SET channel_id = $3, 
                                  toggle     = True;
                 """
 
-        await ctx.db.execute(query, msg.id, ctx.guild.id, channel.id, 'donation')
+        await ctx.db.execute(query, msg.id, ctx.guild.id, channel.id, 'donation', 'DonationBoard')
         await ctx.send(f'Donationboard channel created: {channel.mention}')
 
     @add.command(name='donationlog')
@@ -567,19 +522,17 @@ class GuildConfiguration(commands.Cog):
     async def add_donationlog(self, ctx, channel: TextChannel = None):
         """Create a donation log for your server.
 
-        Parameters
-        ----------------
+        **Parameters**
+        :key: Discord channel (mention etc.)
 
-            • Channel: #channel or a channel id. This defaults to the channel you are in.
+        **Format**
+        :information_source: `+add donationlog #CHANNEL`
 
-        Example
-        -----------
-        • `+add donationlog #CHANNEL`
-        • `+add donationlog`
+        **Example**
+        :white_check_mark: `+add donationlog #logging`
 
-        Required Perimssions
-        ----------------------------
-        • `manage_server` permissions
+        **Required Permissions**
+        :warning: Manage Server
         """
         if not channel:
             channel = ctx.channel
@@ -604,29 +557,59 @@ class GuildConfiguration(commands.Cog):
                 """
         await ctx.db.execute(query, ctx.guild.id, channel.id, 'donation')
 
-        await ctx.send(f'Donation log channel has been set to {channel.mention} '
-                       f'and enabled for all clans claimed to this channel. '
-                       f'You can find these with `+help info donationlog` ')
+        prompt = await ctx.prompt(f'Would you like me to add all clans claimed on the server to this donationlog?\n'
+                                  f'Else you can manually add clans with `+add clan #CLAN_TAG` to this channel.\n')
+        if not prompt:
+            return await ctx.send(f'{channel.mention} has been added as a donationlog channel.\n'
+                                  f'Please note that only clans claimed to {channel.mention} will appear in this log.')
+
+        query = """WITH t AS (
+                        SELECT clan_tag,
+                               guild_id,
+                               channel_id,
+                               in_event
+                        FROM clans
+                        WHERE guild_id = $1
+                        )
+                   INSERT INTO clans (
+                            clan_tag, 
+                            guild_id, 
+                            channel_id, 
+                            clan_name, 
+                            in_event
+                            ) 
+                   VALUES (
+                        t.clan_tag,
+                        t.guild_id,
+                        $2,
+                        t.clan_name,
+                        t.in_event
+                        )
+                   ON CONFLICT (channel_id, clan_tag)
+                   DO NOTHING;
+                """
+        await ctx.db.execute(query, ctx.guild.id, channel.id)
+        return await ctx.send(f'{channel.mention} has been added as a donationlog channel. '
+                              'See all clans claimed with `+info log`. '
+                              'Please note that only clans claimed to this channel will appear in the log.')
 
     @add.command(name='trophylog')
     @requires_config('trophylog', invalidate=True)
     @manage_guild()
-    async def add_trophylog(self, ctx, channel: TextChannel = None):
+    async def add_trophylog(self, ctx, channel: discord.TextChannel = None):
         """Create a trophy log for your server.
 
-        Parameters
-        ----------------
+        **Parameters**
+        :key: Discord channel (mention etc.)
 
-            • Channel: #channel or a channel id. This defaults to the channel you are in.
+        **Format**
+        :information_source: `+add trophylog #CHANNEL`
 
-        Example
-        -----------
-        • `+add trophylog #CHANNEL`
-        • `+add trophylog`
+        **Example**
+        :white_check_mark: `+add trophylog #logging`
 
-        Required Perimssions
-        ----------------------------
-        • `manage_server` permissions
+        **Required Permissions**
+        :warning: Manage Server
         """
         if not channel:
             channel = ctx.channel
@@ -651,82 +634,86 @@ class GuildConfiguration(commands.Cog):
                     """
         await ctx.db.execute(query, ctx.guild.id, channel.id, 'trophy')
 
-        await ctx.send(f'Trophy log channel has been set to {channel.mention} '
-                       f'and enabled for all clans claimed to this channel. '
-                       f'You can find these with `+help info trophylog` ')
+        prompt = await ctx.prompt(
+            f'Would you like me to add all clans claimed on the server to this trophylog?\n'
+            f'Else you can manually add clans with `+add clan #CLAN_TAG` to this channel.\n')
+        if not prompt:
+            return await ctx.send(f'{channel.mention} has been added as a trophylog channel.\n'
+                                  f'Please note that only clans claimed to {channel.mention} will appear in this log.')
+
+        query = """INSERT INTO clans (
+                            clan_tag, 
+                            guild_id, 
+                            channel_id, 
+                            clan_name, 
+                            in_event
+                            ) 
+                   SELECT (
+                        clan_tag,
+                        guild_id,
+                        $2,
+                        clan_name,
+                        in_event
+                        )
+                   FROM clans
+                   WHERE guild_id = $1
+                   ON CONFLICT (channel_id, clan_tag)
+                   DO NOTHING;
+                """
+        await ctx.db.execute(query, ctx.guild.id, channel.id)
+        return await ctx.send(f'{channel.mention} has been added as a trophylog channel. '
+                              'See all clans claimed with `+info log`. '
+                              'Please note that only clans claimed to this channel will appear in the log.')
 
     @commands.command()
+    @requires_config('event')
     async def claim(self, ctx, user: typing.Optional[discord.Member] = None, *,
                     player: PlayerConverter):
         """Link a clash account to your discord account
 
-        Parameters
-        ------------------
-        First, pass in an optional discord user:
-            • User ID
-            • Mention (@user)
-            • user#discrim (must be 1-word)
+        **Parameters**
+        :key: Discord user (optional - defaults to yourself)
+        :key: A player tag OR name
 
-            • **Optional**: Defaults to the user calling the command.
+        **Format**
+        :information_source: `+claim @MENTION #PLAYERTAG`
+        :information_source: `+claim @MENTION PLAYER NAME`
+        :information_source: `+claim #PLAYERTAG`
 
-        Then, pass in a clash account:
-            • Player tag
-            • Player name (must be in clan claimed in server)
-
-        Examples
-        -------------
-        • `+claim #PLAYER_TAG`
-        • `+claim @user my account name`
-        • `+claim @user #playertag`
+        **Example**
+        :white_check_mark: `+claim @mathsman #P0LYJC8C`
+        :white_check_mark: `+claim @mathsman mathsman5133`
+        :white_check_mark: `+claim #P0LYJC8C`
         """
         if await self.add_discord.can_run(ctx):
             await ctx.invoke(self.add_discord, user=user, player=player)
 
     @commands.command(name='multiclaim')
+    @requires_config('event')
     async def multi_claim(self, ctx, user: discord.Member,
                           players: commands.Greedy[PlayerConverter]):
         """Helper command to link many clash accounts to a user's discord.
 
         Note: unlike `+claim`, a discord mention **is not optional** - mention yourself if you want.
 
-        Parameters
-        ------------------
-        First, pass in a discord member:
-            • User ID
-            • Mention
-            • user#discrim (can only be 1-word)
+        **Parameters**
+        :key: A discord user (mention etc.)
+        :key: Player tags OR names
 
-        Second, pass in a clash player:
-            • Player tag
-            • Player name (must be in clan claimed in server, can only be 1-word)
+        **Format**
+        :information_source: `+multiclaim @MENTION #PLAYER_TAG #PLAYER_TAG2 #PLAYER_TAG3`
+        :information_source: `+multiclaim @MENTION PLAYERNAME PLAYERNAME2 PLAYERNAME3`
 
-        Example
-        -------------
-        • `+multiclaim @mathsman #PLAYER_TAG #PLAYER_TAG2 name1 name2 #PLAYER_TAG3`
-        • `+multiclaim @user #playertag name1`
+        **Example**
+        :white_check_mark: `+multiclaim @mathsman #P0LYJC8C #C0LLJC8 #P0CC8JY`
+        :white_check_mark: `+multiclaim @mathsman mathsman raptor217 johnny36`
         """
-        if await self.multi_discord.can_run(ctx):
-            await ctx.invoke(self.multi_discord, user=user, players=players)
+        if await self.add_multi_discord.can_run(ctx):
+            await ctx.invoke(self.add_multi_discord, user=user, players=players)
 
     @commands.group(invoke_without_subcommands=True)
     async def remove(self, ctx):
-        """Allows the user to remove a variety of features from the bot.
-
-        Available Commands
-        ------------------
-        • `remove clan`
-        • `remove player`
-        • `remove event`
-        • `remove donationboard`
-        • `remove trophyboard`
-        • `remove donationlog`
-        • `remove trophylog`
-
-
-        Required Permissions
-        ----------------------------
-        • `manage_server` permissions
-        """
+        """[Group] Allows the user to remove a variety of features from the bot."""
         if ctx.invoked_subcommand is None:
             return await ctx.send_help(ctx.command)
 
@@ -735,19 +722,17 @@ class GuildConfiguration(commands.Cog):
     async def remove_clan(self, ctx, clan_tag: str):
         """Unlink a clan from your server.
 
-        Parameters
-        -----------------
-        Pass in any of the following:
+        **Parameters**
+        :key: A clan tag
 
-            • A clan tag
+        **Format**
+        :information_source: `+remove clan #CLAN_TAG`
 
-        Example
-        -------------
-        • `+remove clan #CLAN_TAG`
+        **Example**
+        :white_check_mark: `+remove clan #P0LYJC8C`
 
-        Required Permissions
-        ----------------------------
-        • `manage_server` permissions
+        **Required Permissions**
+        :warning: Manage Server
         """
         clan_tag = coc.utils.correct_tag(clan_tag)
         query = "DELETE FROM clans WHERE clan_tag = $1 AND guild_id = $2"
@@ -764,17 +749,16 @@ class GuildConfiguration(commands.Cog):
     async def remove_player(self, ctx, *, player: PlayerConverter):
         """Manually remove a clash account from the database.
 
-        Parameters
-        -----------------
-        Pass in any of the following:
+        **Parameters**
+        :key: Player name OR tag.
 
-            • A player tag
-            • A player name
+        **Format**
+        :information_source: `+remove player #PLAYER_TAG`
+        :information_source: `+remove player PLAYER NAME`
 
-        Example
-        ------------
-        • `+remove player #PLAYER_TAG`
-        • `+remove player my account name`
+        **Example**
+        :white_check_mark: `+remove player #P0LYJC8C`
+        :white_check_mark: `+remove player mathsman`
         """
         query = "DELETE FROM players WHERE player_tag = $1 and guild_id = $2"
         result = await ctx.db.execute(query, player.tag, ctx.guild.id)
@@ -784,18 +768,20 @@ class GuildConfiguration(commands.Cog):
 
     @remove.command(name='discord')
     async def remove_discord(self, ctx, *, player: PlayerConverter):
-        """Unlink a clash account from your discord account
+        """Unlink a clash account from your discord account.
 
-        Parameters
-        ----------------
-        Pass in a clash account - either:
-            • Player tag
-            • Player name (must be in clan claimed in server)
+        If you have not claimed the account, you must have `Manage Server` permissions.
 
-        Example
-        -------------
-        • `+remove claim #PLAYER_TAG`
-        • `+remove claim my account name`
+        **Parameters**
+        :key: Player name OR tag.
+
+        **Format**
+        :information_source: `+remove discord #PLAYER_TAG`
+        :information_source: `+remove discord PLAYER NAME`
+
+        **Example**
+        :white_check_mark: `+remove discord #P0LYJC8C`
+        :white_check_mark: `+remove discord mathsman`
         """
         season_id = await self.bot.seasonconfig.get_season_id()
         if ctx.channel.permissions_for(ctx.author).manage_guild \
@@ -827,13 +813,14 @@ class GuildConfiguration(commands.Cog):
     async def remove_donationboard(self, ctx):
         """Removes the guild donationboard.
 
-        Example
-        -----------
-        • `+remove donationboard`
+        **Format**
+        :information_source: `+remove donationboard`
 
-        Required Perimssions
-        ----------------------------
-        • `manage_server` permissions
+        **Example**
+        :white_check_mark: `+remove donationboard`
+
+        **Required Permissions**
+        :warning: Manage Server
         """
         if not ctx.config:
             return await ctx.send(f'This server doesn\'t have a donationboard.')
@@ -862,13 +849,14 @@ class GuildConfiguration(commands.Cog):
     async def remove_trophyboard(self, ctx):
         """Removes the guild trophyboard.
 
-        Example
-        -----------
-        • `+remove trophyboard`
+        **Format**
+        :information_source: `+remove trophyboard`
 
-        Required Perimssions
-        ----------------------------
-        • `manage_server` permissions
+        **Example**
+        :white_check_mark: `+remove trophyboard`
+
+        **Required Permissions**
+        :warning: Manage Server
         """
         if not ctx.config:
             return await ctx.send(
@@ -892,6 +880,20 @@ class GuildConfiguration(commands.Cog):
     @requires_config('donationlog', invalidate=True)
     @manage_guild()
     async def remove_donationlog(self, ctx, channel: TextChannel = None):
+        """Removes a channel's donationlog.
+
+        **Parameters**
+        :key: A discord channel to remove the donationlog from.
+
+        **Format**
+        :information_source: `+remove donationlog #CHANNEL`
+
+        **Example**
+        :white_check_mark: `+remove donationlog #logging`
+
+        **Required Permissions**
+        :warning: Manage Server
+        """
         query = "DELETE FROM logs WHERE channel_id = $1 AND type = $2"
         await ctx.db.execute(query, ctx.config.channel_id, 'donation')
         await ctx.confirm()
@@ -900,13 +902,41 @@ class GuildConfiguration(commands.Cog):
     @requires_config('trophylog', invalidate=True)
     @manage_guild()
     async def remove_trophylog(self, ctx, channel: TextChannel = None):
+        """Removes a channel's trophylog.
+
+        **Parameters**
+        :key: A discord channel to remove the trophylog from.
+
+        **Format**
+        :information_source: `+remove trophylog #CHANNEL`
+
+        **Example**
+        :white_check_mark: `+remove trophylog #logging`
+
+        **Required Permissions**
+        :warning: Manage Server
+        """
         query = "DELETE FROM logs WHERE channel_id = $1 AND type = $2"
         await ctx.db.execute(query, ctx.config.channel_id, 'trophy')
         await ctx.confirm()
 
     @remove.command(name='event')
     @manage_guild()
-    async def remove_event(self, ctx, event_name: str = None):
+    async def remove_event(self, ctx, *, event_name: str = None):
+        """Removes a currently running event.
+
+        **Parameters**
+        :key: The event name to remove.
+
+        **Format**
+        :information_source: `+remove event EVENT_NAME`
+
+        **Example**
+        :white_check_mark: `+remove event my special event`
+
+        **Required Permissions**
+        :warning: Manage Server
+        """
         if event_name:
             # Event name provided
             query = """DELETE FROM events
@@ -963,28 +993,32 @@ class GuildConfiguration(commands.Cog):
         await ctx.db.execute(query, fetch[index]['id'])
         await msg.delete()
         ctx.bot.utils.event_config.invalidate(ctx.bot.utils, ctx.guild.id)
+        await self.bot.dispatch('event_register')
         return await ctx.send(f"{fetch[index]['event_name']} has been removed.")
 
     @commands.command()
     async def unclaim(self, ctx, *, player: PlayerConverter):
-        """Unlink a clash account from your discord account
+        """Unlink a clash account from your discord account.
 
-        Parameters
-        ----------------
-        Pass in a clash account - either:
-            • Player tag
-            • Player name (must be in clan claimed in server)
+        If you have not claimed the account, you must have `Manage Server` permissions.
 
-        Example
-        -------------
-        • `+unclaim #PLAYER_TAG`
-        • `+unclaim my account name`
+        **Parameters**
+        :key: Player name OR tag.
+
+        **Format**
+        :information_source: `+unclaim #PLAYER_TAG`
+        :information_source: `+unclaim PLAYER NAME`
+
+        **Example**
+        :white_check_mark: `+unclaim #P0LYJC8C`
+        :white_check_mark: `+unclaim mathsman`
         """
         if await self.remove_discord.can_run(ctx):
             await ctx.invoke(self.remove_discord, player=player)
 
     @commands.group(invoke_without_command=True)
     async def edit(self, ctx):
+        """[Group] Allows a user to edit a variety of the bot's features."""
         if ctx.invoked_subcommand is None:
             await ctx.send_help(ctx.command)
 
@@ -992,15 +1026,16 @@ class GuildConfiguration(commands.Cog):
     @checks.manage_guild()
     @requires_config('donationboard', invalidate=True)
     async def edit_donationboard(self, ctx):
-        """Run through an interactive process of editting the guild's donationboard.
+        """[Group] Run through an interactive process of editting the guild's donationboard.
 
-        Example
-        -----------
-        • `+edit donationboard`
+        **Format**
+        :information_source: `+edit donationboard`
 
-        Required Perimssions
-        ----------------------------
-        • `manage_server` permissions
+        **Example**
+        :white_check_mark: `+edit donationboard`
+
+        **Required Permissions**
+        :warning: Manage Server
         """
         if not ctx.config:
             return await ctx.send('Please create a donationboard with `+help add donationboard`')
@@ -1035,15 +1070,18 @@ class GuildConfiguration(commands.Cog):
     @edit_donationboard.command(name='format')
     @requires_config('donationboard', invalidate=True)
     async def edit_donationboard_format(self, ctx):
-        """Edit the format of the guild's donationboard. The bot will provide 2 options and you must select 1.
+        """Edit the format of the server's donationboard.
 
-        Example
-        -----------
-        • `+edit donationboard format`
+        The bot will provide 2 options and you must select 1 via reactions.
 
-        Required Perimssions
-        ----------------------------
-        • `manage_server` permissions
+        **Format**
+        :information_source: `+edit donationboard format`
+
+        **Example**
+        :white_check_mark: `+edit donationboard format`
+
+        **Required Permissions**
+        :warning: Manage Server
         """
 
         table = CLYTable()
@@ -1089,22 +1127,18 @@ class GuildConfiguration(commands.Cog):
     async def edit_donationboard_icon(self, ctx, *, url: str = None):
         """Specify an icon for the guild's donationboard.
 
-        Parameters
-        -----------------
-            • URL: url of the icon to use. Must only be JPEG, JPG or PNG.
+        **Parameters**
+        :key: A URL (jpeg, jpg or png only) or uploaded attachment.
 
-            OR:
+        **Format**
+        :information_source: `+edit donationboard icon URL`
 
-            • Attach/upload an image to use.
+        **Example**
+        :white_check_mark: `+edit donationboard icon https://catsareus/thecrazycatbot/123.jpg`
+        :white_check_mark: `+edit donationboard icon` (with an attached image)
 
-        Example
-        ------------
-        • `+edit donationboard icon https://catsareus/thecrazycatbot/123.jpg`
-        • `+edit donationboard icon` (with an attached image)
-
-        Required Perimssions
-        ----------------------------
-        • `manage_server` permissions
+        **Required Permissions**
+        :warning: Manage Server
         """
         if not url or not url_validator.match(url):
             attachments = ctx.message.attachments
@@ -1121,20 +1155,17 @@ class GuildConfiguration(commands.Cog):
     async def edit_donationboard_title(self, ctx, *, title: str):
         """Specify a title for the guild's donationboard.
 
-        Parameters
-        -----------------
-        Pass in any of the following:
+        **Parameters**
+        :key: Title (must be less than 50 characters).
 
-            • Title - the title you wish to use. It must be less than 50 characters.
+        **Format**
+        :information_source: `+edit donationboard title TITLE`
 
-        Example
-        ------------
-        • `+edit donationboard title The Donation Tracker DonationBoard`
-        • `+edit donationboard title My Awesome Clan Family DonatinoBoard`
+        **Example**
+        :white_check_mark: `+edit donationboard title The Crazy Cat Bot Title`
 
-        Required Perimssions
-        ----------------------------
-        • `manage_server` permissions
+        **Required Permissions**
+        :warning: Manage Server
         """
         if len(title) >= 50:
             return await ctx.send('Titles must be less than 50 characters.')
@@ -1147,15 +1178,16 @@ class GuildConfiguration(commands.Cog):
     @checks.manage_guild()
     @requires_config('trophyboard', invalidate=True)
     async def edit_trophyboard(self, ctx):
-        """Run through an interactive process of editting the guild's trophyboard.
+        """[Group] Run through an interactive process of editing the guild's trophyboard.
 
-        Example
-        -----------
-        • `+edit trophyboard`
+        **Format**
+        :information_source: `+edit trophyboard`
 
-        Required Perimssions
-        ----------------------------
-        • `manage_server` permissions
+        **Example**
+        :white_check_mark: `+edit trophyboard`
+
+        **Required Permissions**
+        :warning: Manage Server
         """
         p = await ctx.prompt('Would you like to edit all settings for the guild trophyboard? '
                              'Else please see valid subcommands with `+help edit trophyboard`.')
@@ -1187,15 +1219,18 @@ class GuildConfiguration(commands.Cog):
     @edit_trophyboard.command(name='format')
     @requires_config('trophyboard', invalidate=True)
     async def edit_trophyboard_format(self, ctx):
-        """Edit the format of the guild's trophyboard. The bot will provide 2 options and you must select 1.
+        """Edit the format of the guild's trophyboard.
 
-        Example
-        -----------
-        • `+edit trophyboard format`
+        The bot will provide 2 options and you must select 1 via reactions.
 
-        Required Perimssions
-        ----------------------------
-        • `manage_server` permissions
+        **Format**
+        :information_source: `+edit trophyboard format`
+
+        **Example**
+        :white_check_mark: `+edit trophyboard format`
+
+        **Required Permissions**
+        :warning: Manage Server
         """
         table = CLYTable()
         table.add_rows([[0, 4320, 955, 'Member Name'], [1, 4500, 870, 'Another Member'],
@@ -1239,23 +1274,20 @@ class GuildConfiguration(commands.Cog):
     @edit_trophyboard.command(name='icon')
     @requires_config('trophyboard', invalidate=True)
     async def edit_trophyboard_icon(self, ctx, *, url: str = None):
-        """Specify an icon for the guild's donationboard.
+        """Specify an icon for the server's trophyboard.
 
-        Parameters
-        -----------------
-        Pass in any of the following:
+        **Parameters**
+        :key: A URL (jpeg, jpg or png only) or uploaded attachment.
 
-            • URL: url of the icon to use. Must only be JPEG, JPG or PNG.
-            • Attach/upload an image to use.
+        **Format**
+        :information_source: `+edit trophyboard icon URL`
 
-        Example
-        ------------
-        • `+edit trophyboard icon https://catsareus/thecrazycatbot/123.jpg`
-        • `+edit trophyboard icon` (with an attached image)
+        **Example**
+        :white_check_mark: `+edit tropyboard icon https://catsareus/thecrazycatbot/123.jpg`
+        :white_check_mark: `+edit donatiotrophyboardnboard icon` (with an attached image)
 
-        Required Perimssions
-        ----------------------------
-        • `manage_server` permissions
+        **Required Permissions**
+        :warning: Manage Server
         """
         if not url or not url_validator.match(url):
             attachments = ctx.message.attachments
@@ -1273,20 +1305,17 @@ class GuildConfiguration(commands.Cog):
     async def edit_trophyboard_title(self, ctx, *, title: str):
         """Specify a title for the guild's trophyboard.
 
-        Parameters
-        -----------------
-        Pass in any of the following:
+        **Parameters**
+        :key: Title (must be less than 50 characters).
 
-            • Title - the title you wish to use. This must be less than 50 characters.
+        **Format**
+        :information_source: `+edit trophyboard title TITLE`
 
-        Example
-        ------------
-        • `+edit trophyboard title The Donation Tracker DonationBoard`
-        • `+edit trophyboard title My Awesome Clan Family DonatinoBoard`
+        **Example**
+        :white_check_mark: `+edit trophyboard title The Crazy Cat Bot Title`
 
-        Required Perimssions
-        ----------------------------
-        • `manage_server` permissions
+        **Required Permissions**
+        :warning: Manage Server
         """
         if len(title) >= 50:
             return await ctx.send('Titles must be less than 50 characters.')
@@ -1295,28 +1324,36 @@ class GuildConfiguration(commands.Cog):
         await ctx.db.execute(query, title, ctx.config.channel_id)
         await ctx.confirm()
 
-    @edit.command(name='donationlog interval', aliases=['donationlog'])
+    @edit.group(name='donationlog')
+    @manage_guild()
+    async def edit_donationlog(self, ctx):
+        """[Group] Edit the donationlog settings."""
+        if ctx.invoked_subcommand is None:
+            await ctx.send_help(ctx.command)
+
+    @edit_donationlog.command(name='interval')
     @requires_config('donationlog', invalidate=True)
     @manage_guild()
-    async def edit_donationlog_interval(self, ctx, channel: typing.Optional[discord.TextChannel] = None,
-                                        minutes: int = 1):
+    async def edit_donationlog_interval(self, ctx, channel: typing.Optional[TextChannel], minutes: int = 1):
         """Update the interval (in minutes) for which the bot will log your donations.
 
-        Parameters
-        ----------------
-            • Channel: Optional, the channel to change log interval for.
-                       Defaults to the one you're in.
-            • Minutes: the number of minutes between logs. Defaults to 1min.
+        **Parameters**
+        :key: Discord Channel (mention etc.)
+        :key: Interval length (in minutes)
 
-        Example
-        -----------
-        • `+edit donationlog interval #channel 2`
-        • `+edit donationlog interval 1440`
+        **Format**
+        :information_source: `+edit donationlog interval #CHANNEL MINUTES`
 
-        Required Perimssions
-        ----------------------------
-        • `manage_server` permissions
+        **Example**
+        :white_check_mark: `+edit donationlog interval #logging 5`
+
+        **Required Permissions**
+        :warning: Manage Server
         """
+        if not ctx.config:
+            return await ctx.send('Oops! It doesn\'t look like a donationlog is setup here. '
+                                  'Try `+info log` to find where the registered channels are!')
+
         query = """UPDATE logs
                    SET interval = ($1 ||' minutes')::interval
                    WHERE channel_id=$2
@@ -1326,28 +1363,36 @@ class GuildConfiguration(commands.Cog):
         await ctx.send(f'Logs for {ctx.config.channel.mention} have been changed to {minutes} minutes. '
                        'Find which clans this affects with `+help info donationlog`')
 
-    @edit.command(name='trophylog interval', aliases=['trophylog'])
+    @edit.group(name='trophylog')
+    @checks.manage_guild()
+    async def edit_trophylog(self, ctx):
+        """[Group] Edit the trophylog settings."""
+        if ctx.invoked_subcommand is None:
+            await ctx.send_help(ctx.command)
+
+    @edit_trophylog.command(name='interval')
     @requires_config('trophylog', invalidate=True)
     @manage_guild()
-    async def edit_trophylog_interval(self, ctx, channel: typing.Optional[discord.TextChannel] = None,
-                                      minutes: int = 1):
+    async def edit_trophylog_interval(self, ctx, channel: typing.Optional[TextChannel], minutes: int = 1):
         """Update the interval (in minutes) for which the bot will log your trophies.
 
-        Parameters
-        ----------------
-            • Channel: Optional, the channel to change log interval for.
-                       Defaults to the one you're in.
-            • Minutes: the number of minutes between logs. Defaults to 1min.
+        **Parameters**
+        :key: Discord Channel (mention etc.)
+        :key: Interval length (in minutes)
 
-        Example
-        -----------
-        • `+edit trophylog interval #channel 2`
-        • `+edit trophylog interval 1440`
+        **Format**
+        :information_source: `+edit trophylog interval #CHANNEL MINUTES`
 
-        Required Perimssions
-        ----------------------------
-        • `manage_server` permissions
+        **Example**
+        :white_check_mark: `+edit trophylog interval #logging 5`
+
+        **Required Permissions**
+        :warning: Manage Server
         """
+        if not ctx.config:
+            return await ctx.send('Oops! It doesn\'t look like a trophylog is setup here. '
+                                  'Try `+info log` to find where the registered channels are!')
+
         query = """UPDATE logs
                    SET interval = ($1 ||' minutes')::interval
                    WHERE channel_id=$2
@@ -1359,7 +1404,21 @@ class GuildConfiguration(commands.Cog):
 
     @edit.command(name='event')
     @manage_guild()
-    async def edit_event(self, ctx, event_name: str = None):
+    async def edit_event(self, ctx, *, event_name: str = None):
+        """Edit a variety of settings for the current event.
+
+        **Parameters**
+        :key: Event name
+
+        **Format**
+        :information_source: `+edit event EVENT_NAME`
+
+        **Example**
+        :white_check_mark: `+edit event Donation Bot Event`
+
+        **Required Permissions**
+        :warning: Manage Server
+        """
         if event_name:
             query = """SELECT id FROM events 
                        WHERE guild_id = $1 
@@ -1533,7 +1592,7 @@ class GuildConfiguration(commands.Cog):
             e = discord.Embed(colour=discord.Colour.green(),
                               description=fmt)
             await ctx.send(embed=e)
-
+            await self.bot.dispatch('event_register')
 
     @commands.command()
     @checks.manage_guild()
@@ -1545,46 +1604,61 @@ class GuildConfiguration(commands.Cog):
               amount recorded in-game is more than in the database.
               Ie. if they have left and re-joined it won't update them, usually.
 
-        Cool-downs
-        ----------------
-        You can only call this command once every **12 hours** due to the
-        amount of resources it requires to run, and to prevent future abuse.
+        **Parameters**
+        :key: Clan - tag, name or `all`.
 
-        Parameters
-        --------------------
-        **Optional**: this command will default to all clans in guild.
+        **Format**
+        :information_source: `+refresh CLAN_TAG` or
+        :information_source: `+refresh CLAN NAME` or
+        :information_source: `+refresh all`
 
-        Pass a clash clan:
-            • Clan tag
-            • Clan name (must be claimed to server)
-            • `all`, `server`, `guild` for all clans in guild
+        **Example**
+        :white_check_mark: `+refresh #P0LYJC8C`
+        :white_check_mark: `+refresh Rock Throwers`
+        :white_check_mark: `+refresh all`
 
-        Required Permissions
-        -------------------
-        You must have `manage server` permissions to run this command.
+        **Required Permissions**
+        :warning: Manage Server
 
-        Example
-        ---------------
-        `+refresh all`
-        `+refresh`
-        `+refresh #CLAN_TAG`
+        **Cooldowns**
+        :hourglass: You can only call this command once every **12 hours**
         """
-        if not clans:
-            clans = await ctx.get_clans()
-        query = """UPDATE players 
-                   SET donations = $1, 
-                       received = $2,
-                       trophies = $3
-                   WHERE player_tag = $4
-                   AND donations <= $1
-                   AND received <= $2
-                """
-        for clan in clans:
-            for member in clan.members:
-                await ctx.db.execute(query, member.donations, member.received, member.trophies, member.tag)
-        await ctx.confirm()
+        async with ctx.typing():
+            if not clans:
+                clans = await ctx.get_clans()
+            query = """WITH t AS 
+                        (
+                            UPDATE players 
+                            SET donations = $1
+                            WHERE player_tag = $3
+                            AND donations <= $1
+                        )
+                        UPDATE players 
+                        SET received = $2
+                        WHERE player_tag = $3
+                        AND received <= $2                 
+                    """
+            query2 = """UPDATE players
+                        SET trophies = $1
+                        WHERE player_tag = $2
+                        AND trophies != $1
+                    """
+            for clan in clans:
+                for member in clan.members:
+                    await ctx.db.execute(query, member.donations, member.received, member.tag)
+                    await ctx.db.execute(query2, member.trophies, member.tag)
 
-    @commands.command()
+            dboard_channel = await self.bot.utils.get_board_channel(ctx.guild.id, 'donation')
+            if dboard_channel:
+                await self.bot.donationboard.update_board(int(dboard_channel))
+
+            tboard_channel = await self.bot.utils.get_board_channel(ctx.guild.id, 'trophy')
+            if tboard_channel:
+                await self.bot.donationboard.update_board(int(tboard_channel))
+
+            await ctx.send('All done - I\'ve force updated the boards too!')
+
+    @commands.command(hidden=True)
     @commands.is_owner()
     async def reset_cooldown(self, ctx, guild_id: int = None):
         if guild_id:

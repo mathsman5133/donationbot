@@ -9,7 +9,7 @@ async def check_guild_permissions(ctx, perms, check=all):
         return True
 
     if ctx.guild is None:
-        return False
+        raise commands.CheckFailure('You must be in a guild to run this command!')
 
     resolved = ctx.author.guild_permissions
     return check(getattr(resolved, name, None) == value for name, value in perms.items())
@@ -17,7 +17,10 @@ async def check_guild_permissions(ctx, perms, check=all):
 
 def manage_guild():
     async def pred(ctx):
-        return await check_guild_permissions(ctx, {'manage_guild': True})
+        perms = await check_guild_permissions(ctx, {'manage_guild': True})
+        if not perms:
+            raise commands.CheckFailure('You must have `Manage Server` permissions to use this command!')
+        return True
     return commands.check(pred)
 
 
@@ -46,20 +49,20 @@ async def before_invoke(ctx):
 
     elif config_type == 'event':
         if invalidate:
-            await ctx.bot.utils.event_config.invalidate(ctx.bot.utils, ctx.guild.id)
+            ctx.bot.utils.event_config.invalidate(ctx.bot.utils, ctx.guild.id)
 
         ctx.config = await ctx.bot.utils.event_config(ctx.guild.id)
 
     elif config_type == 'donationlog':
         channel = getattr(ctx, 'custom_channel', ctx.channel)
         if invalidate:
-            await ctx.bot.utils.log_config.invalidate(ctx.bot.utils, channel.id, 'donation')
+            ctx.bot.utils.log_config.invalidate(ctx.bot.utils, channel.id, 'donation')
         ctx.config = await ctx.bot.utils.log_config(channel.id, 'donation')
 
     elif config_type == 'trophylog':
         channel = getattr(ctx, 'custom_channel', ctx.channel)
         if invalidate:
-            await ctx.bot.utils.log_config.invalidate(ctx.bot.utils, channel.id, 'trophy')
+            ctx.bot.utils.log_config.invalidate(ctx.bot.utils, channel.id, 'trophy')
         ctx.config = await ctx.bot.utils.log_config(channel.id, 'trophy')
 
 async def after_invoke(ctx):

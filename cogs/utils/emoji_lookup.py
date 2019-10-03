@@ -236,5 +236,9 @@ misc = \
         "clashchamps": "<:clashchamps:600807746664792084>",
         "greentick": "<:greentick:601900670823694357>",
         "redtick": "<:redtick:601900691312607242>",
-        "greytick": "<:greytick:601900711974010905>"
+        "greytick": "<:greytick:601900711974010905>",
+        "trophygain": "<:trophygain:628561448519335946>",
+        "trophyloss": "<:trophyloss:628561532141436960>",
+        "trophygreen": "<:trophygreen:628561697480900618>",
+        "trophyred": "<:trophyred:628561718276128789>"
     }

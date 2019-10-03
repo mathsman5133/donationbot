@@ -164,5 +164,6 @@ class FetchedUser(commands.Converter):
 
 class TextChannel(commands.TextChannelConverter):
     async def convert(self, ctx, argument):
-        channel = super().convert(ctx, argument)
+        channel = await super().convert(ctx, argument)
         ctx.custom_channel = channel
+        return channel

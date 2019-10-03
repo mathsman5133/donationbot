@@ -7,7 +7,7 @@ from discord.ext import commands, tasks
 log = logging.getLogger(__name__)
 
 
-class SeasonConfig(commands.Cog):
+class SeasonConfig(commands.Cog, command_attrs=dict(hidden=True)):
     def __init__(self, bot):
         self.bot = bot
         self.season_id = 0
@@ -15,7 +15,7 @@ class SeasonConfig(commands.Cog):
     @staticmethod
     def next_last_monday():
         now = datetime.datetime.utcnow()
-        day = now + relativedelta.relativedelta(month=now.month,
+        day = now + relativedelta.relativedelta(month=now.month + 1,
                                                 weekday=relativedelta.MO(-1),
                                                 day=31,
                                                 hour=(-now.hour + 6),
@@ -35,6 +35,7 @@ class SeasonConfig(commands.Cog):
 
         log.critical('New season starting - via loop.')
         await self.new_season()
+        await self.new_season_pull()
 
     async def new_season(self):
         query = "INSERT INTO seasons (start, finish) VALUES ($1, $2)"
@@ -71,32 +72,36 @@ class SeasonConfig(commands.Cog):
         self.season_id = fetch[0]
         return self.season_id
 
-    async def new_season_pull(self):
-        query = "SELECT DISTINCT player_tag FROM players WHERE season_id = $1 AND start_update = False"
-        fetch = await self.bot.pool.fetch(query, await self.get_season_id())
+    async def new_season_pull(self, number=1000):
+        query = "SELECT DISTINCT player_tag FROM players WHERE season_id = $1 AND start_update = False LIMIT $2;"
+        fetch = await self.bot.pool.fetch(query, await self.get_season_id(), number)
 
         query = """UPDATE players SET start_friend_in_need = x.friend_in_need, 
                                       start_sharing_is_caring = x.sharing_is_caring,
-                                      start_attacks = x.start_attacks,
-                                      start_defenses = x.start_defenses,
-                                      start_best_trophies = x.start_best_trophies
+                                      start_attacks = x.attacks,
+                                      start_defenses = x.defenses,
+                                      start_trophies = x.trophies,
+                                      start_best_trophies = x.best_trophies,
+                                      start_update = True
                                        
                     FROM(
                         SELECT x.player_tag, 
                                x.friend_in_need, 
                                x.sharing_is_caring,
-                               x.start_attacks,
-                               x.start_defenses,
-                               x.start_best_trophies
+                               x.attacks,
+                               x.defenses,
+                               x.trophies,
+                               x.best_trophies
                                
                         FROM jsonb_to_recordset($1::jsonb)
                         AS x(
                             player_tag TEXT, 
                             friend_in_need INTEGER, 
                             sharing_is_caring INTEGER,
-                            start_attacks INTEGER,
-                            start_defenses INTEGER,
-                            start_best_trophies INTEGER
+                            attacks INTEGER,
+                            defenses INTEGER,
+                            trophies INTEGER,
+                            best_trophies INTEGER
                             )
                         )
                 AS x
@@ -122,6 +127,7 @@ class SeasonConfig(commands.Cog):
                 'sharing_is_caring': player.achievements_dict['Sharing is caring'].value,
                 'attacks': player.attack_wins,
                 'defenses': player.defense_wins,
+                'trophies': player.trophies,
                 'best_trophies': player.best_trophies
             })
             counter += 1
@@ -182,8 +188,8 @@ class SeasonConfig(commands.Cog):
 
     @commands.command()
     @commands.is_owner()
-    async def startingdump(self, ctx):
-        await self.new_season_pull()
+    async def startingdump(self, ctx, number: int = 1000):
+        await self.new_season_pull(number)
         await ctx.confirm()
 
     async def event_management(self):

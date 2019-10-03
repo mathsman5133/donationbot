@@ -5,12 +5,14 @@ import os
 import asyncio
 import discord
 import itertools
+import math
 
 from discord.ext import commands, tasks
 from cogs.utils.paginator import Pages
 from cogs.utils.error_handler import error_handler
-from cogs.utils.formatters import CLYTable
-from cogs.guildsetup import requires_config
+from cogs.utils.formatters import CLYTable, readable_time
+from cogs.utils.emoji_lookup import misc
+from cogs.utils.checks import requires_config
 from datetime import datetime, time
 from collections import Counter
 
@@ -18,53 +20,45 @@ log = logging.getLogger(__name__)
 
 
 class HelpPaginator(Pages):
-    def __init__(self, help_command, ctx, entries, *, per_page=4):
+    def __init__(self, help_command, ctx, entries, *, per_page=9):
         super().__init__(ctx, entries=entries, per_page=per_page)
+        self.ctx = ctx
+        self.embed.colour = discord.Colour.green()
         self.title = ''
         self.description = ''
         self.prefix = help_command.clean_prefix
         self.total = len(entries)
         self.help_command = help_command
-        if ctx.author.id not in ctx.bot.front_help_page_false:
-            self.show_first_help = True
-            ctx.bot.front_help_page_false.append(ctx.author.id)
-        else:
-            self.show_first_help = False
-
-    def get_first_page(self):
-        self.title = 'The Donation Tracker Bot Help'
-        description = 'This is the help command for the bot.\nA few points to notice:\n\n' \
-                      '• This command is powered by reactions: \n' \
-                      ':track_previous: goes to the first page\n' \
-                      ':arrow_backward: goes to the previous page\n' \
-                      ':arrow_forward: goes to the next page\n' \
-                      ':track_next: goes to the last page\n' \
-                      ':1234: lets you type a page number to go to\n' \
-                      ':stop_button: stops the interactive pagination session\n\n' \
-                      '• Help for a specific command can be found with `+help commandname`\n' \
-                      '• e.g `+help don` or `+help donationboard create`.\n\n' \
-                      '• Press :arrow_forward: to proceed.'
-        self.description = description
-        self.prepare_embed([], 1)
-        return self.embed
+        self.reaction_emojis = [
+            ('\N{BLACK LEFT-POINTING TRIANGLE}', self.previous_page),
+            ('\N{BLACK RIGHT-POINTING TRIANGLE}', self.next_page),
+            ('\N{INPUT SYMBOL FOR NUMBERS}', self.numbered_page),
+            ('\N{WHITE QUESTION MARK ORNAMENT}', self.show_help)
+        ]
 
     def get_bot_page(self, page):
         cog, description, commands = self.entries[page - 1]
-        self.title = f'{cog} Commands'
+        self.title = cog.qualified_name
         self.description = description
         return commands
 
     def prepare_embed(self, entries, page, *, first=False):
         self.embed.clear_fields()
-        self.embed.description = f'{self.description}\n\u200b'
         self.embed.title = self.title
+        self.embed.description = self.description
 
-        self.embed.set_footer(text=f'Use "{self.prefix}help command" for more info on a command.')
+        self.embed.set_footer(text=f'Use the reactions to navigate pages, '
+                                   f'and "{self.prefix}help command" for more help.')
         self.embed.timestamp = datetime.utcnow()
 
         for i, entry in enumerate(entries):
             sig = f'{self.help_command.get_command_signature(command=entry)}'
-            fmt = entry.short_doc or "No help given"
+            fmt = misc['online'] + entry.short_doc
+            if entry.short_doc.startswith('[Group]'):
+                fmt += f"\n{misc['idle']}Use `{self.prefix}help {entry.name}` for subcommands."
+            if not entry._can_run:
+                fmt += f"\n{misc['offline']}You don't have the required permissions to run this command."
+
             self.embed.add_field(name=sig,
                                  value=fmt + '\n\u200b' if i == (len(entries) - 1) else fmt,
                                  inline=False
@@ -77,35 +71,45 @@ class HelpPaginator(Pages):
         if self.maximum_pages:
             self.embed.set_author(name=f'Page {page}/{self.maximum_pages} ({self.total} commands)')
 
-    # async def get_embed(self, entries, page, *, first=False):
-    #     if first and self.show_first_help:
-    #         self.show_first_help = False
-    #         return self.get_first_page()
-    #
-    #     self.prepare_embed(entries, page, first=first)
-    #     return self.embed
-    #
-    # async def paginate(self):
-    #     if self.show_first_help:
-    #         self.paginating = True
-    #         self.maximum_pages += 1
-    #     await super().paginate()
+    async def show_help(self):
+        self.title = 'The Donation Tracker Bot Help'
+        description = 'This is the help command for the bot.\nA few points to notice:\n\n' \
+                      f"{misc['online']}This command is powered by reactions: \n" \
+                      ':arrow_backward: goes to the previous page\n' \
+                      ':arrow_forward: goes to the next page\n' \
+                      ':1234: lets you type a page number to go to\n' \
+                      ':grey_question: Takes you to this page\n' \
+                      f"{misc['online']}Help for a specific command can be found with `+help commandname`\n" \
+                      f"{misc['online']}e.g `+help don` or `+help add donationboard`.\n\n" \
+                      f"{misc['online']}Press :arrow_forward: to proceed."
+
+        self.description = description
+        embed = self.embed.copy() if self.embed else discord.Embed(colour=self.bot.colour)
+        embed.clear_fields()
+        embed.description = description
+        embed.set_footer(text=f'We were on page {self.current_page} before this message.')
+        await self.message.edit(content=None, embed=embed)
+
+        async def go_back_to_current_page():
+            await asyncio.sleep(60.0)
+            await self.show_current_page()
+
+        self.bot.loop.create_task(go_back_to_current_page())
 
 
 class HelpCommand(commands.HelpCommand):
     def get_command_signature(self, command):
         parent = command.full_parent_name
-        if len(command.aliases) > 0:
-            aliases = ', '.join(command.aliases)
-            fmt = f'[aliases: {aliases}]'
+
+        aliases = self.context.bot.get_cog('Aliases').get_aliases(command.full_parent_name)
+        if aliases:
             if parent:
-                fmt = f'{self.clean_prefix}{parent} {fmt}'
-            else:
-                fmt = f'{self.clean_prefix}{command.name} {fmt}'
-            alias = fmt
+                return f'{self.clean_prefix}{parent} or {self.clean_prefix}{aliases}'
+            return f'{self.clean_prefix}{command.name} or {self.clean_prefix}{aliases}'
         else:
-            alias = f'{self.clean_prefix}{parent} {command.name}'
-        return alias
+            if parent:
+                return f'{self.clean_prefix}{parent} {command.name}'
+            return f'{self.clean_prefix}{command.name}'
 
     async def send_bot_help(self, mapping):
         def key(c):
@@ -115,18 +119,22 @@ class HelpCommand(commands.HelpCommand):
         entries = await self.filter_commands(bot.commands, sort=True, key=key)
         nested_pages = []
         per_page = 9
-        total = 0
+        total = len(entries)
 
         for cog, commands in itertools.groupby(entries, key=key):
-            commands = sorted(commands, key=lambda c: c.name)
+            def key(c):
+                if c.short_doc.startswith('[Group]'):
+                    c.name = f'\u200b{c.name}'
+                return c.name
+            commands = sorted(commands, key=key)
             if len(commands) == 0:
                 continue
 
             total += len(commands)
             actual_cog = bot.get_cog(cog)
             # get the description if it exists (and the cog is valid) or return Empty embed.
-            description = (actual_cog and actual_cog.description) or discord.Embed.Empty
-            nested_pages.extend((cog, description, commands[i:i + per_page])
+            description = actual_cog.description or discord.Embed.Empty
+            nested_pages.extend((actual_cog, description, commands[i:i + per_page])
                                 for i in range(0, len(commands), per_page
                                                )
                                 )
@@ -140,6 +148,17 @@ class HelpCommand(commands.HelpCommand):
         pages.get_page = pages.get_bot_page
         await self.context.release()
         await pages.paginate()
+
+    async def filter_commands(self, _commands, *, sort=False, key=None):
+        self.verify_checks = False
+        valid = await super().filter_commands(_commands, sort=sort, key=key)
+        for n in valid:
+            try:
+                can_run = await n.can_run(self.context)
+                n._can_run = can_run
+            except commands.CommandError:
+                n._can_run = False
+        return valid
 
     async def send_cog_help(self, cog):
         entries = await self.filter_commands(cog.get_commands(), sort=True)
@@ -176,7 +195,7 @@ class HelpCommand(commands.HelpCommand):
         await pages.paginate()
 
 
-class Info(commands.Cog):
+class Info(commands.Cog, name='\u200bInfo'):
     """Misc commands related to the bot."""
     def __init__(self, bot):
         self.bot = bot
@@ -191,6 +210,9 @@ class Info(commands.Cog):
         self.dbl_task.start()
 
         self.process = psutil.Process()
+
+    def cog_unload(self):
+        self.dbl_task.cancel()
 
     async def cog_before_invoke(self, ctx):
         if hasattr(ctx, 'before_invoke'):
@@ -246,7 +268,7 @@ class Info(commands.Cog):
               '• `+help info` (check out the subcommands)\n\n' \
               '• There are lots of how-to\'s and other ' \
               'support on the [support server](https://discord.gg/ePt8y4V) if you get stuck.\n' \
-            f'• Please share the bot with your friends! [Bot Invite]({self.invite})\n' \
+            f'• Please share the bot with your friends! [Bot Invite]({self.invite_link})\n' \
               '• Please support us on [Patreon](https://www.patreon.com/donationtracker)!\n' \
               '• Have a good day!'
         e = discord.Embed(colour=self.bot.colour,
@@ -256,11 +278,9 @@ class Info(commands.Cog):
                      )
         return e
 
-
     @commands.command(aliases=['join'])
     async def invite(self, ctx):
-        """Get an invite to add the bot to your server.
-        """
+        """Get an invite to add the bot to your server."""
         await ctx.send(f'<{self.invite_link}>')
 
     @commands.command()
@@ -270,6 +290,7 @@ class Info(commands.Cog):
 
     @commands.command(aliases=['patreon', 'patrons'])
     async def patron(self, ctx):
+        """Get information about the bot's patreon."""
         e = discord.Embed(
             title='Donation Tracker Patrons',
             colour=self.bot.colour
@@ -290,8 +311,7 @@ class Info(commands.Cog):
 
     @commands.command()
     async def feedback(self, ctx, *, content):
-        """Give feedback on the bot.
-        """
+        """Give feedback on the bot."""
         e = discord.Embed(title='Feedback', colour=discord.Colour.green())
         channel = self.bot.get_channel(595384367573106718)
         if channel is None:
@@ -309,6 +329,11 @@ class Info(commands.Cog):
 
         await channel.send(embed=e)
         await ctx.send(f'{ctx.tick(True)} Successfully sent feedback')
+
+    @commands.command()
+    async def welcome(self, ctx):
+        """Displays my welcome message."""
+        await ctx.send(embed=self.welcome_message)
 
     @commands.command(hidden=True)
     async def ping(self, ctx):
@@ -348,6 +373,7 @@ class Info(commands.Cog):
 
     @commands.group(invoke_without_subcommand=True)
     async def info(self, ctx):
+        """[Group] Allows the user to get info about a variety of the bot's features."""
         if ctx.invoked_subcommand is None:
             await ctx.send_help(ctx.command)
 
@@ -454,20 +480,20 @@ class Info(commands.Cog):
             return await ctx.send('Please setup a trophyboard using `+add trophyboard`.')
 
         table = CLYTable()
-        if ctx.config.render == 2:
+        if ctx.config.render == 1:
             table.add_rows([[0, 4320, 955, 'Member Name'], [1, 4500, 870, 'Another Member'],
                             [2, 3900, -600, 'Yet Another'], [3, 1500, -1000, 'Worst Pusher']
                             ])
 
             table.title = ctx.config.title or 'TrophyBoard'
-            render = table.trophyboard_2()
+            render = table.trophyboard_1()
         else:
             table.add_rows([[0, 2000, 'Member'], [1, 1500, 'Nearly #1'],
                             [2, 1490, 'Another Member'], [3, -600, 'Winner']
                             ])
 
             table.title = ctx.config.title or 'TrophyBoard'
-            render = table.trophyboard_1()
+            render = table.trophyboard_2()
 
         fmt = f'**Trophyboard Example Format:**\n\n{render}\n**Icon:** ' \
             f'Please see the icon displayed above.\n'
@@ -502,15 +528,20 @@ class Info(commands.Cog):
         if not ctx.config:
             return await ctx.send('Please setup an event using `+add event`.')
 
-        fmt = '**Event Information:**\n'
+        now = datetime.utcnow()
 
-        channel = ctx.config.channel
+        fmt = '**Event Information:**\n' \
+              f':name_badge: Name: {ctx.config.event_name}\n' \
+              f':clock1: Starts in {readable_time((ctx.config.start - now).total_seconds())}\n' \
+              f':alarm_clock: Ends in {readable_time((ctx.config.finish - now).total_seconds())}\n'
+
+        channel = self.bot.get_channel(ctx.config.channel_id)
         data = []
 
         if channel is None:
-            data.append('**Channel:** #deleted-channel')
+            data.append(f"{misc['number']}Updates Channel: #deleted-channel")
         else:
-            data.append(f'**Channel:** {channel.mention}')
+            data.append(f"{misc['number']}Updates Channel: {channel.mention}")
 
         query = "SELECT clan_name, clan_tag FROM clans WHERE guild_id = $1;"
         fetch = await ctx.db.fetch(query, ctx.guild.id)

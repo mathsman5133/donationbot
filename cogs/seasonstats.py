@@ -385,7 +385,7 @@ class Season(commands.Cog):
 
     @commands.group(invoke_without_subcommand=True)
     async def season(self, ctx):
-        """Group command to manage historical stats for seasons past."""
+        """[Group] command to manage historical stats for seasons past."""
         if ctx.invoked_subcommand is None:
             await ctx.send_help(ctx.command)
 
@@ -425,6 +425,8 @@ class Season(commands.Cog):
 
         • `+season donationboard 1` - donationboard for season 1
         """
+        return await ctx.send('This command is not available at the moment. Sorry!')
+
         query = "SELECT COUNT(*) FROM events WHERE clan_tag=ANY($1::TEXT[]) AND"
         embeds = await self.get_donationboard(ctx.guild.id, season
                                               or (await self.bot.seasonconfig.get_season_id()) - 1)
@@ -452,6 +454,8 @@ class Season(commands.Cog):
         • `+season stats #CLAN_TAG` - season stats for previous season for that clan tag.
         • `+season stats 4 @user` - season stats for season 4 for @user.
         """
+        return await ctx.send('This command is not available at the moment. Sorry!')
+
         if not arg:
             arg = await ctx.get_clans()
         if not season:

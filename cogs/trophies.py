@@ -3,56 +3,48 @@ import discord
 import math
 import typing
 
+from collections import namedtuple
 from discord.ext import commands
-from cogs.utils import formatters
+from cogs.utils import formatters, checks
 from cogs.utils.error_handler import error_handler
 from cogs.utils.converters import ClanConverter, PlayerConverter
+from cogs.utils.db_objects import SlimDummyBoardConfig
 
 
 class Trophies(commands.Cog):
-    """All commands related to donations of clans, players, users and servers."""
+    """Get trophies of clans, players and users."""
     def __init__(self, bot):
         self.bot = bot
 
-    async def cog_command_error(self, ctx, error):
-        error = getattr(error, 'original', error)
-        await error_handler(ctx, error)
+    async def cog_before_invoke(self, ctx):
+        ctx.config = SlimDummyBoardConfig('trophy', 1, 'Top Trophies', None)
 
-    @commands.group(name='trophies', aliases=['trophy', 'troph', 'trop'],  invoke_without_command=True)
+    @commands.group(name='trophies', aliases=['troph'],  invoke_without_command=True)
     async def trophies(self, ctx, *,
-                       arg: typing.Union[discord.Member, ClanConverter, PlayerConverter] = None):
-        """Check trophies for a player, user, clan or guild.
+                        arg: typing.Union[discord.Member, ClanConverter, PlayerConverter] = None):
+        """[Group] Check trophies for a player, user, clan or guild.
 
-        For a mobile-friendly table that is guaranteed to fit on a mobile screen,
-        please use `+tromob`.
+        **Parameters**
+        :key: Discord user **OR**
+        :key: Clash player tag or name **OR**
+        :key: Clash clan tag or name **OR**
+        :key: `all` for all clans claimed.
 
-        Parameters
-        ----------------
-        Pass in any of the following:
+        **Format**
+        :information_source: `+trophies @MENTION`
+        :information_source: `+trophies #PLAYER_TAG`
+        :information_source: `+trophies Player Name`
+        :information_source: `+trophies #CLAN_TAG`
+        :information_source: `+trophies Clan Name`
+        :information_source: `+trophies all`
 
-            • A clan tag
-            • A clan name (clan must be claimed to the server)
-            • A discord @mention, user#discrim or user id
-            • A player tag
-            • A player name (must be in clan claimed to server)
-            • `all`, `server`, `guild` for all clans in guild
-            • None passed will divert to donations for your guild
-
-        Example
-        -----------
-        • `+trophies #CLAN_TAG`
-        • `+trophies @mention`
-        • `+trop #PLAYER_TAG`
-        • `+trophy player name`
-        • `+trop all`
-        • `+top`
-
-        Aliases
-        -----------
-        • `+trophies` (primary)
-        • `+trophy`
-        • `+troph`
-        • `+trop`
+        **Example**
+        :white_check_mark: `+trophies @mathsman`
+        :white_check_mark: `+trophies #JJ6C8PY`
+        :white_check_mark: `+trophies mathsman`
+        :white_check_mark: `+trophies #P0LYJC8C`
+        :white_check_mark: `+trophies Rock Throwers`
+        :white_check_mark: `+trophies all`
         """
         if ctx.invoked_subcommand is not None:
             return
@@ -69,38 +61,29 @@ class Trophies(commands.Cog):
         elif isinstance(arg, list):
             if isinstance(arg[0], coc.BasicClan):
                 await ctx.invoke(self.trophies_clan, clans=arg)
-
-    @trophies.command(name='user', hidden=True)
+                
+    @trophies.command(name='user')
     async def trophies_user(self, ctx, *, user: discord.Member = None):
         """Get trophies for a discord user.
 
-        Parameters
-        ----------------
-        Pass in any of the following:
-
-            • A discord @mention, user#discrim or user id
-            • None passed will divert to trophies for your discord account
-
-        Example
-        ------------
-        • `+trophies user @mention`
-        • `+trop user USER_ID`
-        • `+trop user`
-
-        Aliases
-        -----------
-        • `+trophiess user` (primary)
-        • `+trophy user`
-        • `+troph user`
-        • `+trop user`
-
         By default, you shouldn't need to call these sub-commands as the bot will
         parse your argument and direct it to the correct sub-command automatically.
+
+        **Parameters**
+        :key: Discord user (optional - defaults to yourself)
+
+        **Format**
+        :information_source: `+trophies user @MENTION`
+        :information_source: `+trophies user`
+
+        **Example**
+        :white_check_mark: `+trophies user @mathsman`
+        :white_check_mark: `+trophies user`
         """
         if not user:
             user = ctx.author
 
-        query = """SELECT player_tag, trophies, user_id 
+        query = """SELECT player_tag, trophies, start_trophies - trophies AS "gain", user_id 
                     FROM players 
                     WHERE user_id = $1 
                     AND season_id=$2
@@ -118,33 +101,28 @@ class Trophies(commands.Cog):
 
         await p.paginate()
 
-    @trophies.command(name='player', hidden=True)
+
+    @trophies.command(name='player')
     async def trophies_player(self, ctx, *, player: PlayerConverter):
         """Get trophies for a player.
 
-        Parameters
-        -----------------
-        Pass in any of the following:
-
-            • A player tag
-            • A player name (must be in a clan claimed to server)
-
-        Example
-        ------------
-        • `+trophies player #PLAYER_TAG`
-        • `+trophy player player name`
-
-        Aliases
-        -----------
-        • `+trophies player` (primary)
-        • `+trophy player`
-        • `+troph player`
-        • `+trop player`
-
         By default, you shouldn't need to call these sub-commands as the bot will
         parse your argument and direct it to the correct sub-command automatically.
+
+
+        **Parameters**
+        :key: Player name OR tag
+
+        **Format**
+        :information_source: `+trophies player #PLAYER_TAG`
+        :information_source: `+trophies player Player Name`
+
+        **Example**
+        :white_check_mark: `+trophies player #P0LYJC8C`
+        :white_check_mark: `+trophies player mathsman`
         """
-        query = """SELECT player_tag, trophies, user_id 
+
+        query = """SELECT player_tag, trophies, start_trophies - trophies, user_id 
                     FROM players 
                     WHERE player_tag = $1 
                     AND season_id=$2
@@ -153,7 +131,7 @@ class Trophies(commands.Cog):
         fetch = await ctx.db.fetch(query, player.tag, await self.bot.seasonconfig.get_season_id())
 
         if not fetch:
-            raise commands.BadArgument(f"{str(player)} ({player.tag}) has not been claimed.")
+            return await ctx.send(f"{str(player)} ({player.tag}) has not been claimed.")
 
         page_count = math.ceil(len(fetch) / 20)
         title = f'Trophies for {player.name}'
@@ -162,35 +140,29 @@ class Trophies(commands.Cog):
 
         await p.paginate()
 
-    @trophies.command(name='clan', hidden=True)
+
+    @trophies.command(name='clan')
     async def trophies_clan(self, ctx, *, clans: ClanConverter):
         """Get trophies for a clan.
-
-        Parameters
-        ----------------
-        Pass in any of the following:
-
-            • A clan tag
-            • A clan name (must be claimed to server)
-            • `all`, `server`, `guild`: all clans claimed to server
-
-        Example
-        ------------
-        • `+trophies clan #CLAN_TAG`
-        • `+troph clan clan name`
-        • `+trop clan all`
-
-        Aliases
-        -----------
-        • `+trophies clan` (primary)
-        • `+trophy clan`
-        • `+troph clan`
-        • `+trop clan`
-
+                
         By default, you shouldn't need to call these sub-commands as the bot will
         parse your argument and direct it to the correct sub-command automatically.
+
+        **Parameters**
+        :key: Clan name OR tag OR `all` to get all clans.
+
+        **Format**
+        :information_source: `+trophies clan #CLAN_TAG`
+        :information_source: `+trophies clan Clan Name`
+        :information_source: `+trophies clan all`
+
+        **Example**
+        :white_check_mark: `+trophies clan #P0LYJC8C`
+        :white_check_mark: `+trophies clan Rock Throwers`
+        :white_check_mark: `+trophies clan all`
         """
-        query = """SELECT player_tag, trophies, user_id 
+        
+        query = """SELECT player_tag, trophies, start_trophies - trophies, user_id 
                     FROM players 
                     WHERE player_tag=ANY($1::TEXT[])
                     AND season_id=$2
@@ -209,7 +181,6 @@ class Trophies(commands.Cog):
 
         page_count = math.ceil(len(fetch) / 20)
         title = f"Trophies for {', '.join(f'{c.name}' for c in clans)}"
-
         p = formatters.BoardPaginator(ctx, data=fetch, title=title, page_count=page_count)
 
         await p.paginate()
@@ -256,7 +227,7 @@ class Trophies(commands.Cog):
 
         page_count = math.ceil(len(fetch) / 20)
         title = f"Attack wins for {', '.join(f'{c.name}' for c in clans)}"
-
+        
         p = formatters.BoardPaginator(ctx, data=fetch, title=title, page_count=page_count)
 
         await p.paginate()

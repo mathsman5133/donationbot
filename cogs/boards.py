@@ -36,7 +36,7 @@ class DonationBoard(commands.Cog):
             self.on_clan_member_trophies_change,
             self.on_clan_member_join
                                 )
-        self.bot.coc._clan_retry_interval = 20
+        self.bot.coc._clan_retry_interval = 60
         self.bot.coc.start_updates('clan')
 
         self._batch_lock = asyncio.Lock(loop=bot.loop)
@@ -99,8 +99,8 @@ class DonationBoard(commands.Cog):
                 """
 
         query2 = """UPDATE eventplayers SET donations = eventplayers.donations + x.donations, 
-                                             received = eventplayers.received + x.received,
-                                             trophies = eventplayers.trophies + x.trophies   
+                                            received  = eventplayers.received  + x.received,
+                                            trophies  = eventplayers.trophies  + x.trophies   
                         FROM(
                             SELECT x.player_tag, x.donations, x.received, x.trophies
                             FROM jsonb_to_recordset($1::jsonb)
@@ -228,29 +228,29 @@ class DonationBoard(commands.Cog):
             self._clan_events.add(clan.tag)
 
     async def on_clan_member_join(self, member, clan):
-        query = """INSERT INTO players (player_tag, donations, received, season_id) 
-                    VALUES ($1,$2,$3, $4) 
+        query = """INSERT INTO players (player_tag, donations, received, trophies, start_trophies, season_id) 
+                    VALUES ($1,$2,$3,$4,$4,$5) 
                     ON CONFLICT (player_tag, season_id) 
                     DO NOTHING
                 """
 
-        query2 = """INSERT INTO eventplayers (player_tag, donations, received, live, event_id) 
-                        SELECT $1, $2, $3, true, events.id
+        query2 = """INSERT INTO eventplayers (player_tag, donations, received, trophies, start_trophies, live, event_id) 
+                        SELECT $1, $2, $3, $4, $4, true, events.id
                         FROM events
                         INNER JOIN clans 
                         ON clans.guild_id = events.guild_id
-                        WHERE clans.clan_tag = $4
+                        WHERE clans.clan_tag = $5
                     ON CONFLICT (player_tag, event_id) 
                     DO NOTHING
                 """
 
         response = await self.bot.pool.execute(query, member.tag, member.donations, member.received,
-                                               await self.bot.seasonconfig.get_season_id())
+                                               member.trophies, await self.bot.seasonconfig.get_season_id())
         log.debug(f'New member {member} joined clan {clan}. Performed a query to insert them into players. '
                   f'Status Code: {response}')
 
         response = await self.bot.pool.execute(query2, member.tag, member.donations,
-                                               member.received, clan.tag)
+                                               member.received, member.trophies, clan.tag)
         log.debug(f'New member {member} joined clan {clan}. '
                   f'Performed a query to insert them into eventplayers. Status Code: {response}')
 
@@ -304,7 +304,7 @@ class DonationBoard(commands.Cog):
             column_2 = 'received'
         elif board_type == 'trophy':
             column_1 = 'trophies'
-            column_2 = 'trophies - start_best_trophies'
+            column_2 = 'trophies - start_trophies'
         else:
             return
 
@@ -399,7 +399,7 @@ class DonationBoard(commands.Cog):
             return discord.Colour.blue()
         return discord.Colour.green()
 
-    @commands.command()
+    @commands.command(hidden=True)
     @commands.is_owner()
     async def forceboard(self, ctx, channel_id: int = None):
         await self.update_board(channel_id or ctx.channel.id)
