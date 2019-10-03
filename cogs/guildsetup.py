@@ -570,13 +570,13 @@ class GuildConfiguration(commands.Cog, name='Server Setup'):
                             clan_name, 
                             in_event
                             ) 
-                   SELECT (
+                   SELECT 
                         clan_tag,
                         guild_id,
                         $2,
                         clan_name,
                         in_event
-                        )
+                        
                    FROM clans
                    WHERE guild_id = $1
                    ON CONFLICT (channel_id, clan_tag)
@@ -642,13 +642,13 @@ class GuildConfiguration(commands.Cog, name='Server Setup'):
                             clan_name, 
                             in_event
                             ) 
-                   SELECT (
+                   SELECT 
                         clan_tag,
                         guild_id,
                         $2,
                         clan_name,
                         in_event
-                        )
+                        
                    FROM clans
                    WHERE guild_id = $1
                    ON CONFLICT (channel_id, clan_tag)
