@@ -14,7 +14,7 @@ class PlayerConverter(commands.Converter):
             return argument
 
         tag = coc.utils.correct_tag(argument)
-        name = argument.strip().lower()
+        name = argument.strip()
 
         if tag_validator.match(argument):
             try:
@@ -33,7 +33,7 @@ class PlayerConverter(commands.Converter):
 
             clan_members = {n.name.lower(): n for n in g.itermembers}
             try:
-                member = clan_members[name]
+                member = clan_members[name.lower()]
                 return member
             except KeyError:
                 pass
