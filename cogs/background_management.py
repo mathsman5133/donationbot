@@ -32,16 +32,17 @@ class BackgroundManagement(commands.Cog):
                           finish,
                           event_name,
                           guild_id,
+                          channel_id,
                           start - CURRENT_TIMESTAMP AS "until_start"
                    FROM events
                    ORDER BY "until_start" DESC
                    LIMIT 1;
                 """
-        event = await self.bot.pool.fetchrow(query)
+        event = await self.bot.pool.fetch(query)
         if not event:
             return await asyncio.sleep(3600)
 
-        slim_config = SlimEventConfig(event['id'], event['start'], event['finish'], event['event_name'])
+        slim_config = SlimEventConfig(event['id'], event['start'], event['finish'], event['event_name'], event['channel_id'])
 
         if event['until_start'].total_seconds() < 0:
             await self.on_event_start(slim_config, event['guild_id'], event['until_start'])
@@ -50,22 +51,23 @@ class BackgroundManagement(commands.Cog):
         await self.on_event_start(slim_config, event['guild_id'], event['until_start'])
 
     @tasks.loop()
-    async def next_event_starts(self):
+    async def next_event_finish(self):
         query = """SELECT id,
                           start,
                           finish,
                           event_name,
                           guild_id,
-                          finish - CURRENT_TIMESTAMP as "until_finish"
+                          channel_id,
+                          finish - CURRENT_TIMESTAMP AS "until_finish"
                    FROM events
-                   ORDER BY "until_start" DESC
+                   ORDER BY "until_finish" DESC
                    LIMIT 1;
                 """
         event = await self.bot.pool.fetchrow(query)
         if not event:
             return await asyncio.sleep(3600)
 
-        slim_config = SlimEventConfig(event['id'], event['start'], event['finish'], event['event_name'])
+        slim_config = SlimEventConfig(event['id'], event['start'], event['finish'], event['event_name'], event['channel_id'])
 
         if event['until_start'].total_seconds() < 0:
             await self.on_event_start(slim_config, event['guild_id'], event['until_finish'])
