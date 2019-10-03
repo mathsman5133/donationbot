@@ -13,7 +13,7 @@ CREATE TABLE players (
     start_friend_in_need integer default 0,
     end_friend_in_need integer default 0,
     start_sharing_is_caring integer default 0,
-    end_friend_in_need integer default 0,
+    end_sharing_is_caring integer default 0,
     start_attacks integer default 0,
     end_attacks integer default 0,
     start_defenses integer default 0,
