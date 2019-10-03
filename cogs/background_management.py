@@ -71,8 +71,8 @@ class BackgroundManagement(commands.Cog):
 
     @commands.Cog.listener()
     async def on_event_register(self):
-        await self.next_event_starts.cancel()
-        await self.next_event_starts.start()
+        self.next_event_starts.cancel()
+        self.next_event_starts.start()
 
     @staticmethod
     async def insert_member(con, player, event_id):
