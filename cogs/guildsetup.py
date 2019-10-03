@@ -1558,20 +1558,40 @@ class GuildConfiguration(commands.Cog, name='Server Setup'):
         **Cooldowns**
         :hourglass: You can only call this command once every **12 hours**
         """
-        if not clans:
-            clans = await ctx.get_clans()
-        query = """UPDATE players 
-                   SET donations = $1, 
-                       received = $2,
-                       trophies = $3
-                   WHERE player_tag = $4
-                   AND donations <= $1
-                   AND received <= $2
-                """
-        for clan in clans:
-            for member in clan.members:
-                await ctx.db.execute(query, member.donations, member.received, member.trophies, member.tag)
-        await ctx.confirm()
+        async with ctx.typing():
+            if not clans:
+                clans = await ctx.get_clans()
+            query = """WITH t AS 
+                        (
+                            UPDATE players 
+                            SET donations = $1
+                            WHERE player_tag = $3
+                            AND donations <= $1
+                        )
+                        UPDATE players 
+                        SET received = $2
+                        WHERE player_tag = $3
+                        AND received <= $2                 
+                    """
+            query2 = """UPDATE players
+                        SET trophies = $1
+                        WHERE player_tag = $2
+                        AND trophies != $1
+                    """
+            for clan in clans:
+                for member in clan.members:
+                    await ctx.db.execute(query, member.donations, member.received, member.tag)
+                    await ctx.db.execute(query2, member.trophies, member.tag)
+
+            dboard_channel = await self.bot.utils.get_board_channel(ctx.guild.id, 'donation')
+            if dboard_channel:
+                await self.bot.donationboard.update_board(int(dboard_channel))
+
+            tboard_channel = await self.bot.utils.get_board_channel(ctx.guild.id, 'trophy')
+            if tboard_channel:
+                await self.bot.donationboard.update_board(int(tboard_channel))
+
+            await ctx.send('All done - I\'ve force updated the boards too!')
 
     @commands.command(hidden=True)
     @commands.is_owner()
