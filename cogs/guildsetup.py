@@ -142,7 +142,11 @@ class GuildConfiguration(commands.Cog, name='Server Setup'):
         except coc.NotFound:
             return await ctx.send(f'Clan not found with `{clan_tag}` tag.')
 
-        if not clan.description.strip().endswith('dt') and not await self.bot.is_owner(ctx.author):
+        def check():
+            return clan.description.strip().endswith('dt') \
+                   or await self.bot.is_owner(ctx.author) or clan_tag in (n.tag for n in current_clans)
+
+        if not check():
             return await ctx.send('Please add the letters `dt` to the end of '
                                   f'`{clan.name}`\'s clan description. Wait 5 minutes and try again.'
                                   '\n\nThis is a security feature of the bot and should '
@@ -553,9 +557,41 @@ class GuildConfiguration(commands.Cog, name='Server Setup'):
                 """
         await ctx.db.execute(query, ctx.guild.id, channel.id, 'donation')
 
-        await ctx.send(f'Donation log channel has been set to {channel.mention} '
-                       f'and enabled for all clans claimed to this channel. '
-                       f'You can find these with `+help info donationlog` ')
+        prompt = await ctx.prompt(f'Would you like me to add all clans claimed on the server to this donationlog?\n'
+                                  f'Else you can manually add clans with `+add clan #CLAN_TAG` to this channel.\n')
+        if not prompt:
+            return await ctx.send(f'{channel.mention} has been added as a donationlog channel.\n'
+                                  f'Please note that only clans claimed to {channel.mention} will appear in this log.')
+
+        query = """WITH t AS (
+                        SELECT clan_tag,
+                               guild_id,
+                               channel_id,
+                               in_event
+                        FROM clans
+                        WHERE guild_id = $1
+                        )
+                   INSERT INTO clans (
+                            clan_tag, 
+                            guild_id, 
+                            channel_id, 
+                            clan_name, 
+                            in_event
+                            ) 
+                   VALUES (
+                        t.clan_tag,
+                        t.guild_id,
+                        $2,
+                        t.clan_name,
+                        t.in_event
+                        )
+                   ON CONFLICT (channel_id, clan_tag)
+                   DO NOTHING;
+                """
+        await ctx.db.execute(query, ctx.guild.id, channel.id)
+        return await ctx.send(f'{channel.mention} has been added as a donationlog channel. '
+                              'See all clans claimed with `+info log`. '
+                              'Please note that only clans claimed to this channel will appear in the log.')
 
     @add.command(name='trophylog')
     @requires_config('trophylog', invalidate=True)
@@ -598,9 +634,42 @@ class GuildConfiguration(commands.Cog, name='Server Setup'):
                     """
         await ctx.db.execute(query, ctx.guild.id, channel.id, 'trophy')
 
-        await ctx.send(f'Trophy log channel has been set to {channel.mention} '
-                       f'and enabled for all clans claimed to this channel. '
-                       f'You can find these with `+help info trophylog` ')
+        prompt = await ctx.prompt(
+            f'Would you like me to add all clans claimed on the server to this trophylog?\n'
+            f'Else you can manually add clans with `+add clan #CLAN_TAG` to this channel.\n')
+        if not prompt:
+            return await ctx.send(f'{channel.mention} has been added as a trophylog channel.\n'
+                                  f'Please note that only clans claimed to {channel.mention} will appear in this log.')
+
+        query = """WITH t AS (
+                        SELECT clan_tag,
+                               guild_id,
+                               channel_id,
+                               in_event
+                        FROM clans
+                        WHERE guild_id = $1
+                        )
+                   INSERT INTO clans (
+                            clan_tag, 
+                            guild_id, 
+                            channel_id, 
+                            clan_name, 
+                            in_event
+                            ) 
+                   VALUES (
+                        t.clan_tag,
+                        t.guild_id,
+                        $2,
+                        t.clan_name,
+                        t.in_event
+                        )
+                   ON CONFLICT (channel_id, clan_tag)
+                   DO NOTHING;
+                """
+        await ctx.db.execute(query, ctx.guild.id, channel.id)
+        return await ctx.send(f'{channel.mention} has been added as a trophylog channel. '
+                              'See all clans claimed with `+info log`. '
+                              'Please note that only clans claimed to this channel will appear in the log.')
 
     @commands.command()
     @requires_config('event')
