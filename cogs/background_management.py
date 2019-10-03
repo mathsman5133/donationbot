@@ -38,7 +38,7 @@ class BackgroundManagement(commands.Cog):
                    ORDER BY "until_start" DESC
                    LIMIT 1;
                 """
-        event = await self.bot.pool.fetch(query)
+        event = await self.bot.pool.fetchrow(query)
         if not event:
             return await asyncio.sleep(3600)
 
