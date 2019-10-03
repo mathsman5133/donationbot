@@ -563,28 +563,22 @@ class GuildConfiguration(commands.Cog, name='Server Setup'):
             return await ctx.send(f'{channel.mention} has been added as a donationlog channel.\n'
                                   f'Please note that only clans claimed to {channel.mention} will appear in this log.')
 
-        query = """WITH t AS (
-                        SELECT clan_tag,
-                               guild_id,
-                               channel_id,
-                               in_event
-                        FROM clans
-                        WHERE guild_id = $1
-                        )
-                   INSERT INTO clans (
+        query = """INSERT INTO clans (
                             clan_tag, 
                             guild_id, 
                             channel_id, 
                             clan_name, 
                             in_event
                             ) 
-                   VALUES (
-                        t.clan_tag,
-                        t.guild_id,
+                   SELECT (
+                        clan_tag,
+                        guild_id,
                         $2,
-                        t.clan_name,
-                        t.in_event
+                        clan_name,
+                        in_event
                         )
+                   FROM clans
+                   WHERE guild_id = $1
                    ON CONFLICT (channel_id, clan_tag)
                    DO NOTHING;
                 """
