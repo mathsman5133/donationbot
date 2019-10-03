@@ -69,6 +69,11 @@ class BackgroundManagement(commands.Cog):
         await asyncio.sleep(event['until_finish'].total_seconds())
         await self.on_event_start(slim_config, event['guild_id'], event['until_finish'])
 
+    @commands.Cog.listener()
+    async def on_event_register(self):
+        await self.next_event_starts.cancel()
+        await self.next_event_starts.start()
+
     @staticmethod
     async def insert_member(con, player, event_id):
         query = """INSERT INTO eventplayers (

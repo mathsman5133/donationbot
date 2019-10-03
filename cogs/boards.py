@@ -99,8 +99,8 @@ class DonationBoard(commands.Cog):
                 """
 
         query2 = """UPDATE eventplayers SET donations = eventplayers.donations + x.donations, 
-                                             received = eventplayers.received + x.received,
-                                             trophies = eventplayers.trophies + x.trophies   
+                                            received  = eventplayers.received  + x.received,
+                                            trophies  = eventplayers.trophies  + x.trophies   
                         FROM(
                             SELECT x.player_tag, x.donations, x.received, x.trophies
                             FROM jsonb_to_recordset($1::jsonb)

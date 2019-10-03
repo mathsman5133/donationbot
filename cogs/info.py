@@ -10,7 +10,7 @@ import math
 from discord.ext import commands, tasks
 from cogs.utils.paginator import Pages
 from cogs.utils.error_handler import error_handler
-from cogs.utils.formatters import CLYTable
+from cogs.utils.formatters import CLYTable, readable_time
 from cogs.utils.emoji_lookup import misc
 from cogs.utils.checks import requires_config
 from datetime import datetime, time
@@ -528,15 +528,20 @@ class Info(commands.Cog, name='\u200bInfo'):
         if not ctx.config:
             return await ctx.send('Please setup an event using `+add event`.')
 
-        fmt = '**Event Information:**\n'
+        now = datetime.utcnow()
 
-        channel = ctx.config.channel
+        fmt = '**Event Information:**\n' \
+              f':name_badge: Name: {ctx.config.event_name}\n' \
+              f':clock1: Starts in {readable_time((ctx.config.start - now).total_seconds())}\n' \
+              f':alarm_clock: Ends in {readable_time((ctx.config.finish - now).total_seconds())}\n'
+
+        channel = self.bot.get_channel(ctx.config.channel_id)
         data = []
 
         if channel is None:
-            data.append('**Channel:** #deleted-channel')
+            data.append(f"{misc['number']}Updates Channel: #deleted-channel")
         else:
-            data.append(f'**Channel:** {channel.mention}')
+            data.append(f"{misc['number']}Updates Channel: {channel.mention}")
 
         query = "SELECT clan_name, clan_tag FROM clans WHERE guild_id = $1;"
         fetch = await ctx.db.fetch(query, ctx.guild.id)
