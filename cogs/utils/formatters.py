@@ -300,7 +300,7 @@ class BoardPaginator(TablePaginator):
                 row = [player_data[0], player_data[1]['donations'], player.name]
         else:
             if self.ctx.config.render == 1:
-                row = [player_data[0], player_data[1]['trophies'], player_data[1]['gained'], player.name]
+                row = [player_data[0], player_data[1]['trophies'], player_data[1][2], player.name]
             else:
                 row = [player_data[0], player_data[1]['trophies'], player.name]
 

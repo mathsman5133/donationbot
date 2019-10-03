@@ -27,6 +27,7 @@ class BackgroundManagement(commands.Cog):
 
     @tasks.loop()
     async def next_event_starts(self):
+        await self.bot.wait_until_ready()
         query = """SELECT id,
                           start,
                           finish,
@@ -35,7 +36,8 @@ class BackgroundManagement(commands.Cog):
                           channel_id,
                           start - CURRENT_TIMESTAMP AS "until_start"
                    FROM events
-                   ORDER BY "until_start" DESC
+                   WHERE start_report = False
+                   ORDER BY "until_start" 
                    LIMIT 1;
                 """
         event = await self.bot.pool.fetchrow(query)
@@ -50,8 +52,12 @@ class BackgroundManagement(commands.Cog):
         await asyncio.sleep(event['until_start'].total_seconds())
         await self.on_event_start(slim_config, event['guild_id'], event['until_start'])
 
+        query = "UPDATE events SET start_report = True WHERE event_id = $1"
+        await self.bot.pool.execute(query, event['id'])
+
     @tasks.loop()
     async def next_event_finish(self):
+        await self.bot.wait_until_ready()
         query = """SELECT id,
                           start,
                           finish,
@@ -60,7 +66,7 @@ class BackgroundManagement(commands.Cog):
                           channel_id,
                           finish - CURRENT_TIMESTAMP AS "until_finish"
                    FROM events
-                   ORDER BY "until_finish" DESC
+                   ORDER BY "until_finish"
                    LIMIT 1;
                 """
         event = await self.bot.pool.fetchrow(query)
@@ -96,7 +102,7 @@ class BackgroundManagement(commands.Cog):
                                     start_best_trophies,
                                     start_update
                                     )
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11 True)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, True)
                     ON CONFLICT (player_tag, event_id)
                     DO NOTHING
                 """
@@ -144,7 +150,7 @@ class BackgroundManagement(commands.Cog):
         clans = await self.bot.coc.get_clans((n[0] for n in fetch)).flatten()
 
         for n in clans:
-            async for player in n.get_detailed_members:
+            async for player in n.get_detailed_members():
                 await self.insert_member(self.bot.pool, player, event.id)
         await channel.send('All members have been added... '
                            'configuring the donation and trophy boards to be in the event!')

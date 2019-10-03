@@ -166,3 +166,4 @@ class TextChannel(commands.TextChannelConverter):
     async def convert(self, ctx, argument):
         channel = await super().convert(ctx, argument)
         ctx.custom_channel = channel
+        return channel

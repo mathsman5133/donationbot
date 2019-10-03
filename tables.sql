@@ -174,5 +174,6 @@ create table events (
     finish timestamp,
     event_name text,
     guild_id bigint,
-    channel_id bigint
+    channel_id bigint,
+    start_report boolean default false
 )
