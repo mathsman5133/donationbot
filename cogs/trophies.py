@@ -18,13 +18,13 @@ class Trophies(commands.Cog):
         error = getattr(error, 'original', error)
         await error_handler(ctx, error)
 
-    @commands.group(name='trophies', aliases=['troph', 'trop'],  invoke_without_command=True)
+    @commands.group(name='trophies', aliases=['trophy', 'troph', 'trop'],  invoke_without_command=True)
     async def trophies(self, ctx, *,
                        arg: typing.Union[discord.Member, ClanConverter, PlayerConverter] = None):
-        """Check donations for a player, user, clan or guild.
+        """Check trophies for a player, user, clan or guild.
 
         For a mobile-friendly table that is guaranteed to fit on a mobile screen,
-        please use `+donmob`.
+        please use `+tromob`.
 
         Parameters
         ----------------
@@ -40,17 +40,19 @@ class Trophies(commands.Cog):
 
         Example
         -----------
-        • `+donations #CLAN_TAG`
-        • `+donations @mention`
-        • `+don #PLAYER_TAG`
-        • `+don player name`
-        • `+don all`
-        • `+don`
+        • `+trophies #CLAN_TAG`
+        • `+trophies @mention`
+        • `+trop #PLAYER_TAG`
+        • `+trophy player name`
+        • `+trop all`
+        • `+top`
 
         Aliases
         -----------
-        • `+donations` (primary)
-        • `+don`
+        • `+trophies` (primary)
+        • `+trophy`
+        • `+troph`
+        • `+trop`
         """
         if ctx.invoked_subcommand is not None:
             return
@@ -61,34 +63,36 @@ class Trophies(commands.Cog):
         if not arg:
             return await ctx.send('Please claim a clan.')
         elif isinstance(arg, discord.Member):
-            await ctx.invoke(self.donations_user, user=arg)
+            await ctx.invoke(self.trophies_user, user=arg)
         elif isinstance(arg, coc.BasicPlayer):
-            await ctx.invoke(self.donations_player, player=arg)
+            await ctx.invoke(self.trophies_player, player=arg)
         elif isinstance(arg, list):
             if isinstance(arg[0], coc.BasicClan):
-                await ctx.invoke(self.donations_clan, clans=arg)
+                await ctx.invoke(self.trophies_clan, clans=arg)
 
-    @donations.command(name='user', hidden=True)
-    async def donations_user(self, ctx, *, user: discord.Member = None):
-        """Get donations for a discord user.
+    @trophies.command(name='user', hidden=True)
+    async def trophies_user(self, ctx, *, user: discord.Member = None):
+        """Get trophies for a discord user.
 
         Parameters
         ----------------
         Pass in any of the following:
 
             • A discord @mention, user#discrim or user id
-            • None passed will divert to donations for your discord account
+            • None passed will divert to trophies for your discord account
 
         Example
         ------------
-        • `+donations user @mention`
-        • `+don user USER_ID`
-        • `+don user`
+        • `+trophies user @mention`
+        • `+trop user USER_ID`
+        • `+trop user`
 
         Aliases
         -----------
-        • `+donations user` (primary)
-        • `+don user`
+        • `+trophiess user` (primary)
+        • `+trophy user`
+        • `+troph user`
+        • `+trop user`
 
         By default, you shouldn't need to call these sub-commands as the bot will
         parse your argument and direct it to the correct sub-command automatically.
@@ -96,11 +100,11 @@ class Trophies(commands.Cog):
         if not user:
             user = ctx.author
 
-        query = """SELECT player_tag, donations, received, user_id 
+        query = """SELECT player_tag, trophies, user_id 
                     FROM players 
                     WHERE user_id = $1 
                     AND season_id=$2
-                    ORDER BY donations DESC
+                    ORDER BY trophies DESC
                 """
         fetch = await ctx.db.fetch(query, user.id, await self.bot.seasonconfig.get_season_id())
         if not fetch:
@@ -108,15 +112,15 @@ class Trophies(commands.Cog):
                                   f"have any accounts claimed")
 
         page_count = math.ceil(len(fetch) / 20)
-        title = f'Donations for {str(user)}'
+        title = f'Trophies for {str(user)}'
 
         p = formatters.BoardPaginator(ctx, data=fetch, page_count=page_count, title=title)
 
         await p.paginate()
 
-    @donations.command(name='player', hidden=True)
-    async def donations_player(self, ctx, *, player: PlayerConverter):
-        """Get donations for a player.
+    @trophies.command(name='player', hidden=True)
+    async def trophies_player(self, ctx, *, player: PlayerConverter):
+        """Get trophies for a player.
 
         Parameters
         -----------------
@@ -127,18 +131,20 @@ class Trophies(commands.Cog):
 
         Example
         ------------
-        • `+donations player #PLAYER_TAG`
-        • `+don player player name`
+        • `+trophies player #PLAYER_TAG`
+        • `+trophy player player name`
 
         Aliases
         -----------
-        • `+donations player` (primary)
-        • `+don player`
+        • `+trophies player` (primary)
+        • `+trophy player`
+        • `+troph player`
+        • `+trop player`
 
         By default, you shouldn't need to call these sub-commands as the bot will
         parse your argument and direct it to the correct sub-command automatically.
         """
-        query = """SELECT player_tag, donations, received, user_id 
+        query = """SELECT player_tag, trophies, user_id 
                     FROM players 
                     WHERE player_tag = $1 
                     AND season_id=$2
@@ -150,15 +156,15 @@ class Trophies(commands.Cog):
             raise commands.BadArgument(f"{str(player)} ({player.tag}) has not been claimed.")
 
         page_count = math.ceil(len(fetch) / 20)
-        title = f'Donations for {player.name}'
+        title = f'Trophies for {player.name}'
 
         p = formatters.BoardPaginator(ctx, data=fetch, title=title, page_count=page_count)
 
         await p.paginate()
 
-    @donations.command(name='clan', hidden=True)
-    async def donations_clan(self, ctx, *, clans: ClanConverter):
-        """Get donations for a clan.
+    @trophies.command(name='clan', hidden=True)
+    async def trophies_clan(self, ctx, *, clans: ClanConverter):
+        """Get trophies for a clan.
 
         Parameters
         ----------------
@@ -170,23 +176,25 @@ class Trophies(commands.Cog):
 
         Example
         ------------
-        • `+donations clan #CLAN_TAG`
-        • `+don clan clan name`
-        • `+don clan all`
+        • `+trophies clan #CLAN_TAG`
+        • `+troph clan clan name`
+        • `+trop clan all`
 
         Aliases
         -----------
-        • `+donations clan` (primary)
-        • `+don clan`
+        • `+trophies clan` (primary)
+        • `+trophy clan`
+        • `+troph clan`
+        • `+trop clan`
 
         By default, you shouldn't need to call these sub-commands as the bot will
         parse your argument and direct it to the correct sub-command automatically.
         """
-        query = """SELECT player_tag, donations, received, user_id 
+        query = """SELECT player_tag, trophies, user_id 
                     FROM players 
                     WHERE player_tag=ANY($1::TEXT[])
                     AND season_id=$2
-                    ORDER BY donations DESC
+                    ORDER BY trophies DESC
                 """
         tags = []
         for n in clans:
@@ -200,12 +208,132 @@ class Trophies(commands.Cog):
                                   )
 
         page_count = math.ceil(len(fetch) / 20)
-        title = f"Donations for {', '.join(f'{c.name}' for c in clans)}"
+        title = f"Trophies for {', '.join(f'{c.name}' for c in clans)}"
 
         p = formatters.BoardPaginator(ctx, data=fetch, title=title, page_count=page_count)
 
         await p.paginate()
 
+    @trophies.command(name='attacks', hidden=True)
+    async def trophies_attacks(self, ctx):
+        """Get top trophies gained across all clans.
+
+            Example
+            ------------
+            • `+trophies attacks`
+
+            Aliases
+            -----------
+            • `+trophies attacks` (primary)
+            • `+trophy attacks`
+            • `+troph attacks`
+            • `+trop attacks`
+
+            By default, you shouldn't need to call these sub-commands as the bot will
+            parse your argument and direct it to the correct sub-command automatically.
+            """
+        query = """SELECT clan_tag
+                    FROM clans
+                    WHERE guild_id = $1
+                """
+        tags = []
+        clans = await ctx.db.fetch(query, ctx.guild.id)
+        for n in clans:
+            tags.extend(x.tag for x in n.itermembers)
+        query = """SELECT player_tag, end_attacks - start_attacks as attacks, user_id 
+                    FROM players p
+                    INNER JOIN clans c ON 
+                    WHERE player_tag=ANY($1::TEXT[])
+                    AND season_id=$2
+                    ORDER BY attacks DESC
+                """
+        fetch = await ctx.db.fetch(query, tags, await self.bot.seasonconfig.get_season_id())
+
+        if not fetch:
+            return await ctx.send(f"No players claimed for clans "
+                                  f"`{', '.join(f'{c.name} ({c.tag})' for c in clans)}`"
+                                  )
+
+        page_count = math.ceil(len(fetch) / 20)
+        title = f"Attack wins for {', '.join(f'{c.name}' for c in clans)}"
+
+        p = formatters.BoardPaginator(ctx, data=fetch, title=title, page_count=page_count)
+
+        await p.paginate()
+
+    @trophies.command(name='defenses', aliases=['defences'], hidden=True)
+    async def trophies_defenses(self, ctx):
+        """Get top trophies gained across all clans.
+
+            Example
+            ------------
+            • `+trophies defenses`
+
+            Aliases
+            -----------
+            • `+trophies defenses` (primary)
+            • `+trophy defenses`
+            • `+troph defenses`
+            • `+trop defenses`
+
+            By default, you shouldn't need to call these sub-commands as the bot will
+            parse your argument and direct it to the correct sub-command automatically.
+            """
+        query = """SELECT clan_tag
+                    FROM clans
+                    WHERE guild_id = $1
+                """
+        tags = []
+        clans = await ctx.db.fetch(query, ctx.guild.id)
+        for n in clans:
+            tags.extend(x.tag for x in n.itermembers)
+        query = """SELECT player_tag, end_defenses - start_defenses as defenses, user_id 
+                    FROM players p
+                    INNER JOIN clans c ON 
+                    WHERE player_tag=ANY($1::TEXT[])
+                    AND season_id=$2
+                    ORDER BY defenses DESC
+                """
+        fetch = await ctx.db.fetch(query, tags, await self.bot.seasonconfig.get_season_id())
+
+        if not fetch:
+            return await ctx.send(f"No players claimed for clans "
+                                  f"`{', '.join(f'{c.name} ({c.tag})' for c in clans)}`"
+                                  )
+
+        page_count = math.ceil(len(fetch) / 20)
+        title = f"Defense wins for {', '.join(f'{c.name}' for c in clans)}"
+
+        p = formatters.BoardPaginator(ctx, data=fetch, title=title, page_count=page_count)
+
+        await p.paginate()
+
+    @trophies.command(name='gain', hidden=True)
+    async def trophies_gain(self, ctx):
+        """Get top trophies gained across all clans.
+
+            Example
+            ------------
+            • `+trophies gain`
+
+            Aliases
+            -----------
+            • `+trophies gain` (primary)
+            • `+trophy gain`
+            • `+troph gain`
+            • `+trop gain`
+
+            By default, you shouldn't need to call these sub-commands as the bot will
+            parse your argument and direct it to the correct sub-command automatically.
+            """
+        # TODO Unfinished: not sure how to calculate gains
+        query = """SELECT player_tag, trophies, user_id 
+                            FROM players 
+                            WHERE player_tag=ANY($1::TEXT[])
+                            AND season_id=$2
+                            ORDER BY trophies DESC
+                        """
+
 
 def setup(bot):
-    bot.add_cog(Donations(bot))
+    bot.add_cog(Trophies(bot))
