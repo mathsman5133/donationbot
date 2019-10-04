@@ -58,11 +58,32 @@ def setup_logging(bot):
             self.handle(record)
 
     discord_hndlr = DiscordHandler()
-    print(discord_hndlr)
     discord_hndlr.setLevel(logging.DEBUG)
     log.addHandler(discord_hndlr)
 
 
-
+def add_hooks(bot):
+    bot.error_webhook = discord.Webhook.partial(id=creds.error_hook_id,
+                                                token=creds.error_hook_token,
+                                                adapter=discord.AsyncWebhookAdapter(
+                                                    session=bot.session)
+                                                )
+    bot.join_log_webhook = discord.Webhook.partial(id=creds.join_log_hook_id,
+                                                   token=creds.join_log_hook_token,
+                                                   adapter=discord.AsyncWebhookAdapter(
+                                                        session=bot.session)
+                                                   )
+    bot.feedback_webhook = discord.Webhook.partial(id=creds.feedback_hook_id,
+                                                   token=creds.feedback_hook_token,
+                                                   adapter=discord.AsyncWebhookAdapter(
+                                                        session=bot.session)
+                                                   )
+    bot.command_webhook = discord.Webhook.partial(id=creds.command_hook_id,
+                                                  token=creds.command_hook_token,
+                                                  adapter=discord.AsyncWebhookAdapter(
+                                                      session=bot.session
+                                                  )
+                                                  )
+    return bot
 
 

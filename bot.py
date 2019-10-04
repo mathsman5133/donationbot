@@ -10,7 +10,7 @@ import textwrap
 
 from discord.ext import commands
 
-from botlog import setup_logging
+from botlog import setup_logging, add_hooks
 from cogs.utils import context
 from cogs.utils.db import Table
 from cogs.utils.error_handler import error_handler, discord_event_error, clash_event_error
@@ -71,21 +71,8 @@ class DonationBot(commands.Bot):
         self.dbl_token = creds.dbl_token
         self.owner_id = 230214242618441728
         self.session = aiohttp.ClientSession(loop=self.loop)
-        self.error_webhook = discord.Webhook.partial(id=creds.error_hook_id,
-                                                     token=creds.error_hook_token,
-                                                     adapter=discord.AsyncWebhookAdapter(
-                                                         session=self.session)
-                                                     )
-        self.join_log_webhook = discord.Webhook.partial(id=creds.join_log_hook_id,
-                                                        token=creds.join_log_hook_token,
-                                                        adapter=discord.AsyncWebhookAdapter(
-                                                            session=self.session)
-                                                        )
-        self.feedback_webhook = discord.Webhook.partial(id=creds.feedback_hook_id,
-                                                        token=creds.feedback_hook_token,
-                                                        adapter=discord.AsyncWebhookAdapter(
-                                                            session=self.session)
-                                                        )
+
+        add_hooks(self)
 
         self.uptime = datetime.datetime.utcnow()
 
@@ -142,9 +129,13 @@ class DonationBot(commands.Bot):
     async def on_resumed(self):
         await self.change_presence(activity=discord.Game('+help for commands'))
 
-    async def get_clans(self, guild_id):
-        query = "SELECT DISTINCT clan_tag FROM clans WHERE guild_id = $1"
-        fetch = await self.pool.fetch(query, guild_id)
+    async def get_clans(self, guild_id, in_event=False):
+        if in_event:
+            query = "SELECT DISTINCT clan_tag FROM clans WHERE guild_id = $1 AND in_event = $2"
+            fetch = await self.pool.fetch(query, guild_id, in_event)
+        else:
+            query = "SELECT DISTINCT clan_tag FROM clans WHERE guild_id = $1"
+            fetch = await self.pool.fetch(query, guild_id)
         return await self.coc.get_clans(n[0].strip() for n in fetch).flatten()
 
 
