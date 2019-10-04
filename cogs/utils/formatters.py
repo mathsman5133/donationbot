@@ -28,7 +28,7 @@ def clean_name(name):
 def readable_time(delta_seconds):
     if delta_seconds < 0:
         ago = True
-        delta_seconds = -delta_seconds
+        delta_seconds = - delta_seconds
     else:
         ago = False
 
@@ -45,8 +45,8 @@ def readable_time(delta_seconds):
 
     fmt = fmt.format(d=days, h=hours, m=minutes, s=seconds)
     if ago:
-        return fmt
-    return f'{fmt} ago'
+        return f'{fmt} ago'
+    return fmt
 
 
 def events_time(delta_seconds):
