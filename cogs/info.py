@@ -11,7 +11,7 @@ from discord.ext import commands, tasks
 from cogs.utils.paginator import Pages
 from cogs.utils.error_handler import error_handler
 from cogs.utils.db_objects import SlimEventConfig
-from cogs.utils.formatters import CLYTable, readable_time
+from cogs.utils.formatters import CLYTable, readable_time, TabularData
 from cogs.utils.emoji_lookup import misc
 from cogs.utils.checks import requires_config
 from datetime import datetime, time
@@ -418,7 +418,7 @@ class Info(commands.Cog, name='\u200bInfo'):
                 """
         fetch = await ctx.db.fetch(query, ctx.guild.id)
 
-        fmt = '\n'.join(f"• {n['clan_name']} ({n['clan_tag']}) --> <#{n['channel_id']}>" for n in fetch)
+        fmt = '\n'.join(f"• {n['clan_name']} ({n['clan_tag']}) --> <#{n['channel_id']}>" for n in fetch) or 'No Clans.'
         e.add_field(name='Clans',
                     value=fmt if len(fmt) < 1024 else f'{fmt[:1000]}...')
 
@@ -554,7 +554,7 @@ class Info(commands.Cog, name='\u200bInfo'):
         fetch = await ctx.db.fetch(query, ctx.guild.id)
 
         e.add_field(name='Participating Clans',
-                    value='\n'.join(f"{misc['online']}{n[1]} ({n[0]})" for n in fetch)
+                    value='\n'.join(f"{misc['online']}{n[1]} ({n[0]})" for n in fetch) or 'None Found.'
                     )
 
         fmt += '\n'.join(data)

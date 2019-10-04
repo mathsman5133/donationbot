@@ -175,5 +175,7 @@ create table events (
     event_name text,
     guild_id bigint,
     channel_id bigint,
-    start_report boolean default false
+    start_report boolean default false,
+    donation_msg bigint default 0,
+    trophy_msg bigint default 0
 )
