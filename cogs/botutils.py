@@ -79,6 +79,7 @@ class Utils(commands.Cog):
                           channel_id
                    FROM events
                    WHERE guild_id = $1
+                   AND CURRENT_TIMESTAMP < finish
                    ORDER BY start DESC;
                 """
         fetch = await self.bot.pool.fetchrow(query, guild_id)

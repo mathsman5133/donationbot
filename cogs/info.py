@@ -10,6 +10,7 @@ import math
 from discord.ext import commands, tasks
 from cogs.utils.paginator import Pages
 from cogs.utils.error_handler import error_handler
+from cogs.utils.db_objects import SlimEventConfig
 from cogs.utils.formatters import CLYTable, readable_time
 from cogs.utils.emoji_lookup import misc
 from cogs.utils.checks import requires_config
@@ -523,35 +524,41 @@ class Info(commands.Cog, name='\u200bInfo'):
     @info.command(name='event')
     @requires_config('event')
     async def info_event(self, ctx):
-        """Gives you info about guild's event.
-        """
+        """Gives you info about guild's event"""
         if not ctx.config:
             return await ctx.send('Please setup an event using `+add event`.')
 
-        now = datetime.utcnow()
+        e = discord.Embed(colour=self.bot.colour)
 
-        fmt = '**Event Information:**\n' \
-              f':name_badge: Name: {ctx.config.event_name}\n' \
-              f':clock1: Starts in {readable_time((ctx.config.start - now).total_seconds())}\n' \
-              f':alarm_clock: Ends in {readable_time((ctx.config.finish - now).total_seconds())}\n'
+        e.set_author(name=f'Event Information: {ctx.config.event_name}')
+
+        now = datetime.utcnow()
+        start_seconds = (ctx.config.start - now).total_seconds()
+        end_seconds = (ctx.config.finish - now).total_seconds()
+
+        fmt = f':name_badge: **Name:** {ctx.config.event_name}\n' \
+              f':id: **Event ID:** {ctx.config.id}\n' \
+              f"{misc['green_clock']} **{'Starts In ' if start_seconds > 0 else 'Started'}:**" \
+              f" {readable_time(start_seconds)}\n" \
+              f":alarm_clock: **{'Ends In' if end_seconds > 0 else 'Ended'}:** {readable_time(end_seconds)}\n"
 
         channel = self.bot.get_channel(ctx.config.channel_id)
         data = []
 
         if channel is None:
-            data.append(f"{misc['number']}Updates Channel: #deleted-channel")
+            data.append(f"{misc['number']}**Updates Channel:** #deleted-channel")
         else:
-            data.append(f"{misc['number']}Updates Channel: {channel.mention}")
+            data.append(f"{misc['number']}**Updates Channel:** {channel.mention}")
 
-        query = "SELECT clan_name, clan_tag FROM clans WHERE guild_id = $1;"
+        query = "SELECT DISTINCT clan_tag, clan_name FROM clans WHERE guild_id = $1 AND in_event=True ORDER BY clan_name;"
         fetch = await ctx.db.fetch(query, ctx.guild.id)
 
-        data.append(f"**Clans:** {', '.join(f'{n[0]} ({n[1]})' for n in fetch)}")
+        e.add_field(name='Participating Clans',
+                    value='\n'.join(f"{misc['online']}{n[1]} ({n[0]})" for n in fetch)
+                    )
 
         fmt += '\n'.join(data)
-
-        e = discord.Embed(colour=self.bot.colour,
-                          description=fmt if len(fmt) < 2048 else f'{fmt[:2040]}...')
+        e.description = fmt
 
         await ctx.send(embed=e)
 

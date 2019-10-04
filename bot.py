@@ -72,7 +72,7 @@ class DonationBot(commands.Bot):
         self.owner_id = 230214242618441728
         self.session = aiohttp.ClientSession(loop=self.loop)
 
-        add_hooks(bot)
+        add_hooks(self)
 
         self.uptime = datetime.datetime.utcnow()
 
@@ -129,9 +129,13 @@ class DonationBot(commands.Bot):
     async def on_resumed(self):
         await self.change_presence(activity=discord.Game('+help for commands'))
 
-    async def get_clans(self, guild_id):
-        query = "SELECT DISTINCT clan_tag FROM clans WHERE guild_id = $1"
-        fetch = await self.pool.fetch(query, guild_id)
+    async def get_clans(self, guild_id, in_event=False):
+        if in_event:
+            query = "SELECT DISTINCT clan_tag FROM clans WHERE guild_id = $1 AND in_event = $2"
+            fetch = await self.pool.fetch(query, guild_id, in_event)
+        else:
+            query = "SELECT DISTINCT clan_tag FROM clans WHERE guild_id = $1"
+            fetch = await self.pool.fetch(query, guild_id)
         return await self.coc.get_clans(n[0].strip() for n in fetch).flatten()
 
 
