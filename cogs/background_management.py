@@ -8,6 +8,7 @@ from discord.ext import commands, tasks
 
 from cogs.utils.db_objects import SlimEventConfig
 from cogs.utils.formatters import readable_time
+from cogs.utils.emoji_lookup import misc
 
 log = logging.getLogger(__name__)
 
@@ -90,8 +91,6 @@ class BackgroundManagement(commands.Cog):
     async def insert_member(con, player, event_id):
         query = """INSERT INTO eventplayers (
                                     player_tag,
-                                    donations,
-                                    received,
                                     trophies,
                                     event_id,
                                     start_friend_in_need,
@@ -100,16 +99,15 @@ class BackgroundManagement(commands.Cog):
                                     start_defenses,
                                     start_trophies,
                                     start_best_trophies,
-                                    start_update
+                                    start_update,
+                                    live
                                     )
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, True)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, True, True)
                     ON CONFLICT (player_tag, event_id)
-                    DO NOTHING
+                    DO NOTHING;
                 """
         await con.execute(query,
                           player.tag,
-                          player.donations,
-                          player.received,
                           player.trophies,
                           event_id,
                           player.achievements_dict['Friend in Need'].value,
@@ -122,15 +120,17 @@ class BackgroundManagement(commands.Cog):
 
     @staticmethod
     async def finalise_member(con, player, event_id):
-        query = """UPDATE eventplayers SET 
-                                end_friend_in_need = $1,
-                                end_sharing_is_caring = $2,
-                                end_attacks = $3,
-                                end_defenses = $4,
-                                end_best_trophies = $5
-                                WHERE player_tag = $6
-                                AND event_id = $7
-                    """
+        query = """UPDATE eventplayers 
+                   SET end_friend_in_need = $1,
+                       end_sharing_is_caring = $2,
+                       end_attacks = $3,
+                       end_defenses = $4,
+                       end_best_trophies = $5,
+                       live = False,
+                       final_update = True
+                   WHERE player_tag = $6
+                   AND event_id = $7
+                """
         await con.execute(query,
                           player.achievements_dict['Friend in Need'].value,
                           player.achievements_dict['Sharing is caring'].value,
@@ -144,7 +144,7 @@ class BackgroundManagement(commands.Cog):
     @staticmethod
     async def safe_send(channel, msg):
         try:
-            await channel.send(msg)
+            return await channel.send(msg)
         except (discord.HTTPException, discord.NotFound, AttributeError):
             log.error(f'Tried to send event info to {channel} but was rejected. Please inform them.')
 
@@ -166,12 +166,51 @@ class BackgroundManagement(commands.Cog):
 
         donationboard_config = await self.bot.utils.get_board_config(guild_id, 'donation')
         await self.bot.donationboard.update_board(donationboard_config.channel_id)
+        await self.new_event_message(event, donationboard_config.channel_id, 'donation')
 
         trophyboard_config = await self.bot.utils.get_board_config(guild_id, 'trophy')
         await self.bot.donationboard.update_board(trophyboard_config.channel_id)
+        await self.new_event_message(event, trophyboard_config.channel_id, 'trophy')
 
         await self.safe_send(channel, f'Boards have been updated. Enjoy your event! '
                                       f'It ends in {readable_time((event.finish - datetime.datetime.utcnow()).total_seconds())}.')
+        return True
+
+    async def new_event_message(self, event, channel_id, board_type):
+        event_channel = self.bot.get_channel(event.channel_id)
+        if board_type == 'donation':
+            colour = discord.Colour.gold()
+        else:
+            colour = discord.Colour.purple()
+
+        e = discord.Embed(colour=colour)
+
+        fmt = f':name_badge:**Name:** {event.event_name}\n' \
+            f':id:**ID:** {event.id}\n' \
+            f"{misc['green_clock']}**Started (UTC):**{event.start:%Y-%m-%d %H:%M:%S%z}\n" \
+            f":alarm_clock:**Finishes (UTC):**{event.finish:%Y-%m-%d %H:%M:%S%z}\n" \
+            f"{misc['number']}**Updates Channel:**{event_channel.mention}"
+        e.description = fmt
+
+        query = "SELECT DISTINCT clan_tag, clan_name FROM clans " \
+                "WHERE guild_id = $1 AND in_event=True ORDER BY clan_name;"
+        fetch = await self.bot.pool.fetch(query, event.guild_id)
+
+        e.add_field(name='Participating Clans',
+                    value='\n'.join(f"{misc['online']}{n[1]} ({n[0]})" for n in fetch)
+                    )
+        board_channel = self.bot.get_channel(channel_id)
+        e.set_footer(text='Event Ends').timestamp = event.finish
+        try:
+            msg = await board_channel.send(embed=e)
+        except (AttributeError, discord.NotFound, discord.HTTPException):
+            log.error(f'Tried to update {board_type}board for event {event.event_name} '
+                      f'({event.id}) but couldn\'t find the channel. '
+                      f'Please let them know! Guild ID {event.guild_id}, Channel ID {channel_id}')
+            return
+
+        query = f"UPDATE events SET {board_type}_msg = $1 WHERE id = $2"
+        await self.bot.pool.execute(query, msg.id, event.id)
 
     async def on_event_finish(self, event, guild_id):
         channel = self.bot.get_channel(event.channel_id)
@@ -189,14 +228,24 @@ class BackgroundManagement(commands.Cog):
 
         donationboard_config = await self.bot.utils.get_board_config(guild_id, 'donation')
         await self.bot.donationboard.update_board(donationboard_config.channel_id)
+        await self.remove_event_msg(event.id, donationboard_config.channel, 'donation')
 
         trophyboard_config = await self.bot.utils.get_board_config(guild_id, 'trophy')
         await self.bot.donationboard.update_board(trophyboard_config.channel_id)
+        await self.remove_event_msg(event.id, trophyboard_config.channel, 'trophy')
 
         # todo: crunch some numbers.
         await self.safe_send(channel, f'Boards have been updated. I will cruch some more numbers and '
                                       f'get back to you later when the owner has fixed this, lol.')
 
+    async def remove_event_msg(self, event_id, channel, board_type):
+        query = f"SELECT {board_type}_msg FROM events WHERE id=$1"
+        fetch = await self.bot.db.fetch(query, event_id)
+        if not fetch:
+            return
+        msg = await self.bot.utils.get_message(channel, fetch[0])
+        if msg:
+            return await msg.delete()
 
     @commands.Cog.listener()
     async def on_guild_join(self, guild):

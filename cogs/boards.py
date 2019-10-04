@@ -100,7 +100,7 @@ class DonationBoard(commands.Cog):
 
         query2 = """UPDATE eventplayers SET donations = eventplayers.donations + x.donations, 
                                             received  = eventplayers.received  + x.received,
-                                            trophies  = eventplayers.trophies  + x.trophies   
+                                            trophies  = x.trophies   
                         FROM(
                             SELECT x.player_tag, x.donations, x.received, x.trophies
                             FROM jsonb_to_recordset($1::jsonb)
@@ -382,7 +382,7 @@ class DonationBoard(commands.Cog):
             render = get_render_type(config, table)
             fmt = render()
 
-            e = discord.Embed(colour=self.get_colour(config.type),
+            e = discord.Embed(colour=self.get_colour(config.type, config.in_event),
                               description=fmt,
                               timestamp=datetime.utcnow()
                               )
@@ -394,9 +394,13 @@ class DonationBoard(commands.Cog):
             await v.edit(embed=e, content=None)
 
     @staticmethod
-    def get_colour(board_type):
+    def get_colour(board_type, in_event):
         if board_type == 'donation':
+            if in_event:
+                return discord.Colour.gold()
             return discord.Colour.blue()
+        if in_event:
+            return discord.Colour.purple()
         return discord.Colour.green()
 
     @commands.command(hidden=True)
