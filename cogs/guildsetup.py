@@ -1357,6 +1357,38 @@ class GuildConfiguration(commands.Cog, name='Server Setup'):
         await ctx.send(f'Logs for {ctx.config.channel.mention} have been changed to {minutes} minutes. '
                        'Find which clans this affects with `+help info donationlog`')
 
+    @edit_donationlog.command(name='toggle')
+    @requires_config('donationlog', invalidate=True)
+    @manage_guild()
+    async def edit_donationlog_toggle(self, ctx):
+        """Toggle the donation log on and off.
+
+        **Format**
+        :information_source: `+edit donationlog toggle`
+
+        **Example**
+        :white_check_mark: `+edit donationlog toggle`
+
+        **Required Permissions**
+        :warning: Manage Server
+        """
+        if not ctx.config:
+            return await ctx.send('Oops! It doesn\'t look like a donationlog is setup here. '
+                                  'Try `+info log` to find where the registered channels are!')
+
+        query = """UPDATE logs
+                   SET toggle = NOT toggle
+                   WHERE channel_id=$1
+                   AND type = $2
+                   RETURNING toggle
+                """
+        toggle = await ctx.db.execute(query, ctx.config.channel_id, 'donation')
+        if toggle:
+            condition = 'off'
+        else:
+            condition = 'on'
+        await ctx.send(f'Logs for {ctx.config.channel.mention} have been turned {condition}.')
+
     @edit.group(name='trophylog')
     @checks.manage_guild()
     async def edit_trophylog(self, ctx):
@@ -1396,8 +1428,41 @@ class GuildConfiguration(commands.Cog, name='Server Setup'):
         await ctx.send(f'Logs for {ctx.config.channel.mention} have been changed to {minutes} minutes. '
                        'Find which clans this affects with `+help info trophylog`')
 
+    @edit_trophylog.command(name='toggle')
+    @requires_config('trophylog', invalidate=True)
+    @manage_guild()
+    async def edit_trophylog_toggle(self, ctx):
+        """Toggle the trophy log on and off.
+
+        **Format**
+        :information_source: `+edit trophylog toggle`
+
+        **Example**
+        :white_check_mark: `+edit trophylog toggle`
+
+        **Required Permissions**
+        :warning: Manage Server
+        """
+        if not ctx.config:
+            return await ctx.send('Oops! It doesn\'t look like a trophylog is setup here. '
+                                  'Try `+info log` to find where the registered channels are!')
+
+        query = """UPDATE logs
+                   SET toggle = NOT toggle
+                   WHERE channel_id=$1
+                   AND type = $2
+                   RETURNING toggle
+                """
+        toggle = await ctx.db.execute(query, ctx.config.channel_id, 'trophy')
+        if toggle:
+            condition = 'off'
+        else:
+            condition = 'on'
+        await ctx.send(f'Logs for {ctx.config.channel.mention} have been turned {condition}.')
+
     @edit.command(name='event')
     @manage_guild()
+    @requires_config('event', invalidate=True)
     async def edit_event(self, ctx, *, event_name: str = None):
         """Edit a variety of settings for the current event.
 
