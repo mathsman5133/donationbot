@@ -10,7 +10,7 @@ import textwrap
 
 from discord.ext import commands
 
-from botlog import setup_logging
+from botlog import setup_logging, add_hooks
 from cogs.utils import context
 from cogs.utils.db import Table
 from cogs.utils.error_handler import error_handler, discord_event_error, clash_event_error
@@ -71,21 +71,8 @@ class DonationBot(commands.Bot):
         self.dbl_token = creds.dbl_token
         self.owner_id = 230214242618441728
         self.session = aiohttp.ClientSession(loop=self.loop)
-        self.error_webhook = discord.Webhook.partial(id=creds.error_hook_id,
-                                                     token=creds.error_hook_token,
-                                                     adapter=discord.AsyncWebhookAdapter(
-                                                         session=self.session)
-                                                     )
-        self.join_log_webhook = discord.Webhook.partial(id=creds.join_log_hook_id,
-                                                        token=creds.join_log_hook_token,
-                                                        adapter=discord.AsyncWebhookAdapter(
-                                                            session=self.session)
-                                                        )
-        self.feedback_webhook = discord.Webhook.partial(id=creds.feedback_hook_id,
-                                                        token=creds.feedback_hook_token,
-                                                        adapter=discord.AsyncWebhookAdapter(
-                                                            session=self.session)
-                                                        )
+
+        add_hooks(bot)
 
         self.uptime = datetime.datetime.utcnow()
 
