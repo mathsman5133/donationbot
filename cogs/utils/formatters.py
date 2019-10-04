@@ -13,9 +13,14 @@ def get_render_type(config, table):
     else:
         if config.render == 1:
             render = table.trophyboard_1
-        else:
+        elif config.render == 2:
             render = table.trophyboard_2
-
+        elif config.render == 3:
+            render = table.trophyboard_attacks
+        elif config.render == 4:
+            render = table.trophyboard_defenses
+        else:
+            render = table.trophyboard_gain
     return render
 
 
@@ -198,6 +203,30 @@ class CLYTable:
             fmt += f"{index}`⠀{str(v[1]):\u00A0>4.4}⠀` ` {str(v[2]):\u00A0<18.18}⠀`\n"
         return fmt
 
+    def trophyboard_attacks(self):
+        fmt = f"{misc['number']}`⠀{'Attacks':\u00A0>4.4}⠀` ` {'Cups':\u00A0>4.4} ` `⠀{'Name':\u00A0<10.10}⠀`\n"
+        for v in self._rows:
+            index = int(v[0]) + 1
+            index = number_emojis[index] if index <= 100 else misc['idle']
+            fmt += f"{index}`⠀{str(v[1]):\u00A0>4.4}⠀` ` {str(v[2]):\u00A0>4.4} ` `⠀{str(v[3]):\u00A0<10.10}⠀`\n"
+        return fmt
+
+    def trophyboard_defenses(self):
+        fmt = f"{misc['number']}`⠀{'Defenses':\u00A0>4.4}⠀` ` {'Cups':\u00A0>4.4} ` `⠀{'Name':\u00A0<10.10}⠀`\n"
+        for v in self._rows:
+            index = int(v[0]) + 1
+            index = number_emojis[index] if index <= 100 else misc['idle']
+            fmt += f"{index}`⠀{str(v[1]):\u00A0>4.4}⠀` ` {str(v[2]):\u00A0>4.4} ` `⠀{str(v[3]):\u00A0<10.10}⠀`\n"
+        return fmt
+
+    def trophyboard_gain(self):
+        fmt = f"{misc['number']}`⠀{'Gain':\u00A0>4.4}⠀` ` {'Cups':\u00A0>4.4} ` `⠀{'Name':\u00A0<10.10}⠀`\n"
+        for v in self._rows:
+            index = int(v[0]) + 1
+            index = number_emojis[index] if index <= 100 else misc['idle']
+            fmt += f"{index}`⠀{str(v[1]):\u00A0>4.4}⠀` ` {str(v[2]):\u00A0>4.4} ` `⠀{str(v[3]):\u00A0<10.10}⠀`\n"
+        return fmt
+
     def events_list(self):
         fmt = f"{misc['number']}` {'Starts In':\u00A0^9}⠀` ` {'Name':\u00A0<15.15}⠀`\n"
         for v in self._rows:
@@ -302,7 +331,6 @@ class BoardPaginator(TablePaginator):
     def create_row(self, player, data):
         player_data = data[player.tag]
 
-        # TODO need to update this to accomodate attacks, trophy gains, defenses OR create new paginators for those
         if self.ctx.config.type == 'donation':
             if self.ctx.config.render == 1:
                 row = [player_data[0], player_data[1]['donations'], player_data[1]['received'], player.name]
@@ -314,6 +342,30 @@ class BoardPaginator(TablePaginator):
             else:
                 row = [player_data[0], player_data[1]['trophies'], player.name]
 
+        self.table.add_row(row)
+
+    async def prepare_entry(self, page):
+        self.table.clear_rows()
+        base = (page - 1) * self.rows_per_table
+        data = self.data[base:base + self.rows_per_table]
+        data_by_tag = {n[1]['player_tag']: n for n in data}
+
+        tags = [n[1]['player_tag'] for n in data]
+        async for player in self.bot.coc.get_players(tags):
+            self.create_row(player, data_by_tag)
+
+        render = get_render_type(self.ctx.config, self.table)
+        return render()
+
+
+class TrophyPaginator(TablePaginator):
+    def __init__(self, ctx, data, title, page_count=1, rows_per_table=20):
+        super().__init__(ctx, data, title=title, page_count=page_count,
+                         rows_per_table=rows_per_table)
+
+    def create_row(self, player, data):
+        player_data = data[player.tag]
+        row = [player_data[0], player_data[1][1], player_data[1][2], player.name]
         self.table.add_row(row)
 
     async def prepare_entry(self, page):
