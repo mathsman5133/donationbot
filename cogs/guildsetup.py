@@ -381,7 +381,7 @@ class GuildConfiguration(commands.Cog, name='Server Setup'):
         e = discord.Embed(colour=discord.Colour.green(),
                           description=fmt)
         await ctx.send(embed=e)
-        await self.bot.dispatch('event_register')
+        self.bot.dispatch('event_register')
 
     @add.command(name="trophyboard")
     @checks.manage_guild()
@@ -563,28 +563,22 @@ class GuildConfiguration(commands.Cog, name='Server Setup'):
             return await ctx.send(f'{channel.mention} has been added as a donationlog channel.\n'
                                   f'Please note that only clans claimed to {channel.mention} will appear in this log.')
 
-        query = """WITH t AS (
-                        SELECT clan_tag,
-                               guild_id,
-                               channel_id,
-                               in_event
-                        FROM clans
-                        WHERE guild_id = $1
-                        )
-                   INSERT INTO clans (
+        query = """INSERT INTO clans (
                             clan_tag, 
                             guild_id, 
                             channel_id, 
                             clan_name, 
                             in_event
                             ) 
-                   VALUES (
-                        t.clan_tag,
-                        t.guild_id,
+                   SELECT 
+                        clan_tag,
+                        guild_id,
                         $2,
-                        t.clan_name,
-                        t.in_event
-                        )
+                        clan_name,
+                        in_event
+                        
+                   FROM clans
+                   WHERE guild_id = $1
                    ON CONFLICT (channel_id, clan_tag)
                    DO NOTHING;
                 """
@@ -648,13 +642,13 @@ class GuildConfiguration(commands.Cog, name='Server Setup'):
                             clan_name, 
                             in_event
                             ) 
-                   SELECT (
+                   SELECT 
                         clan_tag,
                         guild_id,
                         $2,
                         clan_name,
                         in_event
-                        )
+                        
                    FROM clans
                    WHERE guild_id = $1
                    ON CONFLICT (channel_id, clan_tag)
@@ -993,7 +987,7 @@ class GuildConfiguration(commands.Cog, name='Server Setup'):
         await ctx.db.execute(query, fetch[index]['id'])
         await msg.delete()
         ctx.bot.utils.event_config.invalidate(ctx.bot.utils, ctx.guild.id)
-        await self.bot.dispatch('event_register')
+        self.bot.dispatch('event_register')
         return await ctx.send(f"{fetch[index]['event_name']} has been removed.")
 
     @commands.command()
@@ -1657,7 +1651,7 @@ class GuildConfiguration(commands.Cog, name='Server Setup'):
             e = discord.Embed(colour=discord.Colour.green(),
                               description=fmt)
             await ctx.send(embed=e)
-            await self.bot.dispatch('event_register')
+            self.bot.dispatch('event_register')
 
     @commands.command()
     @checks.manage_guild()
