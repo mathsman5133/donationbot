@@ -191,7 +191,9 @@ class BackgroundManagement(commands.Cog):
             f':id:**ID:** {event.id}\n' \
             f"{misc['green_clock']}**Started (UTC):**{event.start:%Y-%m-%d %H:%M:%S%z}\n" \
             f":alarm_clock:**Finishes (UTC):**{event.finish:%Y-%m-%d %H:%M:%S%z}\n" \
-            f"{misc['number']}**Updates Channel:**{event_channel.mention}"
+            f"{misc['number']}**Updates Channel:**{event_channel.mention}\n\n" \
+            f"The board will only show changes (donations, received, trophies etc.) " \
+            f"that are made **during** the event times above."
         e.description = fmt
 
         query = "SELECT DISTINCT clan_tag, clan_name FROM clans " \
