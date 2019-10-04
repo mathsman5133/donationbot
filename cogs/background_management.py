@@ -47,10 +47,10 @@ class BackgroundManagement(commands.Cog):
         slim_config = SlimEventConfig(event['id'], event['start'], event['finish'], event['event_name'], event['channel_id'])
 
         if event['until_start'].total_seconds() < 0:
-            await self.on_event_start(slim_config, event['guild_id'], event['until_start'])
+            await self.on_event_start(slim_config, event['guild_id'])
 
         await asyncio.sleep(event['until_start'].total_seconds())
-        await self.on_event_start(slim_config, event['guild_id'], event['until_start'])
+        await self.on_event_start(slim_config, event['guild_id'])
 
         query = "UPDATE events SET start_report = True WHERE id = $1"
         await self.bot.pool.execute(query, event['id'])
@@ -76,10 +76,10 @@ class BackgroundManagement(commands.Cog):
         slim_config = SlimEventConfig(event['id'], event['start'], event['finish'], event['event_name'], event['channel_id'])
 
         if event['until_start'].total_seconds() < 0:
-            await self.on_event_start(slim_config, event['guild_id'], event['until_finish'])
+            await self.on_event_start(slim_config, event['guild_id'])
 
         await asyncio.sleep(event['until_finish'].total_seconds())
-        await self.on_event_start(slim_config, event['guild_id'], event['until_finish'])
+        await self.on_event_start(slim_config, event['guild_id'])
 
     @commands.Cog.listener()
     async def on_event_register(self):
@@ -148,7 +148,7 @@ class BackgroundManagement(commands.Cog):
         except (discord.HTTPException, discord.NotFound, AttributeError):
             log.error(f'Tried to send event info to {channel} but was rejected. Please inform them.')
 
-    async def on_event_start(self, event, guild_id, delta_to_go):
+    async def on_event_start(self, event, guild_id):
         log.info(f'Starting {event.event_name} ({event.id}) '
                  f'in channel ID {event.channel_id}, for guild {guild_id}.')
         channel = self.bot.get_channel(event.channel_id)
@@ -171,9 +171,9 @@ class BackgroundManagement(commands.Cog):
         await self.bot.donationboard.update_board(trophyboard_config.channel_id)
 
         await self.safe_send(channel, f'Boards have been updated. Enjoy your event! '
-                                      f'It ends in {readable_time(delta_to_go.total_seconds())}.')
+                                      f'It ends in {readable_time((event.finish - datetime.datetime.utcnow()).total_seconds())}.')
 
-    async def on_event_finish(self, event, guild_id, delta_ago):
+    async def on_event_finish(self, event, guild_id):
         channel = self.bot.get_channel(event.channel_id)
         await self.safe_send(channel, ':tada: Aaaand thats it! The event has finished. I am crunching the numbers, '
                                       'working out who the champs and chumps are, and will get back to you shortly.')
