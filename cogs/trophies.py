@@ -3,12 +3,15 @@ import discord
 import math
 import typing
 
+from collections import namedtuple
 from discord.ext import commands
 from datetime import datetime
 from cogs.utils import formatters
 from cogs.utils.checks import requires_config
 from cogs.utils.converters import ClanConverter, PlayerConverter
 from cogs.utils.db_objects import SlimDummyBoardConfig
+
+DummyRender = namedtuple('DummyRender', 'render type icon_url')
 
 
 class Trophies(commands.Cog):
@@ -17,7 +20,15 @@ class Trophies(commands.Cog):
         self.bot = bot
 
     async def cog_before_invoke(self, ctx):
-        ctx.config = SlimDummyBoardConfig('trophy', 1, 'Top Trophies', None)
+        if hasattr(ctx, 'before_invoke'):
+            await ctx.before_invoke(ctx)
+        else:
+            ctx.config = SlimDummyBoardConfig('trophy', 1, 'Top Trophies', None)
+
+    async def cog_after_invoke(self, ctx):
+        after_invoke = getattr(ctx, 'after_invoke', None)
+        if after_invoke:
+            await after_invoke(ctx)
 
     @commands.group(name='trophies', aliases=['troph'],  invoke_without_command=True)
     async def trophies(self, ctx, *,
@@ -183,8 +194,8 @@ class Trophies(commands.Cog):
 
         await p.paginate()
 
-    @trophies.command(name='attacks', hidden=True)
-    @requires_config('event', invalidate=True)
+    @trophies.command(name='attacks')
+    @requires_config('event')
     async def trophies_attacks(self, ctx):
         """Get attack wins for all clans.
 
@@ -194,7 +205,10 @@ class Trophies(commands.Cog):
            **Example**
            :white_check_mark: `+trophies attacks`
         """
-        in_event = ctx.config.start < datetime.utcnow() < ctx.config.finish
+        if not ctx.config:
+            in_event = False
+        else:
+            in_event = ctx.config.start < datetime.utcnow() < ctx.config.finish
         if in_event:
             query = """SELECT player_tag, end_attacks - start_attacks as attacks, trophies, user_id 
                         FROM eventplayers p 
@@ -225,7 +239,8 @@ class Trophies(commands.Cog):
             title = f"Attack wins for {', '.join(f'{c.name}' for c in clans)}"
 
         page_count = math.ceil(len(fetch) / 20)
-        ctx.config.render = 3
+
+        ctx.config = DummyRender(3, None, None)
         p = formatters.TrophyPaginator(ctx, data=fetch, title=title, page_count=page_count)
 
         await p.paginate()

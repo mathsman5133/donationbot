@@ -5,7 +5,7 @@ from cogs.utils.emoji_lookup import number_emojis, misc
 
 
 def get_render_type(config, table):
-    if config.type == 'donation':
+    if getattr(config, 'type', None) == 'donation':
         if config.render == 1:
             render = table.donationboard_1
         else:
