@@ -1384,9 +1384,9 @@ class GuildConfiguration(commands.Cog, name='Server Setup'):
                 """
         toggle = await ctx.db.execute(query, ctx.config.channel_id, 'donation')
         if toggle:
-            condition = 'off'
-        else:
             condition = 'on'
+        else:
+            condition = 'off'
         await ctx.send(f'Logs for {ctx.config.channel.mention} have been turned {condition}.')
 
     @edit.group(name='trophylog')
@@ -1455,9 +1455,9 @@ class GuildConfiguration(commands.Cog, name='Server Setup'):
                 """
         toggle = await ctx.db.execute(query, ctx.config.channel_id, 'trophy')
         if toggle:
-            condition = 'off'
-        else:
             condition = 'on'
+        else:
+            condition = 'off'
         await ctx.send(f'Logs for {ctx.config.channel.mention} have been turned {condition}.')
 
     @edit.command(name='event')

@@ -562,6 +562,25 @@ class Info(commands.Cog, name='\u200bInfo'):
 
         await ctx.send(embed=e)
 
+    @info.command(name='season')
+    async def info_season(self, ctx):
+        """Get Season IDs and start/finish times and info."""
+        query = "SELECT id, start, finish FROM seasons ORDER BY id DESC"
+        fetch = await ctx.db.fetch(query)
+        table = TabularData()
+        table.set_columns(['ID', 'Start', 'Finish'])
+        for n in fetch:
+            table.add_row([n[0], n[1].strftime('%d-%b-%Y'), n[2].strftime('%d-%b-%Y')])
+
+        e = discord.Embed(colour=self.bot.colour,
+                          description=f'```\n{table.render()}\n```',
+                          title='Season Info',
+                          timestamp=datetime.utcnow()
+                          )
+        e.add_field(name='Current Season',
+                    value=readable_time((fetch[0][2] - datetime.utcnow()).total_seconds())[:-4] + ' left',
+                    inline=False)
+        await ctx.send(embed=e)
 
 def setup(bot):
     if not hasattr(bot, 'command_stats'):
