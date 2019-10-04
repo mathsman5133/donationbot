@@ -185,6 +185,8 @@ class BackgroundManagement(commands.Cog):
 
         e = discord.Embed(colour=colour)
 
+        e.set_author(name='Event in Progress!')
+
         fmt = f':name_badge:**Name:** {event.event_name}\n' \
             f':id:**ID:** {event.id}\n' \
             f"{misc['green_clock']}**Started (UTC):**{event.start:%Y-%m-%d %H:%M:%S%z}\n" \
@@ -240,7 +242,7 @@ class BackgroundManagement(commands.Cog):
 
     async def remove_event_msg(self, event_id, channel, board_type):
         query = f"SELECT {board_type}_msg FROM events WHERE id=$1"
-        fetch = await self.bot.db.fetch(query, event_id)
+        fetch = await self.bot.pool.fetch(query, event_id)
         if not fetch:
             return
         msg = await self.bot.utils.get_message(channel, fetch[0])
