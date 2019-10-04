@@ -189,8 +189,8 @@ class BackgroundManagement(commands.Cog):
 
         fmt = f':name_badge:**Name:** {event.event_name}\n' \
             f':id:**ID:** {event.id}\n' \
-            f"{misc['green_clock']}**Started (UTC):**{event.start:%Y-%m-%d %H:%M:%S%z}\n" \
-            f":alarm_clock:**Finishes (UTC):**{event.finish:%Y-%m-%d %H:%M:%S%z}\n" \
+            f"{misc['green_clock']}**Started (UTC):** {event.start:%Y-%m-%d %H:%M}\n" \
+            f":alarm_clock:**Finishes (UTC):** {event.finish:%Y-%m-%d %H:%M}\n" \
             f"{misc['number']}**Updates Channel:**{event_channel.mention}\n\n" \
             f"The board will only show changes (donations, received, trophies etc.) " \
             f"that are made **during** the event times above."
@@ -244,7 +244,7 @@ class BackgroundManagement(commands.Cog):
 
     async def remove_event_msg(self, event_id, channel, board_type):
         query = f"SELECT {board_type}_msg FROM events WHERE id=$1"
-        fetch = await self.bot.pool.fetch(query, event_id)
+        fetch = await self.bot.pool.fetchrow(query, event_id)
         if not fetch:
             return
         msg = await self.bot.utils.get_message(channel, fetch[0])
