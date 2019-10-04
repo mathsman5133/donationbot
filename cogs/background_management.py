@@ -166,17 +166,17 @@ class BackgroundManagement(commands.Cog):
 
         donationboard_config = await self.bot.utils.get_board_config(guild_id, 'donation')
         await self.bot.donationboard.update_board(donationboard_config.channel_id)
-        await self.new_event_message(event, donationboard_config.channel_id, 'donation')
+        await self.new_event_message(event, guild_id, donationboard_config.channel_id, 'donation')
 
         trophyboard_config = await self.bot.utils.get_board_config(guild_id, 'trophy')
         await self.bot.donationboard.update_board(trophyboard_config.channel_id)
-        await self.new_event_message(event, trophyboard_config.channel_id, 'trophy')
+        await self.new_event_message(event, guild_id, trophyboard_config.channel_id, 'trophy')
 
         await self.safe_send(channel, f'Boards have been updated. Enjoy your event! '
                                       f'It ends in {readable_time((event.finish - datetime.datetime.utcnow()).total_seconds())}.')
         return True
 
-    async def new_event_message(self, event, channel_id, board_type):
+    async def new_event_message(self, event, guild_id, channel_id, board_type):
         event_channel = self.bot.get_channel(event.channel_id)
         if board_type == 'donation':
             colour = discord.Colour.gold()
@@ -194,7 +194,7 @@ class BackgroundManagement(commands.Cog):
 
         query = "SELECT DISTINCT clan_tag, clan_name FROM clans " \
                 "WHERE guild_id = $1 AND in_event=True ORDER BY clan_name;"
-        fetch = await self.bot.pool.fetch(query, event.guild_id)
+        fetch = await self.bot.pool.fetch(query, guild_id)
 
         e.add_field(name='Participating Clans',
                     value='\n'.join(f"{misc['online']}{n[1]} ({n[0]})" for n in fetch)
@@ -206,7 +206,7 @@ class BackgroundManagement(commands.Cog):
         except (AttributeError, discord.NotFound, discord.HTTPException):
             log.error(f'Tried to update {board_type}board for event {event.event_name} '
                       f'({event.id}) but couldn\'t find the channel. '
-                      f'Please let them know! Guild ID {event.guild_id}, Channel ID {channel_id}')
+                      f'Please let them know! Guild ID {guild_id}, Channel ID {channel_id}')
             return
 
         query = f"UPDATE events SET {board_type}_msg = $1 WHERE id = $2"
