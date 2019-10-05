@@ -1139,6 +1139,8 @@ class GuildConfiguration(commands.Cog, name='Server Setup'):
             if not attachments:
                 return await ctx.send('You must pass in a url or upload an attachment.')
             url = attachments[0].url
+        if url == 'https://catsareus/thecrazycatbot/123.jpg':
+            return await ctx.send('Uh oh! That\'s an example URL - it doesn\'t work!')
 
         query = "UPDATE boards SET icon_url = $1 WHERE channel_id = $2"
         await ctx.db.execute(query, url, ctx.config.channel_id)
@@ -1288,6 +1290,8 @@ class GuildConfiguration(commands.Cog, name='Server Setup'):
             if not attachments:
                 return await ctx.send('You must pass in a url or upload an attachment.')
             url = attachments[0].url
+        if url == 'https://catsareus/thecrazycatbot/123.jpg':
+            return await ctx.send('Uh oh! That\'s an example URL - it doesn\'t work!')
 
         query = "UPDATE boards SET icon_url = $1 WHERE channel_id = $2"
         await ctx.db.execute(query, url, ctx.config.channel_id)
