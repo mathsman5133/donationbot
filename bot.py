@@ -6,7 +6,6 @@ import discord
 import aiohttp
 import traceback
 import creds
-import textwrap
 
 from discord.ext import commands
 
@@ -14,37 +13,15 @@ from botlog import setup_logging, add_hooks
 from cogs.utils import context
 from cogs.utils.db import Table
 from cogs.utils.error_handler import error_handler, discord_event_error, clash_event_error
-from cogs.utils.paginator import CannotPaginate
-from cogs.utils.emoji_lookup import misc
-from cogs.utils.cache import cache, COCCustomCache
 
 
-class CustomCOC(coc.EventsClient):
-    def __init__(self, **options):
-        super().__init__(**options)
-        self.redis = self.loop.run_until_complete(aioredis.create_redis('redis://localhost'))
-
-    async def on_client_close(self):
-        self.redis.close()
-        await self.redis.wait_closed()
-
-    async def on_event_error(self, event_name, exception, *args, **kwargs):
-        await clash_event_error(self, event_name, exception, *args, **kwargs)
-
-
-coc_client = coc.login(creds.email, creds.password, client=coc.EventsClient,
-                       key_names='test', throttle_limit=30, key_count=3)
-
-
-initial_extensions = (
+initial_extensions = [
     'cogs.admin',
     'cogs.aliases',
     'cogs.auto_claim',
     'cogs.background_management',
-    'cogs.boards',
     'cogs.botutils',
     'cogs.deprecated',
-    'cogs.donationlogs',
     'cogs.donations',
     'cogs.events',
     'cogs.guildsetup',
@@ -52,14 +29,33 @@ initial_extensions = (
     'cogs.reset_season',
     'cogs.seasonstats',
     'cogs.trophies',
-    'cogs.trophylog'
-)
+]
+if creds.live:
+    initial_extensions.extend(
+        (
+            'cogs.boards',
+            'cogs.donationlogs',
+            'cogs.trophylog'
+        )
+    )
+    command_prefix = '+'
+    key_names = 'test'
+else:
+    command_prefix = '//'
+    key_names = 'windows'
+
+
+coc_client = coc.login(creds.email, creds.password, client=coc.EventsClient,
+                       key_names=key_names, throttle_limit=30, key_count=3)
+
+coc_client.on_event_error = clash_event_error
+
 description = "A simple discord bot to track donations of clan families in clash of clans."
 
 
 class DonationBot(commands.Bot):
     def __init__(self):
-        super().__init__(command_prefix=commands.when_mentioned_or('+'), case_insensitive=True,
+        super().__init__(command_prefix=commands.when_mentioned_or(command_prefix), case_insensitive=True,
                          description=description, pm_help=None, help_attrs=dict(hidden=True),
                          fetch_offline_members=True)
 
@@ -69,7 +65,7 @@ class DonationBot(commands.Bot):
 
         self.client_id = creds.client_id
         self.dbl_token = creds.dbl_token
-        self.owner_id = 230214242618441728
+        self.owner_ids = {230214242618441728, 251150854571163648}  # maths, tuba
         self.session = aiohttp.ClientSession(loop=self.loop)
 
         add_hooks(self)
