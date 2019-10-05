@@ -108,7 +108,7 @@ class BackgroundManagement(commands.Cog):
             await self.bot.pool.execute(
                 query,
                 player.achievements_dict['Friend in Need'].value,
-                player.achievements_dict['Sharing is Caring'].value,
+                player.achievements_dict['Sharing is caring'].value,
                 player.trophies,
                 player.attack_wins,
                 player.defense_wins,
@@ -168,7 +168,7 @@ class BackgroundManagement(commands.Cog):
                 """
         await con.execute(query,
                           player.achievements_dict['Friend in Need'].value,
-                          player.achievements_dict['Sharing is Caring'].value,
+                          player.achievements_dict['Sharing is caring'].value,
                           player.attack_wins,
                           player.defense_wins,
                           player.best_trophies,
