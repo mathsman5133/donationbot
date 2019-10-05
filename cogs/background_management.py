@@ -3,6 +3,7 @@ import datetime
 import discord
 import logging
 import textwrap
+import time
 
 from discord.ext import commands, tasks
 
@@ -82,6 +83,38 @@ class BackgroundManagement(commands.Cog):
         await asyncio.sleep(event['until_finish'].total_seconds())
         await self.on_event_start(slim_config, event['guild_id'])
 
+    @tasks.loop(hours=1)
+    async def event_player_updater(self):
+        query = "SELECT DISTINCT player_tag FROM events WHERE live = True;"
+        fetch = await self.bot.pool.fetch(query)
+
+        query = """UPDATE eventplayers
+                   SET donations             = $1 + $2 - start_friend_in_need - start_sharing_is_caring,
+                       trophies              = $3,
+                       end_friend_in_need    = $1,
+                       end_sharing_is_caring = $2,
+                       end_attacks           = $4,
+                       end_defenses          = $5,
+                       end_best_trophies     = $6
+                   WHERE player_tag = $7
+                   AND live = True
+                """
+
+        log.info(f'Starting loop for event updates. {len(fetch)} players to update!')
+        start = time.perf_counter()
+        async for player in self.bot.coc.get_players((n[0] for n in fetch), update_cache=False):
+            await self.bot.pool.execute(
+                query,
+                player.achievements_dict['Friend in Need'].value,
+                player.achievements_dict['Sharing is Caring'].value,
+                player.trophies,
+                player.attack_wins,
+                player.defense_wins,
+                player.best_trophies,
+                player.tag
+            )
+        log.info(f'Loop for event updates finished. Took {(start - time.perf_counter())*1000}ms')
+
     @commands.Cog.listener()
     async def on_event_register(self):
         self.next_event_starts.cancel()
@@ -133,7 +166,7 @@ class BackgroundManagement(commands.Cog):
                 """
         await con.execute(query,
                           player.achievements_dict['Friend in Need'].value,
-                          player.achievements_dict['Sharing is caring'].value,
+                          player.achievements_dict['Sharing is Caring'].value,
                           player.attack_wins,
                           player.defense_wins,
                           player.best_trophies,
