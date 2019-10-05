@@ -201,12 +201,14 @@ class BackgroundManagement(commands.Cog):
         await self.bot.pool.execute(query, guild_id)
 
         donationboard_config = await self.bot.utils.get_board_config(guild_id, 'donation')
-        await self.bot.donationboard.update_board(donationboard_config.channel_id)
-        await self.new_event_message(event, guild_id, donationboard_config.channel_id, 'donation')
+        if donationboard_config:
+            await self.bot.donationboard.update_board(donationboard_config.channel_id)
+            await self.new_event_message(event, guild_id, donationboard_config.channel_id, 'donation')
 
         trophyboard_config = await self.bot.utils.get_board_config(guild_id, 'trophy')
-        await self.bot.donationboard.update_board(trophyboard_config.channel_id)
-        await self.new_event_message(event, guild_id, trophyboard_config.channel_id, 'trophy')
+        if trophyboard_config:
+            await self.bot.donationboard.update_board(trophyboard_config.channel_id)
+            await self.new_event_message(event, guild_id, trophyboard_config.channel_id, 'trophy')
 
         await self.safe_send(channel, f'Boards have been updated. Enjoy your event! '
                                       f'It ends in {readable_time((event.finish - datetime.datetime.utcnow()).total_seconds())}.')
