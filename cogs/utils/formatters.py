@@ -1,3 +1,5 @@
+import textwrap
+
 from datetime import datetime
 from discord.utils import _string_width
 from cogs.utils.paginator import Pages
@@ -294,7 +296,7 @@ class TablePaginator(Pages):
 
         self.embed.description = entries
 
-        self.embed.set_author(name=self.title or self.ctx.config.title,
+        self.embed.set_author(name=textwrap.shorten(self.title or self.ctx.config.title, width=240, placeholder='...'),
                               icon_url=self.ctx.config.icon_url
                                         or 'https://cdn.discordapp.com/emojis/592028799768592405.png?v=1')
 

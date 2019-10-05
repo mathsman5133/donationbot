@@ -210,8 +210,8 @@ class Trophies(commands.Cog):
         else:
             in_event = ctx.config.start < datetime.utcnow() < ctx.config.finish
         if in_event:
-            query = """SELECT player_tag, end_attacks - start_attacks as attacks, trophies, user_id 
-                        FROM eventplayers p 
+            query = """SELECT player_tag, end_attacks - start_attacks as attacks, trophies 
+                        FROM eventplayers 
                         WHERE event_id = $1
                         ORDER BY attacks DESC
                     """
@@ -223,13 +223,13 @@ class Trophies(commands.Cog):
             clans = await ctx.get_clans()
             for n in clans:
                 tags.extend(x.tag for x in n.itermembers)
-            query = """SELECT player_tag, end_attacks - start_attacks as attacks, trophies, user_id 
+            query = """SELECT player_tag, end_attacks - start_attacks as attacks, trophies 
                         FROM players
                         WHERE player_tag=ANY($1::TEXT[])
                         AND season_id=$2
                         ORDER BY attacks DESC
                     """
-            fetch = await ctx.db.fetch(query, tags, await self.bot.seasonconfig.get_season_id())
+            fetch = await ctx.db.fetch(query, tags, await self.bot.seasonconfig.get_season_id() - 1)
 
             if not fetch:
                 return await ctx.send(f"No players claimed for clans "

@@ -104,6 +104,7 @@ class BackgroundManagement(commands.Cog):
 
         log.info(f'Starting loop for event updates. {len(fetch)} players to update!')
         start = time.perf_counter()
+        # speed up by only doing 1 batch insert
         async for player in self.bot.coc.get_players((n[0] for n in fetch), update_cache=False):
             await self.bot.pool.execute(
                 query,
@@ -115,7 +116,7 @@ class BackgroundManagement(commands.Cog):
                 player.best_trophies,
                 player.tag
             )
-        log.info(f'Loop for event updates finished. Took {(start - time.perf_counter())*1000}ms')
+        log.info(f'Loop for event updates finished. Took {(time.perf_counter() - start)*1000}ms')
 
     @commands.Cog.listener()
     async def on_event_register(self):
