@@ -18,9 +18,11 @@ class BackgroundManagement(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.next_event_starts.start()
+        self.event_player_updater.start()
 
     def cog_unload(self):
         self.next_event_starts.cancel()
+        self.event_player_updater.cancel()
 
     @commands.command(hidden=True)
     @commands.is_owner()
@@ -85,7 +87,7 @@ class BackgroundManagement(commands.Cog):
 
     @tasks.loop(hours=1)
     async def event_player_updater(self):
-        query = "SELECT DISTINCT player_tag FROM events WHERE live = True;"
+        query = "SELECT DISTINCT player_tag FROM eventplayers WHERE live = True;"
         fetch = await self.bot.pool.fetch(query)
 
         query = """UPDATE eventplayers
