@@ -91,7 +91,7 @@ class BackgroundManagement(commands.Cog):
         fetch = await self.bot.pool.fetch(query)
 
         query = """UPDATE eventplayers
-                   SET donations             = $1 + $2 - start_friend_in_need - start_sharing_is_caring,
+                   SET donations             = $1::INTEGER + $2::INTEGER - start_friend_in_need - start_sharing_is_caring,
                        trophies              = $3,
                        end_friend_in_need    = $1,
                        end_sharing_is_caring = $2,
