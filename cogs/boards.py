@@ -254,8 +254,11 @@ class DonationBoard(commands.Cog):
         log.debug(f'New member {member} joined clan {clan}. '
                   f'Performed a query to insert them into eventplayers. Status Code: {response}')
 
-    async def new_board_message(self, channel_id):
-        new_msg = await self.bot.get_channel(channel_id).send('Placeholder')
+    async def new_board_message(self, channel):
+        if not channel:
+            return
+
+        new_msg = await channel.send('Placeholder')
 
         query = "INSERT INTO messages (guild_id, message_id, channel_id) VALUES ($1, $2, $3)"
         await self.bot.pool.execute(query, new_msg.guild.id, new_msg.id, new_msg.channel.id)
@@ -281,6 +284,9 @@ class DonationBoard(commands.Cog):
 
     async def get_board_messages(self, channel_id, number_of_msg=None):
         config = await self.bot.utils.board_config(channel_id)
+        if not (config.channel or config.toggle):
+            return
+
         fetch = await config.messages()
 
         messages = [await n.get_message() for n in fetch if await n.get_message()]
@@ -294,8 +300,11 @@ class DonationBoard(commands.Cog):
                 await self.safe_delete(n.id)
             return messages[:number_of_msg]
 
+        if not config.channel:
+            return
+
         for _ in range(number_of_msg - size_of):
-            messages.append(await self.new_board_message(channel_id))
+            messages.append(await self.new_board_message(config.channel))
         return messages
 
     async def get_top_players(self, players, board_type, in_event):
