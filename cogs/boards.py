@@ -258,7 +258,10 @@ class DonationBoard(commands.Cog):
         if not channel:
             return
 
-        new_msg = await channel.send('Placeholder')
+        try:
+            new_msg = await channel.send('Placeholder')
+        except (discord.NotFound, discord.Forbidden):
+            return
 
         query = "INSERT INTO messages (guild_id, message_id, channel_id) VALUES ($1, $2, $3)"
         await self.bot.pool.execute(query, new_msg.guild.id, new_msg.id, new_msg.channel.id)
@@ -304,7 +307,11 @@ class DonationBoard(commands.Cog):
             return
 
         for _ in range(number_of_msg - size_of):
-            messages.append(await self.new_board_message(config.channel))
+            m = await self.new_board_message(config.channel)
+            if not m:
+                return
+            messages.append(m)
+
         return messages
 
     async def get_top_players(self, players, board_type, in_event):
