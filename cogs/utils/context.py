@@ -103,6 +103,9 @@ class Context(commands.Context):
         author_id: Optional[int]
             The member who should respond to the prompt. Defaults to the author of the
             Context's message.
+        additional_options: Optional[int]
+            Allows the spcification of multiple responses instead of just yes/no.
+            Will return an integer instead of a boolean.
         Returns
         --------
         Optional[bool]
@@ -140,14 +143,14 @@ class Context(commands.Context):
                 return True
             for i in range(additional_options):
                 if codepoint == f'{i + 1}\N{combining enclosing keycap}':
-                    confirm = i
+                    confirm = i + 1
                     return True
 
             return False
 
         if not additional_options:
             await msg.add_reaction('\N{WHITE HEAVY CHECK MARK}')
-        await msg.add_reaction('\N{CROSS MARK}')
+            await msg.add_reaction('\N{CROSS MARK}')
         for i in range(additional_options):
             await msg.add_reaction(f'{i+1}\N{combining enclosing keycap}')
 
