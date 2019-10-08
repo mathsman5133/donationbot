@@ -5,13 +5,10 @@ import os
 import asyncio
 import discord
 import itertools
-import math
 
 from discord.ext import commands, tasks
 from cogs.utils.paginator import Pages
-from cogs.utils.error_handler import error_handler
-from cogs.utils.db_objects import SlimEventConfig
-from cogs.utils.formatters import CLYTable, readable_time
+from cogs.utils.formatters import CLYTable, readable_time, TabularData
 from cogs.utils.emoji_lookup import misc
 from cogs.utils.checks import requires_config
 from datetime import datetime, time
