@@ -91,7 +91,7 @@ class BackgroundManagement(commands.Cog):
         fetch = await self.bot.pool.fetch(query)
 
         query = """UPDATE eventplayers
-                   SET donations             = x.start_fin + x.start_sic - eventplayers.start_friend_in_need - eventplayers.start_sharing_is_caring,
+                   SET donations             = x.end_fin + x.end_sic - eventplayers.start_friend_in_need - eventplayers.start_sharing_is_caring,
                        trophies              = x.trophies,
                        end_friend_in_need    = x.end_fin,
                        end_sharing_is_caring = x.end_sic,
@@ -100,8 +100,6 @@ class BackgroundManagement(commands.Cog):
                        end_best_trophies     = x.end_best_trophies
                    FROM (
                        SELECT x.player_tag,
-                              x.start_fin,
-                              x.start_sic,
                               x.trophies,
                               x.end_fin,
                               x.end_sic,
@@ -111,8 +109,7 @@ class BackgroundManagement(commands.Cog):
                        FROM jsonb_to_recordset($1::jsonb)
                        AS x (
                            player_tag TEXT,
-                           start_fin INTEGER,
-                           start_trophies INTEGER,
+                           trophies INTEGER,
                            end_fin INTEGER,
                            end_sic INTEGER,
                            end_attacks INTEGER,
@@ -132,13 +129,13 @@ class BackgroundManagement(commands.Cog):
         async for player in self.bot.coc.get_players((n[0] for n in fetch), update_cache=False):
             to_insert.append(
                 [
+                    player.tag,
+                    player.trophies,
                     player.achievements_dict['Friend in Need'].value,
                     player.achievements_dict['Sharing is caring'].value,
-                    player.trophies,
                     player.attack_wins,
                     player.defense_wins,
-                    player.best_trophies,
-                    player.tag
+                    player.best_trophies
                 ]
             )
         await self.bot.pool.execute(query, to_insert)
