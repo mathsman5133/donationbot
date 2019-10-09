@@ -102,6 +102,10 @@ class DonationBot(commands.Bot):
     def utils(self):
         return self.get_cog('Utils')
 
+    @property
+    def background(self):
+        return self.get_cog('BackgroundManagement')
+
     async def on_message(self, message):
         if message.author.bot:
             return  # ignore bot messages
