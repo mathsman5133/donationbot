@@ -83,7 +83,7 @@ class BackgroundManagement(commands.Cog):
             await self.on_event_start(slim_config, event['guild_id'])
 
         await asyncio.sleep(event['until_finish'].total_seconds())
-        await self.on_event_start(slim_config, event['guild_id'])
+        await self.on_event_finish(slim_config, event['guild_id'])
 
     @tasks.loop(hours=1)
     async def event_player_updater(self):
@@ -91,31 +91,56 @@ class BackgroundManagement(commands.Cog):
         fetch = await self.bot.pool.fetch(query)
 
         query = """UPDATE eventplayers
-                   SET donations             = $1::INTEGER + $2::INTEGER - start_friend_in_need - start_sharing_is_caring,
-                       trophies              = $3,
-                       end_friend_in_need    = $1,
-                       end_sharing_is_caring = $2,
-                       end_attacks           = $4,
-                       end_defenses          = $5,
-                       end_best_trophies     = $6
-                   WHERE player_tag = $7
-                   AND live = True
+                   SET donations             = x.start_fin + x.start_sic - eventplayers.start_friend_in_need - eventplayers.start_sharing_is_caring,
+                       trophies              = x.trophies,
+                       end_friend_in_need    = x.end_fin,
+                       end_sharing_is_caring = x.end_sic,
+                       end_attacks           = x.end_attacks,
+                       end_defenses          = x.end_defenses,
+                       end_best_trophies     = x.end_best_trophies
+                   FROM (
+                       SELECT x.player_tag,
+                              x.start_fin,
+                              x.start_sic,
+                              x.trophies,
+                              x.end_fin,
+                              x.end_sic,
+                              x.end_attacks,
+                              x.end_defenses,
+                              x.end_best_trophies
+                       FROM jsonb_to_recordset($1::jsonb)
+                       AS x (
+                           player_tag TEXT,
+                           start_fin INTEGER,
+                           start_trophies INTEGER,
+                           end_fin INTEGER,
+                           end_sic INTEGER,
+                           end_attacks INTEGER,
+                           end_defenses INTEGER,
+                           end_best_trophies INTEGER
+                           )
+                        )
+                   WHERE eventplayers.player_tag = x.player_tag
+                   AND eventplayers.live = True
                 """
+
+        to_insert = []
 
         log.info(f'Starting loop for event updates. {len(fetch)} players to update!')
         start = time.perf_counter()
-        # speed up by only doing 1 batch insert
         async for player in self.bot.coc.get_players((n[0] for n in fetch), update_cache=False):
-            await self.bot.pool.execute(
-                query,
-                player.achievements_dict['Friend in Need'].value,
-                player.achievements_dict['Sharing is caring'].value,
-                player.trophies,
-                player.attack_wins,
-                player.defense_wins,
-                player.best_trophies,
-                player.tag
+            to_insert.append(
+                [
+                    player.achievements_dict['Friend in Need'].value,
+                    player.achievements_dict['Sharing is caring'].value,
+                    player.trophies,
+                    player.attack_wins,
+                    player.defense_wins,
+                    player.best_trophies,
+                    player.tag
+                ]
             )
+        await self.bot.pool.execute(query, to_insert)
         log.info(f'Loop for event updates finished. Took {(time.perf_counter() - start)*1000}ms')
 
     @commands.Cog.listener()
@@ -269,12 +294,14 @@ class BackgroundManagement(commands.Cog):
         await self.bot.pool.execute(query, guild_id)
 
         donationboard_config = await self.bot.utils.get_board_config(guild_id, 'donation')
-        await self.bot.donationboard.update_board(donationboard_config.channel_id)
-        await self.remove_event_msg(event.id, donationboard_config.channel, 'donation')
+        if donationboard_config:
+            await self.bot.donationboard.update_board(donationboard_config.channel_id)
+            await self.remove_event_msg(event.id, donationboard_config.channel, 'donation')
 
         trophyboard_config = await self.bot.utils.get_board_config(guild_id, 'trophy')
-        await self.bot.donationboard.update_board(trophyboard_config.channel_id)
-        await self.remove_event_msg(event.id, trophyboard_config.channel, 'trophy')
+        if trophyboard_config:
+            await self.bot.donationboard.update_board(trophyboard_config.channel_id)
+            await self.remove_event_msg(event.id, trophyboard_config.channel, 'trophy')
 
         # todo: crunch some numbers.
         await self.safe_send(channel, f'Boards have been updated. I will cruch some more numbers and '
