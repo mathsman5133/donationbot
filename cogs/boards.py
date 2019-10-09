@@ -152,7 +152,7 @@ class DonationBoard(commands.Cog):
 
         message = await self.safe_delete(message_id=payload.message_id, delete_message=False)
         if message:
-            await self.new_board_message(payload.channel_id)
+            await self.new_board_message(payload.channel_id, config.type)
 
     @commands.Cog.listener()
     async def on_raw_bulk_message_delete(self, payload):
@@ -172,7 +172,7 @@ class DonationBoard(commands.Cog):
 
             message = await self.safe_delete(message_id=n, delete_message=False)
             if message:
-                await self.new_board_message(payload.channel_id)
+                await self.new_board_message(payload.channel_id, config.type)
 
     async def on_clan_member_donation(self, old_donations, new_donations, player, clan):
         log.debug(f'Received on_clan_member_donation event for player {player} of clan {clan}')
@@ -228,33 +228,81 @@ class DonationBoard(commands.Cog):
             self._clan_events.add(clan.tag)
 
     async def on_clan_member_join(self, member, clan):
-        query = """INSERT INTO players (player_tag, donations, received, trophies, start_trophies, season_id) 
-                    VALUES ($1,$2,$3,$4,$4,$5) 
+        player = await self.bot.coc.get_player(member.tag)
+        player_query = """INSERT INTO players (
+                                        player_tag, 
+                                        donations, 
+                                        received, 
+                                        trophies, 
+                                        start_trophies, 
+                                        season_id,
+                                        start_friend_in_need,
+                                        start_sharing_is_caring,
+                                        start_attacks,
+                                        start_defenses,
+                                        start_trophies,
+                                        start_best_trophies,
+                                        start_update
+                                        ) 
+                    VALUES ($1,$2,$3,$4,$4,$5,$6,$7,$8,$9,$10,$11,$12) 
                     ON CONFLICT (player_tag, season_id) 
                     DO NOTHING
                 """
 
-        query2 = """INSERT INTO eventplayers (player_tag, donations, received, trophies, start_trophies, live, event_id) 
-                        SELECT $1, $2, $3, $4, $4, true, events.id
-                        FROM events
-                        INNER JOIN clans 
-                        ON clans.guild_id = events.guild_id
-                        WHERE clans.clan_tag = $5
-                    ON CONFLICT (player_tag, event_id) 
-                    DO NOTHING
-                """
-
-        response = await self.bot.pool.execute(query, member.tag, member.donations, member.received,
-                                               member.trophies, await self.bot.seasonconfig.get_season_id())
+        response = await self.bot.pool.execute(
+            player_query,
+            player.tag,
+            player.donations,
+            player.received,
+            player.trophies,
+            await self.bot.seasonconfig.get_season_id(),
+            player.achievements_dict['Friend in Need'].value,
+            player.achievements_dict['Sharing is caring'].value,
+            player.attack_wins,
+            player.defense_wins,
+            player.trophies,
+            player.best_trophies
+        )
         log.debug(f'New member {member} joined clan {clan}. Performed a query to insert them into players. '
                   f'Status Code: {response}')
 
-        response = await self.bot.pool.execute(query2, member.tag, member.donations,
-                                               member.received, member.trophies, clan.tag)
+        event_query = """INSERT INTO eventplayers (
+                                            player_tag,
+                                            trophies,
+                                            event_id,
+                                            start_friend_in_need,
+                                            start_sharing_is_caring,
+                                            start_attacks,
+                                            start_defenses,
+                                            start_trophies,
+                                            start_best_trophies,
+                                            start_update,
+                                            live
+                                            )
+                            SELECT $1, $2, events.id, $3, $4, $5, $6, $7, $8, True, True
+                            FROM events
+                            WHERE finish >= now()
+                            AND start <= now()
+                            ON CONFLICT (player_tag, event_id)
+                            DO NOTHING;
+                        """
+
+        response = await self.bot.pool.execute(
+            event_query,
+            player.tag,
+            player.trophies,
+            player.achievements_dict['Friend in Need'].value,
+            player.achievements_dict['Sharing is caring'].value,
+            player.attack_wins,
+            player.defense_wins,
+            player.trophies,
+            player.best_trophies
+          )
+
         log.debug(f'New member {member} joined clan {clan}. '
                   f'Performed a query to insert them into eventplayers. Status Code: {response}')
 
-    async def new_board_message(self, channel):
+    async def new_board_message(self, channel, board_type):
         if not channel:
             return
 
@@ -265,6 +313,11 @@ class DonationBoard(commands.Cog):
 
         query = "INSERT INTO messages (guild_id, message_id, channel_id) VALUES ($1, $2, $3)"
         await self.bot.pool.execute(query, new_msg.guild.id, new_msg.id, new_msg.channel.id)
+
+        event_config = await self.bot.utils.event_config(channel.id)
+        if event_config:
+            await self.bot.background.remove_event_msg(event_config.id, channel, board_type)
+            await self.bot.background.new_event_message(event_config, channel.guild.id, channel.id, board_type)
 
         return new_msg
 
@@ -307,7 +360,7 @@ class DonationBoard(commands.Cog):
             return
 
         for _ in range(number_of_msg - size_of):
-            m = await self.new_board_message(config.channel)
+            m = await self.new_board_message(config.channel, config.type)
             if not m:
                 return
             messages.append(m)
