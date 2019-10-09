@@ -120,6 +120,7 @@ class BackgroundManagement(commands.Cog):
                            end_best_trophies INTEGER
                            )
                         )
+                   AS x
                    WHERE eventplayers.player_tag = x.player_tag
                    AND eventplayers.live = True
                 """
