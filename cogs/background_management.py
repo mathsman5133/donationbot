@@ -128,15 +128,15 @@ class BackgroundManagement(commands.Cog):
         start = time.perf_counter()
         async for player in self.bot.coc.get_players((n[0] for n in fetch), update_cache=False):
             to_insert.append(
-                [
-                    player.tag,
-                    player.trophies,
-                    player.achievements_dict['Friend in Need'].value,
-                    player.achievements_dict['Sharing is caring'].value,
-                    player.attack_wins,
-                    player.defense_wins,
-                    player.best_trophies
-                ]
+                {
+                    'player_tag': player.tag,
+                    'trophies': player.trophies,
+                    'end_fin': player.achievements_dict['Friend in Need'].value,
+                    'end_sic': player.achievements_dict['Sharing is caring'].value,
+                    'end_attacks': player.attack_wins,
+                    'end_defenses': player.defense_wins,
+                    'end_best_trophies': player.best_trophies
+                }
             )
         await self.bot.pool.execute(query, to_insert)
         log.info(f'Loop for event updates finished. Took {(time.perf_counter() - start)*1000}ms')
