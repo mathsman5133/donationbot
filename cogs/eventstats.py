@@ -9,7 +9,7 @@ from discord.ext import commands
 DummyRender = namedtuple('DummyRender', 'render type icon_url')
 
 
-class Event(commands.Cog):
+class Event(commands.Cog, command_attrs=dict(hidden=True)):
     def __init__(self, bot):
         self.bot = bot
 
@@ -20,7 +20,8 @@ class Event(commands.Cog):
         **Parameters**
 
         """
-        if ctx.invoked_subcommand is not
+        if ctx.invoked_subcommand is not None:
+            return await ctx.send_help(ctx.command)
 
     @eventstats.command(name='attacks')
     @requires_config('event')
