@@ -138,13 +138,14 @@ class BackgroundManagement(commands.Cog):
                     'end_best_trophies': player.best_trophies
                 }
             )
+            await asyncio.sleep(0.01)
         await self.bot.pool.execute(query, to_insert)
         log.info(f'Loop for event updates finished. Took {(time.perf_counter() - start)*1000}ms')
 
     @commands.Cog.listener()
     async def on_event_register(self):
-        self.next_event_starts.cancel()
-        self.next_event_starts.start()
+        self.next_event_starts.restart()
+        self.next_event_finish.restart()
 
     @staticmethod
     async def insert_member(con, player, event_id):

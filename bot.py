@@ -45,10 +45,14 @@ else:
     key_names = 'windows'
 
 
-coc_client = coc.login(creds.email, creds.password, client=coc.EventsClient,
+class COCClient(coc.EventsClient):
+    async def on_event_error(self, event_name, exception, *args, **kwargs):
+        await clash_event_error(self, event_name, exception, *args, **kwargs)
+
+
+coc_client = coc.login(creds.email, creds.password, client=COCClient,
                        key_names=key_names, throttle_limit=30, key_count=3)
 
-coc_client.on_event_error = clash_event_error
 
 description = "A simple discord bot to track donations of clan families in clash of clans."
 
@@ -71,10 +75,6 @@ class DonationBot(commands.Bot):
         add_hooks(self)
 
         self.uptime = datetime.datetime.utcnow()
-
-        # error handlers
-        self.on_command_error = error_handler
-        self.on_error = discord_event_error
 
         for e in initial_extensions:
             try:
@@ -137,6 +137,12 @@ class DonationBot(commands.Bot):
             query = "SELECT DISTINCT clan_tag FROM clans WHERE guild_id = $1"
             fetch = await self.pool.fetch(query, guild_id)
         return await self.coc.get_clans(n[0].strip() for n in fetch).flatten()
+
+    async def on_command_error(self, context, exception):
+        return error_handler(context, exception)
+
+    async def on_error(self, event_method, *args, **kwargs):
+        return discord_event_error(self, event_method, *args, **kwargs)
 
 
 if __name__ == '__main__':
