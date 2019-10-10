@@ -39,7 +39,8 @@ def setup_logging(bot):
 
     class DiscordHandler(logging.NullHandler):
         def handle(self, record):
-            return
+            if not creds.live:
+                return
             if record.levelno < 20:
                 return
 
