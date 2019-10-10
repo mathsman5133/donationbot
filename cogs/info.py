@@ -522,7 +522,7 @@ class Info(commands.Cog, name='\u200bInfo'):
         await ctx.send(embed=e)
 
     @info.command(name='event')
-    @requires_config('event')
+    @requires_config('event', invalidate=True)
     async def info_event(self, ctx):
         """Gives you info about guild's event"""
         if not ctx.config:
