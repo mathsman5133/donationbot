@@ -7,7 +7,6 @@ from cogs.utils.checks import requires_config
 from cogs.utils.emoji_lookup import misc
 
 
-
 class EventStats(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -24,9 +23,7 @@ class EventStats(commands.Cog):
     @commands.group(name='eventstats', invoke_without_command=True)
     async def eventstats(self, ctx):
         """[Group] Provide statistics for the current (or most recent) event for this server.
-
         This command does nothing by itself - check out the subcommands!
-
         Your server **must** be in an event for this command to work.
         """
         if ctx.invoked_subcommand is None:
@@ -36,13 +33,11 @@ class EventStats(commands.Cog):
     @requires_config('event')
     async def eventstats_attacks(self, ctx):
         """Get attack wins for all clans.
-
         **Parameters**
         :key: Season ID (optional - defaults to last season)
-
         **Format**
         :information_source: `+eventstats attacks SEASON_ID`
-            
+
         **Example**
         :white_check_mark: `+eventstats attacks`
         :white_check_mark: `+eventstats attacks 2`
@@ -79,10 +74,8 @@ class EventStats(commands.Cog):
     @requires_config('event')
     async def eventstats_defenses(self, ctx):
         """Get defense wins for all clans.
-
         **Format**
         :information_source: `+eventstats defenses`
-
        **Example**
        :white_check_mark: `+eventstats defenses`
         """
@@ -119,13 +112,10 @@ class EventStats(commands.Cog):
     @requires_config('event')
     async def eventstats_gains(self, ctx):
         """Get trophy gains for all clans.
-
         **Parameters**
         :key: Season ID (optional - defaults to last season)
-
         **Format**
         :information_source: `+eventstats gains SEASON_ID`
-
         **Example**
         :white_check_mark: `+eventstats gains`
         :white_check_mark: `+eventstats gains 3`
@@ -162,13 +152,11 @@ class EventStats(commands.Cog):
     @requires_config('event')
     async def eventstats_donors(self, ctx):
         """Get donations for all clans.
-  
+
         **Parameters**
         :key: Season ID (optional - defaults to last season)
-
         **Format**
         :information_source: `+eventstats donations SEASON_ID`
-
         **Example**
         :white_check_mark: `+eventstats donations`
         """
