@@ -4,6 +4,7 @@ from discord.ext import commands
 
 from cogs.utils import formatters
 from cogs.utils.checks import requires_config
+from cogs.utils.emoji_lookup import misc
 
 
 class Event(commands.Cog):
@@ -56,13 +57,17 @@ class Event(commands.Cog):
         fetch = await ctx.db.fetch(query, ctx.config.id)
 
         table = formatters.CLYTable()
-        table.title = f"Attack wins for {ctx.config.event_name}"
 
         attacks = {n['player_tag']: n['attacks'] for n in fetch}
-        for index, player in enumerate(await self.bot.coc.get_players((n[0] for n in fetch))):
+        for index, player in enumerate(await self.bot.coc.get_players((n[0] for n in fetch)).flatten()):
             table.add_row([index, attacks[player.tag], player.trophies, player.name])
 
-        e = discord.Embed(colour=discord.Colour.gold(), description=table.trophyboard_attacks())
+        fmt = table.trophyboard_attacks()
+        fmt += f"**Key:**\n{misc['attack']} - Attacks\n{misc['trophygold']} - Trophies"
+
+        e = discord.Embed(
+            colour=discord.Colour.gold(), description=fmt, title=f"Attack wins for {ctx.config.event_name}"
+        )
         await ctx.send(embed=e)
 
     @eventstats.command(name='defenses', aliases=['defense', 'defences', 'defence'])
@@ -89,14 +94,18 @@ class Event(commands.Cog):
         fetch = await ctx.db.fetch(query, ctx.config.id)
 
         table = formatters.CLYTable()
-        table.title = f"Defense wins for {ctx.config.event_name}"
 
         defenses = {n['player_tag']: n['defenses'] for n in fetch}
 
         for index, player in enumerate(await self.bot.coc.get_players((n[0] for n in fetch)).flatten()):
             table.add_row([index, defenses[player.tag], player.trophies, player.name])
 
-        e = discord.Embed(colour=discord.Colour.dark_red(), description=table.trophyboard_defenses())
+        fmt = table.trophyboard_defenses()
+        fmt += f"**Key:**\n{misc['defense']} - Defenses\n{misc['trophygold']} - Trophies"
+
+        e = discord.Embed(
+            colour=discord.Colour.dark_red(), description=fmt, title=f"Defense wins for {ctx.config.event_name}"
+        )
         await ctx.send(embed=e)
 
     @eventstats.command(name='gains', aliases=['trophies'])
@@ -123,13 +132,17 @@ class Event(commands.Cog):
         fetch = await ctx.db.fetch(query, ctx.config.id)
 
         table = formatters.CLYTable()
-        table.title = f"Trophy Gains for {ctx.config.event_name}"
 
-        gains = {n['player_tag']: n['gains'] for n in fetch}
-        for index, player in enumerate(self.bot.coc.get_players((n[0] for n in fetch))):
+        gains = {n['player_tag']: n['gain'] for n in fetch}
+        for index, player in enumerate(await self.bot.coc.get_players((n[0] for n in fetch)).flatten()):
             table.add_row([index, gains[player.tag], player.trophies, player.name])
 
-        e = discord.Embed(colour=discord.Colour.green(), description=table.trophyboard_gain())
+        fmt = table.trophyboard_gain()
+        fmt += f"**Key:**\n{misc['trophygreen']} - Trophy Gain\n{misc['trophygold']} - Total Trophies"
+
+        e = discord.Embed(
+            colour=discord.Colour.green(), description=fmt, title=f"Trophy Gains for {ctx.config.event_name}"
+        )
         await ctx.send(embed=e)
 
     @eventstats.command(name='donors', aliases=['donations', 'donates', 'donation'])
@@ -151,19 +164,22 @@ class Event(commands.Cog):
                     (end_friend_in_need + end_sharing_is_caring) - (start_friend_in_need + start_sharing_is_caring) as donations
                     FROM eventplayers 
                     WHERE event_id = $1
-                    ORDER BY gain DESC
+                    ORDER BY donations DESC
                     LIMIT 15
                 """
         fetch = await ctx.db.fetch(query, ctx.config.id)
 
         table = formatters.CLYTable()
-        table.title = f"Donations for {ctx.config.event_name}"
 
         donations = {n['player_tag']: n['donations'] for n in fetch}
-        for index, player in enumerate(await self.bot.coc.get_players((n[0] for n in fetch))):
+        for index, player in enumerate(await self.bot.coc.get_players((n[0] for n in fetch)).flatten()):
             table.add_row([index, donations[player.tag], player.name])
 
-        e = discord.Embed(colour=discord.Colour.green(), description=table.donationboard_2())
+        fmt = table.donationboard_2()
+
+        e = discord.Embed(
+            colour=discord.Colour.green(), description=fmt, title=f"Donations for {ctx.config.event_name}"
+        )
         await ctx.send(embed=e)
 
 
