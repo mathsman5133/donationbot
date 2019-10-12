@@ -30,7 +30,7 @@ class Event(commands.Cog, command_attrs=dict(hidden=True)):
 
     @eventstats.command(name='attacks')
     @requires_config('event', invalidate=True)
-    async def attacks(self, ctx):
+    async def event_attacks(self, ctx):
         """Get attack wins for all clans.
 
            By default, you shouldn't need to call these sub-commands as the bot will
@@ -39,6 +39,9 @@ class Event(commands.Cog, command_attrs=dict(hidden=True)):
            **Example**
            :white_check_mark: `+eventstats attacks`
         """
+        if not ctx.config:
+            # TODO Consider pulling most recent event and if time is between end of event and end of season, show stats.
+            return ctx.send('It would appear that you aren\'t currently in an event. Did you mean `+season attacks`?')
         query = """SELECT player_tag, end_attacks - start_attacks as attacks, trophies 
                     FROM eventplayers 
                     WHERE event_id = $1
@@ -60,7 +63,7 @@ class Event(commands.Cog, command_attrs=dict(hidden=True)):
 
     @eventstats.command(name='defenses', aliases=['defense', 'defences', 'defence'])
     @requires_config('event', invalidate=True)
-    async def defenses(self, ctx):
+    async def event_defenses(self, ctx):
         """Get defense wins for all clans.
 
            By default, you shouldn't need to call these sub-commands as the bot will
@@ -69,6 +72,8 @@ class Event(commands.Cog, command_attrs=dict(hidden=True)):
            **Example**
            :white_check_mark: `+eventstats defenses`
         """
+        if not ctx.config:
+            return ctx.send('It would appear that you aren\'t currently in an event. Did you mean `+season defenses`?')
         query = """SELECT player_tag, end_defenses - start_defenses as defenses, trophies 
                     FROM eventplayers 
                     WHERE event_id = $1
@@ -76,12 +81,14 @@ class Event(commands.Cog, command_attrs=dict(hidden=True)):
                     LIMIT 15
                 """
         fetch = await ctx.db.fetch(query, ctx.config.id)
+        defenses = {}
+        for row in fetch:
+            defenses[row['player_tag']] = row['defenses']
         table = formatters.CLYTable()
         table.title = f"Defense wins for {ctx.config.event_name}"
         index = 0
-        for row in fetch:
-            player = await self.bot.coc.get_player(row['player_tag'])
-            table.add_row([index, row['defenses'], player.trophies, player.name])
+        async for player in self.bot.coc.get_players((n[0] for n in fetch)):
+            table.add_row([index, defenses[player.tag], player.trophies, player.name])
         render = table.trophyboard_defenses()
         fmt = render()
 
@@ -90,7 +97,7 @@ class Event(commands.Cog, command_attrs=dict(hidden=True)):
 
     @eventstats.command(name='gains', aliases=['trophies'])
     @requires_config('event', invalidate=True)
-    async def gains(self, ctx):
+    async def event_gains(self, ctx):
         """Get trophy gains for all clans.
 
            By default, you shouldn't need to call these sub-commands as the bot will
@@ -99,6 +106,8 @@ class Event(commands.Cog, command_attrs=dict(hidden=True)):
            **Example**
            :white_check_mark: `+eventstats gains`
         """
+        if not ctx.config:
+            return ctx.send('It would appear that you aren\'t currently in an event. Did you mean `+season gains`?')
         query = """SELECT player_tag, trophies - start_trophies as gain, trophies 
                         FROM eventplayers 
                         WHERE event_id = $1
@@ -120,7 +129,7 @@ class Event(commands.Cog, command_attrs=dict(hidden=True)):
 
     @eventstats.command(name='donors', aliases=['donations', 'donates', 'donation'])
     @requires_config('event', invalidate=True)
-    async def donors(self, ctx):
+    async def event_donors(self, ctx):
         """Get donations for all clans.
 
            By default, you shouldn't need to call these sub-commands as the bot will
@@ -129,6 +138,8 @@ class Event(commands.Cog, command_attrs=dict(hidden=True)):
            **Example**
            :white_check_mark: `+eventstats donations`
         """
+        if not ctx.config:
+            return ctx.send('It would appear that you aren\'t currently in an event. Did you mean `+season donors`?')
         query = """SELECT player_tag,  
                     (end_friend_in_need + end_sharing_is_caring) - (start_friend_in_need + start_sharing_is_caring) as donations
                     FROM eventplayers 
