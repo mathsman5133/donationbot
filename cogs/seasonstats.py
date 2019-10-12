@@ -23,6 +23,15 @@ class Season(commands.Cog):
         self.season_stats_guild_entries = {}
         self.season_stats_user_entries = {}
 
+    async def cog_before_invoke(self, ctx):
+        if hasattr(ctx, 'before_invoke'):
+            await ctx.before_invoke(ctx)
+
+    async def cog_after_invoke(self, ctx):
+        after_invoke = getattr(ctx, 'after_invoke', None)
+        if after_invoke:
+            await after_invoke(ctx)
+
     @cache(strategy=Strategy.lru)
     async def build_season_clan_misc_stats(self, ctx, clans, season_id):
         clan_tags = [n.tag for n in clans]
@@ -523,11 +532,12 @@ class Season(commands.Cog):
     async def season_stats_attacks(self, ctx, season: typing.Optional[int] = None):
         """Get attack wins for all clans.
 
-           By default, you shouldn't need to call these sub-commands as the bot will
-           parse your argument and direct it to the correct sub-command automatically.
+        **Parameters**
+        :key: Season ID (optional - defaults to last season)
 
-           **Example**
-           :white_check_mark: `+season stats attacks`
+        **Example**
+        :white_check_mark: `+season stats attacks`
+        :white_check_mark: `+season stats attacks 2`
         """
         season = season or await self.bot.seasonconfig.get_season_id() - 1
         query = """SELECT player_tag, end_attacks - start_attacks as attacks, trophies 
@@ -537,27 +547,28 @@ class Season(commands.Cog):
                         LIMIT 15
                     """
         fetch = await ctx.db.fetch(query, season, ctx.guild.id)
+        attacks = {n['player_tag']: n['attacks'] for n in fetch}
         table = CLYTable()
-        table.title = f"Attack wins for Season {season}"
-        index = 0
-        for row in fetch:
-            player = await self.bot.coc.get_player(row['player_tag'])
-            table.add_row([index, row['attacks'], player.trophies, player.name])
+        title = f"Attack wins for Season {season}"
+        for index, player in enumerate(await self.bot.coc.get_players((n[0] for n in fetch)).flatten()):
+            table.add_row([index, attacks[player.tag], player.trophies, player.name])
         render = table.trophyboard_attacks()
-        fmt = render()
 
-        e = discord.Embed(colour=discord.Colour.gold(), description=fmt)
+        e = discord.Embed(colour=discord.Colour.gold(),
+                          title=title,
+                          description=render)
         await ctx.send(embed=e)
 
     @season_stats.command(name='defenses', aliases=['defense', 'defences', 'defence'])
     async def season_stats_defenses(self, ctx, season: typing.Optional[int] = None):
         """Get defense wins for all clans.
 
-           By default, you shouldn't need to call these sub-commands as the bot will
-           parse your argument and direct it to the correct sub-command automatically.
+        **Parameters**
+        :key: Season ID (optional - defaults to last season)
 
-           **Example**
-           :white_check_mark: `+season stats defenses`
+        **Example**
+        :white_check_mark: `+season stats defenses`
+        :white_check_mark: `+season stats defenses 3`
         """
         season = season or await self.bot.seasonconfig.get_season_id() - 1
         query = """SELECT player_tag, end_defenses - start_defenses as defenses, trophies 
@@ -567,29 +578,28 @@ class Season(commands.Cog):
                         LIMIT 15
                     """
         fetch = await ctx.db.fetch(query, season, ctx.guild.id)
-        defenses = {}
-        for row in fetch:
-            defenses[row['player_tag']] = row['defenses']
+        defenses = {n['player_tag']: n['defenses'] for n in fetch}
         table = CLYTable()
-        table.title = f"Defense wins for Season {season}"
-        index = 0
-        async for player in self.bot.coc.get_players((n[0] for n in fetch)):
+        title = f"Defense wins for Season {season}"
+        for index, player in enumerate(await self.bot.coc.get_players((n[0] for n in fetch)).flatten()):
             table.add_row([index, defenses[player.tag], player.trophies, player.name])
         render = table.trophyboard_defenses()
-        fmt = render()
 
-        e = discord.Embed(colour=discord.Colour.dark_red(), description=fmt)
+        e = discord.Embed(colour=discord.Colour.dark_red(),
+                          title=title,
+                          description=render)
         await ctx.send(embed=e)
 
     @season_stats.command(name='gains', aliases=['trophies'])
     async def season_stats_gains(self, ctx, season: typing.Optional[int] = None):
         """Get trophy gains for all clans.
 
-           By default, you shouldn't need to call these sub-commands as the bot will
-           parse your argument and direct it to the correct sub-command automatically.
+        **Parameters**
+        :key: Season ID (optional - defaults to last season)
 
-           **Example**
-           :white_check_mark: `+season stats gains`
+        **Example**
+        :white_check_mark: `+season stats gains`
+        :white_check_mark: `+season stats gains 1`
         """
         season = season or await self.bot.seasonconfig.get_season_id() - 1
         query = """SELECT player_tag, trophies - start_trophies as gain, trophies 
@@ -599,49 +609,50 @@ class Season(commands.Cog):
                             LIMIT 15
                         """
         fetch = await ctx.db.fetch(query, season, ctx.guild.id)
+        gains = {n['player_tag']: n['gains'] for n in fetch}
         table = CLYTable()
-        table.title = f"Trophy Gains for Season {season}"
-        index = 0
-        for row in fetch:
-            player = await self.bot.coc.get_player(row['player_tag'])
-            table.add_row([index, row['gains'], player.trophies, player.name])
+        title = f"Trophy Gains for Season {season}"
+        for index, player in enumerate(await self.bot.coc.get_players((n[0] for n in fetch)).flatten()):
+            table.add_row([index, gains[player.tag], player.trophies, player.name])
         render = table.trophyboard_gain()
-        fmt = render()
 
-        e = discord.Embed(colour=discord.Colour.green(), description=fmt)
+        e = discord.Embed(colour=discord.Colour.green(),
+                          title=title,
+                          description=render)
         await ctx.send(embed=e)
 
     @season_stats.command(name='donors', aliases=['donations', 'donates', 'donation'])
     async def season_stats_donors(self, ctx, season: typing.Optional[int] = None):
         """Get donations for all clans.
 
-           By default, you shouldn't need to call these sub-commands as the bot will
-           parse your argument and direct it to the correct sub-command automatically.
+        **Parameters**
+        :key: Season ID (optional - defaults to last season)
 
-           **Example**
-           :white_check_mark: `+season stats donations`
+        **Example**
+        :white_check_mark: `+season stats donors`
+        :white_check_mark: `+season stats donations 4`
         """
-        # TODO Since this is straight donations, might change sql to use donationevents (just want consistent numbers)
         season = season or await self.bot.seasonconfig.get_season_id() - 1
         query = """SELECT player_tag,  
                         (end_friend_in_need + end_sharing_is_caring) - (start_friend_in_need + start_sharing_is_caring) as donations
                         FROM players
                         WHERE season_id = $1 AND guild_id = $2
-                        ORDER BY gain DESC
+                        ORDER BY donations DESC
                         LIMIT 15
                     """
         fetch = await ctx.db.fetch(query, season, ctx.guild.id)
         table = CLYTable()
-        table.title = f"Donations for Season {season}"
-        index = 0
-        for row in fetch:
+        title = f"Donations for Season {season}"
+        for index, row in enumerate(fetch):
             player = await self.bot.coc.get_player(row['player_tag'])
             table.add_row([index, row['donations'], player.name])
         render = table.donationboard_2()
-        fmt = render()
 
-        e = discord.Embed(colour=discord.Colour.green(), description=fmt)
+        e = discord.Embed(colour=discord.Colour.green(),
+                          title=title,
+                          description=render)
         await ctx.send(embed=e)
+
 
 def setup(bot):
     bot.add_cog(Season(bot))
