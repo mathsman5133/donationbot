@@ -5,26 +5,13 @@ from cogs.utils.checks import requires_config
 from discord.ext import commands
 
 
-class Event(commands.Cog, command_attrs=dict(hidden=True)):
+class EventStats(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
     @commands.group(name='eventstats', invoke_without_command=True)
     async def eventstats(self, ctx):
-        """[Group] Provide statistics for the current (or most recent) event for this server.
-
-        **Parameters**
-        :key: Category
-
-        **Format**
-        :information_source: `+eventstats catgory`
-
-        **Examples**
-        :white_check_mark: `+eventstats attacks`
-        :white_check_mark: `+eventstats defenses`
-        :white_check_mark: `+eventstats gains`
-        :white_check_mark: `+eventstats donations`
-        """
+        """[Group] Provide statistics for the current (or most recent) event for this server."""
         if ctx.invoked_subcommand is None:
             await ctx.send_help(ctx.command)
 
@@ -50,13 +37,16 @@ class Event(commands.Cog, command_attrs=dict(hidden=True)):
                     LIMIT 15
                 """
         fetch = await ctx.db.fetch(query, ctx.config.id)
+
         attacks = {n['player_tag']: n['attacks'] for n in fetch}
+
         table = formatters.CLYTable()
         title = f"Attack wins for {ctx.config.event_name}"
+
         for index, player in enumerate(await self.bot.coc.get_players((n[0] for n in fetch)).flatten()):
             table.add_row([index, attacks[player.tag], player.trophies, player.name])
-        render = table.trophyboard_attacks()
 
+        render = table.trophyboard_attacks()
         e = discord.Embed(colour=discord.Colour.gold(),
                           title=title,
                           description=render)
@@ -76,6 +66,7 @@ class Event(commands.Cog, command_attrs=dict(hidden=True)):
         """
         if not ctx.config:
             return ctx.send('It would appear that you aren\'t currently in an event. Did you mean `+season defenses`?')
+
         query = """SELECT player_tag, end_defenses - start_defenses as defenses, trophies 
                     FROM eventplayers 
                     WHERE event_id = $1
@@ -83,13 +74,16 @@ class Event(commands.Cog, command_attrs=dict(hidden=True)):
                     LIMIT 15
                 """
         fetch = await ctx.db.fetch(query, ctx.config.id)
+
         defenses = {n['player_tag']: n['defenses'] for n in fetch}
+
         table = formatters.CLYTable()
         title = f"Defense wins for {ctx.config.event_name}"
+
         for index, player in enumerate(await self.bot.coc.get_players((n[0] for n in fetch)).flatten()):
             table.add_row([index, defenses[player.tag], player.trophies, player.name])
-        render = table.trophyboard_defenses()
 
+        render = table.trophyboard_defenses()
         e = discord.Embed(colour=discord.Colour.dark_red(),
                           title=title,
                           description=render)
@@ -109,6 +103,7 @@ class Event(commands.Cog, command_attrs=dict(hidden=True)):
         """
         if not ctx.config:
             return ctx.send('It would appear that you aren\'t currently in an event. Did you mean `+season gains`?')
+
         query = """SELECT player_tag, trophies - start_trophies as gain, trophies 
                         FROM eventplayers 
                         WHERE event_id = $1
@@ -116,13 +111,16 @@ class Event(commands.Cog, command_attrs=dict(hidden=True)):
                         LIMIT 15
                     """
         fetch = await ctx.db.fetch(query, ctx.config.id)
-        gains = {n['player_tag']: n['gains'] for n in fetch}
+
+        gains = {n['player_tag']: n['gain'] for n in fetch}
+
         table = formatters.CLYTable()
         title = f"Trophy Gains for {ctx.config.event_name}"
+
         for index, player in enumerate(await self.bot.coc.get_players((n[0] for n in fetch)).flatten()):
             table.add_row([index, gains[player.tag], player.trophies, player.name])
-        render = table.trophyboard_gain()
 
+        render = table.trophyboard_gain()
         e = discord.Embed(colour=discord.Colour.green(),
                           title=title,
                           description=render)
@@ -142,6 +140,7 @@ class Event(commands.Cog, command_attrs=dict(hidden=True)):
         """
         if not ctx.config:
             return ctx.send('It would appear that you aren\'t currently in an event. Did you mean `+season donors`?')
+
         query = """SELECT player_tag,  
                     (end_friend_in_need + end_sharing_is_caring) - (start_friend_in_need + start_sharing_is_caring) as donations
                     FROM eventplayers 
@@ -150,15 +149,16 @@ class Event(commands.Cog, command_attrs=dict(hidden=True)):
                     LIMIT 15
                 """
         fetch = await ctx.db.fetch(query, ctx.config.id)
-        donations = {}
-        for row in fetch:
-            donations[row['playertag']] = row['donations']
+
+        donations = {n['player_tag']: n['donations'] for n in fetch}
+
         table = formatters.CLYTable()
         title = f"Donations for {ctx.config.event_name}"
+
         for index, player in enumerate(await self.bot.coc.get_players((n[0] for n in fetch)).flatten()):
             table.add_row([index, donations[player.tag], player.name])
-        render = table.donationboard_2()
 
+        render = table.donationboard_2()
         e = discord.Embed(colour=discord.Colour.green(),
                           title=title,
                           description=render)
@@ -166,4 +166,4 @@ class Event(commands.Cog, command_attrs=dict(hidden=True)):
 
 
 def setup(bot):
-    bot.add_cog(Event(bot))
+    bot.add_cog(EventStats(bot))
