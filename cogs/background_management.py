@@ -84,6 +84,7 @@ class BackgroundManagement(commands.Cog):
 
         await asyncio.sleep(event['until_finish'].total_seconds())
         await self.on_event_finish(slim_config, event['guild_id'])
+        self.bot.utils.board_config.invalidate(self.bot.utils, slim_config.channel_id)
 
     @tasks.loop(hours=1)
     async def event_player_updater(self):
@@ -283,11 +284,12 @@ class BackgroundManagement(commands.Cog):
         await self.safe_send(channel, ':tada: Aaaand thats it! The event has finished. I am crunching the numbers, '
                                       'working out who the champs and chumps are, and will get back to you shortly.')
 
-        clans = await self.bot.get_clans(guild_id, in_event=True)
+        query = "SELECT player_tag FROM eventplayers WHERE event_id=$1 AND final_update=False"
+        fetch = await self.bot.pool.fetch(query, event.id)
 
-        for n in clans:
-            async for player in n.get_detailed_members():
-                await self.finalise_member(self.bot.pool, player, event.id)
+        async for player in self.bot.coc.get_players((n[0] for n in fetch)):
+            await self.finalise_member(self.bot.pool, player, event.id)
+
         await self.safe_send(channel, 'All members have been finalised, updating your boards!')
         query = "UPDATE boards SET in_event = False WHERE guild_id = $1;"
         await self.bot.pool.execute(query, guild_id)
