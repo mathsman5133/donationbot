@@ -241,5 +241,8 @@ misc = \
         "trophyloss": "<:trophyloss:628561532141436960>",
         "trophygreen": "<:trophygreen:628561697480900618>",
         "trophyred": "<:trophyred:628561718276128789>",
-        "green_clock": "<:green_clock:629481616091119617>"
+        "green_clock": "<:green_clock:629481616091119617>",
+        "defense": "<:defense:632517053953081354>",
+        "attack": "<:attack:632518458713571329>",
+        "trophygold": "<:trophygold:632521243278442505>"
     }

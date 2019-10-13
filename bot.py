@@ -19,11 +19,11 @@ initial_extensions = [
     'cogs.admin',
     'cogs.aliases',
     'cogs.auto_claim',
-    'cogs.background_management',
     'cogs.botutils',
     'cogs.deprecated',
     'cogs.donations',
     'cogs.events',
+    'cogs.eventstats',
     'cogs.guildsetup',
     'cogs.info',
     'cogs.reset_season',
@@ -33,6 +33,7 @@ initial_extensions = [
 if creds.live:
     initial_extensions.extend(
         (
+            'cogs.background_management',
             'cogs.boards',
             'cogs.donationlogs',
             'cogs.trophylog'
@@ -139,7 +140,7 @@ class DonationBot(commands.Bot):
         return await self.coc.get_clans(n[0].strip() for n in fetch).flatten()
 
     async def on_command_error(self, context, exception):
-        return error_handler(context, exception)
+        return await error_handler(context, exception)
 
     async def on_error(self, event_method, *args, **kwargs):
         return discord_event_error(self, event_method, *args, **kwargs)

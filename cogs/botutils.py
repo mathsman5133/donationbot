@@ -136,6 +136,23 @@ class Utils(commands.Cog):
         except (discord.Forbidden, discord.HTTPException):
             return
 
+    async def event_config_id(self, event_id: int) -> SlimEventConfig:
+        query = """SELECT id,
+                          start,
+                          finish,
+                          event_name,
+                          channel_id
+                   FROM events
+                   WHERE id = $1
+                """
+        fetch = await self.bot.pool.fetchrow(query, event_id)
+
+        if not fetch:
+            return None
+
+        return SlimEventConfig(fetch['id'], fetch['start'],
+                               fetch['finish'], fetch['event_name'], fetch['channel_id'])
+
 
 def setup(bot):
     bot.add_cog(Utils(bot))
