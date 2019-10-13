@@ -80,7 +80,7 @@ class BackgroundManagement(commands.Cog):
         slim_config = SlimEventConfig(event['id'], event['start'], event['finish'], event['event_name'], event['channel_id'])
 
         if event['until_start'].total_seconds() < 0:
-            await self.on_event_start(slim_config, event['guild_id'])
+            await self.on_event_finish(slim_config, event['guild_id'])
 
         await asyncio.sleep(event['until_finish'].total_seconds())
         await self.on_event_finish(slim_config, event['guild_id'])
