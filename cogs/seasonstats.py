@@ -1,330 +1,30 @@
 from datetime import datetime
 import discord
 import math
-import traceback
 import typing
 
 from discord.ext import commands
 
-from cogs.donations import ClanConverter
 from cogs.boards import MockPlayer
-from cogs.utils.emoji_lookup import number_emojis
-from cogs.utils.error_handler import error_handler
 from cogs.utils.paginator import SeasonStatsPaginator
-from cogs.utils.formatters import TabularData, readable_time, CLYTable, get_render_type
+from cogs.utils.formatters import CLYTable, get_render_type
 from cogs.utils.cache import cache, Strategy
-from cogs.utils.db_objects import DatabasePlayer
-
 
 mock = MockPlayer('Unknown', 'Unknown')
 
-class Season(commands.Cog):
+
+class SeasonStats(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-        self.season_stats_guild_entries = {}
-        self.season_stats_user_entries = {}
+    async def cog_before_invoke(self, ctx):
+        if hasattr(ctx, 'before_invoke'):
+            await ctx.before_invoke(ctx)
 
-    @cache(strategy=Strategy.lru)
-    async def build_season_clan_misc_stats(self, ctx, clans, season_id):
-        clan_tags = [n.tag for n in clans]
-
-        e = discord.Embed(colour=self.bot.colour,
-                          title=f'Season Overview for {ctx.guild.name}')
-
-        query = """SELECT COUNT(*), 
-                          MIN(time),
-                          SUM(donations),
-                          SUM(received)
-                   FROM donationevents 
-                   WHERE clan_tag=ANY($1::TEXT[])
-                   AND season_id=$2
-                """
-        count = await ctx.db.fetchrow(query, clan_tags, season_id)
-
-        fmt = f'{count[0]} events\n{count[2]} donations\n{count[3]} received'
-        e.add_field(name='Total Stats',
-                    value=fmt,
-                    inline=False)
-        e.set_footer(text='First event tracked').timestamp = count[1] or datetime.utcnow()
-
-        query = """SELECT command,
-                          COUNT(*) as "uses"
-                   FROM commands
-                   WHERE guild_id=$1
-                   GROUP BY command
-                   ORDER BY "uses" DESC
-                   LIMIT 5;
-                """
-        fetch = await ctx.db.fetch(query, ctx.guild.id)
-        value = '\n'.join(f'{number_emojis[i+1]}: {command} ({uses} uses)'
-                          for i, (command, uses) in enumerate(fetch)) or 'No Commands.'
-        e.add_field(name='Top Commands',
-                    value=value)
-        return e
-
-    @cache(strategy=Strategy.lru)
-    async def build_season_clan_event_stats(self, ctx, clans, season_id):
-        clan_tags = [n.tag for n in clans]
-
-        e = discord.Embed(colour=self.bot.colour,
-                          title=f'Season Event Stats for {ctx.guild.name}')
-        query = """SELECT clans.clan_name,
-                          COUNT(*) AS "uses"
-                   FROM donationevents
-                   INNER JOIN clans
-                        ON donationevents.clan_tag=clans.clan_tag
-                   WHERE donationevents.clan_tag=ANY($1::TEXT[])
-                   AND season_id=$2
-                   GROUP BY clans.clan_name
-                   ORDER BY "uses" DESC
-                   LIMIT 5;
-                """
-        fetch = await ctx.db.fetch(query, clan_tags, season_id)
-
-        value = '\n'.join(f'{number_emojis[i + 1]}: {name} ({events} events)'
-                          for (i, (name, events)) in enumerate(fetch)) or 'No Clans'
-        e.add_field(name='Top Clan Events',
-                    value=value,
-                    inline=False
-                    )
-
-        query = """SELECT clans.clan_name,
-                          SUM(donations) AS "donations"
-                   FROM donationevents
-                   INNER JOIN clans
-                        ON donationevents.clan_tag=clans.clan_tag
-                   WHERE donationevents.clan_tag=ANY($1::TEXT[])
-                   AND donationevents.season_id=$2
-                   GROUP BY clans.clan_name
-                   ORDER BY "donations" DESC
-                   LIMIT 5;
-                """
-        fetch = await ctx.db.fetch(query, clan_tags, season_id)
-        value = '\n'.join(f'{number_emojis[i + 1]}: {name} ({don} donations)'
-                          for (i, (name, don)) in enumerate(fetch)) or 'No Clans'
-        e.add_field(name='Top Clan Donations',
-                    value=value,
-                    inline=False
-                    )
-
-        query = """SELECT clans.clan_name,
-                          SUM(received) AS "received"
-                   FROM donationevents
-                   INNER JOIN clans
-                        ON donationevents.clan_tag=clans.clan_tag
-                   WHERE donationevents.clan_tag=ANY($1::TEXT[])
-                   AND donationevents.season_id=$2
-                   GROUP BY clans.clan_name
-                   ORDER BY "received" DESC
-                   LIMIT 5;
-                """
-        fetch = await ctx.db.fetch(query, clan_tags, season_id)
-        value = '\n'.join(f'{number_emojis[i + 1]}: {name} ({rec} received)'
-                          for (i, (name, rec)) in enumerate(fetch)) or 'No Clans'
-        e.add_field(name='Top Clan Received',
-                    value=value,
-                    inline=False
-                    )
-
-        query = """SELECT player_name,
-                          COUNT(*) AS "uses"
-                   FROM donationevents
-                   WHERE clan_tag=ANY($1::TEXT[])
-                   AND season_id=$2
-                   AND player_name IS NOT NULL
-                   GROUP BY player_name
-                   ORDER BY "uses" DESC
-                   LIMIT 5;
-                   """
-        fetch = await ctx.db.fetch(query, clan_tags, season_id)
-
-        value = '\n'.join(f'{number_emojis[i + 1]}: {name} ({events} events)'
-                          for (i, (name, events)) in enumerate(fetch)) or 'No Players'
-        e.add_field(name='Top Player Events',
-                    value=value,
-                    inline=False
-                    )
-        e.set_footer(text='Page 2/3').timestamp = datetime.utcnow()
-        return e
-
-    @cache(strategy=Strategy.lru)
-    async def build_season_clan_player_stats(self, ctx, clans, season_id):
-        clan_tags = [n.tag for n in clans]
-
-        e = discord.Embed(colour=self.bot.colour,
-                          title=f'Season Player Stats for {ctx.guild.name}')
-        query = """SELECT player_name,
-                          COUNT(*) AS "uses"
-                   FROM donationevents
-                   WHERE clan_tag=ANY($1::TEXT[])
-                   AND season_id=$2
-                   AND player_name IS NOT NULL
-                   GROUP BY player_name
-                   ORDER BY "uses" DESC
-                   LIMIT 5;
-                """
-        fetch = await ctx.db.fetch(query, clan_tags, season_id)
-
-        value = '\n'.join(f'{number_emojis[i + 1]}: {name} ({events} events)'
-                          for (i, (name, events)) in enumerate(fetch)) or 'No Players'
-        e.add_field(name='Top 5 Players - By Events',
-                    value=value,
-                    inline=False
-                    )
-
-        query = """SELECT donationevents.player_name,
-                          SUM(DISTINCT players.donations) as "donations"
-                   FROM players
-                   INNER JOIN donationevents 
-                        ON donationevents.player_tag=players.player_tag
-                        AND donationevents.season_id=players.season_id
-                   WHERE donationevents.clan_tag=ANY($1::TEXT[])
-                   AND donationevents.season_id=$2
-                   AND donationevents.player_name IS NOT NULL
-                   GROUP BY donationevents.player_name
-                   ORDER BY "donations" DESC
-                   LIMIT 5;
-                """
-        fetch = await ctx.db.fetch(query, clan_tags, season_id)
-        value = '\n'.join(f'{number_emojis[i + 1]}: {name} ({don} donations)'
-                          for (i, (name, don)) in enumerate(fetch)) or 'No Players'
-        e.add_field(name='Top 5 Players - By Donations',
-                    value=value,
-                    inline=False
-                    )
-
-        query = """SELECT donationevents.player_name,
-                          SUM(DISTINCT players.received) as "received"
-                   FROM players
-                   INNER JOIN donationevents 
-                        ON donationevents.player_tag=players.player_tag
-                        AND donationevents.season_id=players.season_id
-                   WHERE donationevents.clan_tag=ANY($1::TEXT[])
-                   AND donationevents.season_id=$2
-                   AND donationevents.player_name IS NOT NULL
-                   GROUP BY donationevents.player_name
-                   ORDER BY "received" DESC
-                   LIMIT 5;
-                """
-        fetch = await ctx.db.fetch(query, clan_tags, season_id)
-        value = '\n'.join(f'{number_emojis[i + 1]}: {name} ({rec} received)'
-                          for (i, (name, rec)) in enumerate(fetch)) or 'No Players'
-        e.add_field(name='Top 5 Players - By Received',
-                    value=value,
-                    inline=False
-                    )
-        e.set_footer(text='Page 3/3').timestamp = datetime.utcnow()
-        return e
-
-    @cache(strategy=Strategy.lru)
-    async def build_season_user_misc_stats(self, ctx, user, season_id):
-        e = discord.Embed(colour=self.bot.colour,
-                          title=f'Season Overview for {user}')
-
-        query = """SELECT COUNT(*), 
-                          MIN(donationevents.time),
-                          SUM(players.donations),
-                          SUM(players.received)
-                   FROM donationevents
-                   INNER JOIN players
-                        ON donationevents.player_tag=players.player_tag
-                        AND donationevents.season_id=players.season_id
-                   WHERE players.user_id=$1
-                   AND donationevents.season_id=$2
-                """
-        count = await ctx.db.fetchrow(query, user.id, season_id)
-
-        fmt = f'{count[0]} events\n{count[2]} donations\n{count[3]} received'
-        e.add_field(name='Total Stats',
-                    value=fmt,
-                    inline=False)
-        e.set_footer(text='First event tracked').timestamp = count[1] or datetime.utcnow()
-
-        query = """SELECT command,
-                          COUNT(*) as "uses"
-                   FROM commands
-                   WHERE author_id=$1
-                   GROUP BY command
-                   ORDER BY "uses" DESC
-                   LIMIT 5;
-                """
-        fetch = await ctx.db.fetch(query, ctx.guild.id)
-        value = '\n'.join(f'{number_emojis[i+1]}: {command} ({uses} uses)'
-                          for i, (command, uses) in enumerate(fetch)) or 'No Commands.'
-        e.add_field(name='Top Commands',
-                    value=value)
-        return e
-
-    @cache(strategy=Strategy.lru)
-    async def build_season_user_player_stats(self, ctx, user, season_id):
-        e = discord.Embed(colour=self.bot.colour,
-                          title=f'Season Player Stats for {user}')
-        query = """SELECT donationevents.player_name,
-                          COUNT(*) AS "uses"
-                   FROM donationevents
-                   INNER JOIN players
-                        ON players.player_tag=donationevents.player_tag
-                        AND players.season_id=donationevents.season_id
-                   WHERE players.user_id=$1
-                   AND donationevents.season_id=$2
-                   AND player_name IS NOT NULL
-                   GROUP BY player_name
-                   ORDER BY "uses" DESC
-                   LIMIT 5;
-                """
-        fetch = await ctx.db.fetch(query, user.id, season_id)
-
-        value = '\n'.join(f'{number_emojis[i + 1]}: {name} ({events} events)'
-                          for (i, (name, events)) in enumerate(fetch)) or 'No Players.'
-        e.add_field(name='Top 5 Players - By Events',
-                    value=value,
-                    inline=False
-                    )
-
-        query = """SELECT donationevents.player_name,
-                          SUM(DISTINCT players.donations) as "donations"
-                   FROM players
-                   INNER JOIN donationevents 
-                        ON donationevents.player_tag=players.player_tag
-                        AND donationevents.season_id=players.season_id
-                   WHERE players.user_id=$1
-                   AND donationevents.season_id=$2
-                   AND donationevents.player_name IS NOT NULL
-                   GROUP BY donationevents.player_name
-                   ORDER BY "donations" DESC
-                   LIMIT 5;
-                """
-        fetch = await ctx.db.fetch(query, user.id, season_id)
-        value = '\n'.join(f'{number_emojis[i + 1]}: {name} ({don} donations)'
-                          for (i, (name, don)) in enumerate(fetch)) or 'No Players'
-        e.add_field(name='Top 5 Players - By Donations',
-                    value=value,
-                    inline=False
-                    )
-
-        query = """SELECT donationevents.player_name,
-                          SUM(DISTINCT players.received) as "received"
-                   FROM players
-                   INNER JOIN donationevents 
-                        ON donationevents.player_tag=players.player_tag
-                        AND donationevents.season_id=players.season_id
-                   WHERE players.user_id=$1
-                   AND donationevents.season_id=$2
-                   AND donationevents.player_name IS NOT NULL
-                   GROUP BY donationevents.player_name
-                   ORDER BY "received" DESC
-                   LIMIT 5;
-                """
-        fetch = await ctx.db.fetch(query, user.id, season_id)
-        value = '\n'.join(f'{number_emojis[i + 1]}: {name} ({rec} received)'
-                          for (i, (name, rec)) in enumerate(fetch)) or 'No Players'
-        e.add_field(name='Top 5 Players - By Received',
-                    value=value,
-                    inline=False
-                    )
-        e.set_footer(text='Page 2/2').timestamp = datetime.utcnow()
-        return e
+    async def cog_after_invoke(self, ctx):
+        after_invoke = getattr(ctx, 'after_invoke', None)
+        if after_invoke:
+            await after_invoke(ctx)
 
     @cache(strategy=Strategy.lru)
     async def get_board_fmt(self, guild_id, season_id, board_type):
@@ -372,155 +72,168 @@ class Season(commands.Cog):
                               )
             e.set_author(name=board_config.title,
                          icon_url=board_config.icon_url or 'https://cdn.discordapp.com/'
-                                                     'emojis/592028799768592405.png?v=1')
+                                                           'emojis/592028799768592405.png?v=1')
             e.set_footer(text=f'Historical DonationBoard; Season {season_id} - Page {i+1}/{message_count}')
             embeds.append(e)
 
         return embeds
 
     @commands.group(invoke_without_subcommand=True)
-    async def season(self, ctx):
+    async def seasonstats(self, ctx):
         """[Group] command to manage historical stats for seasons past."""
         if ctx.invoked_subcommand is None:
             await ctx.send_help(ctx.command)
 
-    @season.command(name='info')
-    async def season_info(self, ctx):
-        """Get Season IDs and start/finish times and info."""
-        query = "SELECT id, start, finish FROM seasons ORDER BY id DESC"
-        fetch = await ctx.db.fetch(query)
-        table = TabularData()
-        table.set_columns(['ID', 'Start', 'Finish'])
-        for n in fetch:
-            table.add_row([n[0], n[1].strftime('%d-%b-%Y'), n[2].strftime('%d-%b-%Y')])
+    @seasonstats.command(name='donationboard')
+    async def seasonstats_donationboard(self, ctx, season: typing.Optional[int] = None):
+        """Get historical donationoard stats.
 
-        e = discord.Embed(colour=self.bot.colour,
-                          description=f'```\n{table.render()}\n```',
-                          title='Season Info',
-                          timestamp=datetime.utcnow()
-                          )
-        e.add_field(name='Current Season',
-                    value=readable_time((fetch[0][2] - fetch[0][1]).total_seconds()) + ' left',
-                    inline=False)
-        await ctx.send(embed=e)
+        *Parameters**
+        :key: Season ID (optional - defaults to last season)
 
-    @season.command(name='donationboard')
-    async def season_donationboard(self, ctx, season: typing.Optional[int] = None):
-        """Get a historical donationboard for the given season.
-
-        This command will return a pagination of the top 100 players for the guild, in that season.
-
-        Parameters
-        --------------------
-
-            • Season ID: integer - optional. Defaults to the previous season.
-
-        Examples
-        ----------------------
-
-        • `+season donationboard 1` - donationboard for season 1
+        **Example**
+        :white_check_mark: `+seasonstats donationboard`
+        :white_check_mark: `+seasonstats donationboard 2`
         """
         embeds = await self.get_board_fmt(ctx.guild.id, season or (await self.bot.seasonconfig.get_season_id()) - 1,
                                           'donation')
         p = SeasonStatsPaginator(ctx, entries=embeds)
         await p.paginate()
 
-    @season.group(name='stats')
-    async def season_stats(self, ctx, season: typing.Optional[int] = None,
-                           *, arg: typing.Union[discord.Member, ClanConverter] = None):
-        """Get Overall Season Stats for past seasons.
+    @seasonstats.command(name='attacks')
+    async def seasonstats_attacks(self, ctx, season: typing.Optional[int] = None):
+        """Get attack wins for all clans.
 
-        This command will give you total clan donations, top players by events, donations etc. and more.
+        **Parameters**
+        :key: Season ID (optional - defaults to last season)
 
-        Parameters
-        --------------------
-
-            • Season ID: integer - optional. Defaults to the previous season.
-            • Discord user or clan name/tag/`all` - either a mention, user ID, clan tag,
-                clan name or `all` for all clans in server.
-
-        Examples
-        ----------------------
-
-        • `+season stats 1 all` - season stats for season 1 for all clans in guild.
-        • `+season stats #CLAN_TAG` - season stats for previous season for that clan tag.
-        • `+season stats 4 @user` - season stats for season 4 for @user.
+        **Example**
+        :white_check_mark: `+season stats attacks`
+        :white_check_mark: `+season stats attacks 2`
         """
-        if not arg:
-            arg = await ctx.get_clans()
-        if not season:
-            season = (await self.bot.seasonconfig.get_season_id()) - 1
+        season = season or await self.bot.seasonconfig.get_season_id() - 1
+        query = """SELECT player_tag, end_attacks - start_attacks as attacks, trophies 
+                        FROM players 
+                        WHERE season_id = $1 AND guild_id = $2
+                        ORDER BY attacks DESC
+                        LIMIT 15
+                    """
+        fetch = await ctx.db.fetch(query, season, ctx.guild.id)
 
-        if isinstance(arg, list):
-            await ctx.invoke(self.season_stats_guild, clan=arg, season=season)
-        if isinstance(arg, discord.Member):
-            await ctx.invoke(self.season_stats_user, user=arg, season=season)
+        table = CLYTable()
+        title = f"Attack wins for Season {season}"
 
-    @season_stats.command(name='user')
-    async def season_stats_user(self, ctx, season: typing.Optional[int] = None,
-                                *, user: discord.Member = None):
-        """Get Overall Season Stats for a User.
+        attacks = {n['player_tag']: n['attacks'] for n in fetch}
+        for index, player in enumerate(await self.bot.coc.get_players((n[0] for n in fetch)).flatten()):
+            table.add_row([index, attacks[player.tag], player.trophies, player.name])
 
-        Parameters
-        -----------------------
-            • Season ID: integer - optional. Defaults to the previous season.
-            • Discord user - either a mention, user ID, or user#discrim combo. Defaults to you.
+        render = table.trophyboard_attacks()
+        e = discord.Embed(colour=discord.Colour.gold(),
+                          title=title,
+                          description=render)
+        await ctx.send(embed=e)
 
-        Examples
-        ----------------------
+    @seasonstats.command(name='defenses', aliases=['defense', 'defences', 'defence'])
+    async def seasonstats_defenses(self, ctx, season: typing.Optional[int] = None):
+        """Get defense wins for all clans.
 
-        • `+season stats user 1 @user` - season stats for season 1 for @user.
-        • `+season stats` - season stats for previous season for you.
-        • `+season stats user @user` - season stats for previous season for @user.
+        **Parameters**
+        :key: Season ID (optional - defaults to last season)
+
+        **Example**
+        :white_check_mark: `+season stats defenses`
+        :white_check_mark: `+season stats defenses 3`
         """
-        user = user or ctx.author
-        season = season or await self.bot.seasonconfig.get_season_id()
+        season = season or await self.bot.seasonconfig.get_season_id() - 1
+        query = """SELECT player_tag, end_defenses - start_defenses as defenses, trophies 
+                        FROM players 
+                        WHERE season_id = $1 AND guild_id = $2
+                        ORDER BY defenses DESC
+                        LIMIT 15
+                    """
+        fetch = await ctx.db.fetch(query, season, ctx.guild.id)
 
-        query = "SELECT player_tag FROM players WHERE user_id=$1"
-        fetch = await ctx.db.fetchrow(query, user.id)
-        if not fetch:
-            return await ctx.send(f'{user} doesn\'t have any claimed accounts.')
+        table = CLYTable()
+        title = f"Defense wins for Season {season}"
 
-        entries = [
-            await self.build_season_user_misc_stats(ctx, user, season),
-            await self.build_season_user_player_stats(ctx, user, season)
-        ]
+        defenses = {n['player_tag']: n['defenses'] for n in fetch}
+        for index, player in enumerate(await self.bot.coc.get_players((n[0] for n in fetch)).flatten()):
+            table.add_row([index, defenses[player.tag], player.trophies, player.name])
 
-        p = SeasonStatsPaginator(ctx, entries=entries)
-        await p.paginate()
+        render = table.trophyboard_defenses()
+        e = discord.Embed(colour=discord.Colour.dark_red(),
+                          title=title,
+                          description=render)
+        await ctx.send(embed=e)
 
-    @season_stats.command(name='guild', aliases=['server'])
-    async def season_stats_guild(self, ctx, season: typing.Optional[int] = None,
-                                 *, clan: ClanConverter):
-        """Get Overall Season Stats for past seasons for a guild.
+    @seasonstats.command(name='gains', aliases=['trophies'])
+    async def seasonstats_gains(self, ctx, season: typing.Optional[int] = None):
+        """Get trophy gains for all clans.
 
-        Parameters
-        --------------------
+        **Parameters**
+        :key: Season ID (optional - defaults to last season)
 
-            • Season ID: integer - optional. Defaults to the previous season.
-            • Clan name/tag/`all` - either a clan tag, clan name or `all` for all clans in server.
-
-        Examples
-        ----------------------
-
-        • `+season stats guild 1 all` - season stats for season 1 for all clans in guild.
-        • `+season stats guild #CLAN_TAG` - season stats for previous season for that clan tag.
-        • `+season stats 4 Clan Name` - season stats for season 4 for `Clan Name` clan.
+        **Example**
+        :white_check_mark: `+season stats gains`
+        :white_check_mark: `+season stats gains 1`
         """
-        if not clan:
-            return await ctx.send('No claimed clans.')
+        season = season or await self.bot.seasonconfig.get_season_id() - 1
+        query = """SELECT player_tag, trophies - start_trophies as gain, trophies 
+                            FROM players 
+                            WHERE season_id = $1 AND guild_id = $2
+                            ORDER BY gain DESC
+                            LIMIT 15
+                        """
+        fetch = await ctx.db.fetch(query, season, ctx.guild.id)
 
-        season = season or await self.bot.seasonconfig.get_season_id()
+        table = CLYTable()
+        title = f"Trophy Gains for Season {season}"
 
-        entries = [
-            await self.build_season_clan_misc_stats(ctx, clan, season),
-            await self.build_season_clan_event_stats(ctx, clan, season),
-            await self.build_season_clan_player_stats(ctx, clan, season)
-        ]
+        gains = {n['player_tag']: n['gains'] for n in fetch}
+        for index, player in enumerate(await self.bot.coc.get_players((n[0] for n in fetch)).flatten()):
+            table.add_row([index, gains[player.tag], player.trophies, player.name])
 
-        p = SeasonStatsPaginator(ctx, entries=entries)
-        await p.paginate()
+        render = table.trophyboard_gain()
+        e = discord.Embed(colour=discord.Colour.green(),
+                          title=title,
+                          description=render)
+        await ctx.send(embed=e)
+
+    @seasonstats.command(name='donors', aliases=['donations', 'donates', 'donation'])
+    async def seasonstats_donors(self, ctx, season: typing.Optional[int] = None):
+        """Get donations for all clans.
+
+        **Parameters**
+        :key: Season ID (optional - defaults to last season)
+
+        **Example**
+        :white_check_mark: `+season stats donors`
+        :white_check_mark: `+season stats donations 4`
+        """
+        season = season or await self.bot.seasonconfig.get_season_id() - 1
+        query = """SELECT player_tag,  
+                        (end_friend_in_need + end_sharing_is_caring) - (start_friend_in_need + start_sharing_is_caring) as donations
+                        FROM players
+                        WHERE season_id = $1 AND guild_id = $2
+                        ORDER BY donations DESC
+                        LIMIT 15
+                    """
+        fetch = await ctx.db.fetch(query, season, ctx.guild.id)
+
+        table = CLYTable()
+        title = f"Donations for Season {season}"
+
+        donations = {n['player_tag']: n['donations'] for n in fetch}
+
+        for index, player in enumerate(await self.bot.coc.get_players((n[0] for n in fetch)).flatten()):
+            table.add_row([index, donations[player.tag], player.name])
+
+        render = table.donationboard_2()
+        e = discord.Embed(colour=discord.Colour.green(),
+                          title=title,
+                          description=render)
+        await ctx.send(embed=e)
 
 
 def setup(bot):
-    bot.add_cog(Season(bot))
+    bot.add_cog(SeasonStats(bot))

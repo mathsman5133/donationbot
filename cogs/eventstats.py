@@ -7,7 +7,8 @@ from cogs.utils.checks import requires_config
 from cogs.utils.emoji_lookup import misc
 
 
-class Event(commands.Cog):
+
+class EventStats(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
@@ -36,11 +37,15 @@ class Event(commands.Cog):
     async def eventstats_attacks(self, ctx):
         """Get attack wins for all clans.
 
-        **Format**
-        :information_source: `+eventstats attacks`
+        **Parameters**
+        :key: Season ID (optional - defaults to last season)
 
+        **Format**
+        :information_source: `+eventstats attacks SEASON_ID`
+            
         **Example**
         :white_check_mark: `+eventstats attacks`
+        :white_check_mark: `+eventstats attacks 2`
         """
         if not ctx.config:
             # TODO Consider pulling most recent event and if time is between end of event and end of season, show stats.
@@ -85,6 +90,7 @@ class Event(commands.Cog):
             return await ctx.send(
                 'It would appear that you aren\'t currently in an event. Did you mean `+seasonstats defenses`?'
             )
+
         query = """SELECT player_tag, end_defenses - start_defenses as defenses, trophies 
                     FROM eventplayers 
                     WHERE event_id = $1
@@ -93,9 +99,10 @@ class Event(commands.Cog):
                 """
         fetch = await ctx.db.fetch(query, ctx.config.id)
 
-        table = formatters.CLYTable()
-
         defenses = {n['player_tag']: n['defenses'] for n in fetch}
+
+        table = formatters.CLYTable()
+        title = f"Defense wins for {ctx.config.event_name}"
 
         for index, player in enumerate(await self.bot.coc.get_players((n[0] for n in fetch)).flatten()):
             table.add_row([index, defenses[player.tag], player.trophies, player.name])
@@ -104,7 +111,7 @@ class Event(commands.Cog):
         fmt += f"**Key:**\n{misc['defense']} - Defenses\n{misc['trophygold']} - Trophies"
 
         e = discord.Embed(
-            colour=discord.Colour.dark_red(), description=fmt, title=f"Defense wins for {ctx.config.event_name}"
+            colour=discord.Colour.dark_red(), description=fmt, title=title
         )
         await ctx.send(embed=e)
 
@@ -113,16 +120,21 @@ class Event(commands.Cog):
     async def eventstats_gains(self, ctx):
         """Get trophy gains for all clans.
 
+        **Parameters**
+        :key: Season ID (optional - defaults to last season)
+
         **Format**
-        :information_source: `+eventstats gains`
+        :information_source: `+eventstats gains SEASON_ID`
 
         **Example**
         :white_check_mark: `+eventstats gains`
+        :white_check_mark: `+eventstats gains 3`
         """
         if not ctx.config:
             return await ctx.send(
                 'It would appear that you aren\'t currently in an event. Did you mean `+seasonstats gains`?'
             )
+
         query = """SELECT player_tag, trophies - start_trophies as gain, trophies 
                         FROM eventplayers 
                         WHERE event_id = $1
@@ -132,6 +144,7 @@ class Event(commands.Cog):
         fetch = await ctx.db.fetch(query, ctx.config.id)
 
         table = formatters.CLYTable()
+        title = f"Trophy Gains for {ctx.config.event_name}"
 
         gains = {n['player_tag']: n['gain'] for n in fetch}
         for index, player in enumerate(await self.bot.coc.get_players((n[0] for n in fetch)).flatten()):
@@ -141,7 +154,7 @@ class Event(commands.Cog):
         fmt += f"**Key:**\n{misc['trophygreen']} - Trophy Gain\n{misc['trophygold']} - Total Trophies"
 
         e = discord.Embed(
-            colour=discord.Colour.green(), description=fmt, title=f"Trophy Gains for {ctx.config.event_name}"
+            colour=discord.Colour.green(), description=fmt, title=title
         )
         await ctx.send(embed=e)
 
@@ -149,17 +162,21 @@ class Event(commands.Cog):
     @requires_config('event')
     async def eventstats_donors(self, ctx):
         """Get donations for all clans.
+  
+        **Parameters**
+        :key: Season ID (optional - defaults to last season)
 
         **Format**
-        :information_source: `+eventstats donations`
+        :information_source: `+eventstats donations SEASON_ID`
 
-       **Example**
-       :white_check_mark: `+eventstats donations`
+        **Example**
+        :white_check_mark: `+eventstats donations`
         """
         if not ctx.config:
             return await ctx.send(
                 'It would appear that you aren\'t currently in an event. Did you mean `+seasonstats donors`?'
             )
+
         query = """SELECT player_tag,  
                     (end_friend_in_need + end_sharing_is_caring) - (start_friend_in_need + start_sharing_is_caring) as donations
                     FROM eventplayers 
@@ -170,6 +187,7 @@ class Event(commands.Cog):
         fetch = await ctx.db.fetch(query, ctx.config.id)
 
         table = formatters.CLYTable()
+        title = f"Donations for {ctx.config.event_name}"
 
         donations = {n['player_tag']: n['donations'] for n in fetch}
         for index, player in enumerate(await self.bot.coc.get_players((n[0] for n in fetch)).flatten()):
@@ -178,10 +196,11 @@ class Event(commands.Cog):
         fmt = table.donationboard_2()
 
         e = discord.Embed(
-            colour=discord.Colour.green(), description=fmt, title=f"Donations for {ctx.config.event_name}"
+            colour=discord.Colour.green(), description=fmt, title=title
         )
+
         await ctx.send(embed=e)
 
 
 def setup(bot):
-    bot.add_cog(Event(bot))
+    bot.add_cog(EventStats(bot))

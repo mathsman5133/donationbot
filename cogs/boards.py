@@ -83,8 +83,8 @@ class DonationBoard(commands.Cog):
 
     async def bulk_insert(self):
         query = """UPDATE players SET donations = players.donations + x.donations, 
-                                      received  = players.received + x.received, 
-                                      trophies  = x.trophies
+                                      received  = players.received  + x.received, 
+                                      trophies  = players.trophies  + x.trophies
                         FROM(
                             SELECT x.player_tag, x.donations, x.received, x.trophies
                                 FROM jsonb_to_recordset($1::jsonb)
@@ -100,7 +100,7 @@ class DonationBoard(commands.Cog):
 
         query2 = """UPDATE eventplayers SET donations = eventplayers.donations + x.donations, 
                                             received  = eventplayers.received  + x.received,
-                                            trophies  = x.trophies   
+                                            trophies  = eventplayers.trophies  + x.trophies   
                         FROM(
                             SELECT x.player_tag, x.donations, x.received, x.trophies
                             FROM jsonb_to_recordset($1::jsonb)
@@ -213,6 +213,7 @@ class DonationBoard(commands.Cog):
             self._clan_events.add(clan.tag)
 
     async def on_clan_member_trophies_change(self, old_trophies, new_trophies, player, clan):
+        delta_trophies = new_trophies - old_trophies
         log.debug(f'Received on_clan_member_trophy_change event for player {player} of clan {clan}')
 
         async with self._batch_lock:
@@ -223,7 +224,7 @@ class DonationBoard(commands.Cog):
                     'player_tag': player.tag,
                     'donations': 0,
                     'received': 0,
-                    'trophies': new_trophies
+                    'trophies': delta_trophies
                 }
             self._clan_events.add(clan.tag)
 
