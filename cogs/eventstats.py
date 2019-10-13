@@ -33,8 +33,10 @@ class EventStats(commands.Cog):
     @requires_config('event')
     async def eventstats_attacks(self, ctx):
         """Get attack wins for all clans.
+
         **Parameters**
         :key: Season ID (optional - defaults to last season)
+
         **Format**
         :information_source: `+eventstats attacks SEASON_ID`
 
@@ -57,6 +59,7 @@ class EventStats(commands.Cog):
         fetch = await ctx.db.fetch(query, ctx.config.id)
 
         table = formatters.CLYTable()
+        title = f"Attack wins for {ctx.config.event_name}"
 
         attacks = {n['player_tag']: n['attacks'] for n in fetch}
         for index, player in enumerate(await self.bot.coc.get_players((n[0] for n in fetch)).flatten()):
@@ -66,7 +69,7 @@ class EventStats(commands.Cog):
         fmt += f"**Key:**\n{misc['attack']} - Attacks\n{misc['trophygold']} - Trophies"
 
         e = discord.Embed(
-            colour=discord.Colour.gold(), description=fmt, title=f"Attack wins for {ctx.config.event_name}"
+            colour=discord.Colour.gold(), description=fmt, title=title
         )
         await ctx.send(embed=e)
 
@@ -74,10 +77,16 @@ class EventStats(commands.Cog):
     @requires_config('event')
     async def eventstats_defenses(self, ctx):
         """Get defense wins for all clans.
+
+        **Parameters**
+        :key: Season ID (optional - defaults to last season)
+
         **Format**
-        :information_source: `+eventstats defenses`
-       **Example**
-       :white_check_mark: `+eventstats defenses`
+        :information_source: `+eventstats defenses SEASON_ID`
+
+        **Example**
+        :white_check_mark: `+eventstats defenses`
+        :white_check_mark: `+eventstats defenses 1`
         """
         if not ctx.config:
             return await ctx.send(
@@ -112,10 +121,13 @@ class EventStats(commands.Cog):
     @requires_config('event')
     async def eventstats_gains(self, ctx):
         """Get trophy gains for all clans.
+
         **Parameters**
         :key: Season ID (optional - defaults to last season)
+
         **Format**
         :information_source: `+eventstats gains SEASON_ID`
+
         **Example**
         :white_check_mark: `+eventstats gains`
         :white_check_mark: `+eventstats gains 3`
@@ -155,10 +167,13 @@ class EventStats(commands.Cog):
 
         **Parameters**
         :key: Season ID (optional - defaults to last season)
+
         **Format**
         :information_source: `+eventstats donations SEASON_ID`
+
         **Example**
         :white_check_mark: `+eventstats donations`
+        :white_check_mark: `+eventstats donations 3`
         """
         if not ctx.config:
             return await ctx.send(
