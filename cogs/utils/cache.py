@@ -9,6 +9,8 @@ from functools import wraps
 from lru import LRU
 from coc import Cache, SearchClan, SearchPlayer
 
+from creds import live
+
 def _wrap_and_store_coroutine(cache, key, coro):
     async def func():
         value = await coro
@@ -86,6 +88,8 @@ def cache(maxsize=128, strategy=Strategy.redis, ignore_kwargs=False):
 
         @wraps(func)
         async def async_wrapper(*args, **kwargs):
+            if not live:
+                return wrapper(args, kwargs)
             redis = args[0].bot.redis
 
             key = _make_key(args, kwargs)
@@ -129,6 +133,8 @@ def cache(maxsize=128, strategy=Strategy.redis, ignore_kwargs=False):
                 return True
 
         async def async_invalidate(*args, **kwargs):
+            if not live:
+                return _invalidate(args, kwargs)
             return await args[0].bot.redis.delete(_make_key(args, kwargs))
 
         def _invalidate_containing(key):
