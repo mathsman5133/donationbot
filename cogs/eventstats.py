@@ -33,7 +33,7 @@ class EventStats(commands.Cog):
 
     @eventstats.command(name='attacks')
     @requires_config('event')
-    async def eventstats_attacks(self, ctx):
+    async def eventstats_attacks(self, ctx, event_id: int = None):
         """Get attack wins for all clans.
 
         **Format**
@@ -42,6 +42,9 @@ class EventStats(commands.Cog):
         **Example**
         :white_check_mark: `+eventstats attacks`
         """
+        if event_id and await self.bot.is_owner(ctx.author):
+            ctx.config = await self.bot.utils.event_config_id(event_id)
+
         if not ctx.config:
             # TODO Consider pulling most recent event and if time is between end of event and end of season, show stats.
             return await ctx.send(
@@ -73,7 +76,7 @@ class EventStats(commands.Cog):
 
     @eventstats.command(name='defenses', aliases=['defense', 'defences', 'defence'])
     @requires_config('event')
-    async def eventstats_defenses(self, ctx):
+    async def eventstats_defenses(self, ctx, event_id: int = None):
         """Get defense wins for all clans.
 
         **Format**
@@ -82,6 +85,9 @@ class EventStats(commands.Cog):
         **Example**
         :white_check_mark: `+eventstats defenses`
         """
+        if event_id and await self.bot.is_owner(ctx.author):
+            ctx.config = await self.bot.utils.event_config_id(event_id)
+
         if not ctx.config:
             return await ctx.send(
                 'It would appear that you aren\'t currently in an event. Did you mean `+seasonstats defenses`?'
@@ -113,7 +119,7 @@ class EventStats(commands.Cog):
 
     @eventstats.command(name='gains', aliases=['trophies'])
     @requires_config('event')
-    async def eventstats_gains(self, ctx):
+    async def eventstats_gains(self, ctx, event_id: int = None):
         """Get trophy gains for all clans.
 
         **Format**
@@ -122,6 +128,9 @@ class EventStats(commands.Cog):
         **Example**
         :white_check_mark: `+eventstats gains`
         """
+        if event_id and await self.bot.is_owner(ctx.author):
+            ctx.config = await self.bot.utils.event_config_id(event_id)
+
         if not ctx.config:
             return await ctx.send(
                 'It would appear that you aren\'t currently in an event. Did you mean `+seasonstats gains`?'
@@ -152,7 +161,7 @@ class EventStats(commands.Cog):
 
     @eventstats.command(name='donors', aliases=['donations', 'donates', 'donation'])
     @requires_config('event')
-    async def eventstats_donors(self, ctx):
+    async def eventstats_donors(self, ctx, event_id: int = None):
         """Get donations for all clans.
 
         **Format**
@@ -161,6 +170,9 @@ class EventStats(commands.Cog):
         **Example**
         :white_check_mark: `+eventstats donors`
         """
+        if event_id and await self.bot.is_owner(ctx.author):
+            ctx.config = await self.bot.utils.event_config_id(event_id)
+
         if not ctx.config:
             return await ctx.send(
                 'It would appear that you aren\'t currently in an event. Did you mean `+seasonstats donors`?'
