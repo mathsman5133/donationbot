@@ -143,7 +143,7 @@ class DonationBot(commands.Bot):
         return await error_handler(context, exception)
 
     async def on_error(self, event_method, *args, **kwargs):
-        return discord_event_error(self, event_method, *args, **kwargs)
+        return await discord_event_error(self, event_method, *args, **kwargs)
 
 
 if __name__ == '__main__':

@@ -48,13 +48,15 @@ class BackgroundManagement(commands.Cog):
         if not event:
             return await asyncio.sleep(3600)
 
-        slim_config = SlimEventConfig(event['id'], event['start'], event['finish'], event['event_name'], event['channel_id'])
+        slim_config = SlimEventConfig(
+            event['id'], event['start'], event['finish'], event['event_name'], event['channel_id'], event['guild_id']
+        )
 
         if event['until_start'].total_seconds() < 0:
-            await self.on_event_start(slim_config, event['guild_id'])
+            await self.on_event_start(slim_config)
 
         await asyncio.sleep(event['until_start'].total_seconds())
-        await self.on_event_start(slim_config, event['guild_id'])
+        await self.on_event_start(slim_config)
 
         query = "UPDATE events SET start_report = True WHERE id = $1"
         await self.bot.pool.execute(query, event['id'])
@@ -77,13 +79,16 @@ class BackgroundManagement(commands.Cog):
         if not event:
             return await asyncio.sleep(3600)
 
-        slim_config = SlimEventConfig(event['id'], event['start'], event['finish'], event['event_name'], event['channel_id'])
+        slim_config = SlimEventConfig(
+            event['id'], event['start'], event['finish'], event['event_name'], event['channel_id'], event['guild_id']
+        )
+        self.bot.utils.board_config.invalidate(self.bot.utils, slim_config.channel_id)
 
         if event['until_start'].total_seconds() < 0:
-            await self.on_event_start(slim_config, event['guild_id'])
+            await self.on_event_finish(slim_config)
 
         await asyncio.sleep(event['until_finish'].total_seconds())
-        await self.on_event_finish(slim_config, event['guild_id'])
+        await self.on_event_finish(slim_config)
 
     @tasks.loop(hours=1)
     async def event_player_updater(self):
@@ -208,13 +213,13 @@ class BackgroundManagement(commands.Cog):
         except (discord.HTTPException, discord.NotFound, AttributeError):
             log.error(f'Tried to send event info to {channel} but was rejected. Please inform them.')
 
-    async def on_event_start(self, event, guild_id):
+    async def on_event_start(self, event):
         log.info(f'Starting {event.event_name} ({event.id}) '
-                 f'in channel ID {event.channel_id}, for guild {guild_id}.')
+                 f'in channel ID {event.channel_id}, for guild {event.guild_id}.')
         channel = self.bot.get_channel(event.channel_id)
         await self.safe_send(channel, ':tada: Event starting! I am adding members to the database...')
 
-        clans = await self.bot.get_clans(guild_id, in_event=True)
+        clans = await self.bot.get_clans(event.guild_id, in_event=True)
 
         for n in clans:
             async for player in n.get_detailed_members():
@@ -222,17 +227,17 @@ class BackgroundManagement(commands.Cog):
         await self.safe_send(channel, 'All members have been added... '
                                       'configuring the donation and trophy boards to be in the event!')
         query = "UPDATE boards SET in_event = True WHERE guild_id = $1"
-        await self.bot.pool.execute(query, guild_id)
+        await self.bot.pool.execute(query, event.guild_id)
 
-        donationboard_config = await self.bot.utils.get_board_config(guild_id, 'donation')
+        donationboard_config = await self.bot.utils.get_board_config(event.guild_id, 'donation')
         if donationboard_config:
             await self.bot.donationboard.update_board(donationboard_config.channel_id)
-            await self.new_event_message(event, guild_id, donationboard_config.channel_id, 'donation')
+            await self.new_event_message(event, event.guild_id, donationboard_config.channel_id, 'donation')
 
-        trophyboard_config = await self.bot.utils.get_board_config(guild_id, 'trophy')
+        trophyboard_config = await self.bot.utils.get_board_config(event.guild_id, 'trophy')
         if trophyboard_config:
             await self.bot.donationboard.update_board(trophyboard_config.channel_id)
-            await self.new_event_message(event, guild_id, trophyboard_config.channel_id, 'trophy')
+            await self.new_event_message(event, event.guild_id, trophyboard_config.channel_id, 'trophy')
 
         await self.safe_send(channel, f'Boards have been updated. Enjoy your event! '
                                       f'It ends in {readable_time((event.finish - datetime.datetime.utcnow()).total_seconds())}.')
@@ -278,26 +283,27 @@ class BackgroundManagement(commands.Cog):
         query = f"UPDATE events SET {board_type}_msg = $1 WHERE id = $2"
         await self.bot.pool.execute(query, msg.id, event.id)
 
-    async def on_event_finish(self, event, guild_id):
+    async def on_event_finish(self, event):
         channel = self.bot.get_channel(event.channel_id)
         await self.safe_send(channel, ':tada: Aaaand thats it! The event has finished. I am crunching the numbers, '
                                       'working out who the champs and chumps are, and will get back to you shortly.')
 
-        clans = await self.bot.get_clans(guild_id, in_event=True)
+        query = "SELECT player_tag FROM eventplayers WHERE event_id=$1 AND final_update=False"
+        fetch = await self.bot.pool.fetch(query, event.id)
 
-        for n in clans:
-            async for player in n.get_detailed_members:
-                await self.finalise_member(self.bot.pool, player, event.id)
+        async for player in self.bot.coc.get_players((n[0] for n in fetch)):
+            await self.finalise_member(self.bot.pool, player, event.id)
+
         await self.safe_send(channel, 'All members have been finalised, updating your boards!')
         query = "UPDATE boards SET in_event = False WHERE guild_id = $1;"
-        await self.bot.pool.execute(query, guild_id)
+        await self.bot.pool.execute(query, event.guild_id)
 
-        donationboard_config = await self.bot.utils.get_board_config(guild_id, 'donation')
+        donationboard_config = await self.bot.utils.get_board_config(event.guild_id, 'donation')
         if donationboard_config:
             await self.bot.donationboard.update_board(donationboard_config.channel_id)
             await self.remove_event_msg(event.id, donationboard_config.channel, 'donation')
 
-        trophyboard_config = await self.bot.utils.get_board_config(guild_id, 'trophy')
+        trophyboard_config = await self.bot.utils.get_board_config(event.guild_id, 'trophy')
         if trophyboard_config:
             await self.bot.donationboard.update_board(trophyboard_config.channel_id)
             await self.remove_event_msg(event.id, trophyboard_config.channel, 'trophy')
