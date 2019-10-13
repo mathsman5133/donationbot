@@ -5,39 +5,27 @@ from cogs.utils.checks import requires_config
 from discord.ext import commands
 
 
-class Event(commands.Cog, command_attrs=dict(hidden=True)):
+class EventStats(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
     @commands.group(name='eventstats', invoke_without_command=True)
     async def eventstats(self, ctx):
-        """[Group] Provide statistics for the current (or most recent) event for this server.
-
-        **Parameters**
-        :key: Category
-
-        **Format**
-        :information_source: `+eventstats catgory`
-
-        **Examples**
-        :white_check_mark: `+eventstats attacks`
-        :white_check_mark: `+eventstats defenses`
-        :white_check_mark: `+eventstats gains`
-        :white_check_mark: `+eventstats donations`
-        """
+        """[Group] Provide statistics for the current (or most recent) event for this server."""
         if ctx.invoked_subcommand is None:
             await ctx.send_help(ctx.command)
 
     @eventstats.command(name='attacks')
     @requires_config('event', invalidate=True)
-    async def event_attacks(self, ctx):
+    async def eventstats_attacks(self, ctx):
         """Get attack wins for all clans.
 
-           By default, you shouldn't need to call these sub-commands as the bot will
-           parse your argument and direct it to the correct sub-command automatically.
+        **Parameters**
+        :key: Season ID (optional - defaults to last season)
 
-           **Example**
-           :white_check_mark: `+eventstats attacks`
+        **Example**
+        :white_check_mark: `+eventstats attacks`
+        :white_check_mark: `+eventstats attacks 2`
         """
         if not ctx.config:
             # TODO Consider pulling most recent event and if time is between end of event and end of season, show stats.
@@ -49,31 +37,36 @@ class Event(commands.Cog, command_attrs=dict(hidden=True)):
                     LIMIT 15
                 """
         fetch = await ctx.db.fetch(query, ctx.config.id)
-        table = formatters.CLYTable()
-        table.title = f"Attack wins for {ctx.config.event_name}"
-        index = 0
-        for row in fetch:
-            player = await self.bot.coc.get_player(row['player_tag'])
-            table.add_row([index, row['attacks'], player.trophies, player.name])
-        render = table.trophyboard_attacks()
-        fmt = render()
 
-        e = discord.Embed(colour=discord.Colour.gold(), description=fmt)
+        attacks = {n['player_tag']: n['attacks'] for n in fetch}
+
+        table = formatters.CLYTable()
+        title = f"Attack wins for {ctx.config.event_name}"
+
+        for index, player in enumerate(await self.bot.coc.get_players((n[0] for n in fetch)).flatten()):
+            table.add_row([index, attacks[player.tag], player.trophies, player.name])
+
+        render = table.trophyboard_attacks()
+        e = discord.Embed(colour=discord.Colour.gold(),
+                          title=title,
+                          description=render)
         await ctx.send(embed=e)
 
     @eventstats.command(name='defenses', aliases=['defense', 'defences', 'defence'])
     @requires_config('event', invalidate=True)
-    async def event_defenses(self, ctx):
+    async def eventstats_defenses(self, ctx):
         """Get defense wins for all clans.
 
-           By default, you shouldn't need to call these sub-commands as the bot will
-           parse your argument and direct it to the correct sub-command automatically.
+        **Parameters**
+        :key: Season ID (optional - defaults to last season)
 
-           **Example**
-           :white_check_mark: `+eventstats defenses`
+        **Example**
+        :white_check_mark: `+eventstats defenses`
+        :white_check_mark: `+eventstats defenses 1`
         """
         if not ctx.config:
             return ctx.send('It would appear that you aren\'t currently in an event. Did you mean `+season defenses`?')
+
         query = """SELECT player_tag, end_defenses - start_defenses as defenses, trophies 
                     FROM eventplayers 
                     WHERE event_id = $1
@@ -81,33 +74,36 @@ class Event(commands.Cog, command_attrs=dict(hidden=True)):
                     LIMIT 15
                 """
         fetch = await ctx.db.fetch(query, ctx.config.id)
-        defenses = {}
-        for row in fetch:
-            defenses[row['player_tag']] = row['defenses']
-        table = formatters.CLYTable()
-        table.title = f"Defense wins for {ctx.config.event_name}"
-        index = 0
-        async for player in self.bot.coc.get_players((n[0] for n in fetch)):
-            table.add_row([index, defenses[player.tag], player.trophies, player.name])
-        render = table.trophyboard_defenses()
-        fmt = render()
 
-        e = discord.Embed(colour=discord.Colour.dark_red(), description=fmt)
+        defenses = {n['player_tag']: n['defenses'] for n in fetch}
+
+        table = formatters.CLYTable()
+        title = f"Defense wins for {ctx.config.event_name}"
+
+        for index, player in enumerate(await self.bot.coc.get_players((n[0] for n in fetch)).flatten()):
+            table.add_row([index, defenses[player.tag], player.trophies, player.name])
+
+        render = table.trophyboard_defenses()
+        e = discord.Embed(colour=discord.Colour.dark_red(),
+                          title=title,
+                          description=render)
         await ctx.send(embed=e)
 
     @eventstats.command(name='gains', aliases=['trophies'])
     @requires_config('event', invalidate=True)
-    async def event_gains(self, ctx):
+    async def eventstats_gains(self, ctx):
         """Get trophy gains for all clans.
 
-           By default, you shouldn't need to call these sub-commands as the bot will
-           parse your argument and direct it to the correct sub-command automatically.
+        **Parameters**
+        :key: Season ID (optional - defaults to last season)
 
-           **Example**
-           :white_check_mark: `+eventstats gains`
+        **Example**
+        :white_check_mark: `+eventstats gains`
+        :white_check_mark: `+eventstats gains 3`
         """
         if not ctx.config:
             return ctx.send('It would appear that you aren\'t currently in an event. Did you mean `+season gains`?')
+
         query = """SELECT player_tag, trophies - start_trophies as gain, trophies 
                         FROM eventplayers 
                         WHERE event_id = $1
@@ -115,31 +111,36 @@ class Event(commands.Cog, command_attrs=dict(hidden=True)):
                         LIMIT 15
                     """
         fetch = await ctx.db.fetch(query, ctx.config.id)
-        table = formatters.CLYTable()
-        table.title = f"Trophy Gains for {ctx.config.event_name}"
-        index = 0
-        for row in fetch:
-            player = await self.bot.coc.get_player(row['player_tag'])
-            table.add_row([index, row['gains'], player.trophies, player.name])
-        render = table.trophyboard_gain()
-        fmt = render()
 
-        e = discord.Embed(colour=discord.Colour.green(), description=fmt)
+        gains = {n['player_tag']: n['gain'] for n in fetch}
+
+        table = formatters.CLYTable()
+        title = f"Trophy Gains for {ctx.config.event_name}"
+
+        for index, player in enumerate(await self.bot.coc.get_players((n[0] for n in fetch)).flatten()):
+            table.add_row([index, gains[player.tag], player.trophies, player.name])
+
+        render = table.trophyboard_gain()
+        e = discord.Embed(colour=discord.Colour.green(),
+                          title=title,
+                          description=render)
         await ctx.send(embed=e)
 
     @eventstats.command(name='donors', aliases=['donations', 'donates', 'donation'])
     @requires_config('event', invalidate=True)
-    async def event_donors(self, ctx):
+    async def eventstats_donors(self, ctx):
         """Get donations for all clans.
 
-           By default, you shouldn't need to call these sub-commands as the bot will
-           parse your argument and direct it to the correct sub-command automatically.
+        **Parameters**
+        :key: Season ID (optional - defaults to last season)
 
-           **Example**
-           :white_check_mark: `+eventstats donations`
+        **Example**
+        :white_check_mark: `+eventstats donations`
+        :white_check_mark: `+eventstats donors 4`
         """
         if not ctx.config:
             return ctx.send('It would appear that you aren\'t currently in an event. Did you mean `+season donors`?')
+
         query = """SELECT player_tag,  
                     (end_friend_in_need + end_sharing_is_caring) - (start_friend_in_need + start_sharing_is_caring) as donations
                     FROM eventplayers 
@@ -148,18 +149,21 @@ class Event(commands.Cog, command_attrs=dict(hidden=True)):
                     LIMIT 15
                 """
         fetch = await ctx.db.fetch(query, ctx.config.id)
-        table = formatters.CLYTable()
-        table.title = f"Donations for {ctx.config.event_name}"
-        index = 0
-        for row in fetch:
-            player = await self.bot.coc.get_player(row['player_tag'])
-            table.add_row([index, row['donations'], player.name])
-        render = table.donationboard_2()
-        fmt = render()
 
-        e = discord.Embed(colour=discord.Colour.green(), description=fmt)
+        donations = {n['player_tag']: n['donations'] for n in fetch}
+
+        table = formatters.CLYTable()
+        title = f"Donations for {ctx.config.event_name}"
+
+        for index, player in enumerate(await self.bot.coc.get_players((n[0] for n in fetch)).flatten()):
+            table.add_row([index, donations[player.tag], player.name])
+
+        render = table.donationboard_2()
+        e = discord.Embed(colour=discord.Colour.green(),
+                          title=title,
+                          description=render)
         await ctx.send(embed=e)
 
 
 def setup(bot):
-    bot.add_cog(Event(bot))
+    bot.add_cog(EventStats(bot))
