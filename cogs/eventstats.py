@@ -36,15 +36,11 @@ class EventStats(commands.Cog):
     async def eventstats_attacks(self, ctx):
         """Get attack wins for all clans.
 
-        **Parameters**
-        :key: Season ID (optional - defaults to last season)
-
         **Format**
-        :information_source: `+eventstats attacks SEASON_ID`
+        :information_source: `+eventstats attacks`
 
         **Example**
         :white_check_mark: `+eventstats attacks`
-        :white_check_mark: `+eventstats attacks 2`
         """
         if not ctx.config:
             # TODO Consider pulling most recent event and if time is between end of event and end of season, show stats.
@@ -80,15 +76,11 @@ class EventStats(commands.Cog):
     async def eventstats_defenses(self, ctx):
         """Get defense wins for all clans.
 
-        **Parameters**
-        :key: Season ID (optional - defaults to last season)
-
         **Format**
-        :information_source: `+eventstats defenses SEASON_ID`
+        :information_source: `+eventstats defenses`
 
         **Example**
         :white_check_mark: `+eventstats defenses`
-        :white_check_mark: `+eventstats defenses 1`
         """
         if not ctx.config:
             return await ctx.send(
@@ -124,15 +116,11 @@ class EventStats(commands.Cog):
     async def eventstats_gains(self, ctx):
         """Get trophy gains for all clans.
 
-        **Parameters**
-        :key: Season ID (optional - defaults to last season)
-
         **Format**
-        :information_source: `+eventstats gains SEASON_ID`
+        :information_source: `+eventstats gains`
 
         **Example**
         :white_check_mark: `+eventstats gains`
-        :white_check_mark: `+eventstats gains 3`
         """
         if not ctx.config:
             return await ctx.send(
@@ -167,15 +155,11 @@ class EventStats(commands.Cog):
     async def eventstats_donors(self, ctx):
         """Get donations for all clans.
 
-        **Parameters**
-        :key: Season ID (optional - defaults to last season)
-
         **Format**
-        :information_source: `+eventstats donors SEASON_ID`
+        :information_source: `+eventstats donors`
 
         **Example**
         :white_check_mark: `+eventstats donors`
-        :white_check_mark: `+eventstats donors 3`
         """
         if not ctx.config:
             return await ctx.send(
