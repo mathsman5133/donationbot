@@ -9,6 +9,7 @@ from functools import wraps
 from lru import LRU
 from coc import Cache, SearchClan, SearchPlayer
 
+
 def _wrap_and_store_coroutine(cache, key, coro):
     async def func():
         value = await coro
