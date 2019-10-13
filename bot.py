@@ -151,10 +151,7 @@ if __name__ == '__main__':
     try:
         # configure the database connection
         pool = loop.run_until_complete(Table.create_pool(creds.postgres, command_timeout=60))
-        if creds.live:
-            redis = loop.run_until_complete(aioredis.create_redis('redis://localhost'))
-        else:
-            redis = None
+        redis = loop.run_until_complete(aioredis.create_redis('redis://localhost'))
 
         bot = DonationBot()
         bot.pool = pool  # add db as attribute
