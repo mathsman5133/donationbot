@@ -23,7 +23,9 @@ class EventStats(commands.Cog):
     @commands.group(name='eventstats', invoke_without_command=True)
     async def eventstats(self, ctx):
         """[Group] Provide statistics for the current (or most recent) event for this server.
+
         This command does nothing by itself - check out the subcommands!
+
         Your server **must** be in an event for this command to work.
         """
         if ctx.invoked_subcommand is None:
@@ -169,11 +171,11 @@ class EventStats(commands.Cog):
         :key: Season ID (optional - defaults to last season)
 
         **Format**
-        :information_source: `+eventstats donations SEASON_ID`
+        :information_source: `+eventstats donors SEASON_ID`
 
         **Example**
-        :white_check_mark: `+eventstats donations`
-        :white_check_mark: `+eventstats donations 3`
+        :white_check_mark: `+eventstats donors`
+        :white_check_mark: `+eventstats donors 3`
         """
         if not ctx.config:
             return await ctx.send(
