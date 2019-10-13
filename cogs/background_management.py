@@ -78,13 +78,13 @@ class BackgroundManagement(commands.Cog):
             return await asyncio.sleep(3600)
 
         slim_config = SlimEventConfig(event['id'], event['start'], event['finish'], event['event_name'], event['channel_id'])
+        self.bot.utils.board_config.invalidate(self.bot.utils, slim_config.channel_id)
 
         if event['until_start'].total_seconds() < 0:
             await self.on_event_finish(slim_config, event['guild_id'])
 
         await asyncio.sleep(event['until_finish'].total_seconds())
         await self.on_event_finish(slim_config, event['guild_id'])
-        self.bot.utils.board_config.invalidate(self.bot.utils, slim_config.channel_id)
 
     @tasks.loop(hours=1)
     async def event_player_updater(self):
