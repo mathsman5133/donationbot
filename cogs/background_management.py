@@ -286,7 +286,7 @@ class BackgroundManagement(commands.Cog):
         clans = await self.bot.get_clans(guild_id, in_event=True)
 
         for n in clans:
-            async for player in n.get_detailed_members:
+            async for player in n.get_detailed_members():
                 await self.finalise_member(self.bot.pool, player, event.id)
         await self.safe_send(channel, 'All members have been finalised, updating your boards!')
         query = "UPDATE boards SET in_event = False WHERE guild_id = $1;"
