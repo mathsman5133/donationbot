@@ -222,7 +222,7 @@ class CLYTable:
         return fmt
 
     def trophyboard_gain(self):
-        fmt = f"{misc['number']}  {misc['trophygreen']}⠀{misc['trophygold']:\u00A0>4.4}  `⠀{'Name':\u00A0<10.10}⠀`\n"
+        fmt = f"{misc['number']}  {misc['trophygreen']}⠀{misc['trophygold']}  `⠀{'Name':\u00A0<10.10}⠀`\n"
         for v in self._rows:
             index = int(v[0]) + 1
             index = number_emojis[index] if index <= 100 else misc['idle']
