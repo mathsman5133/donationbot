@@ -76,7 +76,8 @@ class Utils(commands.Cog):
                           start,
                           finish,
                           event_name,
-                          channel_id
+                          channel_id,
+                          guild_id
                    FROM events
                    WHERE guild_id = $1
                    AND CURRENT_TIMESTAMP < finish
@@ -88,7 +89,8 @@ class Utils(commands.Cog):
             return None
 
         return SlimEventConfig(fetch['id'], fetch['start'],
-                               fetch['finish'], fetch['event_name'], fetch['channel_id'])
+                               fetch['finish'], fetch['event_name'],
+                               fetch['channel_id'], fetch['guild_id'])
 
     @cache()
     async def get_clan_name(self, guild_id: int, tag: str) -> str:
@@ -141,7 +143,8 @@ class Utils(commands.Cog):
                           start,
                           finish,
                           event_name,
-                          channel_id
+                          channel_id,
+                          guild_id
                    FROM events
                    WHERE id = $1
                 """
@@ -151,7 +154,8 @@ class Utils(commands.Cog):
             return None
 
         return SlimEventConfig(fetch['id'], fetch['start'],
-                               fetch['finish'], fetch['event_name'], fetch['channel_id'])
+                               fetch['finish'], fetch['event_name'],
+                               fetch['channel_id'], fetch['guild_id'])
 
 
 def setup(bot):

@@ -26,7 +26,7 @@ class EventStats(commands.Cog):
 
         This command does nothing by itself - check out the subcommands!
 
-        Your server **must** be in an event for this command to work.
+        If you choose to pass in an Event ID, the event **must** have been one registered to your server.
         """
         if ctx.invoked_subcommand is None:
             await ctx.send_help(ctx.command)
@@ -36,19 +36,28 @@ class EventStats(commands.Cog):
     async def eventstats_attacks(self, ctx, event_id: int = None):
         """Get attack wins for all clans.
 
+        **Parameters**
+        :key: Event ID (optional - defaults to last event)
+
         **Format**
-        :information_source: `+eventstats attacks`
+        :information_source: `+eventstats attacks EVENT_ID`
 
         **Example**
         :white_check_mark: `+eventstats attacks`
+        :white_check_mark: `+eventstats attacks 3`
         """
-        if event_id and await self.bot.is_owner(ctx.author):
+        if event_id:
             ctx.config = await self.bot.utils.event_config_id(event_id)
+            if ctx.config and ctx.config.guild_id != ctx.guild.id and not await self.bot.is_owner(ctx.author):
+                return await ctx.send(
+                    "Uh oh! You're trying to get info for an event not registered to this server! "
+                    "Please try again with a different Event ID."
+                )
 
         if not ctx.config:
             # TODO Consider pulling most recent event and if time is between end of event and end of season, show stats.
             return await ctx.send(
-                'It would appear that you aren\'t currently in an event. Did you mean `+seasonstats attacks`?'
+                'It would appear that you aren\'t currently in an event. Try passing in an Event ID.'
             )
 
         query = """SELECT player_tag, end_attacks - start_attacks as attacks, trophies 
@@ -63,8 +72,10 @@ class EventStats(commands.Cog):
         title = f"Attack wins for {ctx.config.event_name}"
 
         attacks = {n['player_tag']: n['attacks'] for n in fetch}
-        for index, player in enumerate(await self.bot.coc.get_players((n[0] for n in fetch)).flatten()):
-            table.add_row([index, attacks[player.tag], player.trophies, player.name])
+
+        async with ctx.typing():
+            for index, player in enumerate(await self.bot.coc.get_players((n[0] for n in fetch)).flatten()):
+                table.add_row([index, attacks[player.tag], player.trophies, player.name])
 
         fmt = table.trophyboard_attacks()
         fmt += f"**Key:**\n{misc['attack']} - Attacks\n{misc['trophygold']} - Trophies"
@@ -79,18 +90,26 @@ class EventStats(commands.Cog):
     async def eventstats_defenses(self, ctx, event_id: int = None):
         """Get defense wins for all clans.
 
+        **Parameters**
+        :key: Event ID (optional - defaults to last event)
+
         **Format**
-        :information_source: `+eventstats defenses`
+        :information_source: `+eventstats defenses EVENT_ID`
 
         **Example**
         :white_check_mark: `+eventstats defenses`
+        :white_check_mark: `+eventstats defenses 3`
         """
-        if event_id and await self.bot.is_owner(ctx.author):
+        if event_id:
             ctx.config = await self.bot.utils.event_config_id(event_id)
-
+            if ctx.config and ctx.config.guild_id != ctx.guild.id and not await self.bot.is_owner(ctx.author):
+                return await ctx.send(
+                    "Uh oh! You're trying to get info for an event not registered to this server! "
+                    "Please try again with a different Event ID."
+                )
         if not ctx.config:
             return await ctx.send(
-                'It would appear that you aren\'t currently in an event. Did you mean `+seasonstats defenses`?'
+                'It would appear that you aren\'t currently in an event. Try passing in an Event ID.'
             )
 
         query = """SELECT player_tag, end_defenses - start_defenses as defenses, trophies 
@@ -106,8 +125,9 @@ class EventStats(commands.Cog):
         table = formatters.CLYTable()
         title = f"Defense wins for {ctx.config.event_name}"
 
-        for index, player in enumerate(await self.bot.coc.get_players((n[0] for n in fetch)).flatten()):
-            table.add_row([index, defenses[player.tag], player.trophies, player.name])
+        async with ctx.typing():
+            for index, player in enumerate(await self.bot.coc.get_players((n[0] for n in fetch)).flatten()):
+                table.add_row([index, defenses[player.tag], player.trophies, player.name])
 
         fmt = table.trophyboard_defenses()
         fmt += f"**Key:**\n{misc['defense']} - Defenses\n{misc['trophygold']} - Trophies"
@@ -122,18 +142,27 @@ class EventStats(commands.Cog):
     async def eventstats_gains(self, ctx, event_id: int = None):
         """Get trophy gains for all clans.
 
+        **Parameters**
+        :key: Event ID (optional - defaults to last season)
+
         **Format**
-        :information_source: `+eventstats gains`
+        :information_source: `+eventstats gains EVENT_ID`
 
         **Example**
         :white_check_mark: `+eventstats gains`
+        :white_check_mark: `+eventstats gains 3`
         """
-        if event_id and await self.bot.is_owner(ctx.author):
+        if event_id:
             ctx.config = await self.bot.utils.event_config_id(event_id)
+            if ctx.config and ctx.config.guild_id != ctx.guild.id and not await self.bot.is_owner(ctx.author):
+                return await ctx.send(
+                    "Uh oh! You're trying to get info for an event not registered to this server! "
+                    "Please try again with a different Event ID."
+                )
 
         if not ctx.config:
             return await ctx.send(
-                'It would appear that you aren\'t currently in an event. Did you mean `+seasonstats gains`?'
+                'It would appear that you aren\'t currently in an event. Try passing in an Event ID.'
             )
 
         query = """SELECT player_tag, trophies - start_trophies as gain, trophies 
@@ -148,8 +177,10 @@ class EventStats(commands.Cog):
         title = f"Trophy Gains for {ctx.config.event_name}"
 
         gains = {n['player_tag']: n['gain'] for n in fetch}
-        for index, player in enumerate(await self.bot.coc.get_players((n[0] for n in fetch)).flatten()):
-            table.add_row([index, gains[player.tag], player.trophies, player.name])
+
+        async with ctx.typing():
+            for index, player in enumerate(await self.bot.coc.get_players((n[0] for n in fetch)).flatten()):
+                table.add_row([index, gains[player.tag], player.trophies, player.name])
 
         fmt = table.trophyboard_gain()
         fmt += f"**Key:**\n{misc['trophygreen']} - Trophy Gain\n{misc['trophygold']} - Total Trophies"
@@ -164,18 +195,27 @@ class EventStats(commands.Cog):
     async def eventstats_donors(self, ctx, event_id: int = None):
         """Get donations for all clans.
 
+        **Parameters**
+        :key: Event ID (optional - defaults to last season)
+
         **Format**
-        :information_source: `+eventstats donors`
+        :information_source: `+eventstats donors EVENT_ID`
 
         **Example**
         :white_check_mark: `+eventstats donors`
+        :white_check_mark: `+eventstats donors 3`
         """
-        if event_id and await self.bot.is_owner(ctx.author):
+        if event_id:
             ctx.config = await self.bot.utils.event_config_id(event_id)
+            if ctx.config and ctx.config.guild_id != ctx.guild.id and not await self.bot.is_owner(ctx.author):
+                return await ctx.send(
+                    "Uh oh! You're trying to get info for an event not registered to this server! "
+                    "Please try again with a different Event ID."
+                )
 
         if not ctx.config:
             return await ctx.send(
-                'It would appear that you aren\'t currently in an event. Did you mean `+seasonstats donors`?'
+                'It would appear that you aren\'t currently in an event. Try passing in an Event ID.'
             )
 
         query = """SELECT player_tag,  
@@ -191,8 +231,10 @@ class EventStats(commands.Cog):
         title = f"Donations for {ctx.config.event_name}"
 
         donations = {n['player_tag']: n['donations'] for n in fetch}
-        for index, player in enumerate(await self.bot.coc.get_players((n[0] for n in fetch)).flatten()):
-            table.add_row([index, donations[player.tag], player.name])
+
+        async with ctx.typing():
+            for index, player in enumerate(await self.bot.coc.get_players((n[0] for n in fetch)).flatten()):
+                table.add_row([index, donations[player.tag], player.name])
 
         fmt = table.donationboard_2()
 

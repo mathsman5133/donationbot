@@ -114,6 +114,6 @@ class DatabaseMessage:
 
 SlimDonationEvent = namedtuple('SlimDonationEvent', 'donations received name clan_tag')
 SlimTrophyEvent = namedtuple('SlimTrophyEvent', 'trophies name clan_tag')
-SlimEventConfig = namedtuple('SlimEventConfig', 'id start finish event_name channel_id')
+SlimEventConfig = namedtuple('SlimEventConfig', 'id start finish event_name channel_id guild_id')
 SlimDummyBoardConfig = namedtuple('SlimDummyBoardConfig', 'type render title icon_url')
 SlimDummyLogConfig = namedtuple('SlimDummyLogConfig', 'type title icon_url')
