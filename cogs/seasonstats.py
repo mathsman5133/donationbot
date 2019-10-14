@@ -131,9 +131,10 @@ class SeasonStats(commands.Cog):
         fmt = table.trophyboard_attacks()
         fmt += f"**Key:**\n{misc['attack']} - Attacks\n{misc['trophygold']} - Trophies"
 
-        e = discord.Embed(colour=discord.Colour.gold(),
-                          title=title,
-                          description=fmt)
+        e = discord.Embed(
+            colour=discord.Colour.green(), description=fmt, title=title
+        )
+
         await ctx.send(embed=e)
 
     @seasonstats.command(name='defenses', aliases=['defense', 'defences', 'defence'])
@@ -166,9 +167,10 @@ class SeasonStats(commands.Cog):
         fmt = table.trophyboard_defenses()
         fmt += f"**Key:**\n{misc['defense']} - Defenses\n{misc['trophygold']} - Trophies"
 
-        e = discord.Embed(colour=discord.Colour.dark_red(),
-                          title=title,
-                          description=render)
+        e = discord.Embed(
+            colour=discord.Colour.green(), description=fmt, title=title
+        )
+
         await ctx.send(embed=e)
 
     @seasonstats.command(name='gains', aliases=['trophies'])
@@ -201,9 +203,10 @@ class SeasonStats(commands.Cog):
         fmt = table.trophyboard_gain()
         fmt += f"**Key:**\n{misc['trophygreen']} - Trophy Gain\n{misc['trophygold']} - Total Trophies"
 
-        e = discord.Embed(colour=discord.Colour.green(),
-                          title=title,
-                          description=render)
+        e = discord.Embed(
+            colour=discord.Colour.green(), description=fmt, title=title
+        )
+
         await ctx.send(embed=e)
 
     @seasonstats.command(name='donors', aliases=['donations', 'donates', 'donation'])
@@ -235,11 +238,12 @@ class SeasonStats(commands.Cog):
         for index, player in enumerate(await self.bot.coc.get_players((n[0] for n in fetch)).flatten()):
             table.add_row([index, donations[player.tag], player.name])
 
-        render = table.donationboard_2()
+        fmt = table.donationboard_2()
 
-        e = discord.Embed(colour=discord.Colour.green(),
-                          title=title,
-                          description=render)
+        e = discord.Embed(
+            colour=discord.Colour.green(), description=fmt, title=title
+        )
+
         await ctx.send(embed=e)
 
 
