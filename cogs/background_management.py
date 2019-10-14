@@ -327,7 +327,7 @@ class BackgroundManagement(commands.Cog):
         await self.send_guild_stats(e, guild)
         query = "INSERT INTO guilds (guild_id) VALUES ($1) ON CONFLICT (guild_id) DO NOTHING"
         await self.bot.pool.execute(query, guild.id)
-        fmt = self.bot.get_cog('Info').welcome_message
+        fmt = self.bot.get_cog('\u200bInfo').welcome_message
         e = discord.Embed(colour=self.bot.colour,
                           description=fmt)
         e.set_author(name='Hello! I\'m the Donation Tracker!',
