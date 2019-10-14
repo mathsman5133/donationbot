@@ -45,7 +45,7 @@ class Stats(commands.Cog):
         :white_check_mark: `+stats attacks`
         :white_check_mark: `+stats attacks 2`
         """
-        if ctx.event:
+        if ctx.config:
             return await ctx.invoke(self.bot.get_command('eventstats attacks'))
         await ctx.invoke(self.bot.get_command('seasonstats attacks'), season_id)
 
@@ -64,7 +64,7 @@ class Stats(commands.Cog):
         :white_check_mark: `+stats defenses`
         :white_check_mark: `+stats defenses 1`
         """
-        if ctx.event:
+        if ctx.config:
             return await ctx.invoke(self.bot.get_command('eventstats defenses'))
         await ctx.invoke(self.bot.get_command('seasonstats defenses'), season_id)
 
