@@ -39,6 +39,7 @@ class GuildConfiguration(commands.Cog, name='Server Setup'):
                                     donations,
                                     received,
                                     trophies,
+                                    start_trophies,
                                     season_id,
                                     start_friend_in_need,
                                     start_sharing_is_caring,
@@ -47,7 +48,7 @@ class GuildConfiguration(commands.Cog, name='Server Setup'):
                                     start_best_trophies,
                                     start_update
                                     )
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, True)
+                    VALUES ($1, $2, $3, $4, $4, $5, $6, $7, $8, $9, $10, True)
                     ON CONFLICT (player_tag, season_id) 
                     DO NOTHING
                 """
@@ -69,6 +70,7 @@ class GuildConfiguration(commands.Cog, name='Server Setup'):
                                             donations,
                                             received,
                                             trophies,
+                                            start_trophies,
                                             event_id,
                                             start_friend_in_need,
                                             start_sharing_is_caring,
@@ -77,7 +79,7 @@ class GuildConfiguration(commands.Cog, name='Server Setup'):
                                             start_best_trophies,
                                             start_update
                                             )
-                            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, True)
+                            VALUES ($1, $2, $3, $4, $4, $5, $6, $7, $8, $9, $10, True)
                             ON CONFLICT (player_tag, event_id)
                             DO NOTHING
                         """
@@ -221,7 +223,7 @@ class GuildConfiguration(commands.Cog, name='Server Setup'):
         query = "SELECT user_id FROM players WHERE player_tag = $1 AND season_id = $2"
         fetch = await ctx.db.fetchrow(query, player.tag, season_id)
 
-        if fetch:
+        if fetch is not None:
             return await ctx.send(f'Player {player.name} ({player.tag}) '
                                   f'has already been claimed by {self.bot.get_user(fetch[0])}')
 
@@ -430,17 +432,19 @@ class GuildConfiguration(commands.Cog, name='Server Setup'):
 
         msg = await channel.send('Placeholder')
 
-        query = """WITH t AS (
-                        INSERT INTO messages (message_id, 
-                                              guild_id, 
-                                              channel_id) 
-                        VALUES ($1, $2, $3)
-                )
+        query = """INSERT INTO messages (
+                            message_id, 
+                            guild_id, 
+                            channel_id
+                        ) 
+                   VALUES ($1, $2, $3);
                    
-                INSERT INTO boards (guild_id, 
-                                    channel_id, 
-                                    type,
-                                    title) 
+                INSERT INTO boards (
+                        guild_id, 
+                        channel_id, 
+                        type,
+                        title
+                    ) 
                 VALUES ($2, $3, $4, $5) 
                 ON CONFLICT (channel_id) 
                 DO UPDATE SET channel_id = $3, 
@@ -497,16 +501,19 @@ class GuildConfiguration(commands.Cog, name='Server Setup'):
 
         msg = await channel.send('Placeholder')
 
-        query = """WITH t AS (
-                        INSERT INTO messages (message_id, 
-                                              guild_id, 
-                                              channel_id)
-                        VALUES ($1, $2, $3)
-                    )
-                   INSERT INTO boards (guild_id, 
-                                       channel_id, 
-                                       type,
-                                       title) 
+        query = """INSERT INTO messages (
+                            message_id, 
+                            guild_id, 
+                            channel_id
+                        )
+                   VALUES ($1, $2, $3);
+
+                   INSERT INTO boards (
+                        guild_id, 
+                        channel_id, 
+                        type,
+                        title
+                    ) 
                    VALUES ($2, $3, $4, $5) 
                    ON CONFLICT (channel_id) 
                    DO UPDATE SET channel_id = $3, 
@@ -739,7 +746,8 @@ class GuildConfiguration(commands.Cog, name='Server Setup'):
             return await ctx.send('Clan not found.')
         await ctx.confirm()
 
-    @remove.command(name='player')
+    @remove.command(name='player', hidden=True)
+    @commands.is_owner()
     async def remove_player(self, ctx, *, player: PlayerConverter):
         """Manually remove a clash account from the database.
 
@@ -754,7 +762,7 @@ class GuildConfiguration(commands.Cog, name='Server Setup'):
         :white_check_mark: `+remove player #P0LYJC8C`
         :white_check_mark: `+remove player mathsman`
         """
-        query = "DELETE FROM players WHERE player_tag = $1 and guild_id = $2"
+        query = "DELETE FROM players WHERE player_tag = $1"
         result = await ctx.db.execute(query, player.tag, ctx.guild.id)
         if result[:-1] == 0:
             return await ctx.send(f'{player.name}({player.tag}) was not found in the database.')
@@ -1689,27 +1697,32 @@ class GuildConfiguration(commands.Cog, name='Server Setup'):
         async with ctx.typing():
             if not clans:
                 clans = await ctx.get_clans()
-            query = """WITH t AS 
-                        (
-                            UPDATE players 
-                            SET donations = $1
-                            WHERE player_tag = $3
-                            AND donations <= $1
-                        )
-                        UPDATE players 
-                        SET received = $2
-                        WHERE player_tag = $3
-                        AND received <= $2                 
+            query = """UPDATE players 
+                       SET donations = $1
+                       WHERE player_tag = $3
+                       AND donations <= $1
+                       AND season_id = $5;
+                       
+                       UPDATE players 
+                       SET received = $2
+                       WHERE player_tag = $3
+                       AND received <= $2  
+                       AND season_id = $5;
+                       
+                       UPDATE players
+                       SET trophies = $4
+                       WHERE player_tag = $3
+                       AND trophies != $4
+                       AND season_id = $5               
                     """
-            query2 = """UPDATE players
-                        SET trophies = $1
-                        WHERE player_tag = $2
-                        AND trophies != $1
+            query2 = """
                     """
+            season_id = await self.bot.seasonconfig.get_season_id()
             for clan in clans:
                 for member in clan.members:
-                    await ctx.db.execute(query, member.donations, member.received, member.tag)
-                    await ctx.db.execute(query2, member.trophies, member.tag)
+                    await ctx.db.execute(
+                        query, member.donations, member.received, member.tag, member.trophies, season_id
+                    )
 
             dboard_channel = await self.bot.utils.get_board_channel(ctx.guild.id, 'donation')
             if dboard_channel:

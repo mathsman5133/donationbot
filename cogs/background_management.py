@@ -371,14 +371,13 @@ class BackgroundManagement(commands.Cog):
     async def on_guild_remove(self, guild):
         e = discord.Embed(colour=0xdd5f53, title='Left Guild')  # red colour
         await self.send_guild_stats(e, guild)
-        query = """WITH t AS (
-                        UPDATE logs 
-                        SET toggle = False 
-                        WHERE guild_id = $1
-                        )
+        query = """UPDATE logs 
+                   SET toggle = False 
+                   WHERE guild_id = $1;
+
                    UPDATE boards 
                    SET toggle = False
-                   WHERE guild_id = $1
+                   WHERE guild_id = $1;
                 """
         await self.bot.pool.execute(query, guild.id)
 
