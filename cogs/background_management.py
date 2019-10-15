@@ -374,12 +374,13 @@ class BackgroundManagement(commands.Cog):
         query = """UPDATE logs 
                    SET toggle = False 
                    WHERE guild_id = $1;
-
-                   UPDATE boards 
-                   SET toggle = False
-                   WHERE guild_id = $1;
+                """
+        query2 = """UPDATE boards 
+                    SET toggle = False
+                    WHERE guild_id = $1;
                 """
         await self.bot.pool.execute(query, guild.id)
+        await self.bot.pool.execute(query2, guild.id)
 
     @commands.Cog.listener()
     async def on_command(self, ctx):

@@ -127,13 +127,14 @@ class DonationBoard(commands.Cog):
         if not isinstance(channel, discord.TextChannel):
             return
 
-        query = """DELETE FROM messages WHERE channel_id = $1;
-                   UPDATE boards
-                   SET channel_id = NULL,
-                       toggle     = False
-                   WHERE channel_id = $1;
+        query = "DELETE FROM messages WHERE channel_id = $1;"
+        query2 = """UPDATE boards
+                    SET channel_id = NULL,
+                        toggle     = False
+                    WHERE channel_id = $1;
                 """
         await self.bot.pool.execute(query, channel.id)
+        await self.bot.pool.execute(query2, channel.id)
         self.bot.utils.board_config.invalidate(self.bot.utils, channel.id)
 
     @commands.Cog.listener()

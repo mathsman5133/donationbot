@@ -438,20 +438,21 @@ class GuildConfiguration(commands.Cog, name='Server Setup'):
                             channel_id
                         ) 
                    VALUES ($1, $2, $3);
-                   
-                INSERT INTO boards (
+                """
+        query2 = """INSERT INTO boards (
                         guild_id, 
                         channel_id, 
                         type,
                         title
                     ) 
-                VALUES ($2, $3, $4, $5) 
+                VALUES ($1, $2, $3, $4) 
                 ON CONFLICT (channel_id) 
-                DO UPDATE SET channel_id = $3, 
+                DO UPDATE SET channel_id = $2, 
                               toggle     = True;
                 
                 """
-        await ctx.db.execute(query, msg.id, ctx.guild.id, channel.id, 'trophy', 'TrophyBoard')
+        await ctx.db.execute(query, ctx.guild.id, channel.id, 'trophy', name.capitalize())
+        await ctx.db.execute(query2, ctx.guild.id, channel.id, 'trophy', name.capitalize())
         await ctx.send(f'Trophyboard channel created: {channel.mention}')
 
     @add.command(name='donationboard')
@@ -507,20 +508,21 @@ class GuildConfiguration(commands.Cog, name='Server Setup'):
                             channel_id
                         )
                    VALUES ($1, $2, $3);
-
-                   INSERT INTO boards (
+                """
+        query2 = """INSERT INTO boards (
                         guild_id, 
                         channel_id, 
                         type,
                         title
                     ) 
-                   VALUES ($2, $3, $4, $5) 
+                   VALUES ($1, $2, $3, $4) 
                    ON CONFLICT (channel_id) 
-                   DO UPDATE SET channel_id = $3, 
+                   DO UPDATE SET channel_id = $2, 
                                  toggle     = True;
                 """
 
-        await ctx.db.execute(query, msg.id, ctx.guild.id, channel.id, 'donation', 'DonationBoard')
+        await ctx.db.execute(query, msg.id, ctx.guild.id, channel.id, 'donation', name.capitalize())
+        await ctx.db.execute(query, ctx.guild.id, channel.id, 'donation', name.capitalize())
         await ctx.send(f'Donationboard channel created: {channel.mention}')
 
     @add.command(name='donationlog')
@@ -1699,30 +1701,28 @@ class GuildConfiguration(commands.Cog, name='Server Setup'):
                 clans = await ctx.get_clans()
             query = """UPDATE players 
                        SET donations = $1
-                       WHERE player_tag = $3
+                       WHERE player_tag = $2
                        AND donations <= $1
-                       AND season_id = $5;
-                       
-                       UPDATE players 
-                       SET received = $2
-                       WHERE player_tag = $3
-                       AND received <= $2  
-                       AND season_id = $5;
-                       
-                       UPDATE players
-                       SET trophies = $4
-                       WHERE player_tag = $3
-                       AND trophies != $4
-                       AND season_id = $5               
+                       AND season_id = $3;
                     """
-            query2 = """
-                    """
+            query2 = """UPDATE players 
+                        SET received = $1
+                        WHERE player_tag = $2
+                        AND received <= $1  
+                        AND season_id = $3;
+                     """
+            query3 = """UPDATE players
+                        SET trophies = $1
+                        WHERE player_tag = $2
+                        AND trophies != $1
+                        AND season_id = $3               
+                     """
             season_id = await self.bot.seasonconfig.get_season_id()
             for clan in clans:
                 for member in clan.members:
-                    await ctx.db.execute(
-                        query, member.donations, member.received, member.tag, member.trophies, season_id
-                    )
+                    await ctx.db.execute(query, member.donations, member.tag, season_id)
+                    await ctx.db.execute(query2, member.received, member.tag, season_id)
+                    await ctx.db.execute(query3, member.trophies, member.tag, season_id)
 
             dboard_channel = await self.bot.utils.get_board_channel(ctx.guild.id, 'donation')
             if dboard_channel:
