@@ -321,18 +321,35 @@ class BackgroundManagement(commands.Cog):
         if msg:
             return await msg.delete()
 
+    async def on_clan_member_league_change(self, old_league, new_league, player, clan):
+        if old_league.id > new_league.id:
+            return  # they dropped a league
+        if new_league.id == 29000000:
+            return  # unranked - probably start of season.
+
+        query = """SELECT channel_id 
+                   FROM events
+                   INNER JOIN eventplayers 
+                   ON eventplayers.event_id = events.id
+                   WHERE start_best_trophies < $1 
+                   AND player_tag = $2
+                """
+        fetch = await self.bot.pool.fetch(query, player.trophies, player.tag)
+        if not fetch:
+            return
+
+        msg = f"Breaking new heights! {player} just got promoted to {new_league} league!"
+
+        for record in fetch:
+            await self.safe_send(self.bot.get_channel(record['channel_id']), msg)
+
     @commands.Cog.listener()
     async def on_guild_join(self, guild):
         e = discord.Embed(colour=0x53dda4, title='New Guild')  # green colour
         await self.send_guild_stats(e, guild)
         query = "INSERT INTO guilds (guild_id) VALUES ($1) ON CONFLICT (guild_id) DO NOTHING"
         await self.bot.pool.execute(query, guild.id)
-        fmt = self.bot.get_cog('\u200bInfo').welcome_message
-        e = discord.Embed(colour=self.bot.colour,
-                          description=fmt)
-        e.set_author(name='Hello! I\'m the Donation Tracker!',
-                     icon_url=self.bot.user.avatar_url
-                     )
+        e = self.bot.get_cog('\u200bInfo').welcome_message
 
         if guild.system_channel:
             try:

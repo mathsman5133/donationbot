@@ -16,7 +16,7 @@ class Utils(commands.Cog):
     async def log_config(self, channel_id: int, log_type: str) -> Union[LogConfig, None]:
         query = """SELECT guild_id, 
                           channel_id, 
-                          interval, 
+                          "interval", 
                           toggle,
                           type 
                    FROM logs 
@@ -138,7 +138,7 @@ class Utils(commands.Cog):
         except (discord.Forbidden, discord.HTTPException):
             return
 
-    async def event_config_id(self, event_id: int) -> SlimEventConfig:
+    async def event_config_id(self, event_id: int) -> Union[None, SlimEventConfig]:
         query = """SELECT id,
                           start,
                           finish,
