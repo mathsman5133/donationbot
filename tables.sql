@@ -71,7 +71,7 @@ create table clans (
     channel_id bigint,
     guild_id bigint,
     in_event boolean default false
-)
+);
 alter table clans add unique (clan_tag, channel_id);
 
 create index donevents_interval_idx on clans (donevents_interval);

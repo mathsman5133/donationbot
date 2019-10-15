@@ -128,12 +128,12 @@ class DonationBoard(commands.Cog):
             return
 
         query = """"DELETE FROM messages WHERE channel_id = $1;
-                    UPDATE channels
+                    UPDATE boards
                         SET channel_id = NULL,
                             toggle     = False
                         WHERE channel_id = $1;
                 """
-        await self.bot.pool.executemany(query, channel.id)
+        await self.bot.pool.execute(query, channel.id)
         self.bot.utils.board_config.invalidate(self.bot.utils, channel.id)
 
     @commands.Cog.listener()
