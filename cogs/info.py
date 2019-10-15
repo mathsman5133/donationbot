@@ -562,6 +562,23 @@ class Info(commands.Cog, name='\u200bInfo'):
 
         await ctx.send(embed=e)
 
+    @info.command(name='events')
+    async def info_events(self, ctx):
+        """GET Event IDs and start/finish times for events."""
+        query = "SELECT id, event_name, start, finish FROM events WHERE guild_id = $1 ORDER BY start DESC"
+        fetch = await ctx.db.fetch(query, ctx.guild.id)
+        table = TabularData()
+        table.set_columns(['ID', 'Name', 'Start', 'Finish'])
+        for n in fetch:
+            table.add_row([n[0], n[1], n[2].strftime('%d-%b-%Y'), n[3].strftime('%d-%b-%Y')])
+
+        e = discord.Embed(colour=self.bot.colour,
+                          description=f'```\n{table.render()}\n```',
+                          title='Event Info',
+                          timestamp=datetime.utcnow()
+                          )
+        await ctx.send(embed=e)
+
     @info.command(name='season')
     async def info_season(self, ctx):
         """Get Season IDs and start/finish times and info."""
