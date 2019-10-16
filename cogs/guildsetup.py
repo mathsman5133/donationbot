@@ -521,8 +521,8 @@ class GuildConfiguration(commands.Cog, name='Server Setup'):
                                  toggle     = True;
                 """
 
-        await ctx.db.execute(query, msg.id, ctx.guild.id, channel.id, 'donation', name.capitalize())
-        await ctx.db.execute(query, ctx.guild.id, channel.id, 'donation', name.capitalize())
+        await ctx.db.execute(query, msg.id, ctx.guild.id, channel.id)
+        await ctx.db.execute(query2, ctx.guild.id, channel.id, 'donation', name.capitalize())
         await ctx.send(f'Donationboard channel created: {channel.mention}')
 
     @add.command(name='donationlog')
