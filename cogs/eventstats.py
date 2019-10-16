@@ -20,6 +20,14 @@ class EventStats(commands.Cog):
         if after_invoke:
             await after_invoke(ctx)
 
+    async def get_recent_event(self, guild_id):
+        query = "SELECT get_event_id($1)"
+        row = await self.bot.pool.fetchrow(query, guild_id)
+        if row[0] > 0:
+            return row[0]
+        else:
+            return None
+
     @commands.group(name='eventstats', invoke_without_command=True)
     async def eventstats(self, ctx):
         """[Group] Provide statistics for the current (or most recent) event for this server.
@@ -55,10 +63,16 @@ class EventStats(commands.Cog):
                 )
 
         if not ctx.config:
-            # TODO Consider pulling most recent event and if time is between end of event and end of season, show stats.
-            return await ctx.send(
-                'It would appear that you aren\'t currently in an event. Try passing in an Event ID.'
-            )
+            event_id = await self.get_recent_event(ctx.guild.id)
+            if event_id:
+                ctx.config = await self.bot.utils.event_config_id(event_id)
+            else:
+                return await ctx.send(
+                    'It would appear that there are no recent events connected with this server. You can:\n'
+                    'Use `+add event` to create an event.\n'
+                    'Use `+info events` to list all events on this server.\n'
+                    'Use `+seasonstats attacks` to see results for the season.'
+                )
 
         query = """SELECT player_tag, end_attacks - start_attacks as attacks, trophies 
                     FROM eventplayers 
@@ -107,10 +121,18 @@ class EventStats(commands.Cog):
                     "Uh oh! You're trying to get info for an event not registered to this server! "
                     "Please try again with a different Event ID."
                 )
+
         if not ctx.config:
-            return await ctx.send(
-                'It would appear that you aren\'t currently in an event. Try passing in an Event ID.'
-            )
+            event_id = await self.get_recent_event(ctx.guild.id)
+            if event_id:
+                ctx.config = await self.bot.utils.event_config_id(event_id)
+            else:
+                return await ctx.send(
+                    'It would appear that there are no recent events connected with this server. You can:\n'
+                    'Use `+add event` to create an event.\n'
+                    'Use `+info events` to list all events on this server.\n'
+                    'Use `+seasonstats defenses` to see results for the season.'
+                )
 
         query = """SELECT player_tag, end_defenses - start_defenses as defenses, trophies 
                     FROM eventplayers 
@@ -161,9 +183,16 @@ class EventStats(commands.Cog):
                 )
 
         if not ctx.config:
-            return await ctx.send(
-                'It would appear that you aren\'t currently in an event. Try passing in an Event ID.'
-            )
+            event_id = await self.get_recent_event(ctx.guild.id)
+            if event_id:
+                ctx.config = await self.bot.utils.event_config_id(event_id)
+            else:
+                return await ctx.send(
+                    'It would appear that there are no recent events connected with this server. You can:\n'
+                    'Use `+add event` to create an event.\n'
+                    'Use `+info events` to list all events on this server.\n'
+                    'Use `+seasonstats gains` to see results for the season.'
+                )
 
         query = """SELECT player_tag, trophies - start_trophies as gain, trophies 
                         FROM eventplayers 
@@ -214,9 +243,16 @@ class EventStats(commands.Cog):
                 )
 
         if not ctx.config:
-            return await ctx.send(
-                'It would appear that you aren\'t currently in an event. Try passing in an Event ID.'
-            )
+            event_id = await self.get_recent_event(ctx.guild.id)
+            if event_id:
+                ctx.config = await self.bot.utils.event_config_id(event_id)
+            else:
+                return await ctx.send(
+                    'It would appear that there are no recent events connected with this server. You can:\n'
+                    'Use `+add event` to create an event.\n'
+                    'Use `+info events` to list all events on this server.\n'
+                    'Use `+seasonstats attacks` to see results for the season.'
+                )
 
         query = """SELECT player_tag,  
                     (end_friend_in_need + end_sharing_is_caring) - (start_friend_in_need + start_sharing_is_caring) as donations

@@ -146,7 +146,7 @@ create table trophyevents (
     time timestamp,
     reported boolean default false,
     season_id integer
-)
+);
 
 create index player_tag_idx on donationevents (player_tag);
 create index clan_tag_idx on donationevents (clan_tag);
@@ -179,3 +179,27 @@ create table events (
     donation_msg bigint default 0,
     trophy_msg bigint default 0
 )
+
+CREATE OR REPLACE FUNCTION public.get_event_id(guild_id bigint)
+ RETURNS integer
+ LANGUAGE plpgsql
+AS $function$
+declare
+  event_end timestamp;
+  season_start timestamp;
+  season_end timestamp;
+  event_id integer := 0;
+begin
+  execute 'SELECT start, finish FROM seasons WHERE start < NOW() ORDER BY start DESC LIMIT 1'
+    into season_start, season_end;
+  execute 'SELECT finish, id FROM events WHERE guild_id = $1 and finish > $2 and finish < $3 ORDER BY finish desc limit 1'
+    into event_end, event_id
+    using guild_id, season_start, season_end;
+  if event_id > 0 then
+    return event_id;
+  else
+    return 0;
+  end if;
+end;
+$function$
+;
