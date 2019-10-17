@@ -261,6 +261,10 @@ class AutoClaim(commands.Cog, name='\u200bAutoClaim'):
             if not fetch:
                 final.append([n.name, n.tag, ' '])
                 continue
+            if not fetch[0]:
+                final.append([n.name, n.tag, ' '])
+                continue
+
             name = str(self.bot.get_user(fetch[0]))
 
             if len(name) > 20:
@@ -327,6 +331,9 @@ class AutoClaim(commands.Cog, name='\u200bAutoClaim'):
         for n in player:
             fetch = await ctx.db.fetchrow(query, n.tag, season_id)
             if not fetch:
+                final.append([n.name, n.tag, ' '])
+                continue
+            if not fetch[0]:
                 final.append([n.name, n.tag, ' '])
                 continue
 
