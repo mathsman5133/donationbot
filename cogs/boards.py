@@ -384,7 +384,7 @@ class DonationBoard(commands.Cog):
                         FROM eventplayers 
                         WHERE player_tag=ANY($1::TEXT[])
                         AND live=true
-                        ORDER BY {column_1} DESC
+                        ORDER BY {column_1} DESC NULLS LAST 
                         LIMIT 100;
                     """
             fetch = await self.bot.pool.fetch(query, [n.tag for n in players])
@@ -394,7 +394,7 @@ class DonationBoard(commands.Cog):
                         FROM players 
                         WHERE player_tag=ANY($1::TEXT[])
                         AND season_id=$2
-                        ORDER BY {column_1} DESC
+                        ORDER BY {column_1} DESC NULLS LAST
                         LIMIT 100;
                     """
             fetch = await self.bot.pool.fetch(query, [n.tag for n in players],

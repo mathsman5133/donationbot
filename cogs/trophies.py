@@ -175,7 +175,7 @@ class Trophies(commands.Cog):
                     FROM players 
                     WHERE player_tag=ANY($1::TEXT[])
                     AND season_id=$2
-                    ORDER BY trophies DESC
+                    ORDER BY trophies DESC NULLS LAST
                 """
         tags = []
         for n in clans:

@@ -258,7 +258,7 @@ class EventStats(commands.Cog):
                     (end_friend_in_need + end_sharing_is_caring) - (start_friend_in_need + start_sharing_is_caring) as donations
                     FROM eventplayers 
                     WHERE event_id = $1
-                    ORDER BY donations DESC
+                    ORDER BY donations DESC NULLS LAST
                     LIMIT 15
                 """
         fetch = await ctx.db.fetch(query, ctx.config.id)

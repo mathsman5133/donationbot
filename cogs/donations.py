@@ -87,7 +87,7 @@ class Donations(commands.Cog):
                     FROM players 
                     WHERE user_id = $1 
                     AND season_id=$2
-                    ORDER BY donations DESC
+                    ORDER BY donations DESC NULLS LAST
                 """
         fetch = await ctx.db.fetch(query, user.id, await self.bot.seasonconfig.get_season_id())
         if not fetch:
@@ -123,7 +123,7 @@ class Donations(commands.Cog):
                     FROM players 
                     WHERE player_tag = $1 
                     AND season_id=$2
-                    ORDER BY donations DESC
+                    ORDER BY donations DESC NULLS LAST
                 """
         fetch = await ctx.db.fetch(query, player.tag, await self.bot.seasonconfig.get_season_id())
 
@@ -161,7 +161,7 @@ class Donations(commands.Cog):
                     FROM players 
                     WHERE player_tag=ANY($1::TEXT[])
                     AND season_id=$2
-                    ORDER BY donations DESC
+                    ORDER BY donations DESC NULLS LAST
                 """
         tags = []
         for n in clans:
