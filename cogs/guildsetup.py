@@ -451,7 +451,7 @@ class GuildConfiguration(commands.Cog, name='Server Setup'):
                               toggle     = True;
                 
                 """
-        await ctx.db.execute(query, ctx.guild.id, channel.id, 'trophy', name.capitalize())
+        await ctx.db.execute(query, ctx.guild.id, channel.id, 'trophy')
         await ctx.db.execute(query2, ctx.guild.id, channel.id, 'trophy', name.capitalize())
         await ctx.send(f'Trophyboard channel created: {channel.mention}')
 
