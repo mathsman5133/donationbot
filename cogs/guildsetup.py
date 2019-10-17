@@ -233,6 +233,8 @@ class GuildConfiguration(commands.Cog, name='Server Setup'):
             if ctx.config.start < datetime.datetime.utcnow():
                 prompt = await ctx.prompt(f'Do you wish to add {player} to the current event?')
                 await self.insert_player(ctx.db, player, season_id, prompt, ctx.config.event_id)
+        else:
+            await self.insert_player(ctx.db, player, season_id)
 
         query = "UPDATE players SET user_id = $1 WHERE player_tag = $2 AND season_id = $3"
         await ctx.db.execute(query, user.id, player.tag, season_id)
