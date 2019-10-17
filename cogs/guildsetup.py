@@ -151,7 +151,9 @@ class GuildConfiguration(commands.Cog, name='Server Setup'):
             return await ctx.send('Please add the letters `dt` to the end of '
                                   f'`{clan.name}`\'s clan description. Wait 5 minutes and try again.'
                                   '\n\nThis is a security feature of the bot and should '
-                                  'be removed once the clan has been added.')
+                                  'be removed once the clan has been added.\n'
+                                  '<https://cdn.discordapp.com/attachments/'
+                                  '605352421929123851/634226338852503552/Screenshot_20191017-140812.png>')
         in_event = False
         if ctx.config:
             if ctx.config.start < datetime.datetime.utcnow():
