@@ -323,8 +323,9 @@ class AutoClaim(commands.Cog, name='\u200bAutoClaim'):
         query = "SELECT user_id FROM players WHERE player_tag = $1 AND season_id = $2"
 
         final = []
+
         for n in player:
-            fetch = await ctx.db.fetch(query, n.tag, season_id)
+            fetch = await ctx.db.fetchrow(query, n.tag, season_id)
             if not fetch:
                 final.append([n.name, n.tag, ' '])
                 continue
