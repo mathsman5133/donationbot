@@ -189,6 +189,8 @@ class GuildConfiguration(commands.Cog, name='Server Setup'):
         :white_check_mark: `+add player #P0LYJC8C`
         :white_check_mark: `+add player mathsman`
         """
+        if not isinstance(player, coc.SearchPlayer):
+            player = await self.bot.coc.get_player(player.tag)
         if ctx.config:
             prompt = await ctx.prompt(f'Do you wish to add {player} to the current event?')
         else:
@@ -220,6 +222,8 @@ class GuildConfiguration(commands.Cog, name='Server Setup'):
         """
         if not user:
             user = ctx.author
+        if not isinstance(player, coc.SearchPlayer):
+            player = await self.bot.coc.get_player(player.tag)
 
         season_id = await self.bot.seasonconfig.get_season_id()
         query = "SELECT user_id FROM players WHERE player_tag = $1 AND season_id = $2"
