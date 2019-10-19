@@ -225,7 +225,7 @@ class GuildConfiguration(commands.Cog, name='Server Setup'):
         query = "SELECT user_id FROM players WHERE player_tag = $1 AND season_id = $2"
         fetch = await ctx.db.fetchrow(query, player.tag, season_id)
 
-        if not fetch or fetch[0] is None:
+        if fetch and fetch[0] is not None:
             return await ctx.send(f'Player {player.name} ({player.tag}) '
                                   f'has already been claimed by {self.bot.get_user(fetch[0])}')
 
