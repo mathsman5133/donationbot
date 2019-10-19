@@ -225,7 +225,7 @@ class GuildConfiguration(commands.Cog, name='Server Setup'):
         query = "SELECT user_id FROM players WHERE player_tag = $1 AND season_id = $2"
         fetch = await ctx.db.fetchrow(query, player.tag, season_id)
 
-        if fetch is not None:
+        if not fetch or fetch[0] is None:
             return await ctx.send(f'Player {player.name} ({player.tag}) '
                                   f'has already been claimed by {self.bot.get_user(fetch[0])}')
 
@@ -1707,19 +1707,22 @@ class GuildConfiguration(commands.Cog, name='Server Setup'):
                        SET donations = $1
                        WHERE player_tag = $2
                        AND donations <= $1
-                       AND season_id = $3;
+                       AND season_id = $3
+                       RETURNING player_tag;
                     """
             query2 = """UPDATE players 
                         SET received = $1
                         WHERE player_tag = $2
                         AND received <= $1  
-                        AND season_id = $3;
+                        AND season_id = $3
+                        RETURNING player_tag;
                      """
             query3 = """UPDATE players
                         SET trophies = $1
                         WHERE player_tag = $2
                         AND trophies != $1
-                        AND season_id = $3               
+                        AND season_id = $3
+                        RETURNING player_tag;               
                      """
             season_id = await self.bot.seasonconfig.get_season_id()
             for clan in clans:
