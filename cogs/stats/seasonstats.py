@@ -132,9 +132,10 @@ class SeasonStats(commands.Cog):
         table = CLYTable()
         title = f"Attack wins for Season {season}"
 
-        attacks = {n['player_tag']: n['attacks'] for n in fetch}
-        for index, player in enumerate(await self.bot.coc.get_players((n[0] for n in fetch)).flatten()):
-            table.add_row([index, attacks[player.tag], player.trophies, player.name])
+        async with ctx.typing():
+            attacks = {n['player_tag']: n['attacks'] for n in fetch}
+            for index, player in enumerate(await self.bot.coc.get_players((n[0] for n in fetch)).flatten()):
+                table.add_row([index, attacks[player.tag], player.trophies, player.name])
 
         fmt = table.trophyboard_attacks()
         fmt += f"**Key:**\n{misc['attack']} - Attacks\n{misc['trophygold']} - Trophies"
@@ -175,9 +176,10 @@ class SeasonStats(commands.Cog):
         table = CLYTable()
         title = f"Defense wins for Season {season}"
 
-        defenses = {n['player_tag']: n['defenses'] for n in fetch}
-        for index, player in enumerate(await self.bot.coc.get_players((n[0] for n in fetch)).flatten()):
-            table.add_row([index, defenses[player.tag], player.trophies, player.name])
+        async with ctx.typing():
+            defenses = {n['player_tag']: n['defenses'] for n in fetch}
+            for index, player in enumerate(await self.bot.coc.get_players((n[0] for n in fetch)).flatten()):
+                table.add_row([index, defenses[player.tag], player.trophies, player.name])
 
         fmt = table.trophyboard_defenses()
         fmt += f"**Key:**\n{misc['defense']} - Defenses\n{misc['trophygold']} - Trophies"
@@ -219,9 +221,10 @@ class SeasonStats(commands.Cog):
         table = CLYTable()
         title = f"Trophy Gains for Season {season}"
 
-        gains = {n['player_tag']: n['gain'] for n in fetch}
-        for index, player in enumerate(await self.bot.coc.get_players((n[0] for n in fetch)).flatten()):
-            table.add_row([index, gains[player.tag], player.trophies, player.name])
+        async with ctx.typing():
+            gains = {n['player_tag']: n['gain'] for n in fetch}
+            for index, player in enumerate(await self.bot.coc.get_players((n[0] for n in fetch)).flatten()):
+                table.add_row([index, gains[player.tag], player.trophies, player.name])
 
         fmt = table.trophyboard_gain()
         fmt += f"**Key:**\n{misc['trophygreen']} - Trophy Gain\n{misc['trophygold']} - Total Trophies"
@@ -265,8 +268,9 @@ class SeasonStats(commands.Cog):
 
         donations = {n['player_tag']: n['donations'] for n in fetch}
 
-        for index, player in enumerate(await self.bot.coc.get_players((n[0] for n in fetch)).flatten()):
-            table.add_row([index, donations[player.tag], player.name])
+        async with ctx.typing():
+            for index, player in enumerate(await self.bot.coc.get_players((n[0] for n in fetch)).flatten()):
+                table.add_row([index, donations[player.tag], player.name])
 
         fmt = table.donationboard_2()
 

@@ -5,12 +5,9 @@ import os
 import asyncio
 import discord
 import itertools
-import math
 
 from discord.ext import commands, tasks
 from cogs.utils.paginator import Pages
-from cogs.utils.error_handler import error_handler
-from cogs.utils.db_objects import SlimEventConfig
 from cogs.utils.formatters import CLYTable, readable_time, TabularData
 from cogs.utils.emoji_lookup import misc
 from cogs.utils.checks import requires_config
@@ -39,7 +36,10 @@ class HelpPaginator(Pages):
 
     def get_bot_page(self, page):
         cog, description, commands = self.entries[page - 1]
-        self.title = cog.qualified_name
+        if hasattr(cog, 'qualified_name'):
+            self.title = cog.qualified_name
+        else:
+            self.title = cog.name
         self.description = description
         return commands
 
@@ -99,6 +99,12 @@ class HelpPaginator(Pages):
 
 
 class HelpCommand(commands.HelpCommand):
+    async def command_callback(self, ctx, *, command=None):
+        category = self.context.bot.get_category(command)
+        if category:
+            return await self.send_category_help(category)
+        return await super().command_callback(ctx, command=command)
+
     def get_command_signature(self, command):
         parent = command.full_parent_name
 
@@ -114,6 +120,9 @@ class HelpCommand(commands.HelpCommand):
 
     async def send_bot_help(self, mapping):
         def key(c):
+            if c.cog:
+                if hasattr(c.cog, 'category'):
+                    return c.cog.category.name or '\u200bNo Category'
             return c.cog_name or '\u200bNo Category'
 
         bot = self.context.bot
@@ -132,7 +141,7 @@ class HelpCommand(commands.HelpCommand):
                 continue
 
             total += len(commands)
-            actual_cog = bot.get_cog(cog)
+            actual_cog = bot.get_cog(cog) or bot.get_category(cog)
             # get the description if it exists (and the cog is valid) or return Empty embed.
             description = actual_cog.description or discord.Embed.Empty
             nested_pages.extend((actual_cog, description, commands[i:i + per_page])
@@ -147,6 +156,15 @@ class HelpCommand(commands.HelpCommand):
         pages.is_bot = True
         pages.total = total
         pages.get_page = pages.get_bot_page
+        await self.context.release()
+        await pages.paginate()
+
+    async def send_category_help(self, category):
+        entries = await self.filter_commands(category.commands, sort=True)
+        pages = HelpPaginator(self, self.context, entries)
+        pages.title = f'{category.name} Commands'
+        pages.description = f'{category.description}\n\n'
+
         await self.context.release()
         await pages.paginate()
 

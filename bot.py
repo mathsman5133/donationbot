@@ -63,6 +63,8 @@ class DonationBot(commands.Bot):
                          description=description, pm_help=None, help_attrs=dict(hidden=True),
                          fetch_offline_members=True)
 
+        self.categories = {}
+
         self.colour = discord.Colour.blurple()
 
         self.coc = coc_client
@@ -105,6 +107,9 @@ class DonationBot(commands.Bot):
     @property
     def background(self):
         return self.get_cog('BackgroundManagement')
+
+    def get_category(self, name):
+        return self.categories.get(name)
 
     async def on_message(self, message):
         if message.author.bot:
