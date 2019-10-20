@@ -127,7 +127,7 @@ class SeasonStats(commands.Cog):
         for clan in clans:
             players.extend((n.tag for n in clan.itermembers))
 
-        fetch = await ctx.db.execute(query, players, season)
+        fetch = await ctx.db.fetch(query, players, season)
 
         table = CLYTable()
         title = f"Attack wins for Season {season}"
@@ -170,7 +170,7 @@ class SeasonStats(commands.Cog):
         for clan in clans:
             players.extend((n.tag for n in clan.itermembers))
 
-        fetch = await ctx.db.execute(query, players, season)
+        fetch = await ctx.db.fetch(query, players, season)
 
         table = CLYTable()
         title = f"Defense wins for Season {season}"
@@ -214,7 +214,7 @@ class SeasonStats(commands.Cog):
         for clan in clans:
             players.extend((n.tag for n in clan.itermembers))
 
-        fetch = await ctx.db.execute(query, players, season)
+        fetch = await ctx.db.fetch(query, players, season)
 
         table = CLYTable()
         title = f"Trophy Gains for Season {season}"
@@ -258,7 +258,7 @@ class SeasonStats(commands.Cog):
         for clan in clans:
             players.extend((n.tag for n in clan.itermembers))
 
-        fetch = await ctx.db.execute(query, players, season)
+        fetch = await ctx.db.fetch(query, players, season)
 
         table = CLYTable()
         title = f"Donations for Season {season}"
