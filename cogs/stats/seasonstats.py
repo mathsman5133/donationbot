@@ -113,13 +113,21 @@ class SeasonStats(commands.Cog):
         :white_check_mark: `+season stats attacks 2`
         """
         season = season or await self.bot.seasonconfig.get_season_id() - 1
+
+        clans = await ctx.get_clans()
         query = """SELECT player_tag, end_attacks - start_attacks as attacks, trophies 
-                        FROM players 
-                        WHERE season_id = $1 AND guild_id = $2
-                        ORDER BY attacks DESC
-                        LIMIT 15
-                    """
-        fetch = await ctx.db.fetch(query, season, ctx.guild.id)
+               FROM players 
+               WHERE player_tag = ANY($1::TEXT[])
+               AND season_id = $2
+               ORDER BY attacks DESC
+               LIMIT 15
+            """
+
+        players = []
+        for clan in clans:
+            players.extend((n.tag for n in clan.itermembers))
+
+        fetch = await ctx.db.execute(query, players, season)
 
         table = CLYTable()
         title = f"Attack wins for Season {season}"
@@ -149,13 +157,20 @@ class SeasonStats(commands.Cog):
         :white_check_mark: `+season stats defenses 3`
         """
         season = season or await self.bot.seasonconfig.get_season_id() - 1
+        clans = await ctx.get_clans()
         query = """SELECT player_tag, end_defenses - start_defenses as defenses, trophies 
-                        FROM players 
-                        WHERE season_id = $1 AND guild_id = $2
-                        ORDER BY defenses DESC
-                        LIMIT 15
-                    """
-        fetch = await ctx.db.fetch(query, season, ctx.guild.id)
+                   FROM players 
+                   WHERE player_tag = ANY($1::TEXT[])
+                   AND season_id = $2
+                   ORDER BY defenses DESC
+                   LIMIT 15
+                """
+
+        players = []
+        for clan in clans:
+            players.extend((n.tag for n in clan.itermembers))
+
+        fetch = await ctx.db.execute(query, players, season)
 
         table = CLYTable()
         title = f"Defense wins for Season {season}"
@@ -184,19 +199,27 @@ class SeasonStats(commands.Cog):
         :white_check_mark: `+season stats gains`
         :white_check_mark: `+season stats gains 1`
         """
+
         season = season or await self.bot.seasonconfig.get_season_id() - 1
+        clans = await ctx.get_clans()
         query = """SELECT player_tag, trophies - start_trophies as gain, trophies 
-                            FROM players 
-                            WHERE season_id = $1 AND guild_id = $2
-                            ORDER BY gain DESC
-                            LIMIT 15
-                        """
-        fetch = await ctx.db.fetch(query, season, ctx.guild.id)
+                   FROM players 
+                   WHERE player_tag = ANY($1::TEXT[])
+                   AND season_id = $2
+                   ORDER BY gain DESC
+                   LIMIT 15
+                """
+
+        players = []
+        for clan in clans:
+            players.extend((n.tag for n in clan.itermembers))
+
+        fetch = await ctx.db.execute(query, players, season)
 
         table = CLYTable()
         title = f"Trophy Gains for Season {season}"
 
-        gains = {n['player_tag']: n['gains'] for n in fetch}
+        gains = {n['player_tag']: n['gain'] for n in fetch}
         for index, player in enumerate(await self.bot.coc.get_players((n[0] for n in fetch)).flatten()):
             table.add_row([index, gains[player.tag], player.trophies, player.name])
 
@@ -220,15 +243,22 @@ class SeasonStats(commands.Cog):
         :white_check_mark: `+season stats donors`
         :white_check_mark: `+season stats donations 4`
         """
+
         season = season or await self.bot.seasonconfig.get_season_id() - 1
-        query = """SELECT player_tag,  
-                        (end_friend_in_need + end_sharing_is_caring) - (start_friend_in_need + start_sharing_is_caring) as donations
-                        FROM players
-                        WHERE season_id = $1 AND guild_id = $2
-                        ORDER BY donations DESC
-                        LIMIT 15
-                    """
-        fetch = await ctx.db.fetch(query, season, ctx.guild.id)
+        clans = await ctx.get_clans()
+        query = """SELECT player_tag, (end_friend_in_need + end_sharing_is_caring) - (start_friend_in_need + start_sharing_is_caring) as donations
+                   FROM players 
+                   WHERE player_tag = ANY($1::TEXT[])
+                   AND season_id = $2
+                   ORDER BY donations DESC
+                   LIMIT 15
+                """
+
+        players = []
+        for clan in clans:
+            players.extend((n.tag for n in clan.itermembers))
+
+        fetch = await ctx.db.execute(query, players, season)
 
         table = CLYTable()
         title = f"Donations for Season {season}"

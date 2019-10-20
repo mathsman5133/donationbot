@@ -23,11 +23,9 @@ initial_extensions = [
     'cogs.deprecated',
     'cogs.donations',
     'cogs.events',
-    'cogs.eventstats',
     'cogs.guildsetup',
     'cogs.info',
     'cogs.reset_season',
-    'cogs.seasonstats',
     'cogs.stats',
     'cogs.trophies',
 ]
