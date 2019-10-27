@@ -128,7 +128,6 @@ class DonationBot(commands.Bot):
             category.remove_cog(self.get_cog(name))
             return
 
-
         super().unload_extension(name)
 
     def load_extension(self, name):
