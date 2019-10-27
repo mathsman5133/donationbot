@@ -10,7 +10,7 @@ import creds
 from discord.ext import commands
 
 from botlog import setup_logging, add_hooks
-from cogs.utils import context
+from cogs.utils import context, category
 from cogs.utils.db import Table
 from cogs.utils.error_handler import error_handler, discord_event_error, clash_event_error
 
@@ -75,6 +75,8 @@ class DonationBot(commands.Bot):
         self.session = aiohttp.ClientSession(loop=self.loop)
 
         add_hooks(self)
+        self.before_invoke(self.before_command_invoke)
+        self.after_invoke(self.after_command_invoke)
 
         self.uptime = datetime.datetime.utcnow()
 
@@ -108,8 +110,49 @@ class DonationBot(commands.Bot):
     def background(self):
         return self.get_cog('BackgroundManagement')
 
-    def get_category(self, name):
+    def get_category(self, name) -> category.Category:
         return self.categories.get(name)
+
+    def unload_extension(self, name):
+        names = name.split('.')
+        category = self.get_category(names[-1])
+        if category:
+            for n in category.cogs:
+                # requirement: cog name = file name
+                super().unload_extension(f"{name}.{n.__name__}")
+            return
+
+        super().unload_extension(name)
+
+    def load_extension(self, name):
+        names = name.split('.')
+        category = self.get_category(names[-1])
+        if category:
+            for n in category.cogs:
+                # requirement: cog name = file name
+                super().load_extension(f"{name}.{n.__name__}")
+            return
+
+        super().load_extension(name)
+
+    def reload_extension(self, name):
+        names = name.split('.')
+        category = self.get_category(names[-1])
+        if category:
+            for n in category.cogs:
+                # requirement: cog name = file name
+                super().reload_extension(f"{name}.{n.__name__}")
+            return
+
+        super().reload_extension(name)
+
+    async def before_command_invoke(self, ctx):
+        if hasattr(ctx, 'before_invoke'):
+            await ctx.before_invoke(ctx)
+
+    async def after_command_invoke(self, ctx):
+        if hasattr(ctx, 'after_invoke'):
+            await ctx.after_invoke(ctx)
 
     async def on_message(self, message):
         if message.author.bot:

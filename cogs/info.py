@@ -233,14 +233,6 @@ class Info(commands.Cog, name='\u200bInfo'):
     def cog_unload(self):
         self.dbl_task.cancel()
 
-    async def cog_before_invoke(self, ctx):
-        if hasattr(ctx, 'before_invoke'):
-            await ctx.before_invoke(ctx)
-
-    async def cog_after_invoke(self, ctx):
-        if hasattr(ctx, 'before_invoke'):
-            await ctx.after_invoke(ctx)
-
     @tasks.loop(time=time(hour=0))
     async def dbl_task(self):
         log.info('Attempting to post server count')

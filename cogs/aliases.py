@@ -34,8 +34,12 @@ class Aliases(commands.Cog, command_attrs=dict(hidden=True)):
         :white_check_mark: `+claim #P0LYJC8C`
         """
         cmd = self.bot.get_command('add discord')
-        if await cmd.can_run(ctx):
-            await ctx.invoke(cmd, user=user, player=player)
+        if not await cmd.can_run(ctx):
+            return
+
+        for check in cmd.checks:
+            await check(ctx)
+        await ctx.invoke(cmd, user=user, player=player)
 
     @commands.command(name='multiclaim')
     async def multi_claim(self, ctx, user: discord.Member,
@@ -57,8 +61,12 @@ class Aliases(commands.Cog, command_attrs=dict(hidden=True)):
         :white_check_mark: `+multiclaim @mathsman mathsman raptor217 johnny36`
         """
         cmd = self.bot.get_command('add multidiscord')
-        if await cmd.can_run(ctx):
-            await ctx.invoke(cmd, user=user, players=players)
+        if not await cmd.can_run(ctx):
+            return
+
+        for check in cmd.checks:
+            await check(ctx)
+        await ctx.invoke(cmd, user=user, players=players)
 
     @commands.command()
     async def unclaim(self, ctx, *, player: PlayerConverter):

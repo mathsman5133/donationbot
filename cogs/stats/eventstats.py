@@ -11,15 +11,6 @@ class EventStats(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    async def cog_before_invoke(self, ctx):
-        if hasattr(ctx, 'before_invoke'):
-            await ctx.before_invoke(ctx)
-
-    async def cog_after_invoke(self, ctx):
-        after_invoke = getattr(ctx, 'after_invoke', None)
-        if after_invoke:
-            await after_invoke(ctx)
-
     async def get_recent_event(self, guild_id):
         query = "SELECT get_event_id($1)"
         row = await self.bot.pool.fetchrow(query, guild_id)

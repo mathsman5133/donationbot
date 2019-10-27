@@ -23,15 +23,6 @@ class Edit(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    async def cog_before_invoke(self, ctx):
-        if hasattr(ctx, 'before_invoke'):
-            await ctx.before_invoke(ctx)
-
-    async def cog_after_invoke(self, ctx):
-        after_invoke = getattr(ctx, 'after_invoke', None)
-        if after_invoke:
-            await after_invoke(ctx)
-
     @commands.group(invoke_without_command=True)
     async def edit(self, ctx):
         """[Group] Allows a user to edit a variety of the bot's features."""

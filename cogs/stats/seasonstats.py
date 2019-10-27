@@ -18,15 +18,6 @@ class SeasonStats(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    async def cog_before_invoke(self, ctx):
-        if hasattr(ctx, 'before_invoke'):
-            await ctx.before_invoke(ctx)
-
-    async def cog_after_invoke(self, ctx):
-        after_invoke = getattr(ctx, 'after_invoke', None)
-        if after_invoke:
-            await after_invoke(ctx)
-
     @cache(strategy=Strategy.lru)
     async def get_board_fmt(self, guild_id, season_id, board_type):
         board_config = await self.bot.utils.get_board_config(guild_id, board_type)

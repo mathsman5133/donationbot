@@ -90,7 +90,7 @@ async def clash_event_error(self, event_name, exception, *args, **kwargs):
     e.add_field(name='Args', value='\n'.join(args_str), inline=False)
 
     try:
-        await self.bot.error_webhook.send(embed=e)
+        await self.error_webhook.send(embed=e)
     except:
         pass
 

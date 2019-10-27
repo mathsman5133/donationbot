@@ -16,19 +16,11 @@ log = logging.getLogger(__name__)
 url_validator = re.compile(r"^(?:http(s)?://)?[\w.-]+(?:.[\w.-]+)+[\w\-_~:/?#[\]@!$&'()*+,;=.]+"
                            r"(.jpg|.jpeg|.png|.gif)+[\w\-_~:/?#[\]@!$&'()*+,;=.]*$")
 
+
 class Remove(commands.Cog):
     """Remove clans, players, boards, logs and more."""
     def __init__(self, bot):
         self.bot = bot
-
-    async def cog_before_invoke(self, ctx):
-        if hasattr(ctx, 'before_invoke'):
-            await ctx.before_invoke(ctx)
-
-    async def cog_after_invoke(self, ctx):
-        after_invoke = getattr(ctx, 'after_invoke', None)
-        if after_invoke:
-            await after_invoke(ctx)
 
     @commands.group(invoke_without_subcommands=True)
     async def remove(self, ctx):

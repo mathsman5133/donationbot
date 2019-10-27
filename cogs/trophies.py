@@ -19,17 +19,6 @@ class Trophies(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    async def cog_before_invoke(self, ctx):
-        if hasattr(ctx, 'before_invoke'):
-            await ctx.before_invoke(ctx)
-        else:
-            ctx.config = SlimDummyBoardConfig('trophy', 1, 'Top Trophies', None)
-
-    async def cog_after_invoke(self, ctx):
-        after_invoke = getattr(ctx, 'after_invoke', None)
-        if after_invoke:
-            await after_invoke(ctx)
-
     @commands.group(name='trophies', aliases=['troph'],  invoke_without_command=True)
     async def trophies(self, ctx, *,
                         arg: typing.Union[discord.Member, ClanConverter, PlayerConverter] = None):

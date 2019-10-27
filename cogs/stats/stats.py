@@ -10,14 +10,6 @@ class Stats(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    async def cog_before_invoke(self, ctx):
-        if hasattr(ctx, 'before_invoke'):
-            await ctx.before_invoke(ctx)
-
-    async def cog_after_invoke(self, ctx):
-        if hasattr(ctx, 'after_invoke'):
-            await ctx.after_invoke(ctx)
-
     @commands.group(invoke_without_command=True)
     async def stats(self, ctx):
         """The main stats command for all donation, trophy, attacks and defense statistics.
