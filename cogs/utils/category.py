@@ -16,12 +16,12 @@ class Category:
         self.cogs.clear()
 
     def remove_cog(self, cog):
-        self.bot.remove_cog(cog)
+        self.bot.unload_extension(f"cogs.{self.__name__}.{cog.__name__}")
         self.cogs.remove(cog)
 
     def add_cog(self, cog):
         c = cog(self.bot)
-        self.bot.add_cog(c)
+        self.bot.load_extension(f"cogs.{self.__name__}.{c.__name__}")
         c.category = self
         self.cogs.append(c)
 

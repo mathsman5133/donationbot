@@ -123,6 +123,12 @@ class DonationBot(commands.Bot):
                 super().unload_extension(f"{name}.{n.__name__}")
             return
 
+        category = self.get_category(names[-2])
+        if category:
+            category.remove_cog(self.get_cog(name))
+            return
+
+
         super().unload_extension(name)
 
     def load_extension(self, name):
@@ -134,6 +140,11 @@ class DonationBot(commands.Bot):
                 super().load_extension(f"{name}.{n.__name__}")
             return
 
+        category = self.get_category(names[-2])
+        if category:
+            category.add_cog(self.get_cog(name))
+            return
+
         super().load_extension(name)
 
     def reload_extension(self, name):
@@ -143,6 +154,12 @@ class DonationBot(commands.Bot):
             for n in category.cogs:
                 # requirement: cog name = file name
                 super().reload_extension(f"{name}.{n.__name__}")
+            return
+
+        category = self.get_category(names[-2])
+        if category:
+            category.remove_cog(self.get_cog(name))
+            category.add_cog(self.get_cog(name))
             return
 
         super().reload_extension(name)
