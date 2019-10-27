@@ -4,6 +4,7 @@ import discord
 
 from discord.ext import commands
 
+from cogs.utils.checks import requires_config
 from cogs.utils.converters import PlayerConverter
 
 
@@ -15,6 +16,7 @@ class Aliases(commands.Cog, command_attrs=dict(hidden=True)):
         return None
 
     @commands.command()
+    @requires_config('event')
     async def claim(self, ctx, user: typing.Optional[discord.Member] = None, *,
                     player: PlayerConverter):
         """Link a clash account to your discord account
@@ -37,11 +39,10 @@ class Aliases(commands.Cog, command_attrs=dict(hidden=True)):
         if not await cmd.can_run(ctx):
             return
 
-        for check in cmd.checks:
-            await check(ctx)
         await ctx.invoke(cmd, user=user, player=player)
 
     @commands.command(name='multiclaim')
+    @requires_config('event')
     async def multi_claim(self, ctx, user: discord.Member,
                           players: commands.Greedy[PlayerConverter]):
         """Helper command to link many clash accounts to a user's discord.
@@ -64,8 +65,6 @@ class Aliases(commands.Cog, command_attrs=dict(hidden=True)):
         if not await cmd.can_run(ctx):
             return
 
-        for check in cmd.checks:
-            await check(ctx)
         await ctx.invoke(cmd, user=user, players=players)
 
     @commands.command()
