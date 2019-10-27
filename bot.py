@@ -47,7 +47,7 @@ else:
 
 class COCClient(coc.EventsClient):
     async def on_event_error(self, event_name, exception, *args, **kwargs):
-        await clash_event_error(self, event_name, exception, *args, **kwargs)
+        await clash_event_error(self.bot, event_name, exception, *args, **kwargs)
 
 
 coc_client = coc.login(creds.email, creds.password, client=COCClient,
@@ -67,6 +67,7 @@ class DonationBot(commands.Bot):
 
         self.colour = discord.Colour.blurple()
 
+        coc_client.bot = self
         self.coc = coc_client
 
         self.client_id = creds.client_id

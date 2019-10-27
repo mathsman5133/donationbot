@@ -59,7 +59,7 @@ async def error_handler(ctx, error):
         pass
 
 
-async def discord_event_error(self, event_method, *args, **kwargs):
+async def discord_event_error(bot, event_method, *args, **kwargs):
     e = discord.Embed(title='Discord Event Error', colour=0xa32952)
     e.add_field(name='Event', value=event_method)
     e.description = f'```py\n{traceback.format_exc()}\n```'
@@ -72,12 +72,12 @@ async def discord_event_error(self, event_method, *args, **kwargs):
     e.add_field(name='Args', value='\n'.join(args_str), inline=False)
 
     try:
-        await self.error_webhook.send(embed=e)
+        await bot.error_webhook.send(embed=e)
     except:
         pass
 
 
-async def clash_event_error(self, event_name, exception, *args, **kwargs):
+async def clash_event_error(bot, event_name, exception, *args, **kwargs):
     e = discord.Embed(title='COC Event Error', colour=0xa32952)
     e.add_field(name='Event', value=event_name)
     e.description = f'```py\n{traceback.format_exc()}\n```'
@@ -90,7 +90,7 @@ async def clash_event_error(self, event_name, exception, *args, **kwargs):
     e.add_field(name='Args', value='\n'.join(args_str), inline=False)
 
     try:
-        await self.error_webhook.send(embed=e)
+        await bot.error_webhook.send(embed=e)
     except:
         pass
 
