@@ -120,7 +120,7 @@ class DonationBot(commands.Bot):
         if category:
             for n in category.cogs:
                 # requirement: cog name = file name
-                super().unload_extension(f"{name}.{n.qualified_name}")
+                super().unload_extension(f"{name}.{n.qualified_name.lower()}")
             return
 
         category = self.get_category(names[-2])
@@ -136,7 +136,7 @@ class DonationBot(commands.Bot):
         if category:
             for n in category.cogs:
                 # requirement: cog name = file name
-                super().load_extension(f"{name}.{n.qualified_name}")
+                super().load_extension(f"{name}.{n.qualified_name.lower()}")
             return
 
         category = self.get_category(names[-2])
@@ -152,7 +152,7 @@ class DonationBot(commands.Bot):
         if category:
             for n in category.cogs:
                 # requirement: cog name = file name
-                super().reload_extension(f"{name}.{n.qualified_name}")
+                super().reload_extension(f"{name}.{n.qualified_name.lower()}")
             return
 
         category = self.get_category(names[-2])
