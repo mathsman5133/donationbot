@@ -96,7 +96,7 @@ class Stats(commands.Cog):
         """
         if ctx.config:
             return await ctx.infoke(self.bot.get_command('eventstats donors'))
-        await ctx.invoke(self.bot.get_command('seasonstats gains'), season_id)
+        await ctx.invoke(self.bot.get_command('seasonstats donors'), season_id)
 
 
 def setup(bot):
