@@ -11,7 +11,8 @@ def setup(bot):
     stats_category = Category(
         bot=bot,
         name='Server Setup',
-        description=description
+        description=description,
+        fp='guildsetup'
     )
 
     stats_category.add_cogs(
