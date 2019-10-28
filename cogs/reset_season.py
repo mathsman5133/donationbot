@@ -58,7 +58,7 @@ class SeasonConfig(commands.Cog, command_attrs=dict(hidden=True)):
                     FROM players
                     WHERE season_id = $1
                 """
-        await self.bot.pool.execute(query, self.season_id - 1)
+        await self.bot.pool.execute(query, self.season_id)
 
     async def get_season_id(self, refresh: bool = False):
         if self.season_id and not refresh:
