@@ -241,11 +241,10 @@ class DonationBoard(commands.Cog):
                                         start_sharing_is_caring,
                                         start_attacks,
                                         start_defenses,
-                                        start_trophies,
                                         start_best_trophies,
                                         start_update
                                         ) 
-                    VALUES ($1,$2,$3,$4,$4,$5,$6,$7,$8,$9,$10,$11,$12) 
+                    VALUES ($1,$2,$3,$4,$4,$5,$6,$7,$8,$9,$10,True) 
                     ON CONFLICT (player_tag, season_id) 
                     DO NOTHING
                 """
@@ -261,7 +260,6 @@ class DonationBoard(commands.Cog):
             player.achievements_dict['Sharing is caring'].value,
             player.attack_wins,
             player.defense_wins,
-            player.trophies,
             player.best_trophies
         )
         log.debug(f'New member {member} joined clan {clan}. Performed a query to insert them into players. '
