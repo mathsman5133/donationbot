@@ -12,6 +12,7 @@ from cogs.utils.db_objects import SlimDummyLogConfig
 
 log = logging.getLogger(__name__)
 
+
 def columns(table_name):
     if table_name == 'trophyevents':
         return 'trophy_change', 'id'
@@ -180,6 +181,7 @@ class Events(commands.Cog):
         :white_check_mark: `+donationevents user @mathsman`
         :white_check_mark: `+donationevents user`
         """
+        ctx.config = SlimDummyLogConfig('donation', 'Donation Events', None)
         if not user:
             user = ctx.author
 
@@ -204,6 +206,7 @@ class Events(commands.Cog):
         :white_check_mark: `+donationevents player #P0LYJC8C`
         :white_check_mark: `+donationevents player mathsman`
         """
+        ctx.config = SlimDummyLogConfig('donation', 'Donation Events', None)
         await self.player_events('donationevents', ctx, player, limit)
 
     @donationevents.command(name='clan')
@@ -226,6 +229,7 @@ class Events(commands.Cog):
         :white_check_mark: `+donationevents clan Rock Throwers`
         :white_check_mark: `+donationevents clan all`
         """
+        ctx.config = SlimDummyLogConfig('donation', 'Donation Events', None)
         await self.clan_events('donationevents', ctx, clans, limit)
 
     @commands.group(invoke_without_command=True)
@@ -274,6 +278,7 @@ class Events(commands.Cog):
 
     @trophyevents.command(name='recent', hidden=True)
     async def trophy_events_recent(self, ctx, limit: int = None):
+        ctx.config = SlimDummyLogConfig('trophy', 'Donation Events', None)
         await self.recent_events('trophyevents', ctx, limit)
 
     @trophyevents.command(name='user', hidden=True)
@@ -295,6 +300,7 @@ class Events(commands.Cog):
         :white_check_mark: `+trophyevents user @mathsman`
         :white_check_mark: `+trophyevents user`
         """
+        ctx.config = SlimDummyLogConfig('trophy', 'Donation Events', None)
         if not user:
             user = ctx.author
 
@@ -319,6 +325,7 @@ class Events(commands.Cog):
         :white_check_mark: `+trophyevents player #P0LYJC8C`
         :white_check_mark: `+trophyevents player mathsman`
         """
+        ctx.config = SlimDummyLogConfig('trophy', 'Donation Events', None)
         await self.player_events('trophyevents', ctx, player, limit)
 
     @trophyevents.command(name='clan', hidden=True)
@@ -341,6 +348,7 @@ class Events(commands.Cog):
         :white_check_mark: `+trophyevents clan Rock Throwers`
         :white_check_mark: `+trophyevents clan all`
         """
+        ctx.config = SlimDummyLogConfig('trophy', 'Donation Events', None)
         await self.clan_events('trophyevents', ctx, clans, limit)
 
 

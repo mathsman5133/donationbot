@@ -34,8 +34,6 @@ if creds.live:
         (
             'cogs.background_management',
             'cogs.boards',
-            'cogs.donationlogs',
-            'cogs.trophylog'
         )
     )
     command_prefix = '+'
