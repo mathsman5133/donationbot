@@ -3,7 +3,7 @@ import creds
 from cogs.utils.category import Category
 
 from .donationlogs import DonationLogs
-from .trophylog import TrophyLogs
+from .trophylogs import TrophyLogs
 from .events import Events
 
 description = "Get donation and trophy events for a player, user, clan or server."
