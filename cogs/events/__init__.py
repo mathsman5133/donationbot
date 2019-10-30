@@ -26,4 +26,4 @@ def setup(bot):
         fp='events'
     )
 
-    stats_category.add_cogs(cogs)
+    stats_category.add_cogs(*cogs)
