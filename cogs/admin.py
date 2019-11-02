@@ -107,7 +107,7 @@ class Admin(commands.Cog):
         if len(fmt) > 6000:
             fp = io.BytesIO(fmt.encode('utf-8'))
             return await ctx.send('Too many results...', file=discord.File(fp, 'results.txt'))
-        for n in textwrap.wrap(fmt, 2038):
+        for n in textwrap.wrap(fmt, 2000):
             await ctx.send(n)
 
     @commands.command(hidden=True)
