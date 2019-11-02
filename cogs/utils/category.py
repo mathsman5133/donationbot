@@ -21,8 +21,8 @@ class Category:
         self.cogs.remove(cog)
 
     def add_cog(self, cog):
-        c = cog(self.bot)
-        self.bot.load_extension(f"cogs.{self.fp}.{c.qualified_name.lower()}")
+        self.bot.load_extension(f"cogs.{self.fp}.{cog.__name__.lower()}")
+        c = self.bot.get_cog(cog.__name__)
         c.category = self
         self.cogs.append(c)
 
