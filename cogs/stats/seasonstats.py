@@ -6,7 +6,9 @@ import typing
 from discord.ext import commands
 
 from cogs.boards import MockPlayer
-from cogs.utils.paginator import SeasonStatsPaginator
+from cogs.utils.paginator import (
+    SeasonStatsPaginator, StatsAttacksPaginator, StatsDefensesPaginator, StatsGainsPaginator, StatsDonorsPaginator
+)
 from cogs.utils.formatters import CLYTable, get_render_type
 from cogs.utils.cache import cache, Strategy
 from cogs.utils.emoji_lookup import misc
@@ -106,12 +108,12 @@ class SeasonStats(commands.Cog):
         season = season or await self.bot.seasonconfig.get_season_id() - 1
 
         clans = await ctx.get_clans()
-        query = """SELECT player_tag, end_attacks - start_attacks as attacks, trophies 
+        query = """SELECT player_tag, ABS(end_attacks - start_attacks) as attacks, trophies 
                FROM players 
                WHERE player_tag = ANY($1::TEXT[])
                AND season_id = $2
                ORDER BY attacks DESC
-               LIMIT 15
+               NULLS LAST
             """
 
         players = []
@@ -120,22 +122,11 @@ class SeasonStats(commands.Cog):
 
         fetch = await ctx.db.fetch(query, players, season)
 
-        table = CLYTable()
         title = f"Attack wins for Season {season}"
+        key = f"**Key:**\n{misc['attack']} - Attacks\n{misc['trophygold']} - Trophies"
 
-        async with ctx.typing():
-            attacks = {n['player_tag']: n['attacks'] for n in fetch}
-            for index, player in enumerate(await self.bot.coc.get_players((n[0] for n in fetch)).flatten()):
-                table.add_row([index, attacks[player.tag], player.trophies, player.name])
-
-        fmt = table.trophyboard_attacks()
-        fmt += f"**Key:**\n{misc['attack']} - Attacks\n{misc['trophygold']} - Trophies"
-
-        e = discord.Embed(
-            colour=discord.Colour.green(), description=fmt, title=title
-        )
-
-        await ctx.send(embed=e)
+        p = StatsAttacksPaginator(ctx, fetch, title, key=key, page_count=math.ceil(len(fetch) / 20))
+        await p.paginate()
 
     @seasonstats.command(name='defenses', aliases=['defense', 'defences', 'defence'])
     async def seasonstats_defenses(self, ctx, season: typing.Optional[int] = None):
@@ -155,7 +146,7 @@ class SeasonStats(commands.Cog):
                    WHERE player_tag = ANY($1::TEXT[])
                    AND season_id = $2
                    ORDER BY defenses DESC
-                   LIMIT 15
+                   NULLS LAST
                 """
 
         players = []
@@ -164,22 +155,11 @@ class SeasonStats(commands.Cog):
 
         fetch = await ctx.db.fetch(query, players, season)
 
-        table = CLYTable()
         title = f"Defense wins for Season {season}"
+        key = f"**Key:**\n{misc['defense']} - Defenses\n{misc['trophygold']} - Trophies"
 
-        async with ctx.typing():
-            defenses = {n['player_tag']: n['defenses'] for n in fetch}
-            for index, player in enumerate(await self.bot.coc.get_players((n[0] for n in fetch)).flatten()):
-                table.add_row([index, defenses[player.tag], player.trophies, player.name])
-
-        fmt = table.trophyboard_defenses()
-        fmt += f"**Key:**\n{misc['defense']} - Defenses\n{misc['trophygold']} - Trophies"
-
-        e = discord.Embed(
-            colour=discord.Colour.green(), description=fmt, title=title
-        )
-
-        await ctx.send(embed=e)
+        p = StatsDefensesPaginator(ctx, fetch, title, key=key, page_count=math.ceil(len(fetch) / 20))
+        await p.paginate()
 
     @seasonstats.command(name='gains', aliases=['trophies'])
     async def seasonstats_gains(self, ctx, season: typing.Optional[int] = None):
@@ -200,7 +180,7 @@ class SeasonStats(commands.Cog):
                    WHERE player_tag = ANY($1::TEXT[])
                    AND season_id = $2
                    ORDER BY gain DESC
-                   LIMIT 15
+                   NULLS LAST
                 """
 
         players = []
@@ -209,22 +189,11 @@ class SeasonStats(commands.Cog):
 
         fetch = await ctx.db.fetch(query, players, season)
 
-        table = CLYTable()
         title = f"Trophy Gains for Season {season}"
+        key = f"**Key:**\n{misc['trophygreen']} - Trophy Gain\n{misc['trophygold']} - Total Trophies"
 
-        async with ctx.typing():
-            gains = {n['player_tag']: n['gain'] for n in fetch}
-            for index, player in enumerate(await self.bot.coc.get_players((n[0] for n in fetch)).flatten()):
-                table.add_row([index, gains[player.tag], player.trophies, player.name])
-
-        fmt = table.trophyboard_gain()
-        fmt += f"**Key:**\n{misc['trophygreen']} - Trophy Gain\n{misc['trophygold']} - Total Trophies"
-
-        e = discord.Embed(
-            colour=discord.Colour.green(), description=fmt, title=title
-        )
-
-        await ctx.send(embed=e)
+        p = StatsGainsPaginator(ctx, fetch, title, key=key, page_count=math.ceil(len(fetch) / 20))
+        await p.paginate()
 
     @seasonstats.command(name='donors', aliases=['donations', 'donates', 'donation'])
     async def seasonstats_donors(self, ctx, season: typing.Optional[int] = None):
@@ -245,7 +214,7 @@ class SeasonStats(commands.Cog):
                    WHERE player_tag = ANY($1::TEXT[])
                    AND season_id = $2
                    ORDER BY donations DESC
-                   LIMIT 15
+                   NULLS LAST 
                 """
 
         players = []
@@ -254,22 +223,10 @@ class SeasonStats(commands.Cog):
 
         fetch = await ctx.db.fetch(query, players, season)
 
-        table = CLYTable()
         title = f"Donations for Season {season}"
 
-        donations = {n['player_tag']: n['donations'] for n in fetch}
-
-        async with ctx.typing():
-            for index, player in enumerate(await self.bot.coc.get_players((n[0] for n in fetch)).flatten()):
-                table.add_row([index, donations[player.tag], player.name])
-
-        fmt = table.donationboard_2()
-
-        e = discord.Embed(
-            colour=discord.Colour.green(), description=fmt, title=title
-        )
-
-        await ctx.send(embed=e)
+        p = StatsDonorsPaginator(ctx, fetch, title, page_count=math.ceil(len(fetch) / 20))
+        await p.paginate()
 
 
 def setup(bot):

@@ -1,10 +1,13 @@
 import discord
+import math
 
 from discord.ext import commands
 
-from cogs.utils import formatters
 from cogs.utils.checks import requires_config
 from cogs.utils.emoji_lookup import misc
+from cogs.utils.paginator import (
+    StatsAttacksPaginator, StatsDefensesPaginator, StatsDonorsPaginator, StatsGainsPaginator
+)
 
 
 class EventStats(commands.Cog):
@@ -69,26 +72,15 @@ class EventStats(commands.Cog):
                     FROM eventplayers 
                     WHERE event_id = $1
                     ORDER BY attacks DESC
-                    LIMIT 15
+                    NULLS LAST
                 """
         fetch = await ctx.db.fetch(query, ctx.config.id)
 
-        table = formatters.CLYTable()
         title = f"Attack wins for {ctx.config.event_name}"
+        key = f"**Key:**\n{misc['attack']} - Attacks\n{misc['trophygold']} - Trophies"
 
-        attacks = {n['player_tag']: n['attacks'] for n in fetch}
-
-        async with ctx.typing():
-            for index, player in enumerate(await self.bot.coc.get_players((n[0] for n in fetch)).flatten()):
-                table.add_row([index, attacks[player.tag], player.trophies, player.name])
-
-        fmt = table.trophyboard_attacks()
-        fmt += f"**Key:**\n{misc['attack']} - Attacks\n{misc['trophygold']} - Trophies"
-
-        e = discord.Embed(
-            colour=discord.Colour.gold(), description=fmt, title=title
-        )
-        await ctx.send(embed=e)
+        p = StatsAttacksPaginator(ctx, fetch, title, key=key)
+        await p.paginate()
 
     @eventstats.command(name='defenses', aliases=['defense', 'defences', 'defence'])
     @requires_config('event')
@@ -129,26 +121,15 @@ class EventStats(commands.Cog):
                     FROM eventplayers 
                     WHERE event_id = $1
                     ORDER BY defenses DESC
-                    LIMIT 15
+                    NULLS LAST
                 """
         fetch = await ctx.db.fetch(query, ctx.config.id)
 
-        defenses = {n['player_tag']: n['defenses'] for n in fetch}
-
-        table = formatters.CLYTable()
         title = f"Defense wins for {ctx.config.event_name}"
+        key = f"**Key:**\n{misc['defense']} - Defenses\n{misc['trophygold']} - Trophies"
 
-        async with ctx.typing():
-            for index, player in enumerate(await self.bot.coc.get_players((n[0] for n in fetch)).flatten()):
-                table.add_row([index, defenses[player.tag], player.trophies, player.name])
-
-        fmt = table.trophyboard_defenses()
-        fmt += f"**Key:**\n{misc['defense']} - Defenses\n{misc['trophygold']} - Trophies"
-
-        e = discord.Embed(
-            colour=discord.Colour.dark_red(), description=fmt, title=title
-        )
-        await ctx.send(embed=e)
+        p = StatsDefensesPaginator(ctx, fetch, title, key=key, page_count=math.ceil(len(fetch) / 20))
+        await p.paginate()
 
     @eventstats.command(name='gains', aliases=['trophies'])
     @requires_config('event')
@@ -186,29 +167,18 @@ class EventStats(commands.Cog):
                 )
 
         query = """SELECT player_tag, trophies - start_trophies as gain, trophies 
-                        FROM eventplayers 
-                        WHERE event_id = $1
-                        ORDER BY gain DESC
-                        LIMIT 15
-                    """
+                   FROM eventplayers 
+                   WHERE event_id = $1
+                   ORDER BY gain DESC
+                   NULLS LAST
+                """
         fetch = await ctx.db.fetch(query, ctx.config.id)
 
-        table = formatters.CLYTable()
         title = f"Trophy Gains for {ctx.config.event_name}"
+        key = f"**Key:**\n{misc['trophygreen']} - Trophy Gain\n{misc['trophygold']} - Total Trophies"
 
-        gains = {n['player_tag']: n['gain'] for n in fetch}
-
-        async with ctx.typing():
-            for index, player in enumerate(await self.bot.coc.get_players((n[0] for n in fetch)).flatten()):
-                table.add_row([index, gains[player.tag], player.trophies, player.name])
-
-        fmt = table.trophyboard_gain()
-        fmt += f"**Key:**\n{misc['trophygreen']} - Trophy Gain\n{misc['trophygold']} - Total Trophies"
-
-        e = discord.Embed(
-            colour=discord.Colour.green(), description=fmt, title=title
-        )
-        await ctx.send(embed=e)
+        p = StatsGainsPaginator(ctx, fetch, title, key=key, page_count=math.ceil(len(fetch) / 20))
+        await p.paginate()
 
     @eventstats.command(name='donors', aliases=['donations', 'donates', 'donation'])
     @requires_config('event')
@@ -249,27 +219,15 @@ class EventStats(commands.Cog):
                     (end_friend_in_need + end_sharing_is_caring) - (start_friend_in_need + start_sharing_is_caring) as donations
                     FROM eventplayers 
                     WHERE event_id = $1
-                    ORDER BY donations DESC NULLS LAST
-                    LIMIT 15
+                    ORDER BY donations DESC
+                    NULLS LAST
                 """
         fetch = await ctx.db.fetch(query, ctx.config.id)
 
-        table = formatters.CLYTable()
         title = f"Donations for {ctx.config.event_name}"
 
-        donations = {n['player_tag']: n['donations'] for n in fetch}
-
-        async with ctx.typing():
-            for index, player in enumerate(await self.bot.coc.get_players((n[0] for n in fetch)).flatten()):
-                table.add_row([index, donations[player.tag], player.name])
-
-        fmt = table.donationboard_2()
-
-        e = discord.Embed(
-            colour=discord.Colour.green(), description=fmt, title=title
-        )
-
-        await ctx.send(embed=e)
+        p = StatsDonorsPaginator(ctx, fetch, title, page_count=math.ceil(len(fetch) / 20))
+        await p.paginate()
 
 
 def setup(bot):
