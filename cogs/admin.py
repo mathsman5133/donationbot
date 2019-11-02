@@ -103,6 +103,13 @@ class Admin(commands.Cog):
             return f'```py\n{e.__class__.__name__}: {e}\n```'
         return f'```py\n{e.text}{"^":>{e.offset}}\n{e.__class__.__name__}: {e}```'
 
+    async def safe_send(self, ctx, fmt):
+        if len(fmt) > 6000:
+            fp = io.BytesIO(fmt.encode('utf-8'))
+            return await ctx.send('Too many results...', file=discord.File(fp, 'results.txt'))
+        for n in textwrap.wrap(fmt, 2038):
+            await ctx.send(n)
+
     @commands.command(hidden=True)
     async def load(self, ctx, *, module):
         """Loads a module."""
@@ -257,11 +264,7 @@ class Admin(commands.Cog):
         except Exception as e:
             value = stdout.getvalue()
             fmt = f'```py\n{value}{traceback.format_exc()}\n```'
-            if len(fmt) > 2000:
-                fp = io.BytesIO(fmt.encode('utf-8'))
-                return await ctx.send('Too many results...', file=discord.File(fp, 'results.txt'))
-
-            return await ctx.send(fmt)
+            return await self.safe_send(ctx, fmt)
         else:
             value = stdout.getvalue()
             try:
@@ -271,10 +274,10 @@ class Admin(commands.Cog):
 
             if ret is None:
                 if value:
-                    await ctx.send(f'```py\n{value}\n```')
+                    await self.safe_send(ctx, f'```py\n{value}\n```')
             else:
                 self._last_result = ret
-                await ctx.send(f'```py\n{value}{ret}\n```')
+                await self.safe_send(ctx, f'```py\n{value}{ret}\n```')
 
     @commands.command(pass_context=True, hidden=True)
     async def repl(self, ctx):
@@ -399,11 +402,7 @@ class Admin(commands.Cog):
         render = table.render()
 
         fmt = f'```\n{render}\n```\n*Returned {rows} rows in {dt:.2f}ms*'
-        if len(fmt) > 2000:
-            fp = io.BytesIO(fmt.encode('utf-8'))
-            await ctx.send('Too many results...', file=discord.File(fp, 'results.txt'))
-        else:
-            await ctx.send(fmt)
+        return await self.safe_send(ctx, fmt)
 
     @commands.command(hidden=True)
     async def sql_table(self, ctx, *, table_name: str):
@@ -422,11 +421,7 @@ class Admin(commands.Cog):
         render = table.render()
 
         fmt = f'```\n{render}\n```'
-        if len(fmt) > 2000:
-            fp = io.BytesIO(fmt.encode('utf-8'))
-            await ctx.send('Too many results...', file=discord.File(fp, 'results.txt'))
-        else:
-            await ctx.send(fmt)
+        return await self.safe_send(ctx, fmt)
 
     @commands.command(hidden=True)
     @commands.is_owner()
@@ -445,11 +440,7 @@ class Admin(commands.Cog):
         render = table.render()
 
         fmt = f'```\n{render}\n```'
-        if len(fmt) > 2000:
-            fp = io.BytesIO(fmt.encode('utf-8'))
-            await ctx.send('Too many results...', file=discord.File(fp, 'results.txt'))
-        else:
-            await ctx.send(fmt)
+        return await self.safe_send(ctx, fmt)
 
     @commands.command(hidden=True)
     @commands.is_owner()
@@ -471,11 +462,7 @@ class Admin(commands.Cog):
         render = table.render()
 
         fmt = f'```\n{render}\n```'
-        if len(fmt) > 2000:
-            fp = io.BytesIO(fmt.encode('utf-8'))
-            await ctx.send('Too many results...', file=discord.File(fp, 'results.txt'))
-        else:
-            await ctx.send(fmt)
+        await self.safe_send(ctx, fmt)
 
     @commands.command(hidden=True)
     async def sudo(self, ctx, channel: Optional[GlobalChannel], who: discord.User, *, command: str):
@@ -544,7 +531,7 @@ class Admin(commands.Cog):
             end = time.perf_counter()
             success = False
             try:
-                await ctx.send(f'```py\n{traceback.format_exc()}\n```')
+                await self.safe_send(ctx, f'```py\n{traceback.format_exc()}\n```')
             except discord.HTTPException:
                 pass
         else:
