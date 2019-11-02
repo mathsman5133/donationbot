@@ -563,7 +563,7 @@ class Info(commands.Cog, name='\u200bInfo'):
             data.append(f"{misc['number']}**Updates Channel:** {channel.mention}")
 
         query = "SELECT DISTINCT clan_tag, clan_name FROM clans WHERE guild_id = $1 AND in_event=True ORDER BY clan_name;"
-        fetch = await ctx.db.fetch(query, ctx.guild.id)
+        fetch = await ctx.db.fetch(query, ctx.config.guild_id)
 
         e.add_field(name='Participating Clans',
                     value='\n'.join(f"{misc['online']}{n[1]} ({n[0]})" for n in fetch) or 'None Found.'
