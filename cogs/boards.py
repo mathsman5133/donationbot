@@ -270,6 +270,8 @@ class DonationBoard(commands.Cog):
                    INNER JOIN clans 
                    ON clans.guild_id = events.guild_id 
                    WHERE clans.clan_tag = $1
+                   AND events.start <= now()
+                   AND events.finish >= now()
                 """
         fetch = await self.bot.pool.fetch(query, clan.tag)
         if not fetch:
@@ -289,6 +291,8 @@ class DonationBoard(commands.Cog):
                                             live
                                             )
                             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, True, True)
+                            ON CONFLICT (player_tag, event_id)
+                            DO NOTHING
                         """
 
         for n in fetch:
