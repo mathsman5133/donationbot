@@ -265,6 +265,16 @@ class DonationBoard(commands.Cog):
         log.debug(f'New member {member} joined clan {clan}. Performed a query to insert them into players. '
                   f'Status Code: {response}')
 
+        query = """SELECT events.id 
+                   FROM events 
+                   INNER JOIN clans 
+                   ON clans.guild_id = events.guild_id 
+                   WHERE clans.clan_tag = $1
+                """
+        fetch = await self.bot.pool.fetch(query, clan.tag)
+        if not fetch:
+            return
+
         event_query = """INSERT INTO eventplayers (
                                             player_tag,
                                             trophies,
@@ -278,28 +288,25 @@ class DonationBoard(commands.Cog):
                                             start_update,
                                             live
                                             )
-                            SELECT $1, $2, events.id, $3, $4, $5, $6, $7, $8, True, True
-                            FROM events
-                            WHERE finish >= now()
-                            AND start <= now()
-                            ON CONFLICT (player_tag, event_id)
-                            DO NOTHING;
+                            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, True, True)
                         """
 
-        response = await self.bot.pool.execute(
-            event_query,
-            player.tag,
-            player.trophies,
-            player.achievements_dict['Friend in Need'].value,
-            player.achievements_dict['Sharing is caring'].value,
-            player.attack_wins,
-            player.defense_wins,
-            player.trophies,
-            player.best_trophies
-          )
+        for n in fetch:
+            response = await self.bot.pool.execute(
+                event_query,
+                player.tag,
+                player.trophies,
+                n['id'],
+                player.achievements_dict['Friend in Need'].value,
+                player.achievements_dict['Sharing is caring'].value,
+                player.attack_wins,
+                player.defense_wins,
+                player.trophies,
+                player.best_trophies
+              )
 
-        log.debug(f'New member {member} joined clan {clan}. '
-                  f'Performed a query to insert them into eventplayers. Status Code: {response}')
+            log.debug(f'New member {member} joined clan {clan}. '
+                      f'Performed a query to insert them into eventplayers. Status Code: {response}')
 
     async def new_board_message(self, channel, board_type):
         if not channel:
