@@ -575,8 +575,13 @@ class Info(commands.Cog, name='\u200bInfo'):
     @info.command(name='events')
     async def info_events(self, ctx):
         """GET Event IDs and start/finish times for events."""
-        query = "SELECT id, event_name, start, finish FROM events WHERE guild_id = $1 ORDER BY start DESC"
-        fetch = await ctx.db.fetch(query, ctx.guild.id)
+        if not await self.bot.is_owner(ctx.author):
+            query = "SELECT id, event_name, start, finish FROM events WHERE guild_id = $1 ORDER BY start DESC"
+            fetch = await ctx.db.fetch(query, ctx.guild.id)
+        else:
+            query = "SELECT id, event_name, start, finish FROM events ORDER BY start DESC"
+            fetch = await ctx.db.fetch(query)
+
         table = TabularData()
         table.set_columns(['ID', 'Name', 'Start', 'Finish'])
         for n in fetch:
