@@ -109,7 +109,7 @@ class Admin(commands.Cog):
             return await ctx.send('Too many results...', file=discord.File(fp, 'results.txt'))
         for n in textwrap.wrap(fmt, 2000):
             if fmt.startswith('```'):
-                n = f'{n}```'
+                n = f'```py{n.strip("`")}```'
             await ctx.send(n)
 
     @commands.command(hidden=True)
