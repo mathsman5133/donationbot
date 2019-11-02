@@ -533,10 +533,12 @@ class Info(commands.Cog, name='\u200bInfo'):
 
     @info.command(name='event')
     @requires_config('event', invalidate=True)
-    async def info_event(self, ctx):
+    async def info_event(self, ctx, id_: int = None):
         """Gives you info about guild's event"""
-        if not ctx.config:
+        if not ctx.config and not (id_ and await self.bot.is_owner(ctx.author)):
             return await ctx.send('Please setup an event using `+add event`.')
+        if id_:
+            ctx.config = await ctx.bot.utils.event_config_id(id_)
 
         e = discord.Embed(colour=self.bot.colour)
 
