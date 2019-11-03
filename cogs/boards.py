@@ -292,7 +292,10 @@ class DonationBoard(commands.Cog):
                                             )
                             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, True, True)
                             ON CONFLICT (player_tag, event_id)
-                            DO NOTHING
+                            DO UPDATE 
+                            SET live=True
+                            WHERE player_tag = $1
+                            AND event_id = $2
                         """
 
         for n in fetch:
