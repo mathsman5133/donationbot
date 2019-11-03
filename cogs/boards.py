@@ -294,7 +294,7 @@ class DonationBoard(commands.Cog):
                             ON CONFLICT (player_tag, event_id)
                             DO UPDATE 
                             SET live=True
-                            WHERE player_tag = $1
+                            WHERE eventplayers.player_tag = $1
                             AND event_id = $2
                         """
 
