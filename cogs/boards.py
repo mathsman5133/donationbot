@@ -380,7 +380,8 @@ class DonationBoard(commands.Cog):
 
         return messages
 
-    async def get_top_players(self, players, board_type, in_event):
+    async def get_top_players(self, players, board_type, in_event, season_id=None):
+        season_id = season_id or await self.bot.seasonconfig.get_season_id()
         if board_type == 'donation':
             column_1 = 'donations'
             column_2 = 'received'
@@ -409,8 +410,7 @@ class DonationBoard(commands.Cog):
                         ORDER BY {column_1} DESC NULLS LAST
                         LIMIT 100;
                     """
-            fetch = await self.bot.pool.fetch(query, [n.tag for n in players],
-                                              await self.bot.seasonconfig.get_season_id())
+            fetch = await self.bot.pool.fetch(query, [n.tag for n in players], season_id)
         return fetch
 
     async def update_board(self, channel_id):
