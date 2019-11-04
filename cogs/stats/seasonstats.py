@@ -27,7 +27,7 @@ class SeasonStats(commands.Cog):
         for n in clans:
             players.extend(p for p in n.itermembers)
 
-        top_players = await self.bot.donationboard.get_top_players(players, board_type, False)
+        top_players = await self.bot.donationboard.get_top_players(players, board_type, False, season_id=season_idget)
 
         if not top_players:
             e = discord.Embed(colour=self.bot.colour,
