@@ -19,6 +19,9 @@ class Trophies(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
+    async def cog_before_invoke(self, ctx):
+        ctx.config = SlimDummyBoardConfig('trophy', 1, 'Top Trophies', None)
+
     @commands.group(name='trophies', aliases=['troph'],  invoke_without_command=True)
     async def trophies(self, ctx, *,
                         arg: typing.Union[discord.Member, ClanConverter, PlayerConverter] = None):
