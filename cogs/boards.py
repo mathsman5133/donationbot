@@ -295,7 +295,7 @@ class DonationBoard(commands.Cog):
                             DO UPDATE 
                             SET live=True
                             WHERE eventplayers.player_tag = $1
-                            AND event_id = $2
+                            AND eventplayers.event_id = $2
                         """
 
         for n in fetch:
