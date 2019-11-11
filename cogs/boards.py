@@ -153,7 +153,7 @@ class DonationBoard(commands.Cog):
 
         message = await self.safe_delete(message_id=payload.message_id, delete_message=False)
         if message:
-            await self.new_board_message(payload.channel_id, config.type)
+            await self.new_board_message(self.bot.get_channel(payload.channel_id), config.type)
 
     @commands.Cog.listener()
     async def on_raw_bulk_message_delete(self, payload):
@@ -173,7 +173,7 @@ class DonationBoard(commands.Cog):
 
             message = await self.safe_delete(message_id=n, delete_message=False)
             if message:
-                await self.new_board_message(payload.channel_id, config.type)
+                await self.new_board_message(self.bot.get_channel(payload.channel_id), config.type)
 
     async def on_clan_member_donation(self, old_donations, new_donations, player, clan):
         log.debug(f'Received on_clan_member_donation event for player {player} of clan {clan}')
