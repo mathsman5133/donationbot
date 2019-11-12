@@ -53,6 +53,7 @@ class LastUpdated(commands.Cog):
                            last_updated TIMESTAMP
                        )
                    )
+                   AS x
                    WHERE player_tag = x.player_tag
                    AND season_id = $2
                 """
