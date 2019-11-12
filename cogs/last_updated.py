@@ -54,8 +54,8 @@ class LastUpdated(commands.Cog):
                        )
                    )
                    AS x
-                   WHERE player_tag = x.player_tag
-                   AND season_id = $2
+                   WHERE players.player_tag = x.player_tag
+                   AND players.season_id = $2
                 """
         async with self.batch_lock:
             await self.bot.pool.execute(query, self.last_updated, await self.bot.seasonconfig.get_season_id())
