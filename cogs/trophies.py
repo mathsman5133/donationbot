@@ -86,7 +86,7 @@ class Trophies(commands.Cog):
         if not user:
             user = ctx.author
 
-        query = """SELECT player_tag, trophies, start_trophies - trophies AS "gain", user_id 
+        query = """SELECT player_tag, trophies, trophies - start_trophies AS "gain", user_id 
                     FROM players 
                     WHERE user_id = $1 
                     AND season_id=$2
@@ -124,7 +124,7 @@ class Trophies(commands.Cog):
         :white_check_mark: `+trophies player mathsman`
         """
 
-        query = """SELECT player_tag, trophies, start_trophies - trophies, user_id 
+        query = """SELECT player_tag, trophies, trophies - start_trophies, user_id 
                     FROM players 
                     WHERE player_tag = $1 
                     AND season_id=$2
