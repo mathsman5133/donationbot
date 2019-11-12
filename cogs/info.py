@@ -635,6 +635,14 @@ class Info(commands.Cog, name='\u200bInfo'):
     async def permissions(self, ctx, channel: discord.TextChannel = None):
         await self.say_permissions(ctx, ctx.me, channel or ctx.channel)
 
+    @commands.command(hidden=True)
+    async def guildid(self, ctx):
+        await ctx.send(ctx.guild.id)
+
+    @commands.command(hidden=True)
+    async def channelid(self, ctx):
+        await ctx.send(f"Guild ID: {ctx.guild.id}\nChannel ID: {ctx.channel.id}")
+
 
 def setup(bot):
     if not hasattr(bot, 'command_stats'):
