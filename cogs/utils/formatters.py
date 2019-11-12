@@ -97,9 +97,9 @@ def format_trophy_log_message(player, clan_name):
     else:
         number = abs_trophies
 
-    emoji = misc['trophygain'] if trophies > 0 else misc['trophyloss']
+    emoji = (misc['trophygreen'], misc['trophygain']) if trophies > 0 else (misc['trophyred'], misc['trophyloss'])
 
-    return f"{emojis[player.league_id]} {player.name} {emoji} {number} ({clan_name})"
+    return f"{emoji[0]} {player.name} {emoji[1]} {number} {emojis[player.league_id]} ({clan_name})"
 
 
 class TabularData:
