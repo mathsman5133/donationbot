@@ -9,6 +9,7 @@ from cogs.utils.converters import ClanConverter, PlayerConverter
 from cogs.utils.error_handler import error_handler
 from cogs.utils import formatters
 from cogs.utils.db_objects import SlimDummyLogConfig
+from cogs.utils.paginator import LogsPaginator
 
 log = logging.getLogger(__name__)
 
@@ -46,7 +47,7 @@ class Events(commands.Cog):
         no_pages = math.ceil(len(fetch) / 20)
         title = f"Recent Events for Guild {ctx.guild.name}"
 
-        p = formatters.LogsPaginator(ctx, fetch, page_count=no_pages, title=title)
+        p = LogsPaginator(ctx, fetch, page_count=no_pages, title=title)
         await p.paginate()
 
     @staticmethod
@@ -71,7 +72,7 @@ class Events(commands.Cog):
         title = f'Recent Events for {str(user)}'
         no_pages = math.ceil(len(fetch) / 20)
 
-        p = formatters.LogsPaginator(ctx, data=fetch, title=title, page_count=no_pages)
+        p = LogsPaginator(ctx, data=fetch, title=title, page_count=no_pages)
         await p.paginate()
 
     @staticmethod
@@ -92,7 +93,7 @@ class Events(commands.Cog):
 
         no_pages = math.ceil(len(fetch) / 20)
 
-        p = formatters.LogsPaginator(ctx, data=fetch, title=title, page_count=no_pages)
+        p = LogsPaginator(ctx, data=fetch, title=title, page_count=no_pages)
         await p.paginate()
 
     @staticmethod
@@ -111,7 +112,7 @@ class Events(commands.Cog):
         title = f"Recent Events for {', '.join(n.name for n in clans)}"
         no_pages = math.ceil(len(fetch) / 20)
 
-        p = formatters.LogsPaginator(ctx, data=fetch, title=title, page_count=no_pages)
+        p = LogsPaginator(ctx, data=fetch, title=title, page_count=no_pages)
         await p.paginate()
 
     @commands.group(invoke_without_command=True)
