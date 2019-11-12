@@ -46,7 +46,7 @@ class LastUpdated(commands.Cog):
 
     async def update_db(self):
         query = """UPDATE players 
-                   SET players.last_updated = x.last_updated
+                   SET last_updated = x.last_updated
                    FROM(
                        SELECT x.last_updated, x.player_tag
                        FROM jsonb_to_recordset($1::jsonb)
