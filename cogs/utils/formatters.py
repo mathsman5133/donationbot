@@ -1,6 +1,6 @@
 from discord.utils import _string_width
-from cogs.utils.emoji_lookup import number_emojis, misc
-
+from cogs.utils.paginator import Pages
+from cogs.utils.emoji_lookup import emojis, misc, number_emojis
 
 def get_render_type(config, table):
     if getattr(config, 'type', None) == 'donation':
@@ -95,7 +95,7 @@ def format_trophy_log_message(player, clan_name):
 
     emoji = (misc['trophygreen'], misc['trophygain']) if trophies > 0 else (misc['trophyred'], misc['trophyloss'])
 
-    return f"{emoji[0]} {player.name} {emoji[1]} {number} ({clan_name})"
+    return f"{emoji[0]} {player.name} {emoji[1]} {number} {emojis[player.league_id]} ({clan_name})"
 
 
 class TabularData:

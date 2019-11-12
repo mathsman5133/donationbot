@@ -153,7 +153,7 @@ class DonationBoard(commands.Cog):
 
         message = await self.safe_delete(message_id=payload.message_id, delete_message=False)
         if message:
-            await self.new_board_message(payload.channel_id, config.type)
+            await self.new_board_message(self.bot.get_channel(payload.channel_id), config.type)
 
     @commands.Cog.listener()
     async def on_raw_bulk_message_delete(self, payload):
@@ -173,7 +173,7 @@ class DonationBoard(commands.Cog):
 
             message = await self.safe_delete(message_id=n, delete_message=False)
             if message:
-                await self.new_board_message(payload.channel_id, config.type)
+                await self.new_board_message(self.bot.get_channel(payload.channel_id), config.type)
 
     async def on_clan_member_donation(self, old_donations, new_donations, player, clan):
         log.debug(f'Received on_clan_member_donation event for player {player} of clan {clan}')
@@ -292,7 +292,10 @@ class DonationBoard(commands.Cog):
                                             )
                             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, True, True)
                             ON CONFLICT (player_tag, event_id)
-                            DO NOTHING
+                            DO UPDATE 
+                            SET live=True
+                            WHERE eventplayers.player_tag = $1
+                            AND eventplayers.event_id = $2
                         """
 
         for n in fetch:
@@ -377,13 +380,15 @@ class DonationBoard(commands.Cog):
 
         return messages
 
-    async def get_top_players(self, players, board_type, in_event):
+    async def get_top_players(self, players, board_type, sort_by, in_event, season_id=None):
+        season_id = season_id or await self.bot.seasonconfig.get_season_id()
         if board_type == 'donation':
             column_1 = 'donations'
             column_2 = 'received'
         elif board_type == 'trophy':
             column_1 = 'trophies'
             column_2 = 'trophies - start_trophies'
+            sort_by = column_2 if sort_by == 'gain' else column_1
         else:
             return
 
@@ -393,7 +398,7 @@ class DonationBoard(commands.Cog):
                         FROM eventplayers 
                         WHERE player_tag=ANY($1::TEXT[])
                         AND live=true
-                        ORDER BY {column_1} DESC NULLS LAST 
+                        ORDER BY {sort_by} DESC NULLS LAST 
                         LIMIT 100;
                     """
             fetch = await self.bot.pool.fetch(query, [n.tag for n in players])
@@ -403,11 +408,10 @@ class DonationBoard(commands.Cog):
                         FROM players 
                         WHERE player_tag=ANY($1::TEXT[])
                         AND season_id=$2
-                        ORDER BY {column_1} DESC NULLS LAST
+                        ORDER BY {sort_by} DESC NULLS LAST
                         LIMIT 100;
                     """
-            fetch = await self.bot.pool.fetch(query, [n.tag for n in players],
-                                              await self.bot.seasonconfig.get_season_id())
+            fetch = await self.bot.pool.fetch(query, [n.tag for n in players], season_id)
         return fetch
 
     async def update_board(self, channel_id):
@@ -433,7 +437,7 @@ class DonationBoard(commands.Cog):
         for n in clans:
             players.extend(p for p in n.itermembers)
 
-        top_players = await self.get_top_players(players, config.type, config.in_event)
+        top_players = await self.get_top_players(players, config.type, config.sort_by, config.in_event)
         players = {n.tag: n for n in players if n.tag in set(x['player_tag'] for x in top_players)}
 
         message_count = math.ceil(len(top_players) / 20)

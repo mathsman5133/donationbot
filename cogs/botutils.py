@@ -36,6 +36,7 @@ class Utils(commands.Cog):
                           icon_url,
                           title,
                           render,
+                          sort_by,
                           toggle,
                           type,
                           in_event

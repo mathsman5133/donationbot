@@ -95,7 +95,7 @@ class Stats(commands.Cog):
         :white_check_mark: `+stats donors 4`
         """
         if ctx.config:
-            return await ctx.infoke(self.bot.get_command('eventstats donors'))
+            return await ctx.invoke(self.bot.get_command('eventstats donors'))
         await ctx.invoke(self.bot.get_command('seasonstats donors'), season_id)
 
 

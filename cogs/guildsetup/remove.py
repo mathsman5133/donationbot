@@ -156,8 +156,8 @@ class Remove(commands.Cog):
         await ctx.send('Donationboard sucessfully removed.')
 
     @remove.command(name='trophyboard', aliases=['trophy board', 'tropboard'])
-    @checks.manage_guild()
     @requires_config('trophyboard', invalidate=True)
+    @manage_guild()
     async def remove_trophyboard(self, ctx):
         """Removes the guild trophyboard.
 
@@ -171,8 +171,7 @@ class Remove(commands.Cog):
         :warning: Manage Server
         """
         if not ctx.config:
-            return await ctx.send(
-                f'This server doesn\'t have a trophyboard.')
+            return await ctx.send(f'This server doesn\'t have a trophyboard.')
 
         query = "SELECT message_id FROM messages WHERE channel_id=$1;"
         messages = await self.bot.pool.fetch(query, ctx.config.channel_id)
@@ -206,6 +205,9 @@ class Remove(commands.Cog):
         **Required Permissions**
         :warning: Manage Server
         """
+        if not ctx.config:
+            return await ctx.send(f"No donationlog found for #{channel or ctx.channel}.")
+
         query = "DELETE FROM logs WHERE channel_id = $1 AND type = $2"
         await ctx.db.execute(query, ctx.config.channel_id, 'donation')
         await ctx.confirm()
@@ -228,6 +230,9 @@ class Remove(commands.Cog):
         **Required Permissions**
         :warning: Manage Server
         """
+        if not ctx.config:
+            return await ctx.send(f"No donationlog found for #{channel or ctx.channel}.")
+
         query = "DELETE FROM logs WHERE channel_id = $1 AND type = $2"
         await ctx.db.execute(query, ctx.config.channel_id, 'trophy')
         await ctx.confirm()

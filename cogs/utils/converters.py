@@ -170,3 +170,18 @@ class TextChannel(commands.TextChannelConverter):
         channel = await super().convert(ctx, argument)
         ctx.custom_channel = channel
         return channel
+
+
+class SortByConverter(commands.Converter):
+    async def convert(self, ctx, argument):
+        argument = argument.lower()
+        choices = [
+            'donations',
+            'received',
+            'gain',
+            'loss',
+            'trophies'
+        ]
+        if argument not in choices:
+            raise commands.BadArgument(f"That didn't look right! Try one of these: {', '.join(choices)}")
+        return argument

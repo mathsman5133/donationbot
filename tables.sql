@@ -96,6 +96,7 @@ CREATE TABLE boards (
     render INTEGER default 1,
     toggle BOOLEAN default true,
     type TEXT,
+    sort_by text,
     in_event boolean default false
     );
 
@@ -143,6 +144,7 @@ create table trophyevents (
     player_name text,
     clan_tag text,
     trophy_change integer,
+    league_id integer default 29000000,
     time timestamp,
     reported boolean default false,
     season_id integer
