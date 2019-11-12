@@ -342,8 +342,8 @@ class TablePaginator(Pages):
         self.message = None
         self.ctx = ctx
         if getattr(ctx, 'config', None):
-            self.icon_url = ctx.config.icon_url
-            self.title = ctx.config.title
+            self.icon_url = ctx.config.icon_url or ctx.guild.icon_url
+            self.title = ctx.config.title or title
         else:
             self.icon_url = ctx.guild.icon_url
 
