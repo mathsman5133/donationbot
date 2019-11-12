@@ -38,7 +38,7 @@ class LastUpdated(commands.Cog):
     async def on_disconnect(self):
         await self.update_db()
 
-    @tasks.loop(hours=1.0)
+    @tasks.loop(minutes=1.0)
     async def loop(self):
         await self.update_db()
 
