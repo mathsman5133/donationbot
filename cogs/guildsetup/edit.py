@@ -50,10 +50,9 @@ class Edit(commands.Cog):
         if ctx.invoked_subcommand is not None:
             return
 
-        p = await ctx.prompt('Would you like to edit all settings for the guild donationboard? '
-                             'Else please see valid subcommands with `+help edit donationboard`.')
+        p = await ctx.prompt('Would you like to edit all settings for the guild donationboard? ')
         if not p or p is False:
-            return
+            return await ctx.send_help(ctx.command)
 
         await ctx.invoke(self.edit_donationboard_format)
 
@@ -204,10 +203,9 @@ class Edit(commands.Cog):
         if ctx.invoked_subcommand is not None:
             return
 
-        p = await ctx.prompt('Would you like to edit all settings for the guild trophyboard? '
-                             'Else please see valid subcommands with `+help edit trophyboard`.')
+        p = await ctx.prompt('Would you like to edit all settings for the guild trophyboard? ')
         if not p or p is False:
-            return
+            return await ctx.send_help(ctx.command)
 
         await ctx.invoke(self.edit_trophyboard_format)
 
