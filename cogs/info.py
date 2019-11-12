@@ -616,6 +616,26 @@ class Info(commands.Cog, name='\u200bInfo'):
                     inline=False)
         await ctx.send(embed=e)
 
+    async def say_permissions(self, ctx, member, channel):
+        permissions = channel.permissions_for(member)
+        e = discord.Embed(colour=member.colour, title=f'Permissions for Donation Tracker in #{channel}')
+        allowed, denied = [], []
+        for name, value in permissions:
+            name = name.replace('_', ' ').replace('guild', 'server').title()
+            if value:
+                allowed.append(name)
+            else:
+                denied.append(name)
+
+        e.add_field(name='Allowed', value=f"\n".join(f"{misc['online']}{n}" for n in allowed))
+        e.add_field(name='Denied', value=f"\n".join(f"{misc['offline']}{n}" for n in denied))
+        await ctx.send(embed=e)
+
+    @commands.command(hidden=True, aliases=['perms'])
+    async def permissions(self, ctx, channel: discord.TextChannel = None):
+        await self.say_permissions(ctx, ctx.me, channel or ctx.channel)
+
+
 def setup(bot):
     if not hasattr(bot, 'command_stats'):
         bot.command_stats = Counter()
