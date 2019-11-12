@@ -185,6 +185,33 @@ class Edit(commands.Cog):
         await ctx.db.execute(query, title, ctx.config.channel_id)
         await ctx.confirm()
 
+    @edit_donationboard.command(name='sort')
+    @requires_config('donationboard', invalidate=True)
+    @manage_guild()
+    async def edit_donationboard_sort(self, ctx, *, sort_by: SortByConverter):
+        """Change which column the donationboard is sorted by.
+
+        **Parameters**
+        :key: Column to sort by (must be either `donations` or `received`).
+
+        **Format**
+        :information_source: `+edit donationboard sort COLUMN`
+
+        **Example**
+        :white_check_mark: `+edit donationboard sort donations`
+        :white_check_mark: `+edit donationboard sort received`
+
+        **Required Permissions**
+        :warning: Manage Server
+        """
+        if sort_by not in ['donations', 'received']:
+            return await ctx.send("Oops, that didn't look right! Try `donations` or `received` instead.")
+
+        query = "UPDATE boards SET sort_by = $1 WHERE channel_id = $2"
+        await ctx.db.execute(query, sort_by, ctx.config.channel_id)
+        await self.bot.donationboard.update_board(ctx.config.channel_id)
+        await ctx.confirm()
+
     @edit.group(name='trophyboard')
     @checks.manage_guild()
     @requires_config('trophyboard', invalidate=True)
@@ -508,34 +535,6 @@ class Edit(commands.Cog):
         else:
             condition = 'off'
         await ctx.send(f'Logs for {ctx.config.channel.mention} have been turned {condition}.')
-
-    @edit_donationboard.command(name='sort')
-    @requires_config('donationboard', invalidate=True)
-    @manage_guild()
-    async def edit_donationboard_sort(self, ctx, *, sort_by: SortByConverter):
-        """Change which column the donationboard is sorted by.
-
-        **Parameters**
-        :key: Column to sort by (must be either `donations` or `received`).
-
-        **Format**
-        :information_source: `+edit donationboard sort COLUMN`
-
-        **Example**
-        :white_check_mark: `+edit donationboard sort trophies`
-        :white_check_mark: `+edit donationboard sort gain`
-        :white_check_mark: `+edit donationboard sort loss`
-
-        **Required Permissions**
-        :warning: Manage Server
-        """
-        if sort_by not in ['donations', 'received']:
-            return await ctx.send("Oops, that didn't look right! Try `donations` or `received` instead.")
-
-        query = "UPDATE boards SET sort_by = $1 WHERE channel_id = $2"
-        await ctx.db.execute(query, sort_by, ctx.config.channel_id)
-        await self.bot.donationboard.update_board(ctx.config.channel_id)
-        await ctx.confirm()
 
     @edit.command(name='event')
     @manage_guild()
