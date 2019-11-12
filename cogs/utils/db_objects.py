@@ -56,7 +56,7 @@ class LogConfig:
 
 class BoardConfig:
     __slots__ = ('bot', 'guild_id', 'channel_id', 'icon_url', 'title',
-                 'render', 'toggle', 'type', 'in_event')
+                 'render', 'sort_by', 'toggle', 'type', 'in_event')
 
     def __init__(self, *, bot, record):
         self.bot = bot
@@ -66,6 +66,7 @@ class BoardConfig:
         self.icon_url: str = record['icon_url']
         self.title: str = record['title']
         self.render: int = record['render']
+        self.sort_by: str = record['sort_by']
         self.toggle: bool = record['toggle']
         self.type: str = record['type']
         self.in_event: bool = record['in_event']

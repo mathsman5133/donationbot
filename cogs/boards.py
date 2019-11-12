@@ -380,7 +380,7 @@ class DonationBoard(commands.Cog):
 
         return messages
 
-    async def get_top_players(self, players, board_type, in_event, season_id=None):
+    async def get_top_players(self, players, board_type, sort_by, in_event, season_id=None):
         season_id = season_id or await self.bot.seasonconfig.get_season_id()
         if board_type == 'donation':
             column_1 = 'donations'
@@ -388,6 +388,7 @@ class DonationBoard(commands.Cog):
         elif board_type == 'trophy':
             column_1 = 'trophies'
             column_2 = 'trophies - start_trophies'
+            sort_by = column_2 if sort_by == 'gain' else column_1
         else:
             return
 
@@ -397,7 +398,7 @@ class DonationBoard(commands.Cog):
                         FROM eventplayers 
                         WHERE player_tag=ANY($1::TEXT[])
                         AND live=true
-                        ORDER BY {column_1} DESC NULLS LAST 
+                        ORDER BY {sort_by} DESC NULLS LAST 
                         LIMIT 100;
                     """
             fetch = await self.bot.pool.fetch(query, [n.tag for n in players])
@@ -407,7 +408,7 @@ class DonationBoard(commands.Cog):
                         FROM players 
                         WHERE player_tag=ANY($1::TEXT[])
                         AND season_id=$2
-                        ORDER BY {column_1} DESC NULLS LAST
+                        ORDER BY {sort_by} DESC NULLS LAST
                         LIMIT 100;
                     """
             fetch = await self.bot.pool.fetch(query, [n.tag for n in players], season_id)
@@ -436,7 +437,7 @@ class DonationBoard(commands.Cog):
         for n in clans:
             players.extend(p for p in n.itermembers)
 
-        top_players = await self.get_top_players(players, config.type, config.in_event)
+        top_players = await self.get_top_players(players, config.type, config.sort_by, config.in_event)
         players = {n.tag: n for n in players if n.tag in set(x['player_tag'] for x in top_players)}
 
         message_count = math.ceil(len(top_players) / 20)

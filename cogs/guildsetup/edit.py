@@ -8,7 +8,7 @@ import logging
 from discord.ext import commands
 from cogs.utils.checks import requires_config, manage_guild
 from cogs.utils.formatters import CLYTable
-from cogs.utils.converters import ClanConverter, DateConverter, TextChannel
+from cogs.utils.converters import ClanConverter, DateConverter, SortByConverter, TextChannel
 from cogs.utils import checks
 
 log = logging.getLogger(__name__)
@@ -335,6 +335,33 @@ class Edit(commands.Cog):
         await ctx.db.execute(query, title, ctx.config.channel_id)
         await ctx.confirm()
 
+    @edit_trophyboard.command(name='sort')
+    @requires_config('trophyboard', invalidate=True)
+    @manage_guild()
+    async def edit_trophyboard_sort(self, ctx, *, sort_by: SortByConverter):
+        """Change which column the trophyboard is sorted by.
+
+        **Parameters**
+        :key: Column to sort by (must be either `trophies`, `gain` or `loss` (opposite gain)).
+
+        **Format**
+        :information_source: `+edit trophyboard sort COLUMN`
+
+        **Example**
+        :white_check_mark: `+edit trophyboard sort trophies`
+        :white_check_mark: `+edit trophyboard sort gain`
+        :white_check_mark: `+edit trophyboard sort loss`
+
+        **Required Permissions**
+        :warning: Manage Server
+        """
+        if sort_by not in ['trophies', 'gain', 'loss']:
+            return await ctx.send("Oops, that didn't look right! Try `trophies`, `gain` or `loss` instead.")
+
+        query = "UPDATE boards SET sort_by = $1 WHERE channel_id = $2"
+        await ctx.db.execute(query, sort_by, ctx.config.channel_id)
+        await ctx.confirm()
+
     @edit.group(name='donationlog')
     @manage_guild()
     async def edit_donationlog(self, ctx):
@@ -476,6 +503,33 @@ class Edit(commands.Cog):
         else:
             condition = 'off'
         await ctx.send(f'Logs for {ctx.config.channel.mention} have been turned {condition}.')
+
+    @edit_donationboard.command(name='sort')
+    @requires_config('donationboard', invalidate=True)
+    @manage_guild()
+    async def edit_donationboard_sort(self, ctx, *, sort_by: SortByConverter):
+        """Change which column the donationboard is sorted by.
+
+        **Parameters**
+        :key: Column to sort by (must be either `donations` or `received`).
+
+        **Format**
+        :information_source: `+edit donationboard sort COLUMN`
+
+        **Example**
+        :white_check_mark: `+edit donationboard sort trophies`
+        :white_check_mark: `+edit donationboard sort gain`
+        :white_check_mark: `+edit donationboard sort loss`
+
+        **Required Permissions**
+        :warning: Manage Server
+        """
+        if sort_by not in ['donations', 'received']:
+            return await ctx.send("Oops, that didn't look right! Try `donations` or `received` instead.")
+
+        query = "UPDATE boards SET sort_by = $1 WHERE channel_id = $2"
+        await ctx.db.execute(query, sort_by, ctx.config.channel_id)
+        await ctx.confirm()
 
     @edit.command(name='event')
     @manage_guild()

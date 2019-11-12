@@ -443,16 +443,17 @@ class Add(commands.Cog):
                         guild_id, 
                         channel_id, 
                         type,
-                        title
+                        title,
+                        sort_by
                     ) 
-                VALUES ($1, $2, $3, $4) 
+                VALUES ($1, $2, $3, $4, $5) 
                 ON CONFLICT (channel_id) 
                 DO UPDATE SET channel_id = $2, 
                               toggle     = True;
 
                 """
         await ctx.db.execute(query, msg.id, ctx.guild.id, channel.id)
-        await ctx.db.execute(query2, ctx.guild.id, channel.id, 'trophy', name.capitalize())
+        await ctx.db.execute(query2, ctx.guild.id, channel.id, 'trophy', name.capitalize(), 'donations')
         await ctx.send(f'Trophyboard channel created: {channel.mention}')
 
     @add.command(name='donationboard')
@@ -513,16 +514,17 @@ class Add(commands.Cog):
                         guild_id, 
                         channel_id, 
                         type,
-                        title
+                        title,
+                        sort_by
                     ) 
-                   VALUES ($1, $2, $3, $4) 
+                   VALUES ($1, $2, $3, $4, $5) 
                    ON CONFLICT (channel_id) 
                    DO UPDATE SET channel_id = $2, 
                                  toggle     = True;
                 """
 
         await ctx.db.execute(query, msg.id, ctx.guild.id, channel.id)
-        await ctx.db.execute(query2, ctx.guild.id, channel.id, 'donation', name.capitalize())
+        await ctx.db.execute(query2, ctx.guild.id, channel.id, 'donation', name.capitalize(), 'donation')
         await ctx.send(f'Donationboard channel created: {channel.mention}')
 
     @add.command(name='donationlog')
