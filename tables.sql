@@ -143,6 +143,7 @@ create table trophyevents (
     player_name text,
     clan_tag text,
     trophy_change integer,
+    league_id integer default 29000000,
     time timestamp,
     reported boolean default false,
     season_id integer

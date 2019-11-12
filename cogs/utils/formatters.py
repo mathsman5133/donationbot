@@ -3,7 +3,7 @@ import textwrap
 from datetime import datetime
 from discord.utils import _string_width
 from cogs.utils.paginator import Pages
-from cogs.utils.emoji_lookup import number_emojis, misc
+from cogs.utils.emoji_lookup import emojis, misc, number_emojis
 
 
 def get_render_type(config, table):
@@ -97,9 +97,9 @@ def format_trophy_log_message(player, clan_name):
     else:
         number = abs_trophies
 
-    emoji = (misc['trophygreen'], misc['trophygain']) if trophies > 0 else (misc['trophyred'], misc['trophyloss'])
+    emoji = misc['trophygain'] if trophies > 0 else misc['trophyloss']
 
-    return f"{emoji[0]} {player.name} {emoji[1]} {number} ({clan_name})"
+    return f"{emojis[player.league_id]} {player.name} {emoji} {number} ({clan_name})"
 
 
 class TabularData:

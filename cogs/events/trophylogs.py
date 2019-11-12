@@ -52,12 +52,12 @@ class TrophyLogs(commands.Cog):
 
     async def bulk_insert(self):
         query = """INSERT INTO trophyevents (player_tag, player_name, clan_tag, 
-                                                 trophy_change, time, season_id)
+                                                 trophy_change, league_id, time, season_id)
                         SELECT x.player_tag, x.player_name, x.clan_tag, 
-                               x.trophy_change, x.time, x.season_id
+                               x.trophy_change, x.league_id, x.time, x.season_id
                            FROM jsonb_to_recordset($1::jsonb) 
                         AS x(player_tag TEXT, player_name TEXT, clan_tag TEXT, 
-                             trophy_change INTEGER, time TIMESTAMP, season_id INTEGER
+                             trophy_change INTEGER, league_id INTEGER, time TIMESTAMP, season_id INTEGER
                              )
                 """
 
@@ -150,7 +150,8 @@ class TrophyLogs(commands.Cog):
         fetch = await self.bot.pool.fetch(query)
 
         query = """SELECT trophyevents.clan_tag, 
-                          trophyevents.trophy_change, 
+                          trophyevents.trophy_change,
+                          trophyevents.league_id, 
                           trophyevents.player_name, 
                           trophyevents.time
                     FROM trophyevents 
@@ -173,7 +174,7 @@ class TrophyLogs(commands.Cog):
 
             messages = []
             for x in events:
-                slim_event = SlimTrophyEvent(x['trophy_change'], x['player_name'], x['clan_tag'])
+                slim_event = SlimTrophyEvent(x['trophy_change'], x['league_id'], x['player_name'], x['clan_tag'])
                 clan_name = await self.bot.utils.get_clan_name(config.guild_id, slim_event.clan_tag)
                 messages.append(format_trophy_log_message(slim_event, clan_name))
 
@@ -207,6 +208,7 @@ class TrophyLogs(commands.Cog):
                 'player_name': player.name,
                 'clan_tag': clan.tag,
                 'trophy_change': change,
+                'league_id': player.league.id,
                 'time': datetime.utcnow().isoformat(),
                 'season_id': await self.bot.seasonconfig.get_season_id()
             })
