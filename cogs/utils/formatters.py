@@ -1,5 +1,4 @@
 from discord.utils import _string_width
-from cogs.utils.paginator import Pages
 from cogs.utils.emoji_lookup import emojis, misc, number_emojis
 
 def get_render_type(config, table):
