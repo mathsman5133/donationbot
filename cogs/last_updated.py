@@ -25,6 +25,7 @@ class LastUpdated(commands.Cog):
             self.on_clan_member_versus_trophies_change,
             self.on_clan_member_level_change
         )
+        self.loop.start()
 
     def cog_unload(self):
         self.bot.coc.remove_events(
@@ -33,6 +34,7 @@ class LastUpdated(commands.Cog):
             self.on_clan_member_versus_trophies_change,
             self.on_clan_member_level_change
         )
+        self.loop.stop()
 
     @commands.Cog.listener()
     async def on_disconnect(self):
@@ -44,7 +46,7 @@ class LastUpdated(commands.Cog):
 
     async def update_db(self):
         query = """UPDATE players 
-                   SET last_updated = x.last_updated
+                   SET players.last_updated = x.last_updated
                    FROM(
                        SELECT x.last_updated, x.player_tag
                        FROM jsonb_to_recordset($1::jsonb)
@@ -58,12 +60,17 @@ class LastUpdated(commands.Cog):
                    AND players.season_id = $2
                 """
         async with self.batch_lock:
-            await self.bot.pool.execute(query, self.last_updated, await self.bot.seasonconfig.get_season_id())
+            await self.bot.pool.execute(
+                query, list(self.last_updated.values()), await self.bot.seasonconfig.get_season_id()
+            )
             self.last_updated.clear()
 
     async def update(self, player_tag):
         async with self.batch_lock:
-            self.last_updated[player_tag] = datetime.utcnow()
+            self.last_updated[player_tag] = {
+                'player_tag': player_tag,
+                'last_updated': datetime.utcnow()
+            }
 
     async def on_clan_member_name_change(self, _, __, player, ___):
         await self.update(player.tag)
