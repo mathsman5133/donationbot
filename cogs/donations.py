@@ -3,10 +3,8 @@ import discord
 import math
 import typing
 
-from collections import namedtuple
 from discord.ext import commands
-from cogs.utils import formatters, checks
-from cogs.utils.error_handler import error_handler
+from cogs.utils import paginator
 from cogs.utils.converters import ClanConverter, PlayerConverter
 from cogs.utils.db_objects import SlimDummyBoardConfig
 
@@ -97,7 +95,7 @@ class Donations(commands.Cog):
         page_count = math.ceil(len(fetch) / 20)
         title = f'Donations for {str(user)}'
 
-        p = formatters.BoardPaginator(ctx, data=fetch, page_count=page_count, title=title)
+        p = paginator.BoardPaginator(ctx, data=fetch, page_count=page_count, title=title)
 
         await p.paginate()
 
@@ -133,7 +131,7 @@ class Donations(commands.Cog):
         page_count = math.ceil(len(fetch) / 20)
         title = f'Donations for {player.name}'
 
-        p = formatters.BoardPaginator(ctx, data=fetch, title=title, page_count=page_count)
+        p = paginator.BoardPaginator(ctx, data=fetch, title=title, page_count=page_count)
 
         await p.paginate()
 
@@ -177,7 +175,7 @@ class Donations(commands.Cog):
         page_count = math.ceil(len(fetch) / 20)
         title = f"Donations for {', '.join(f'{c.name}' for c in clans)}"
 
-        p = formatters.BoardPaginator(ctx, data=fetch, title=title, page_count=page_count)
+        p = paginator.BoardPaginator(ctx, data=fetch, title=title, page_count=page_count)
 
         await p.paginate()
 
