@@ -47,6 +47,9 @@ class Edit(commands.Cog):
         if not ctx.config:
             return await ctx.send('Please create a donationboard with `+help add donationboard`')
 
+        if ctx.invoked_subcommand is not None:
+            return
+
         p = await ctx.prompt('Would you like to edit all settings for the guild donationboard? '
                              'Else please see valid subcommands with `+help edit donationboard`.')
         if not p or p is False:
@@ -198,6 +201,9 @@ class Edit(commands.Cog):
         **Required Permissions**
         :warning: Manage Server
         """
+        if ctx.invoked_subcommand is not None:
+            return
+
         p = await ctx.prompt('Would you like to edit all settings for the guild trophyboard? '
                              'Else please see valid subcommands with `+help edit trophyboard`.')
         if not p or p is False:
@@ -360,6 +366,7 @@ class Edit(commands.Cog):
 
         query = "UPDATE boards SET sort_by = $1 WHERE channel_id = $2"
         await ctx.db.execute(query, sort_by, ctx.config.channel_id)
+        await self.bot.donationboard.update_board(ctx.config.channel_id)
         await ctx.confirm()
 
     @edit.group(name='donationlog')
@@ -529,6 +536,7 @@ class Edit(commands.Cog):
 
         query = "UPDATE boards SET sort_by = $1 WHERE channel_id = $2"
         await ctx.db.execute(query, sort_by, ctx.config.channel_id)
+        await self.bot.donationboard.update_board(ctx.config.channel_id)
         await ctx.confirm()
 
     @edit.command(name='event')
