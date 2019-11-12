@@ -8,7 +8,7 @@ from datetime import datetime
 from discord.ext.commands import Paginator as CommandPaginator
 
 from cogs.utils.emoji_lookup import misc
-from cogs.utils.formatters import CLYTable, get_render_type, events_time
+from cogs.utils.formatters import CLYTable, get_render_type, events_time, readable_time
 
 
 class CannotPaginate(Exception):
@@ -612,3 +612,20 @@ class StatsDonorsPaginator(TablePaginator):
 
         return self.table.donationboard_2() + self.key
 
+
+class LastOnlinePaginator(TablePaginator):
+    def create_row(self, name, player_data):
+        since = player_data[1]['since'].total_seconds()
+        self.table.add_row([player_data[0], name, readable_time(since)[:-3]])
+
+    async def prepare_entry(self, page):
+        self.table.clear_rows()
+        base = (page - 1) * self.rows_per_table
+        data = self.data[base:base + self.rows_per_table]
+        data_by_tag = {n[1]['player_tag']: n for n in data}
+
+        tags = [n[1]['player_tag'] for n in data]
+        async for player in self.bot.coc.get_players(tags):
+            self.create_row(player.name, data_by_tag[player.tag])
+
+        return self.table.last_online()

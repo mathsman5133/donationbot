@@ -19,7 +19,8 @@ CREATE TABLE players (
     start_defenses integer default 0,
     end_defenses integer default 0,
     start_best_trophies integer default 0,
-    end_best_trophies integer default 0
+    end_best_trophies integer default 0,
+    last_updated timestamp default now()
     );
 create index player_tag_idx on players (player_tag);
 create index user_id_idx on players (user_id);

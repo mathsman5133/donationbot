@@ -244,3 +244,10 @@ class CLYTable:
             fmt += f"{v[0]}⠀`⠀{str(v[1]):\u00A0>3.3}⠀`  `⠀{str(v[2]):\u00A0<14.14}⠀`  `⠀{str(v[3]):\u00A0<5.5}⠀`\n"
         return fmt
 
+    def last_online(self):
+        fmt = f"{misc['number']}⠀`⠀{'Name':\u00A0>13.13}⠀` `⠀{'Last Online':\u00A0>11.11}⠀`\n"
+        for v in self._rows:
+            index = int(v[0]) + 1
+            index = number_emojis[index] if index <= 100 else misc['idle']
+            fmt += f"{index}⠀`⠀{str(v[1]):\u00A0>13.13}⠀`  `⠀{str(v[2]):\u00A0>11.11}⠀`\n"
+        return fmt
