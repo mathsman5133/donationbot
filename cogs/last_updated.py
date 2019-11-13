@@ -69,7 +69,7 @@ class LastUpdated(commands.Cog):
         async with self.batch_lock:
             self.last_updated[player_tag] = {
                 'player_tag': player_tag,
-                'last_updated': datetime.utcnow()
+                'last_updated': datetime.utcnow().isoformat()
             }
 
     async def on_clan_member_name_change(self, _, __, player, ___):
