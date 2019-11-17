@@ -381,6 +381,7 @@ class DonationBoard(commands.Cog):
         return messages
 
     async def get_top_players(self, players, board_type, sort_by, in_event, season_id=None):
+        log.info(board_type, sort_by, in_event, season_id)
         season_id = season_id or await self.bot.seasonconfig.get_season_id()
         if board_type == 'donation':
             column_1 = 'donations'
@@ -392,6 +393,7 @@ class DonationBoard(commands.Cog):
             sort_by = column_2 if sort_by == 'gain' else column_1
         else:
             return
+        log.info(board_type, sort_by, in_event, season_id, column_1, column_2)
 
         # this should be ok since columns can only be a choice of 4 defined names
         if in_event:
