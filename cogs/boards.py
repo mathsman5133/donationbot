@@ -381,7 +381,6 @@ class DonationBoard(commands.Cog):
         return messages
 
     async def get_top_players(self, players, board_type, sort_by, in_event, season_id=None):
-        log.info(f"{board_type} {sort_by} {in_event} {season_id}")
         season_id = season_id or await self.bot.seasonconfig.get_season_id()
         if board_type == 'donation':
             column_1 = 'donations'
@@ -393,7 +392,6 @@ class DonationBoard(commands.Cog):
             sort_by = column_2 if sort_by == 'gain' else column_1
         else:
             return
-        log.info(f"{board_type} {sort_by} {in_event} {season_id} {column_1} {column_2}")
 
         # this should be ok since columns can only be a choice of 4 defined names
         if in_event:
@@ -440,7 +438,14 @@ class DonationBoard(commands.Cog):
         for n in clans:
             players.extend(p for p in n.itermembers)
 
-        top_players = await self.get_top_players(players, config.type, config.sort_by, config.in_event)
+        try:
+            top_players = await self.get_top_players(players, config.type, config.sort_by, config.in_event)
+        except:
+            log.error(
+                f"{clans} channelid: {channel_id}, guildid: {config.guild_id},"
+                f" sort: {config.sort_by}, event: {config.in_event}, type: {config.type}"
+            )
+            return
         players = {n.tag: n for n in players if n.tag in set(x['player_tag'] for x in top_players)}
 
         message_count = math.ceil(len(top_players) / 20)
