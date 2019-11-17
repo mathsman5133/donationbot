@@ -731,6 +731,7 @@ class Edit(commands.Cog):
 
     @commands.command()
     @checks.manage_guild()
+    @requires_config('event')
     @commands.cooldown(1, 43200, commands.BucketType.guild)
     async def refresh(self, ctx, *, clans: ClanConverter = None):
         """Manually refresh all players in the database with current donations and received.
@@ -782,12 +783,19 @@ class Edit(commands.Cog):
                         AND season_id = $3
                         RETURNING player_tag;               
                      """
+            query4 = """UPDATE eventplayers
+                        SET live=TRUE
+                        WHERE player_tag = ANY($1::TEXT[])
+                        AND event_id = $2
+                    """
             season_id = await self.bot.seasonconfig.get_season_id()
             for clan in clans:
                 for member in clan.members:
                     await ctx.db.execute(query, member.donations, member.tag, season_id)
                     await ctx.db.execute(query2, member.received, member.tag, season_id)
                     await ctx.db.execute(query3, member.trophies, member.tag, season_id)
+                if ctx.config:
+                    await ctx.db.execute(query4, [m.tag for m in clan.members], ctx.config.id)
 
             dboard_channel = await self.bot.utils.get_board_channel(ctx.guild.id, 'donation')
             if dboard_channel:

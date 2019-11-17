@@ -97,7 +97,7 @@ CREATE TABLE boards (
     render INTEGER default 1,
     toggle BOOLEAN default true,
     type TEXT,
-    sort_by text,
+    sort_by text default 'donations',
     in_event boolean default false
     );
 

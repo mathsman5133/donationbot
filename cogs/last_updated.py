@@ -147,7 +147,13 @@ class LastUpdated(commands.Cog):
         :white_check_mark: `+lastonline clan #P0LYJC8C`
         :white_check_mark: `+lastonline clan Rock Throwers`
         """
-        query = 'SELECT player_tag, last_updated - now() as "since" FROM players WHERE player_tag = ANY($1::TEXT[]) AND season_id=$2 order by since'
+        query = """SELECT player_tag, 
+                          last_updated - now() AS "since" 
+                   FROM players 
+                   WHERE player_tag = ANY($1::TEXT[]) 
+                   AND season_id=$2 
+                   ORDER BY since DESC
+                """
 
         tags = []
         for n in clan:
@@ -186,7 +192,13 @@ class LastUpdated(commands.Cog):
             async with self.batch_lock:
                 last_updated = datetime.utcnow() - self.last_updated[player.tag]
         except KeyError:
-            query = 'SELECT player_tag, last_updated - now() as "since" FROM players WHERE player_tag = $1 AND season_id = $2'
+            query = """SELECT player_tag, 
+                              last_updated - now() AS "since" 
+                       FROM players 
+                       WHERE player_tag = $1 
+                       AND season_id = $2
+                       ORDER BY since DESC
+                    """
             fetch = await ctx.db.fetchrow(query, player.tag, await self.bot.seasonconfig.get_season_id())
             if not fetch:
                 return await ctx.send(
@@ -213,7 +225,13 @@ class LastUpdated(commands.Cog):
         :white_check_mark: `+lastonline user`
         """
         user = user or ctx.author
-        query = 'SELECT player_tag, last_updated - now() as "since" FROM players WHERE user_id = $1 AND season_id = $2'
+        query = """SELECT player_tag, 
+                          last_updated - now() AS "since" 
+                   FROM players 
+                   WHERE user_id = $1 
+                   AND season_id = $2
+                   ORDER BY since DESC
+                """
         fetch = await ctx.db.fetch(query, user.id, await self.bot.seasonconfig.get_season_id())
         if not fetch:
             return await ctx.send(f"{user} doesn't have any claimed accounts.")
