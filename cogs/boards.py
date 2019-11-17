@@ -385,6 +385,7 @@ class DonationBoard(commands.Cog):
         if board_type == 'donation':
             column_1 = 'donations'
             column_2 = 'received'
+            sort_by = 'donations' if sort_by == 'donation' else sort_by
         elif board_type == 'trophy':
             column_1 = 'trophies'
             column_2 = 'trophies - start_trophies'
