@@ -35,7 +35,7 @@ class SeasonStats(commands.Cog):
 
         if not top_players:
             e = discord.Embed(colour=self.bot.colour,
-                              title='No Donations Found')
+                              title='No Data Found.')
             return [e]
 
         players = {n.tag: n for n in players if n.tag in set(x['player_tag'] for x in top_players)}
@@ -69,7 +69,9 @@ class SeasonStats(commands.Cog):
             e.set_author(name=board_config.title,
                          icon_url=board_config.icon_url or 'https://cdn.discordapp.com/'
                                                            'emojis/592028799768592405.png?v=1')
-            e.set_footer(text=f'Historical DonationBoard; Season {season_id} - Page {i+1}/{message_count}')
+            e.set_footer(
+                text=f'Historical {board_type.capitalize()}Board; Season {season_id} - Page {i+1}/{message_count}'
+            )
             embeds.append(e)
 
         return embeds
@@ -93,6 +95,22 @@ class SeasonStats(commands.Cog):
         """
         embeds = await self.get_board_fmt(ctx.guild.id, season or (await self.bot.seasonconfig.get_season_id()) - 1,
                                           'donation')
+        p = SeasonStatsPaginator(ctx, entries=embeds)
+        await p.paginate()
+
+    @seasonstats.command(name='trophyboard')
+    async def seasonstats_trophyboard(self, ctx, season: int = None):
+        """Get historical trophyboard stats.
+
+        *Parameters**
+        :key: Season ID (optional - defaults to last season)
+
+        **Example**
+        :white_check_mark: `+seasonstats trophyboard`
+        :white_check_mark: `+seasonstats trophyboard 2`
+        """
+        embeds = await self.get_board_fmt(ctx.guild.id, season or (await self.bot.seasonconfig.get_season_id()) - 1,
+                                          'tropy')
         p = SeasonStatsPaginator(ctx, entries=embeds)
         await p.paginate()
 
