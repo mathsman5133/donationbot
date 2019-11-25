@@ -29,7 +29,9 @@ class SeasonStats(commands.Cog):
         for n in clans:
             players.extend(p for p in n.itermembers)
 
-        top_players = await self.bot.donationboard.get_top_players(players, board_type, False, season_id=season_id)
+        top_players = await self.bot.donationboard.get_top_players(
+            players, board_type, board_config.sort_by, False, season_id=season_id
+        )
 
         if not top_players:
             e = discord.Embed(colour=self.bot.colour,
@@ -121,6 +123,8 @@ class SeasonStats(commands.Cog):
             players.extend((n.tag for n in clan.itermembers))
 
         fetch = await ctx.db.fetch(query, players, season)
+        if not fetch:
+            return await ctx.send("No data found. Sorry.")
 
         title = f"Attack wins for Season {season}"
         key = f"**Key:**\n{misc['attack']} - Attacks\n{misc['trophygold']} - Trophies"
@@ -154,6 +158,8 @@ class SeasonStats(commands.Cog):
             players.extend((n.tag for n in clan.itermembers))
 
         fetch = await ctx.db.fetch(query, players, season)
+        if not fetch:
+            return await ctx.send("No data found. Sorry.")
 
         title = f"Defense wins for Season {season}"
         key = f"**Key:**\n{misc['defense']} - Defenses\n{misc['trophygold']} - Trophies"
@@ -188,6 +194,8 @@ class SeasonStats(commands.Cog):
             players.extend((n.tag for n in clan.itermembers))
 
         fetch = await ctx.db.fetch(query, players, season)
+        if not fetch:
+            return await ctx.send("No data found. Sorry.")
 
         title = f"Trophy Gains for Season {season}"
         key = f"**Key:**\n{misc['trophygreen']} - Trophy Gain\n{misc['trophygold']} - Total Trophies"
@@ -222,6 +230,8 @@ class SeasonStats(commands.Cog):
             players.extend((n.tag for n in clan.itermembers))
 
         fetch = await ctx.db.fetch(query, players, season)
+        if not fetch:
+            return await ctx.send("No data found. Sorry.")
 
         title = f"Donations for Season {season}"
 

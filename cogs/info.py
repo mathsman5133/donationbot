@@ -439,9 +439,6 @@ class Info(commands.Cog, name='\u200bInfo'):
     async def info_donationboard(self, ctx):
         """Gives you info about guild's donationboard.
         """
-        if not ctx.config:
-            return await ctx.send('Please setup a donationboard using `+add donationboard`.')
-
         table = CLYTable()
         if ctx.config.render == 2:
             table.add_rows([[0, 6532, 'Member (Awesome Clan)'], [1, 4453, 'Nearly #1 (Bad Clan)'],
@@ -483,13 +480,10 @@ class Info(commands.Cog, name='\u200bInfo'):
         await ctx.send(embed=e)
 
     @info.command(name='trophyboard')
-    @requires_config('trophyboard')
+    @requires_config('trophyboard', error=True)
     async def info_trophyboard(self, ctx):
         """Gives you info about guild's trophyboard.
         """
-        if not ctx.config:
-            return await ctx.send('Please setup a trophyboard using `+add trophyboard`.')
-
         table = CLYTable()
         if ctx.config.render == 1:
             table.add_rows([[0, 4320, 955, 'Member Name'], [1, 4500, 870, 'Another Member'],
@@ -532,7 +526,7 @@ class Info(commands.Cog, name='\u200bInfo'):
         await ctx.send(embed=e)
 
     @info.command(name='event')
-    @requires_config('event', invalidate=True)
+    @requires_config('event', invalidate=True, error=True)
     async def info_event(self, ctx, id_: int = None):
         """Gives you info about guild's event"""
         if not ctx.config and not (id_ and await self.bot.is_owner(ctx.author)):

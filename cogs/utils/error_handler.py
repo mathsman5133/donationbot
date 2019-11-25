@@ -4,14 +4,15 @@ import textwrap
 import traceback
 
 
-from cogs.utils import formatters, paginator
+from cogs.utils import formatters, paginator, checks
+
 from discord.ext import commands
 
 
 async def error_handler(ctx, error):
-    if isinstance(error, commands.CheckFailure):
-        # TODO are there any other checks that might end up here?
+    if isinstance(error, (checks.NoConfigFailure, paginator.CannotPaginate, commands.CheckFailure)):
         return await ctx.send(str(error))
+
     if isinstance(error, (commands.BadArgument, commands.BadUnionArgument)):
         return await ctx.send(str(error))
     if isinstance(error, commands.MissingRequiredArgument):

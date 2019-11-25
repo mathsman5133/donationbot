@@ -45,8 +45,7 @@ class DonationBoard(commands.Cog):
         self.bulk_insert_loop.add_exception_type(asyncpg.PostgresConnectionError)
         self.bulk_insert_loop.start()
 
-        self.update_board_loops.add_exception_type(asyncpg.PostgresConnectionError)
-        self.update_board_loops.add_exception_type(coc.ClashOfClansException)
+        self.update_board_loops.add_exception_type(asyncpg.PostgresConnectionError, coc.ClashOfClansException)
         self.update_board_loops.start()
 
     def cog_unload(self):
@@ -79,7 +78,10 @@ class DonationBoard(commands.Cog):
         fetch = await self.bot.pool.fetch(query, clan_tags)
 
         for n in fetch:
-            await self.update_board(n['channel_id'])
+            try:
+                await self.update_board(n['channel_id'])
+            except:
+                pass
 
     async def bulk_insert(self):
         query = """UPDATE players SET donations = players.donations + x.donations, 
