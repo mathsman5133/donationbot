@@ -16,12 +16,8 @@ class SeasonConfig(commands.Cog, command_attrs=dict(hidden=True)):
     def next_last_monday():
         now = datetime.datetime.utcnow()
         day = now + relativedelta.relativedelta(month=now.month + 1,
-                                                weekday=relativedelta.MO(-1),
-                                                day=31,
-                                                hour=(-now.hour + 6),
-                                                minutes=-now.minute,
-                                                seconds=-now.second
-                                                )
+                                                weekday=relativedelta.MO(-1))
+        day.replace(hour=6, minute=0, second=0, microsecond=0)
         return day
 
     @tasks.loop(time=datetime.time(hour=6, tzinfo=datetime.timezone.utc))
