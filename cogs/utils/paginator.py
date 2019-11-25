@@ -586,7 +586,7 @@ class StatsGainsPaginator(TablePaginator):
         async for player in self.bot.coc.get_players(tags):
             self.create_row(player, data_by_tag)
 
-        return self.table.trophyboard_attacks() + self.key
+        return self.table.trophyboard_gain() + self.key
 
 
 class StatsDonorsPaginator(TablePaginator):
