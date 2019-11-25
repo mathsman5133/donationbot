@@ -6,6 +6,7 @@ import typing
 from discord.ext import commands
 
 from cogs.boards import MockPlayer
+from cogs.utils.db_objects import SlimDummyBoardConfig
 from cogs.utils.paginator import (
     SeasonStatsPaginator, StatsAttacksPaginator, StatsDefensesPaginator, StatsGainsPaginator, StatsDonorsPaginator
 )
@@ -23,6 +24,9 @@ class SeasonStats(commands.Cog):
     @cache(strategy=Strategy.lru)
     async def get_board_fmt(self, guild_id, season_id, board_type):
         board_config = await self.bot.utils.get_board_config(guild_id, board_type)
+        if not board_config:
+            board_config = SlimDummyBoardConfig(board_type, 2, f"{board_type.capitalize()}Board", None)
+
         clans = await self.bot.get_clans(guild_id)
 
         players = []
@@ -110,7 +114,7 @@ class SeasonStats(commands.Cog):
         :white_check_mark: `+seasonstats trophyboard 2`
         """
         embeds = await self.get_board_fmt(ctx.guild.id, season or (await self.bot.seasonconfig.get_season_id()) - 1,
-                                          'tropy')
+                                          'trophy')
         p = SeasonStatsPaginator(ctx, entries=embeds)
         await p.paginate()
 
