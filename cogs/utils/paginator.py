@@ -574,7 +574,7 @@ class StatsGainsPaginator(TablePaginator):
 
     def create_row(self, player, data):
         player_data = data[player.tag]
-        self.table.add_row([player_data[0], player_data[1]['gains'], player_data[1]['trophies'], player.name])
+        self.table.add_row([player_data[0], player_data[1]['gain'], player_data[1]['trophies'], player.name])
 
     async def prepare_entry(self, page):
         self.table.clear_rows()
