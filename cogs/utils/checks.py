@@ -1,6 +1,10 @@
 from discord.ext import commands
 
 
+class NoConfigFailure(commands.CheckFailure):
+    pass
+
+
 async def check_guild_permissions(ctx, perms, check=all):
     if await ctx.bot.is_owner(ctx.author):
         return True
@@ -40,6 +44,7 @@ async def before_invoke(ctx):
         return
 
     invalidate = getattr(ctx, 'invalidate', False)
+    error = getattr(ctx, 'error_without_config', False)
 
     if config_type == 'donationboard':
         ctx.config = await ctx.bot.utils.get_board_config(ctx.guild.id, 'donation', invalidate)
@@ -65,6 +70,10 @@ async def before_invoke(ctx):
             ctx.bot.utils.log_config.invalidate(ctx.bot.utils, channel.id, 'trophy')
         ctx.config = await ctx.bot.utils.log_config(channel.id, 'trophy')
 
+    if error and not ctx.config:
+        raise NoConfigFailure(f'Please create a {config_type} with `+help add {config_type}`')
+
+
 async def after_invoke(ctx):
     if not getattr(ctx, 'invalidate', False):
         return
@@ -86,12 +95,13 @@ async def after_invoke(ctx):
     return ctx
 
 
-def requires_config(config_type, invalidate=False):
+def requires_config(config_type, invalidate=False, error=False):
     async def pred(ctx):
         ctx.before_invoke = before_invoke
         ctx.after_invoke = after_invoke
         ctx.config_type = config_type
         ctx.invalidate = invalidate
+        ctx.error_without_config = error
         return True
     return commands.check(pred)
 
