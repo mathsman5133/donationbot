@@ -105,7 +105,7 @@ class AutoClaim(commands.Cog, name='\u200bAutoClaim'):
         **Required Permissions**
         :warning: Manage Server
         """
-        if ctx.guild.id in self.running_commands:
+        if self.running_commands.get(ctx.guild.id, False):
             return await ctx.send('You already have an auto-claim command running. '
                                   'Please cancel (`+help autoclaim cancel`) it before starting a new one.')
 
