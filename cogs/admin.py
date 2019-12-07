@@ -115,7 +115,7 @@ class Admin(commands.Cog):
             for line in fmt.splitlines(keepends=True):
                 if len(coll) + len(line) > 2000:
                     # if collecting is going to be too long, send  what you have so far
-                    await ctx.send(fmt)
+                    await ctx.send(coll)
                     coll = ""
                 coll += line
             await ctx.send(coll)
