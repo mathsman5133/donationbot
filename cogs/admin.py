@@ -104,13 +104,21 @@ class Admin(commands.Cog):
         return f'```py\n{e.text}{"^":>{e.offset}}\n{e.__class__.__name__}: {e}```'
 
     async def safe_send(self, ctx, fmt):
-        if len(fmt) > 6000:
+        if len(fmt) > 8000:
             fp = io.BytesIO(fmt.encode('utf-8'))
             return await ctx.send('Too many results...', file=discord.File(fp, 'results.txt'))
-        for n in textwrap.wrap(fmt, 2000):
-            if fmt.startswith('```'):
-                n = f'```py\n{n.strip("`")}```'
-            await ctx.send(n)
+
+        if len(fmt) < 2000:
+            await ctx.send(fmt)
+        else:
+            coll = ""
+            for line in fmt.splitlines(keepends=True):
+                if len(coll) + len(line) > 2000:
+                    # if collecting is going to be too long, send  what you have so far
+                    await ctx.send(fmt)
+                    coll = ""
+                coll += line
+            await ctx.send(coll)
 
     @commands.command(hidden=True)
     async def load(self, ctx, *, module):
