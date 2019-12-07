@@ -475,6 +475,20 @@ class Admin(commands.Cog):
         await self.safe_send(ctx, fmt)
 
     @commands.command(hidden=True)
+    async def sql_indexes(self, ctx, *, table: str):
+        query = """SELECT tablename, indexname FROM pg_indexes WHERE tablename = $1;"""
+        results = await ctx.db.fetch(query, table)
+
+        headers = list(results[0].keys())
+        table = TabularData()
+        table.set_columns(headers)
+        table.add_rows(list(r.values()) for r in results)
+        render = table.render()
+
+        fmt = f'```\n{render}\n```'
+        await self.safe_send(ctx, fmt)
+
+    @commands.command(hidden=True)
     async def sudo(self, ctx, channel: Optional[GlobalChannel], who: discord.User, *, command: str):
         """Run a command as another user optionally in another channel."""
         msg = copy.copy(ctx.message)
