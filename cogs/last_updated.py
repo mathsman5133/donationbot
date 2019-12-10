@@ -21,7 +21,7 @@ class LastUpdated(commands.Cog):
         self.batch_lock = asyncio.Lock(loop=bot.loop)
         self.bot.coc.add_events(
             self.on_clan_member_name_change,
-            self.on_clan_member_donations,
+            self.on_clan_member_donation,
             self.on_clan_member_versus_trophies_change,
             self.on_clan_member_level_change
         )
@@ -30,7 +30,7 @@ class LastUpdated(commands.Cog):
     def cog_unload(self):
         self.bot.coc.remove_events(
             self.on_clan_member_name_change,
-            self.on_clan_member_donations,
+            self.on_clan_member_donation,
             self.on_clan_member_versus_trophies_change,
             self.on_clan_member_level_change
         )
