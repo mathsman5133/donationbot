@@ -23,15 +23,15 @@ class Edit(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.group(invoke_without_command=True)
+    @commands.group()
     async def edit(self, ctx):
         """[Group] Allows a user to edit a variety of the bot's features."""
-        if ctx.invoked_subcommand is None:
+        if not ctx.invoked_subcommand:
             await ctx.send_help(ctx.command)
 
     @edit.group(name='donationboard')
     @checks.manage_guild()
-    @requires_config('donationboard', invalidate=True)
+    @requires_config('donationboard', invalidate=True, error=True)
     async def edit_donationboard(self, ctx):
         """[Group] Run through an interactive process of editting the guild's donationboard.
 
@@ -44,10 +44,7 @@ class Edit(commands.Cog):
         **Required Permissions**
         :warning: Manage Server
         """
-        if not ctx.config:
-            return await ctx.send('Please create a donationboard with `+help add donationboard`')
-
-        if ctx.invoked_subcommand is not None:
+        if ctx.invoked_subcommand:
             return
 
         p = await ctx.prompt('Would you like to edit all settings for the guild donationboard? ')
@@ -77,7 +74,6 @@ class Edit(commands.Cog):
         return await ctx.send('All done. Thanks!')
 
     @edit_donationboard.command(name='format')
-    @requires_config('donationboard', invalidate=True)
     async def edit_donationboard_format(self, ctx):
         """Edit the format of the server's donationboard.
 
@@ -132,7 +128,6 @@ class Edit(commands.Cog):
         await ctx.confirm()
 
     @edit_donationboard.command(name='icon')
-    @requires_config('donationboard', invalidate=True)
     async def edit_donationboard_icon(self, ctx, *, url: str = None):
         """Specify an icon for the guild's donationboard.
 
@@ -162,7 +157,6 @@ class Edit(commands.Cog):
         await ctx.confirm()
 
     @edit_donationboard.command(name='title')
-    @requires_config('donationboard', invalidate=True)
     async def edit_donationboard_title(self, ctx, *, title: str):
         """Specify a title for the guild's donationboard.
 
@@ -186,8 +180,6 @@ class Edit(commands.Cog):
         await ctx.confirm()
 
     @edit_donationboard.command(name='sort')
-    @requires_config('donationboard', invalidate=True)
-    @manage_guild()
     async def edit_donationboard_sort(self, ctx, *, sort_by: SortByConverter):
         """Change which column the donationboard is sorted by.
 
@@ -213,8 +205,8 @@ class Edit(commands.Cog):
         await ctx.confirm()
 
     @edit.group(name='trophyboard')
-    @checks.manage_guild()
-    @requires_config('trophyboard', invalidate=True)
+    @manage_guild()
+    @requires_config('trophyboard', invalidate=True, error=True)
     async def edit_trophyboard(self, ctx):
         """[Group] Run through an interactive process of editing the guild's trophyboard.
 
@@ -227,7 +219,7 @@ class Edit(commands.Cog):
         **Required Permissions**
         :warning: Manage Server
         """
-        if ctx.invoked_subcommand is not None:
+        if ctx.invoked_subcommand:
             return
 
         p = await ctx.prompt('Would you like to edit all settings for the guild trophyboard? ')
@@ -257,7 +249,6 @@ class Edit(commands.Cog):
         return await ctx.send('All done. Thanks!')
 
     @edit_trophyboard.command(name='format')
-    @requires_config('trophyboard', invalidate=True)
     async def edit_trophyboard_format(self, ctx):
         """Edit the format of the guild's trophyboard.
 
@@ -312,7 +303,6 @@ class Edit(commands.Cog):
         await ctx.confirm()
 
     @edit_trophyboard.command(name='icon')
-    @requires_config('trophyboard', invalidate=True)
     async def edit_trophyboard_icon(self, ctx, *, url: str = None):
         """Specify an icon for the server's trophyboard.
 
@@ -342,8 +332,6 @@ class Edit(commands.Cog):
         await ctx.confirm()
 
     @edit_trophyboard.command(name='title')
-    @requires_config('trophyboard', invalidate=True)
-    @manage_guild()
     async def edit_trophyboard_title(self, ctx, *, title: str):
         """Specify a title for the guild's trophyboard.
 
@@ -367,8 +355,6 @@ class Edit(commands.Cog):
         await ctx.confirm()
 
     @edit_trophyboard.command(name='sort')
-    @requires_config('trophyboard', invalidate=True)
-    @manage_guild()
     async def edit_trophyboard_sort(self, ctx, *, sort_by: SortByConverter):
         """Change which column the trophyboard is sorted by.
 
@@ -396,14 +382,13 @@ class Edit(commands.Cog):
 
     @edit.group(name='donationlog')
     @manage_guild()
+    @requires_config('donationlog', invalidate=True)
     async def edit_donationlog(self, ctx):
         """[Group] Edit the donationlog settings."""
         if ctx.invoked_subcommand is None:
             await ctx.send_help(ctx.command)
 
     @edit_donationlog.command(name='interval')
-    @requires_config('donationlog', invalidate=True)
-    @manage_guild()
     async def edit_donationlog_interval(self, ctx, channel: typing.Optional[TextChannel], minutes: int = 1):
         """Update the interval (in minutes) for which the bot will log your donations.
 
@@ -434,8 +419,6 @@ class Edit(commands.Cog):
                        'Find which clans this affects with `+help info donationlog`')
 
     @edit_donationlog.command(name='toggle')
-    @requires_config('donationlog', invalidate=True)
-    @manage_guild()
     async def edit_donationlog_toggle(self, ctx):
         """Toggle the donation log on and off.
 
@@ -458,7 +441,7 @@ class Edit(commands.Cog):
                    AND type = $2
                    RETURNING toggle
                 """
-        toggle = await ctx.db.execute(query, ctx.config.channel_id, 'donation')
+        toggle = await ctx.db.fetch(query, ctx.config.channel_id, 'donation')
         if toggle:
             condition = 'on'
         else:
@@ -466,15 +449,14 @@ class Edit(commands.Cog):
         await ctx.send(f'Logs for {ctx.config.channel.mention} have been turned {condition}.')
 
     @edit.group(name='trophylog')
-    @checks.manage_guild()
+    @manage_guild()
+    @requires_config('trophylog', invalidate=True)
     async def edit_trophylog(self, ctx):
         """[Group] Edit the trophylog settings."""
-        if ctx.invoked_subcommand is None:
+        if not ctx.invoked_subcommand:
             await ctx.send_help(ctx.command)
 
     @edit_trophylog.command(name='interval')
-    @requires_config('trophylog', invalidate=True)
-    @manage_guild()
     async def edit_trophylog_interval(self, ctx, channel: typing.Optional[TextChannel], minutes: int = 1):
         """Update the interval (in minutes) for which the bot will log your trophies.
 
@@ -505,8 +487,6 @@ class Edit(commands.Cog):
                        'Find which clans this affects with `+help info trophylog`')
 
     @edit_trophylog.command(name='toggle')
-    @requires_config('trophylog', invalidate=True)
-    @manage_guild()
     async def edit_trophylog_toggle(self, ctx):
         """Toggle the trophy log on and off.
 

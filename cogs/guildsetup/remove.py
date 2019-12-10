@@ -121,7 +121,7 @@ class Remove(commands.Cog):
 
     @remove.command(name='donationboard', aliases=['donation board', 'donboard'])
     @checks.manage_guild()
-    @requires_config('donationboard', invalidate=True)
+    @requires_config('donationboard', invalidate=True, error=True)
     async def remove_donationboard(self, ctx):
         """Removes the guild donationboard.
 
@@ -134,9 +134,6 @@ class Remove(commands.Cog):
         **Required Permissions**
         :warning: Manage Server
         """
-        if not ctx.config:
-            return await ctx.send(f'This server doesn\'t have a donationboard.')
-
         query = "SELECT message_id FROM messages WHERE channel_id=$1;"
         messages = await self.bot.pool.fetch(query, ctx.config.channel_id)
         for n in messages:
@@ -156,7 +153,7 @@ class Remove(commands.Cog):
         await ctx.send('Donationboard sucessfully removed.')
 
     @remove.command(name='trophyboard', aliases=['trophy board', 'tropboard'])
-    @requires_config('trophyboard', invalidate=True)
+    @requires_config('trophyboard', invalidate=True, error=True)
     @manage_guild()
     async def remove_trophyboard(self, ctx):
         """Removes the guild trophyboard.
@@ -170,9 +167,6 @@ class Remove(commands.Cog):
         **Required Permissions**
         :warning: Manage Server
         """
-        if not ctx.config:
-            return await ctx.send(f'This server doesn\'t have a trophyboard.')
-
         query = "SELECT message_id FROM messages WHERE channel_id=$1;"
         messages = await self.bot.pool.fetch(query, ctx.config.channel_id)
         for n in messages:
