@@ -75,7 +75,7 @@ class LastUpdated(commands.Cog):
     async def on_clan_member_name_change(self, _, __, player, ___):
         await self.update(player.tag)
 
-    async def on_clan_member_donations(self, _, __, player, ___):
+    async def on_clan_member_donation(self, _, __, player, ___):
         await self.update(player.tag)
 
     async def on_clan_member_versus_trophies_change(self, _, __, player, ___):
@@ -231,7 +231,7 @@ class LastUpdated(commands.Cog):
                    WHERE user_id = $1 
                    AND season_id = $2
                    ORDER BY since DESC
-                """
+                on"""
         fetch = await ctx.db.fetch(query, user.id, await self.bot.seasonconfig.get_season_id())
         if not fetch:
             return await ctx.send(f"{user} doesn't have any claimed accounts.")
