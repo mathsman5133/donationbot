@@ -435,7 +435,7 @@ class Info(commands.Cog, name='\u200bInfo'):
         await ctx.send(embed=e)
 
     @info.command(name='donationboard')
-    @requires_config('donationboard')
+    @requires_config('donationboard', error=True)
     async def info_donationboard(self, ctx):
         """Gives you info about guild's donationboard.
         """

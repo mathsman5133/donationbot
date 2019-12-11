@@ -34,7 +34,7 @@ class LastUpdated(commands.Cog):
             self.on_clan_member_versus_trophies_change,
             self.on_clan_member_level_change
         )
-        self.loop.stop()
+        self.loop.cancel()
 
     @commands.Cog.listener()
     async def on_disconnect(self):
