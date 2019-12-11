@@ -231,7 +231,7 @@ class LastUpdated(commands.Cog):
                    WHERE user_id = $1 
                    AND season_id = $2
                    ORDER BY since DESC
-                on"""
+                """
         fetch = await ctx.db.fetch(query, user.id, await self.bot.seasonconfig.get_season_id())
         if not fetch:
             return await ctx.send(f"{user} doesn't have any claimed accounts.")
