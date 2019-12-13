@@ -45,9 +45,8 @@ class Strategy(enum.Enum):
     lru = 1
     raw = 2
     timed = 3
-    redis = 4
 
-def cache(maxsize=128, strategy=Strategy.redis, ignore_kwargs=False):
+def cache(maxsize=128, strategy=Strategy.lru, ignore_kwargs=False):
     def decorator(func):
         if strategy is Strategy.lru:
             _internal_cache = LRU(maxsize)
@@ -86,24 +85,6 @@ def cache(maxsize=128, strategy=Strategy.redis, ignore_kwargs=False):
             return ':'.join(key)
 
         @wraps(func)
-        async def async_wrapper(*args, **kwargs):
-            redis = args[0].bot.redis
-
-            key = _make_key(args, kwargs)
-
-            value = await redis.get(key, encoding='utf-8')
-
-            if not value:
-                value = await func(*args, **kwargs)
-                if not value:
-                    return
-
-                await redis.set(key, value)
-                return value
-            else:
-                return value
-
-        @wraps(func)
         def wrapper(*args, **kwargs):
             key = _make_key(args, kwargs)
             try:
@@ -129,9 +110,6 @@ def cache(maxsize=128, strategy=Strategy.redis, ignore_kwargs=False):
             else:
                 return True
 
-        async def async_invalidate(*args, **kwargs):
-            return await args[0].bot.redis.delete(_make_key(args, kwargs))
-
         def _invalidate_containing(key):
             to_remove = []
             for k in _internal_cache.keys():
@@ -143,14 +121,8 @@ def cache(maxsize=128, strategy=Strategy.redis, ignore_kwargs=False):
                 except KeyError:
                     continue
 
-        if strategy is Strategy.redis:
-            wrap = async_wrapper
-            wrap.invalidate = async_invalidate
-
-        else:
-            wrap = wrapper
-            wrap.invalidate = _invalidate
-
+        wrap = wrapper
+        wrap.invalidate = _invalidate
         wrap.cache = _internal_cache
         wrap.get_key = lambda *args, **kwargs: _make_key(args, kwargs)
         wrap.get_stats = _stats

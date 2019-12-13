@@ -12,7 +12,7 @@ class Utils(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @cache(strategy=Strategy.lru)
+    @cache()
     async def log_config(self, channel_id: int, log_type: str) -> Union[LogConfig, None]:
         query = """SELECT guild_id, 
                           channel_id, 
@@ -29,7 +29,7 @@ class Utils(commands.Cog):
 
         return LogConfig(bot=self.bot, record=fetch)
 
-    @cache(strategy=Strategy.lru)
+    @cache()
     async def board_config(self, channel_id: int) -> Union[BoardConfig, None]:
         query = """SELECT guild_id, 
                           channel_id,
@@ -71,7 +71,7 @@ class Utils(commands.Cog):
 
         return await self.board_config(channel_id)
 
-    @cache(strategy=Strategy.lru)
+    @cache()
     async def event_config(self, guild_id: int) -> Union[SlimEventConfig, None]:
         query = """SELECT id,
                           start,
@@ -101,7 +101,7 @@ class Utils(commands.Cog):
             return 'Unknown'
         return fetch[0]
 
-    @cache(strategy=Strategy.lru)
+    @cache()
     async def get_message(self, channel: discord.TextChannel, message_id: int) -> Union[discord.Message, None]:
         try:
             o = discord.Object(id=message_id + 1)
