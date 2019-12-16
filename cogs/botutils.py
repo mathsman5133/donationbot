@@ -59,7 +59,7 @@ class Utils(commands.Cog):
 
     async def get_board_config(self, guild_id: int, board_type: str, invalidate=False):
         if invalidate:
-            await self.get_board_channel.invalidate(self, guild_id, board_type)
+            self.get_board_channel.invalidate(self, guild_id, board_type)
 
         channel_id = await self.get_board_channel(guild_id, board_type)
         if not channel_id:
