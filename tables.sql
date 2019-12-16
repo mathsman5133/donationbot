@@ -83,7 +83,8 @@ CREATE TABLE guilds (
     id serial PRIMARY KEY,
 
     guild_id BIGINT UNIQUE,
-    auto_claim BOOLEAN
+    auto_claim BOOLEAN,
+    prefix text DEFAULT '+'
     );
 create index guild_id_idx on guilds (guild_id);
 

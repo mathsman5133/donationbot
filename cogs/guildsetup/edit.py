@@ -29,6 +29,27 @@ class Edit(commands.Cog):
         if not ctx.invoked_subcommand:
             await ctx.send_help(ctx.command)
 
+    @edit.command(name='prefix')
+    @checks.manage_guild()
+    async def edit_prefix(self, ctx, new_prefix: str = '+'):
+        """Allows a user to select a custom prefix for the bot.
+
+        **Format**
+        :information_source: `+edit prefix`
+
+        **Examples**
+        :white_check_mark: `+edit prefix $`
+        :white_check_mark: `+edit prefix !`
+        :white_check_mark: `+edit prefix +`
+
+        **Required Permissions**
+        :warning: Manage Server
+        """
+        query = "UPDATE guilds SET prefix = $1 WHERE guild_id = $2"
+        await self.bot.pool.execute(query, ctx.guild_id, new_prefix)
+        self.bot.prefixes[ctx.guild_id] = new_prefix
+        await ctx.send(f"The prefix for the bot has been changed to {new_prefix}")
+
     @edit.group(name='donationboard')
     @checks.manage_guild()
     @requires_config('donationboard', invalidate=True, error=True)
