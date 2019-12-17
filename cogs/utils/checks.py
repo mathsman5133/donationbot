@@ -14,6 +14,9 @@ async def check_guild_permissions(ctx, perms, check=all):
 
     if ctx.guild is None:
         raise commands.CheckFailure('You must be in a guild to run this command!')
+    if ctx.guild.id == 594276321937326091:
+        # custom message for the support server
+        raise commands.CheckFailure("You should run this command in your server! Get the invite link with `+invite`.")
 
     resolved = ctx.author.guild_permissions
     return check(getattr(resolved, name, None) == value for name, value in perms.items())
