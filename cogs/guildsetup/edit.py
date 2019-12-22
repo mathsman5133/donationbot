@@ -46,7 +46,7 @@ class Edit(commands.Cog):
         :warning: Manage Server
         """
         query = "UPDATE guilds SET prefix = $1 WHERE guild_id = $2"
-        await self.bot.pool.execute(query, ctx.guild_id, new_prefix)
+        await self.bot.pool.execute(query, new_prefix, ctx.guild_id)
         self.bot.prefixes[ctx.guild_id] = new_prefix
         await ctx.send(f"The prefix for the bot has been changed to {new_prefix}")
 
