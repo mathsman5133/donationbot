@@ -20,7 +20,7 @@ class Trophies(commands.Cog):
         self.bot = bot
 
     async def cog_before_invoke(self, ctx):
-        ctx.config = SlimDummyBoardConfig('trophy', 1, 'Top Trophies', None)
+        ctx.config = SlimDummyBoardConfig('trophy', 1, 'Top Trophies', None, 'trophies')
 
     @commands.group(name='trophies', aliases=['troph'],  invoke_without_command=True)
     async def trophies(self, ctx, *,

@@ -15,7 +15,7 @@ class Donations(commands.Cog):
         self.bot = bot
 
     async def cog_before_invoke(self, ctx):
-        ctx.config = SlimDummyBoardConfig('donation', 1, 'Top Donations', None)
+        ctx.config = SlimDummyBoardConfig('donation', 1, 'Top Donations', None, 'donations')
 
     @commands.group(name='donations', aliases=['don'],  invoke_without_command=True)
     async def donations(self, ctx, *,
