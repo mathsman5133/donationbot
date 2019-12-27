@@ -10,6 +10,8 @@ from discord.ext import commands
 
 
 async def error_handler(ctx, error):
+    error = getattr(error, 'original', error)
+
     if isinstance(error, (checks.NoConfigFailure, paginator.CannotPaginate, commands.CheckFailure)):
         return await ctx.send(str(error))
 
@@ -33,8 +35,6 @@ async def error_handler(ctx, error):
 
     if isinstance(error, (discord.Forbidden, discord.NotFound, paginator.CannotPaginate)):
         return
-
-    error = getattr(error, 'original', error)
 
     e = discord.Embed(title='Command Error', colour=0xcc3366)
     e.add_field(name='Name', value=ctx.command.qualified_name)
