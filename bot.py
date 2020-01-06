@@ -56,9 +56,17 @@ coc_client = coc.login(creds.email, creds.password, client=COCClient,
 description = "A simple discord bot to track donations of clan families in clash of clans."
 
 
+async def get_pref(bot, message):
+    if not message.guild:
+        # message is a DM
+        return "+"
+    prefix = bot.prefixes.get(message.guild_id, "+")
+    return commands.when_mentioned_or(prefix)
+
+
 class DonationBot(commands.Bot):
     def __init__(self):
-        super().__init__(command_prefix=commands.when_mentioned_or(command_prefix), case_insensitive=True,
+        super().__init__(command_prefix=get_pref, case_insensitive=True,
                          description=description, pm_help=None, help_attrs=dict(hidden=True),
                          fetch_offline_members=True)
 
@@ -189,6 +197,7 @@ class DonationBot(commands.Bot):
     async def on_ready(self):
         await self.utils.update_clan_tags()
         await self.change_presence(activity=discord.Game('+help for commands'))
+        self.prefixes =  await self.init_prefixes()
 
     async def on_resumed(self):
         await self.change_presence(activity=discord.Game('+help for commands'))
@@ -208,6 +217,11 @@ class DonationBot(commands.Bot):
     async def on_error(self, event_method, *args, **kwargs):
         return await discord_event_error(self, event_method, *args, **kwargs)
 
+    async def init_prefixes(self):
+        query = "SELECT guild_id, prefix FROM guilds"
+        fetch = await self.pool.fetch(query)
+        self.prefixes = {k: v for (k, v) in fetch}
+
 
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()
@@ -218,6 +232,7 @@ if __name__ == '__main__':
 
         bot = DonationBot()
         bot.pool = pool  # add db as attribute
+        bot.prefixes = {}
         setup_logging(bot)
         bot.run(creds.bot_token)  # run bot
 
