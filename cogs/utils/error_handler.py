@@ -20,8 +20,6 @@ async def error_handler(ctx, error):
     if isinstance(error, commands.MissingRequiredArgument):
         return await ctx.send(f'Oops! That didn\'t look right... '
                               f'please see how to use the command with `+help {ctx.command.qualified_name}`')
-    if not isinstance(error, commands.CommandError):
-        return
     if isinstance(error, commands.CommandOnCooldown):
         if await ctx.bot.is_owner(ctx.author):
             return await ctx.reinvoke()
@@ -29,9 +27,6 @@ async def error_handler(ctx, error):
         return await ctx.send(f'You\'re on cooldown. Please try again in: {time}')
 
     ctx.command.reset_cooldown(ctx)
-
-    if not isinstance(error, commands.CommandInvokeError):
-        return
 
     if isinstance(error, (discord.Forbidden, discord.NotFound, paginator.CannotPaginate)):
         return

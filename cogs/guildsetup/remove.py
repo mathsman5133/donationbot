@@ -181,7 +181,10 @@ class Remove(commands.Cog):
             msg = "I don't have permissions to delete the channel. Please manually delete it."
 
         query = """DELETE FROM boards WHERE channel_id = $1"""
-        await self.bot.pool.execute(query, channel.channel_id)
+        await self.bot.pool.execute(query, channel.id)
+        query = "DELETE FROM clans WHERE channel_id = $1"
+        await self.bot.pool.execute(query, channel.id)
+
         await ctx.send(msg)
 
     @remove.command(name='donationlog')
