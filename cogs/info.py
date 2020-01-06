@@ -271,7 +271,7 @@ class Info(commands.Cog, name='\u200bInfo'):
     @property
     def welcome_message(self):
         fmt = f"""**Some handy hints:**\n' \
-                 • My prefix is `+`, or {self.bot.user.mention}
+                 • My prefix is `+`, or {self.bot.user.mention}. See how to change it with `+help edit prefix`
                  • All commands have super-detailed help commands; please use them!
                  • Usage: `+help command_name`, for example, try `+help donationlog`!\n
                  A few frequently used commands to get started:
