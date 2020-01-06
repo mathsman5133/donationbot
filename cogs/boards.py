@@ -48,9 +48,13 @@ class DonationBoard(commands.Cog):
         self.update_board_loops.add_exception_type(asyncpg.PostgresConnectionError, coc.ClashOfClansException)
         self.update_board_loops.start()
 
+        self.update_global_board.add_exception_type(asyncpg.PostgresConnectionError, coc.ClashOfClansException)
+        self.update_global_board.start()
+
     def cog_unload(self):
         self.bulk_insert_loop.cancel()
         self.update_board_loops.cancel()
+        self.update_global_board.cancel()
         self.bot.coc.remove_events(
             self.on_clan_member_donation,
             self.on_clan_member_received,
@@ -82,6 +86,39 @@ class DonationBoard(commands.Cog):
                 await self.update_board(n['channel_id'])
             except:
                 pass
+
+    @tasks.loop(hours=1)
+    async def update_global_board(self):
+        query = """SELECT player_tag, donations
+                   FROM players 
+                   WHERE season_id=$1
+                   ORDER BY donations DESC NULLS LAST
+                   LIMIT 100;
+                """
+        fetch_top_players = await self.bot.pool.fetch(query)
+
+        players = await self.bot.coc.get_players((n[0] for n in fetch_top_players))
+
+        top_players = {n.tag: n for n in players if n.tag in set(x['player_tag'] for x in fetch_top_players)}
+
+        messages = await self.get_board_messages(663683345108172830, number_of_msg=5)
+        if not messages:
+            return
+
+        for i, v in enumerate(messages):
+            player_data = fetch_top_players[i*20:(i+1)*20]
+            table = CLYTable()
+
+            for x, y in enumerate(player_data):
+                index = i*20 + x
+                table.add_row([index, y[1], top_players.get(y['player_tag'], mock).name])
+
+            fmt = table.donationboard_2()
+
+            e = discord.Embed(colour=self.bot.colour, description=fmt, timestamp=datetime.utcnow())
+            e.set_author(name="Global Donationboard", icon_url=self.bot.user.avatar_url)
+            e.set_footer(text='Last Updated')
+            await v.edit(embed=e, content=None)
 
     async def bulk_insert(self):
         query = """UPDATE players SET donations = players.donations + x.donations, 
