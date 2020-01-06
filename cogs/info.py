@@ -417,6 +417,8 @@ class Info(commands.Cog, name='\u200bInfo'):
 
         for channel_id in channels:
             channel = self.bot.get_channel(channel_id)
+            if not channel:
+                continue
 
             embed = discord.Embed(colour=self.bot.colour, description="")
             embed.set_author(name=f"Info for #{channel}", icon_url=ctx.guild.me.avatar_url)
@@ -456,6 +458,9 @@ class Info(commands.Cog, name='\u200bInfo'):
 
             if embed.description:
                 embeds.append(embed)
+
+        if not embeds:
+            return await ctx.send(f"No info found. Try using `+help add`.")
 
         p = EmbedPages(ctx, entries=embeds, per_page=1)
         await p.paginate()
