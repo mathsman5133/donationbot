@@ -108,7 +108,7 @@ class HelpCommand(commands.HelpCommand):
     def get_command_signature(self, command):
         parent = command.full_parent_name
 
-        aliases = self.context.bot.get_cog('Aliases').get_aliases(command.full_parent_name)
+        aliases = self.context.bot.get_cog('\u200bAliases').get_aliases(command.full_parent_name)
         if aliases:
             if parent:
                 return f'{self.clean_prefix}{parent} or {self.clean_prefix}{aliases}'
