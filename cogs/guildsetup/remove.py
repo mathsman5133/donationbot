@@ -167,7 +167,7 @@ class Remove(commands.Cog):
         await self.do_board_remove(ctx, channel or ctx.channel, "trophy")
 
     async def do_board_remove(self, ctx, channel, type_):
-        config = await self.bot.utils.board_config(channel.id, type_)
+        config = await self.bot.utils.board_config(channel.id)
         if not config:
             return await ctx.send(f"I couldn't find a {type_}board in {channel.mention}.")
 
