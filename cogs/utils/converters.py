@@ -5,6 +5,9 @@ import re
 from datetime import datetime
 from discord.ext import commands
 
+from cogs.utils.checks import is_patron_pred
+
+
 tag_validator = re.compile("^#?[PYLQGRJCUV0289]+$")
 
 
@@ -51,7 +54,7 @@ class ClanConverter(commands.Converter):
         if argument in ['all', 'guild', 'server'] or not argument:
             return await ctx.get_clans()
         if isinstance(argument, coc.BasicClan):
-            return argument
+            return [argument]
 
         tag = coc.utils.correct_tag(argument)
         name = argument.strip().lower()
@@ -74,6 +77,34 @@ class ClanConverter(commands.Converter):
             raise commands.BadArgument(f'Clan name or tag `{argument}` not found')
 
         return matches
+
+
+class AddClanConverter(commands.Converter):
+    async def convert(self, ctx, argument):
+        clan = await ClanConverter().convert(ctx, argument)
+        clan = clan[0]
+
+        current_clans = await ctx.bot.get_clans(ctx.guild.id)
+        if len(current_clans) > 3 and not is_patron_pred(ctx):
+            raise commands.BadArgument(
+                'You must be a patron to have more than 4 clans claimed per server. '
+                'See more info with `+patron`, or join the support server for more help: '
+                f'{ctx.bot.support_invite}'
+            )
+
+        check = clan.description.strip().endswith('dt') or await ctx.bot.is_owner(ctx.author) or clan.tag in (n.tag for n in current_clans)
+
+        if not check:
+            raise commands.BadArgument(
+                'Please add the letters `dt` to the end of '
+                f'`{clan.name}`\'s clan description. Wait 5 minutes and try again.'
+                '\n\nThis is a security feature of the bot and should '
+                'be removed once the clan has been added.\n'
+                '<https://cdn.discordapp.com/attachments/'
+                '605352421929123851/634226338852503552/Screenshot_20191017-140812.png>'
+            )
+
+        return clan
 
 
 class DateConverter(commands.Converter):
@@ -185,3 +216,22 @@ class SortByConverter(commands.Converter):
         if argument not in choices:
             raise commands.BadArgument(f"That didn't look right! Try one of these: {', '.join(choices)}")
         return argument
+
+
+class ClanChannelComboConverter(commands.Converter):
+    async def convert(self, ctx, argument):
+        parts = argument.split(" ")
+
+        channel = None
+        clan = None
+
+        for n in parts:
+            try:
+                channel = await commands.TextChannelConverter().convert(ctx, n)
+            except commands.BadArgument:
+                try:
+                    clan = await AddClanConverter().convert(ctx, n)
+                except commands.BadArgument:
+                    pass
+
+        return channel, clan

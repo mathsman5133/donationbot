@@ -229,15 +229,15 @@ class BackgroundManagement(commands.Cog):
         query = "UPDATE boards SET in_event = True WHERE guild_id = $1"
         await self.bot.pool.execute(query, event.guild_id)
 
-        donationboard_config = await self.bot.utils.get_board_config(event.guild_id, 'donation')
-        if donationboard_config:
-            await self.bot.donationboard.update_board(donationboard_config.channel_id)
-            await self.new_event_message(event, event.guild_id, donationboard_config.channel_id, 'donation')
+        donationboard_configs = await self.bot.utils.get_board_configs(event.guild_id, 'donation')
+        for config in donationboard_configs:
+            await self.bot.donationboard.update_board(config.channel_id)
+            await self.new_event_message(event, event.guild_id, config.channel_id, 'donation')
 
-        trophyboard_config = await self.bot.utils.get_board_config(event.guild_id, 'trophy')
-        if trophyboard_config:
-            await self.bot.donationboard.update_board(trophyboard_config.channel_id)
-            await self.new_event_message(event, event.guild_id, trophyboard_config.channel_id, 'trophy')
+        trophyboard_configs = await self.bot.utils.get_board_configs(event.guild_id, 'trophy')
+        for config in trophyboard_configs:
+            await self.bot.donationboard.update_board(config.channel_id)
+            await self.new_event_message(event, event.guild_id, config.channel_id, 'trophy')
 
         await self.safe_send(channel, f'Boards have been updated. Enjoy your event! '
                                       f'It ends in {readable_time((event.finish - datetime.datetime.utcnow()).total_seconds())}.')
@@ -298,15 +298,15 @@ class BackgroundManagement(commands.Cog):
         query = "UPDATE boards SET in_event = False WHERE guild_id = $1;"
         await self.bot.pool.execute(query, event.guild_id)
 
-        donationboard_config = await self.bot.utils.get_board_config(event.guild_id, 'donation')
-        if donationboard_config:
-            await self.bot.donationboard.update_board(donationboard_config.channel_id)
-            await self.remove_event_msg(event.id, donationboard_config.channel, 'donation')
+        donationboard_configs = await self.bot.utils.get_board_configs(event.guild_id, 'donation')
+        for config in donationboard_configs:
+            await self.bot.donationboard.update_board(config.channel_id)
+            await self.remove_event_msg(event.id, config.channel, 'donation')
 
-        trophyboard_config = await self.bot.utils.get_board_config(event.guild_id, 'trophy')
-        if trophyboard_config:
-            await self.bot.donationboard.update_board(trophyboard_config.channel_id)
-            await self.remove_event_msg(event.id, trophyboard_config.channel, 'trophy')
+        trophyboard_configs = await self.bot.utils.get_board_configs(event.guild_id, 'trophy')
+        for config in trophyboard_configs:
+            await self.bot.donationboard.update_board(config.channel_id)
+            await self.remove_event_msg(event.id, config.channel, 'trophy')
 
         # todo: crunch some numbers.
         await self.safe_send(channel, f'Boards have been updated. I will cruch some more numbers and '

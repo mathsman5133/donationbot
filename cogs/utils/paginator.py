@@ -283,6 +283,20 @@ class FieldPages(Pages):
 
             self.embed.set_footer(text=text)
 
+
+class EmbedPages(Pages):
+    """Class for paginating a list of embed objects."""
+    def prepare_embed(self, entries, page, *, first=False):
+        self.embed = entries[0]
+
+        if self.maximum_pages > 1:
+            if self.show_entry_count:
+                text = f'Page {page}/{self.maximum_pages} ({len(self.entries)} entries)'
+            else:
+                text = f'Page {page}/{self.maximum_pages}'
+
+            self.embed.set_footer(text=text)
+
 class TextPages(Pages):
     """Uses a commands.Paginator internally to paginate some text."""
 

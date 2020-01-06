@@ -72,7 +72,7 @@ class DonationBoard(commands.Cog):
         query = """SELECT DISTINCT boards.channel_id
                     FROM boards
                     INNER JOIN clans
-                    ON clans.guild_id = boards.guild_id
+                    ON clans.channel_id = boards.channel_id
                     WHERE clans.clan_tag = ANY($1::TEXT[])
                 """
         fetch = await self.bot.pool.fetch(query, clan_tags)
@@ -130,13 +130,13 @@ class DonationBoard(commands.Cog):
             return
 
         query = "DELETE FROM messages WHERE channel_id = $1;"
-        query2 = """UPDATE boards
-                    SET channel_id = NULL,
-                        toggle     = False
-                    WHERE channel_id = $1;
-                """
-        await self.bot.pool.execute(query, channel.id)
-        await self.bot.pool.execute(query2, channel.id)
+        query2 = "DELETE FROM boards WHERE channel_id = $1"
+        query3 = "DELETE FROM logs WHERE channel_id = $1"
+        query4 = "DELETE FROM clans WHERE channel_id = $1"
+
+        for q in (query, query2, query3, query4):
+            await self.bot.pool.execute(q, channel.id)
+
         self.bot.utils.board_config.invalidate(self.bot.utils, channel.id)
 
     @commands.Cog.listener()
@@ -428,11 +428,11 @@ class DonationBoard(commands.Cog):
             return
 
         if config.in_event:
-            query = """SELECT DISTINCT clan_tag FROM clans WHERE guild_id=$1 AND in_event=$2"""
-            fetch = await self.bot.pool.fetch(query, config.guild_id, config.in_event)
+            query = """SELECT DISTINCT clan_tag FROM clans WHERE channel_id=$1 AND in_event=$2"""
+            fetch = await self.bot.pool.fetch(query, channel_id, config.in_event)
         else:
-            query = "SELECT DISTINCT clan_tag FROM clans WHERE guild_id=$1"
-            fetch = await self.bot.pool.fetch(query, config.guild_id)
+            query = "SELECT DISTINCT clan_tag FROM clans WHERE channel_id=$1"
+            fetch = await self.bot.pool.fetch(query, channel_id)
 
         clans = await self.bot.coc.get_clans((n[0] for n in fetch)).flatten()
 

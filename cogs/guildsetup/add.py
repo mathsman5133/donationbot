@@ -1,4 +1,5 @@
 import discord
+import discord
 import asyncio
 import typing
 import datetime
@@ -97,7 +98,7 @@ class Add(commands.Cog):
     @add.command(name='clan')
     @checks.manage_guild()
     @requires_config('event')
-    async def add_clan(self, ctx, clan_tag: str):
+    async def add_clan(self, ctx, channel: typing.Optional[discord.TextChannel], clan_tag: str):
         """Link a clan to your server.
         This will add all accounts in clan to the database, if not already added.
 
@@ -108,17 +109,22 @@ class Add(commands.Cog):
         `dt` should be removed once the command has been sucessfully run.
 
         **Parameters**
+        :key: A discord channel (#mention). If you don't have this, it will use the channel you're in
         :key: A clan tag
 
         **Format**
         :information_source: `+add clan #CLAN_TAG`
+        :information_source: `+add clan #CHANNEL #CLAN_TAG`
 
         **Example**
         :white_check_mark: `+add clan #P0LYJC8C`
+        :white_check_mark: `+add clan #trophyboard #P0LYJC8C`
 
         **Required Permissions**
         :warning: Manage Server
         """
+        channel = channel or ctx.channel
+
         current_clans = await self.bot.get_clans(ctx.guild.id)
         if len(current_clans) > 3 and not checks.is_patron_pred(ctx):
             return await ctx.send('You must be a patron to have more than 4 clans claimed per server. '
@@ -127,7 +133,7 @@ class Add(commands.Cog):
 
         clan_tag = coc.utils.correct_tag(clan_tag)
         query = "SELECT id FROM clans WHERE clan_tag = $1 AND channel_id = $2"
-        fetch = await ctx.db.fetch(query, clan_tag, ctx.channel.id)
+        fetch = await ctx.db.fetch(query, clan_tag, channel.id)
         if fetch:
             return await ctx.send('This clan has already been linked to the channel.')
 
@@ -152,7 +158,7 @@ class Add(commands.Cog):
                 in_event = await ctx.prompt('Would you like this clan to be in the current event?')
 
         query = "INSERT INTO clans (clan_tag, guild_id, channel_id, clan_name, in_event) VALUES ($1, $2, $3, $4, $5)"
-        await ctx.db.execute(query, clan.tag, ctx.guild.id, ctx.channel.id, clan.name, in_event)
+        await ctx.db.execute(query, clan.tag, ctx.guild.id, channel.id, clan.name, in_event)
 
         await ctx.send('Clan has been added. Please wait a moment while all players are added.')
 
@@ -162,6 +168,7 @@ class Add(commands.Cog):
                                      getattr(ctx.config, 'event_id', None))
 
         await ctx.send('Clan and all members have been added to the database (if not already added)')
+        ctx.channel = channel  # modify for `on_clan_claim` listener
         self.bot.dispatch('clan_claim', ctx, clan)
 
     @add.command(name='player')
@@ -400,15 +407,11 @@ class Add(commands.Cog):
         **Required Permissions**
         :warning: Manage Server
         """
-        if ctx.config is not None:
-            return await ctx.send(
-                f'This server already has a trophyboard (#{ctx.config.channel}). '
-                f'If this has been deleted, please use `+remove trophyboard`.')
-
         perms = ctx.channel.permissions_for(ctx.me)
         if not perms.manage_channels:
             return await ctx.send(
-                'I need manage channels permission to create the trophyboard!')
+                'I need manage channels permission to create the trophyboard!'
+            )
 
         overwrites = {
             ctx.me: discord.PermissionOverwrite(read_messages=True, send_messages=True,
@@ -448,17 +451,17 @@ class Add(commands.Cog):
                     ) 
                 VALUES ($1, $2, $3, $4, $5) 
                 ON CONFLICT (channel_id) 
-                DO UPDATE SET channel_id = $2, 
-                              toggle     = True;
-
+                DO UPDATE SET toggle = True;
                 """
         await ctx.db.execute(query, msg.id, ctx.guild.id, channel.id)
         await ctx.db.execute(query2, ctx.guild.id, channel.id, 'trophy', name.capitalize(), 'donations')
-        await ctx.send(f'Trophyboard channel created: {channel.mention}')
+        await ctx.send(
+            f'Trophyboard channel created: {channel.mention}.'
+            f'Please add clans to the trophyboard with `+add clan #{name} #CLANTAG`'
+        )
 
     @add.command(name='donationboard')
     @checks.manage_guild()
-    @requires_config('donationboard', invalidate=True)
     async def add_donationboard(self, ctx, *, name='donationboard'):
         """Creates a donationboard channel for donation updates.
 
@@ -471,12 +474,6 @@ class Add(commands.Cog):
         **Required Permissions**
         :warning: Manage Server
         """
-        if ctx.config:
-            if ctx.config.channel is not None:
-                return await ctx.send(
-                    f'This server already has a donationboard (#{ctx.config.channel}).'
-                    f'If this channel has been deleted, use `+remove donationboard`.')
-
         perms = ctx.channel.permissions_for(ctx.me)
         if not perms.manage_channels:
             return await ctx.send(
@@ -519,13 +516,15 @@ class Add(commands.Cog):
                     ) 
                    VALUES ($1, $2, $3, $4, $5) 
                    ON CONFLICT (channel_id) 
-                   DO UPDATE SET channel_id = $2, 
-                                 toggle     = True;
+                   DO UPDATE SET toggle = True;
                 """
 
         await ctx.db.execute(query, msg.id, ctx.guild.id, channel.id)
         await ctx.db.execute(query2, ctx.guild.id, channel.id, 'donation', name.capitalize(), 'donation')
-        await ctx.send(f'Donationboard channel created: {channel.mention}')
+        await ctx.send(
+            f'Donationboard channel created: {channel.mention}. '
+            f'Please add clans to the donationboard with `+add clan #{name} #CLANTAG`'
+        )
 
     @add.command(name='donationlog')
     @requires_config('donationlog', invalidate=True)
@@ -595,7 +594,7 @@ class Add(commands.Cog):
                 """
         await ctx.db.execute(query, ctx.guild.id, channel.id)
         return await ctx.send(f'{channel.mention} has been added as a donationlog channel. '
-                              'See all clans claimed with `+info log`. '
+                              'See all clans claimed with `+info clans`. '
                               'Please note that only clans claimed to this channel will appear in the log.')
 
     @add.command(name='trophylog')
@@ -667,7 +666,7 @@ class Add(commands.Cog):
                 """
         await ctx.db.execute(query, ctx.guild.id, channel.id)
         return await ctx.send(f'{channel.mention} has been added as a trophylog channel. '
-                              'See all clans claimed with `+info log`. '
+                              'See all clans claimed with `+info clans`. '
                               'Please note that only clans claimed to this channel will appear in the log.')
 
 

@@ -407,7 +407,7 @@ class Edit(commands.Cog):
         """
         if not ctx.config:
             return await ctx.send('Oops! It doesn\'t look like a donationlog is setup here. '
-                                  'Try `+info log` to find where the registered channels are!')
+                                  'Try `+info` to find where the registered channels are!')
 
         query = """UPDATE logs
                    SET interval = ($1 ||' minutes')::interval
@@ -433,7 +433,7 @@ class Edit(commands.Cog):
         """
         if not ctx.config:
             return await ctx.send('Oops! It doesn\'t look like a donationlog is setup here. '
-                                  'Try `+info log` to find where the registered channels are!')
+                                  'Try `+info` to find where the registered channels are!')
 
         query = """UPDATE logs
                    SET toggle = NOT toggle
@@ -475,7 +475,7 @@ class Edit(commands.Cog):
         """
         if not ctx.config:
             return await ctx.send('Oops! It doesn\'t look like a trophylog is setup here. '
-                                  'Try `+info log` to find where the registered channels are!')
+                                  'Try `+info` to find where the registered channels are!')
 
         query = """UPDATE logs
                    SET interval = ($1 ||' minutes')::interval
@@ -501,7 +501,7 @@ class Edit(commands.Cog):
         """
         if not ctx.config:
             return await ctx.send('Oops! It doesn\'t look like a trophylog is setup here. '
-                                  'Try `+info log` to find where the registered channels are!')
+                                  'Try `+info` to find where the registered channels are!')
 
         query = """UPDATE logs
                    SET toggle = NOT toggle

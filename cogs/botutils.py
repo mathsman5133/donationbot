@@ -2,7 +2,7 @@ import datetime
 import discord
 
 from discord.ext import commands
-from typing import Union
+from typing import Union, List
 
 from cogs.utils.cache import cache, Strategy
 from cogs.utils.db_objects import LogConfig, BoardConfig, SlimEventConfig
@@ -51,25 +51,31 @@ class Utils(commands.Cog):
         return BoardConfig(bot=self.bot, record=fetch)
 
     @cache()
-    async def get_board_channel(self, guild_id: int, board_type: str) -> Union[int, None]:
+    async def get_board_channels(self, guild_id: int, board_type: str) -> Union[List[int], None]:
         query = "SELECT channel_id FROM boards WHERE guild_id = $1 AND type = $2 AND toggle = True;"
-        fetch = await self.bot.pool.fetchrow(query, guild_id, board_type)
-        if fetch:
-            return fetch['channel_id']
+        fetch = await self.bot.pool.fetch(query, guild_id, board_type)
+        return [n["channel_id"] for n in fetch]
 
-    async def get_board_config(self, guild_id: int, board_type: str, invalidate=False):
+    async def get_board_configs(self, guild_id: int, board_type: str, invalidate=False) -> List[BoardConfig]:
         if invalidate:
-            self.get_board_channel.invalidate(self, guild_id, board_type)
+            self.get_board_channels.invalidate(self, guild_id, board_type)
 
-        channel_id = await self.get_board_channel(guild_id, board_type)
-        if not channel_id:
-            return
-        channel_id = int(channel_id)
+        channel_ids = await self.get_board_channels(guild_id, board_type)
 
-        if invalidate:
-            self.board_config.invalidate(self, channel_id)
+        if not channel_ids:
+            return list()
 
-        return await self.board_config(channel_id)
+        channel_ids = [int(n) for n in channel_ids]
+
+        configs = list()
+
+        for n in channel_ids:
+            if invalidate:
+                self.board_config.invalidate(self, n)
+
+            configs.append(await self.board_config(n))
+
+        return configs
 
     @cache()
     async def event_config(self, guild_id: int) -> Union[SlimEventConfig, None]:

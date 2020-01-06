@@ -4,6 +4,7 @@ import datetime
 import re
 import coc
 import logging
+import typing
 
 from discord.ext import commands
 from cogs.utils.checks import requires_config, manage_guild
@@ -30,24 +31,28 @@ class Remove(commands.Cog):
 
     @remove.command(name='clan')
     @checks.manage_guild()
-    async def remove_clan(self, ctx, clan_tag: str):
-        """Unlink a clan from your server.
+    async def remove_clan(self, ctx, channel: typing.Optional[discord.TextChannel], clan_tag: str):
+        """Unlink a clan from a channel.
 
         **Parameters**
+        :key: A discord channel (#mention). If not present, it will use the channel you're currently in.
         :key: A clan tag
 
         **Format**
         :information_source: `+remove clan #CLAN_TAG`
+        :information_source: `+remove clan #CHANNEL #CLAN_TAG`
 
         **Example**
         :white_check_mark: `+remove clan #P0LYJC8C`
+        :information_source: `+remove clan #donationlog #CLAN_TAG`
 
         **Required Permissions**
         :warning: Manage Server
         """
+        channel = channel or ctx.channel
         clan_tag = coc.utils.correct_tag(clan_tag)
-        query = "DELETE FROM clans WHERE clan_tag = $1 AND guild_id = $2"
-        await ctx.db.execute(query, clan_tag, ctx.guild.id)
+        query = "DELETE FROM clans WHERE clan_tag = $1 AND channel_id = $2"
+        await ctx.db.execute(query, clan_tag, channel.id)
 
         try:
             clan = await self.bot.coc.get_clan(clan_tag)
@@ -121,65 +126,63 @@ class Remove(commands.Cog):
 
     @remove.command(name='donationboard', aliases=['donation board', 'donboard'])
     @checks.manage_guild()
-    @requires_config('donationboard', invalidate=True, error=True)
-    async def remove_donationboard(self, ctx):
+    async def remove_donationboard(self, ctx, channel: discord.TextChannel = None):
         """Removes the guild donationboard.
+
+        **Parameters**
+        :key: A discord channel. If not present, it will use the channel you're currently in.
 
         **Format**
         :information_source: `+remove donationboard`
+        :information_source: `+remove donationboard #CHANNEL`
 
         **Example**
         :white_check_mark: `+remove donationboard`
+        :white_check_mark: `+remove donationboard #donationboard`
 
         **Required Permissions**
         :warning: Manage Server
         """
-        query = "SELECT message_id FROM messages WHERE channel_id=$1;"
-        messages = await self.bot.pool.fetch(query, ctx.config.channel_id)
-        for n in messages:
-            await self.bot.donationboard.safe_delete(n[0], delete_message=False)
-
-        try:
-            await ctx.config.channel.delete(reason=f'Command done by {ctx.author} ({ctx.author.id})')
-        except (discord.Forbidden, discord.HTTPException):
-            pass
-
-        query = """UPDATE boards 
-                   SET channel_id = NULL,
-                       toggle     = False 
-                   WHERE channel_id = $1
-                """
-        await self.bot.pool.execute(query, ctx.config.channel_id)
-        await ctx.send('Donationboard sucessfully removed.')
+        await self.do_board_remove(ctx, channel or ctx.channel, "donation")
 
     @remove.command(name='trophyboard', aliases=['trophy board', 'tropboard'])
-    @requires_config('trophyboard', invalidate=True, error=True)
     @manage_guild()
-    async def remove_trophyboard(self, ctx):
-        """Removes the guild trophyboard.
+    async def remove_trophyboard(self, ctx, channel: discord.TextChannel = None):
+        """Removes a trophyboard.
+
+        **Parameters**
+        :key: A discord channel. If not present, it will use the channel you're currently in.
 
         **Format**
         :information_source: `+remove trophyboard`
+        :information_source: `+remove trophyboard #CHANNEL`
 
         **Example**
         :white_check_mark: `+remove trophyboard`
+        :white_check_mark: `+remove trophyboard #trophyboard`
 
         **Required Permissions**
         :warning: Manage Server
         """
-        query = "SELECT message_id FROM messages WHERE channel_id=$1;"
-        messages = await self.bot.pool.fetch(query, ctx.config.channel_id)
-        for n in messages:
-            await self.bot.donationboard.safe_delete(n[0], delete_message=False)
+        await self.do_board_remove(ctx, channel or ctx.channel, "trophy")
+
+    async def do_board_remove(self, ctx, channel, type_):
+        config = await self.bot.utils.board_config(channel.id, type_)
+        if not config:
+            return await ctx.send(f"I couldn't find a {type_}board in {channel.mention}.")
+
+        query = "DELETE FROM messages WHERE channel_id = $1"
+        await ctx.db.execute(query, channel.id)
 
         try:
-            await ctx.config.channel.delete(reason=f'Command done by {ctx.author} ({ctx.author.id})')
+            await channel.delete(reason=f'Command done by {ctx.author} ({ctx.author.id})')
+            msg = f"{type_}board sucessfully removed."
         except (discord.Forbidden, discord.HTTPException):
-            pass
+            msg = "I don't have permissions to delete the channel. Please manually delete it."
 
-        query = "DELETE FROM boards WHERE channel_id = $1"
-        await self.bot.pool.execute(query, ctx.config.channel_id)
-        await ctx.send('Trophyboard sucessfully removed.')
+        query = """DELETE FROM boards WHERE channel_id = $1"""
+        await self.bot.pool.execute(query, channel.channel_id)
+        await ctx.send(msg)
 
     @remove.command(name='donationlog')
     @requires_config('donationlog', invalidate=True)

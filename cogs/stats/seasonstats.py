@@ -23,9 +23,11 @@ class SeasonStats(commands.Cog):
 
     @cache(strategy=Strategy.lru)
     async def get_board_fmt(self, guild_id, season_id, board_type):
-        board_config = await self.bot.utils.get_board_config(guild_id, board_type)
+        board_config = await self.bot.utils.get_board_configs(guild_id, board_type)
         if not board_config:
             board_config = SlimDummyBoardConfig(board_type, 2, f"{board_type.capitalize()}Board", None, 'donations' if board_type == "donation" else "trophies")
+        else:
+            board_config = board_config[0]
 
         clans = await self.bot.get_clans(guild_id)
 

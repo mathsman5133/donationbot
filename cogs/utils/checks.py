@@ -48,12 +48,17 @@ async def before_invoke(ctx):
 
     invalidate = getattr(ctx, 'invalidate', False)
     error = getattr(ctx, 'error_without_config', False)
+    channel = getattr(ctx, 'custom_channel', ctx.channel)
 
     if config_type == 'donationboard':
-        ctx.config = await ctx.bot.utils.get_board_config(ctx.guild.id, 'donation', invalidate)
+        if invalidate:
+            ctx.bot.utils.board_config.invalidate(ctx.bot.utils, channel.id, 'donation')
+        ctx.config = await ctx.bot.utils.board_config(channel.id, 'donation')
 
     elif config_type == 'trophyboard':
-        ctx.config = await ctx.bot.utils.get_board_config(ctx.guild.id, 'trophy', invalidate)
+        if invalidate:
+            ctx.bot.utils.board_config.invalidate(ctx.bot.utils, channel.id, 'trophy')
+        ctx.config = await ctx.bot.utils.board_config(channel.id, 'trophy')
 
     elif config_type == 'event':
         if invalidate:
@@ -62,13 +67,11 @@ async def before_invoke(ctx):
         ctx.config = await ctx.bot.utils.event_config(ctx.guild.id)
 
     elif config_type == 'donationlog':
-        channel = getattr(ctx, 'custom_channel', ctx.channel)
         if invalidate:
             ctx.bot.utils.log_config.invalidate(ctx.bot.utils, channel.id, 'donation')
         ctx.config = await ctx.bot.utils.log_config(channel.id, 'donation')
 
     elif config_type == 'trophylog':
-        channel = getattr(ctx, 'custom_channel', ctx.channel)
         if invalidate:
             ctx.bot.utils.log_config.invalidate(ctx.bot.utils, channel.id, 'trophy')
         ctx.config = await ctx.bot.utils.log_config(channel.id, 'trophy')
