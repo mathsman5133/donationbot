@@ -9,7 +9,7 @@ from cogs.utils.checks import requires_config, manage_guild
 from cogs.utils.converters import PlayerConverter, ClanChannelComboConverter
 
 
-class Aliases(commands.Cog):
+class Aliases(commands.Cog, name='\u200bAliases'):
     def __init__(self, bot):
         self.bot = bot
 

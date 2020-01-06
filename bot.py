@@ -60,8 +60,10 @@ async def get_pref(bot, message):
     if not message.guild:
         # message is a DM
         return "+"
-    prefix = bot.prefixes.get(message.guild_id, "+")
-    return commands.when_mentioned_or(prefix)
+
+    prefix = bot.prefixes.get(message.guild.id, "+")
+
+    return commands.when_mentioned_or(prefix)(bot, message)
 
 
 class DonationBot(commands.Bot):
@@ -71,6 +73,8 @@ class DonationBot(commands.Bot):
                          fetch_offline_members=True)
 
         self.categories = {}
+
+        self.prefixes = dict()
 
         self.colour = discord.Colour.blurple()
 
@@ -189,6 +193,9 @@ class DonationBot(commands.Bot):
         ctx = await self.get_context(message, cls=context.Context)
 
         if ctx.command is None:
+            if self.user in message.mentions:
+                await ctx.send(f"My prefix for this guild is {self.prefixes.get(message.guild.id, '+')}")
+
             return  # if there's no command invoked return
 
         async with ctx.acquire():
@@ -197,7 +204,7 @@ class DonationBot(commands.Bot):
     async def on_ready(self):
         await self.utils.update_clan_tags()
         await self.change_presence(activity=discord.Game('+help for commands'))
-        self.prefixes =  await self.init_prefixes()
+        await self.init_prefixes()
 
     async def on_resumed(self):
         await self.change_presence(activity=discord.Game('+help for commands'))
@@ -220,7 +227,7 @@ class DonationBot(commands.Bot):
     async def init_prefixes(self):
         query = "SELECT guild_id, prefix FROM guilds"
         fetch = await self.pool.fetch(query)
-        self.prefixes = {k: v for (k, v) in fetch}
+        self.prefixes = {n["guild_id"]: n["prefix"] for n in fetch}
 
 
 if __name__ == '__main__':
@@ -232,7 +239,6 @@ if __name__ == '__main__':
 
         bot = DonationBot()
         bot.pool = pool  # add db as attribute
-        bot.prefixes = {}
         setup_logging(bot)
         bot.run(creds.bot_token)  # run bot
 
