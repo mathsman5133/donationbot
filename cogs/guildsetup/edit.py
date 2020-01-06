@@ -801,13 +801,13 @@ class Edit(commands.Cog):
                 if ctx.config:
                     await ctx.db.execute(query4, [m.tag for m in clan.members], ctx.config.id)
 
-            dboard_channel = await self.bot.utils.get_board_channel(ctx.guild.id, 'donation')
-            if dboard_channel:
-                await self.bot.donationboard.update_board(int(dboard_channel))
+            dboard_channels = await self.bot.utils.get_board_channels(ctx.guild.id, 'donation')
+            for id_ in dboard_channels:
+                await self.bot.donationboard.update_board(int(id_))
 
-            tboard_channel = await self.bot.utils.get_board_channel(ctx.guild.id, 'trophy')
-            if tboard_channel:
-                await self.bot.donationboard.update_board(int(tboard_channel))
+            tboard_channels = await self.bot.utils.get_board_channels(ctx.guild.id, 'trophy')
+            for id_ in tboard_channels:
+                await self.bot.donationboard.update_board(int(id_))
 
             await ctx.send('All done - I\'ve force updated the boards too!')
 
