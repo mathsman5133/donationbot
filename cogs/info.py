@@ -233,7 +233,7 @@ class Info(commands.Cog, name='\u200bInfo'):
     def cog_unload(self):
         self.dbl_task.cancel()
 
-    @tasks.loop()
+    @tasks.loop(hours=24)
     async def dbl_task(self):
         log.info('Attempting to post server count')
         try:
