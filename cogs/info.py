@@ -226,7 +226,7 @@ class Info(commands.Cog, name='\u200bInfo'):
         bot.front_help_page_false = []
 
         self.dbl_client = dbl.DBLClient(self.bot, self.bot.dbl_token)
-        #self.dbl_task.start()
+        self.dbl_task.start()
 
         self.process = psutil.Process()
 
@@ -270,23 +270,23 @@ class Info(commands.Cog, name='\u200bInfo'):
 
     @property
     def welcome_message(self):
-        fmt = '**Some handy hints:**\n' \
-            f'• My prefix is `+`, or {self.bot.user.mention}\n' \
-              '• All commands have super-detailed help commands; please use them!\n' \
-              '• Usage: `+help command_name`\n\n' \
-              'A few frequently used ones to get started:\n' \
-              '• `+help add` (check out the subcommands)\n' \
-              '• `+help info` (check out the subcommands)\n\n' \
-              '• There are lots of how-to\'s and other ' \
-              'support on the [support server](https://discord.gg/ePt8y4V) if you get stuck.\n' \
-            f'• Please share the bot with your friends! [Bot Invite]({self.invite_link})\n' \
-              '• Please support us on [Patreon](https://www.patreon.com/donationtracker)!\n' \
-              '• Have a good day!'
+        fmt = f"""**Some handy hints:**\n' \
+                 • My prefix is `+`, or {self.bot.user.mention}\n
+                 • All commands have super-detailed help commands; please use them!\n
+                 • Usage: `+help command_name`, for example, try `+help donationlog`!\n\n
+                 A few frequently used commands to get started:\n
+                 • `+help add` (check out the subcommands)\n
+                 • `+add donationlog #channel #clantag` will setup a donationlog for your clan.\n
+                 • `+add donationboard` will setup a donationboard for your server.
+                 • `+info` will show you info about boards and logs on the server.\n\n
+                 • There are lots of how-to\'s and other support on the [support server](https://discord.gg/ePt8y4V) if you get stuck.\n
+                 • Please share the bot with your friends! [Bot Invite]({self.invite_link})\n
+                 • Please support us on [Patreon](https://www.patreon.com/donationtracker)!\n
+                 • Have a good day!
+               """
         e = discord.Embed(colour=self.bot.colour,
                           description=fmt)
-        e.set_author(name='Hello! I\'m the Donation Tracker!',
-                     icon_url=self.bot.user.avatar_url
-                     )
+        e.set_author(name='Hello! I\'m the Donation Tracker!', icon_url=self.bot.user.avatar_url)
         return e
 
     @commands.command(aliases=['join'])

@@ -454,7 +454,7 @@ class Add(commands.Cog):
                 DO UPDATE SET toggle = True;
                 """
         await ctx.db.execute(query, msg.id, ctx.guild.id, channel.id)
-        await ctx.db.execute(query2, ctx.guild.id, channel.id, 'trophy', name.capitalize(), 'donations')
+        await ctx.db.execute(query2, ctx.guild.id, channel.id, 'trophy', name.capitalize(), 'trophies')
         await ctx.send(
             f'Trophyboard channel created: {channel.mention}.'
             f'Please add clans to the trophyboard with `+add clan #{name} #CLANTAG`'
