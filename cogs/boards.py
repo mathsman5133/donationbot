@@ -97,7 +97,7 @@ class DonationBoard(commands.Cog):
                 """
         fetch_top_players = await self.bot.pool.fetch(query, await self.bot.seasonconfig.get_season_id())
 
-        players = await self.bot.coc.get_players((n[0] for n in fetch_top_players))
+        players = await self.bot.coc.get_players((n[0] for n in fetch_top_players)).flatten()
 
         top_players = {n.tag: n for n in players if n.tag in set(x['player_tag'] for x in fetch_top_players)}
 
