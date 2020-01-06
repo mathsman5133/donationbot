@@ -7,7 +7,7 @@ import discord
 import itertools
 
 from discord.ext import commands, tasks
-from cogs.utils.paginator import Pages
+from cogs.utils.paginator import Pages, EmbedPages
 from cogs.utils.formatters import CLYTable, readable_time, TabularData
 from cogs.utils.emoji_lookup import misc
 from cogs.utils.checks import requires_config
@@ -226,14 +226,14 @@ class Info(commands.Cog, name='\u200bInfo'):
         bot.front_help_page_false = []
 
         self.dbl_client = dbl.DBLClient(self.bot, self.bot.dbl_token)
-        self.dbl_task.start()
+        #self.dbl_task.start()
 
         self.process = psutil.Process()
 
     def cog_unload(self):
         self.dbl_task.cancel()
 
-    @tasks.loop(time=time(hour=0))
+    @tasks.loop()
     async def dbl_task(self):
         log.info('Attempting to post server count')
         try:
@@ -382,13 +382,145 @@ class Info(commands.Cog, name='\u200bInfo'):
         embed.add_field(name='Events Waiting', value=f'Total: {len(event_tasks)}', inline=False)
         await ctx.send(embed=embed)
 
-    @commands.group(invoke_without_subcommand=True)
-    async def info(self, ctx):
-        """[Group] Allows the user to get info about a variety of the bot's features."""
-        if ctx.invoked_subcommand is None:
-            await ctx.send_help(ctx.command)
+    @commands.group(invoke_without_command=True)
+    async def info(self, ctx, channel: discord.TextChannel = None):
+        """[Group] Allows the user to get info about a variety of the bot's features.
 
-    @info.command(name='log')
+        Use this command to get info about all clans, boards and logs for the server.
+
+        **Parameters**
+        :key: A discord channel (#mention). If you don't have this, it will get info for all the channels in the server.
+
+        **Format**
+        :information_source: `+info`
+        :information_source: `+info #CHANNEL`
+
+        **Example**
+        :white_check_mark: `+info`
+        :white_check_mark: `+info #donationlog`
+        """
+        if ctx.invoked_subcommand:
+            return
+
+        channels = {channel.id} if channel else set()
+
+        if not channels:
+            query = "SELECT channel_id FROM logs WHERE guild_id = $1"
+            log_channels = await ctx.db.fetch(query, ctx.guild.id)
+            channels.update({n["channel_id"] for n in log_channels})
+
+            query = "SELECT channel_id FROM boards WHERE guild_id = $1"
+            board_channels = await ctx.db.fetch(query, ctx.guild.id)
+            channels.update({n["channel_id"] for n in board_channels})
+
+        embeds = []
+
+        for channel_id in channels:
+            channel = self.bot.get_channel(channel_id)
+
+            embed = discord.Embed(colour=self.bot.colour, description="")
+            embed.set_author(name=f"Info for #{channel}", icon_url=ctx.guild.me.avatar_url)
+
+            donationlog = await self.bot.utils.log_config(channel.id, "donation")
+            if donationlog:
+                embed.description += f"**DonationLog**\n" \
+                                     f":notepad_spiral: {channel.mention}\n" \
+                                     f"{misc['online'] + 'Enabled' if donationlog.toggle else misc['offline'] + 'Disabled'}\n" \
+                                     f":hourglass: Wait time of {readable_time(donationlog.seconds)}\n\n"
+
+            trophylog = await self.bot.utils.log_config(channel.id, "trophy")
+            if trophylog:
+                embed.description += f"**TrophyLog**\n" \
+                                     f":notepad_spiral: {channel.mention}\n" \
+                                     f"{misc['online'] + 'Enabled' if trophylog.toggle else misc['offline'] + 'Disabled'}\n" \
+                                     f":hourglass: Wait time of {readable_time(trophylog.seconds)}\n\n"
+
+            board = await self.bot.utils.board_config(channel.id)
+            if board:
+                embed.description += f"**{board.type.capitalize()}Board**\n" \
+                                     f":notepad_spiral: {channel.mention}\n" \
+                                     f":paperclip: [Icon URL]({board.icon_url})\n" \
+                                     f":rosette: Render Type: *#{board.render}*\n" \
+                                     f":chart_with_upwards_trend: Sorted by: *{board.sort_by}*\n" \
+                                     f":notebook_with_decorative_cover: Title: *{board.title}*\n\n"
+
+            query = "SELECT clan_tag FROM clans WHERE channel_id = $1"
+            clan_tags = await ctx.db.fetch(query, channel.id)
+            if clan_tags:
+                embed.description += "**Clans**\n"
+            async for clan in self.bot.coc.get_clans((n["clan_tag"] for n in clan_tags)):
+                embed.description += f":notepad_spiral: {clan} ({clan.tag})\n" \
+                                     f":paperclip: [In-Game Link]({clan.share_link})\n" \
+                                     f":paperclips: [Icon URL]({clan.badge.url})\n" \
+                                     f":person_bowing: Members: {clan.member_count}/50\n\n"
+
+            if embed.description:
+                embeds.append(embed)
+
+        p = EmbedPages(ctx, entries=embeds, per_page=1)
+        await p.paginate()
+
+    @info.command(name="clan", aliases=["clans"])
+    async def info_clans(self, ctx):
+        """Gets info for all the clans in the server.
+
+        **Format**
+        :information_source: `+info clan`
+
+        **Example**
+        :white_check_mark: `+info clan`
+        """
+        clans = await ctx.get_clans()
+        embeds = []
+        for clan in clans:
+            embed = discord.Embed(description="")
+            embed.set_author(name=f"{clan} ({clan.tag})", icon_url=clan.badge.medium)
+
+            query = "SELECT channel_id FROM clans WHERE clan_tag = $1 AND guild_id = $2"
+            channel_ids = [n["channel_id"] for n in await ctx.db.fetch(query, clan.tag, ctx.guild.id)]
+
+            for channel_id in channel_ids:
+                log_config = await self.bot.utils.log_config(channel_id, "donation")
+                channel = self.bot.get_channel(channel_id)
+                if not (log_config and channel):
+                    continue
+
+                embed.description += f"**DonationLog**\n" \
+                                     f":notepad_spiral: {channel.mention}\n" \
+                                     f"{misc['online'] + 'Enabled' if log_config.toggle else misc['offline'] + 'Disabled'}\n" \
+                                     f":hourglass: Wait time of {readable_time(log_config.seconds)}\n\n"
+
+            for channel_id in channel_ids:
+                log_config = await self.bot.utils.log_config(channel_id, "trophy")
+                channel = self.bot.get_channel(channel_id)
+
+                if not (log_config and channel):
+                    continue
+
+                embed.description += f"**TrophyLog**\n" \
+                                     f":notepad_spiral: {channel.mention}\n" \
+                                     f"{misc['online'] + 'Enabled' if log_config.toggle else misc['offline'] + 'Disabled'}\n" \
+                                     f":hourglass: Wait time of {readable_time(log_config.seconds)}\n\n"
+
+            for channel_id in channel_ids:
+                board_config = await self.bot.utils.board_config(channel_id)
+                channel = self.bot.get_channel(channel_id)
+                if not (board_config and channel):
+                    continue
+
+                embed.description += f"**{board_config.type.capitalize()}Board**\n" \
+                                     f":notepad_spiral: {channel.mention}\n" \
+                                     f":paperclip: [Icon URL]({board_config.icon_url})\n" \
+                                     f":rosette: Render Type: *#{board_config.render}*\n" \
+                                     f":chart_with_upwards_trend: Sorted by: *{board_config.sort_by}*\n" \
+                                     f":notebook_with_decorative_cover: Title: *{board_config.title}*\n\n"
+
+            embeds.append(embed)
+
+        p = EmbedPages(ctx, entries=embeds, per_page=1)
+        await p.paginate()
+
+    @info.command(name='log', disabled=True, hidden=True)
     async def info_log(self, ctx):
         """Get information about donation log channels for the guild.
 
@@ -434,7 +566,7 @@ class Info(commands.Cog, name='\u200bInfo'):
 
         await ctx.send(embed=e)
 
-    @info.command(name='donationboard')
+    @info.command(name='donationboard', disabled=True, hidden=True)
     @requires_config('donationboard', error=True)
     async def info_donationboard(self, ctx):
         """Gives you info about guild's donationboard.
@@ -479,7 +611,7 @@ class Info(commands.Cog, name='\u200bInfo'):
 
         await ctx.send(embed=e)
 
-    @info.command(name='trophyboard')
+    @info.command(name='trophyboard', disabled=True, hidden=True)
     @requires_config('trophyboard', error=True)
     async def info_trophyboard(self, ctx):
         """Gives you info about guild's trophyboard.
@@ -612,7 +744,6 @@ class Info(commands.Cog, name='\u200bInfo'):
 
     async def say_permissions(self, ctx, member, channel):
         permissions = channel.permissions_for(member)
-        e = discord.Embed(colour=member.colour, title=f'Permissions for Donation Tracker in #{channel}')
         allowed, denied = [], []
         for name, value in permissions:
             name = name.replace('_', ' ').replace('guild', 'server').title()
@@ -621,8 +752,11 @@ class Info(commands.Cog, name='\u200bInfo'):
             else:
                 denied.append(name)
 
-        e.add_field(name='Allowed', value=f"\n".join(f"{misc['online']}{n}" for n in allowed))
-        e.add_field(name='Denied', value=f"\n".join(f"{misc['offline']}{n}" for n in denied))
+        e = discord.Embed(colour=member.colour, title=f'Permissions for Donation Tracker in #{channel}')
+        e.description = "**Allowed**" + "\n".join(f"{misc['online']}{n}" for n in allowed)
+        await ctx.send(embed=e)
+
+        e.description = "Denied" + f"\n".join(f"{misc['offline']}{n}" for n in denied)
         await ctx.send(embed=e)
 
     @commands.command(hidden=True, aliases=['perms'])
