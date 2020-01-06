@@ -95,7 +95,7 @@ class DonationBoard(commands.Cog):
                    ORDER BY donations DESC NULLS LAST
                    LIMIT 100;
                 """
-        fetch_top_players = await self.bot.pool.fetch(query)
+        fetch_top_players = await self.bot.pool.fetch(query, await self.bot.seasonconfig.get_season_id())
 
         players = await self.bot.coc.get_players((n[0] for n in fetch_top_players))
 
