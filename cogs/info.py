@@ -476,6 +476,10 @@ class Info(commands.Cog, name='\u200bInfo'):
         :white_check_mark: `+info clan`
         """
         clans = await ctx.get_clans()
+
+        if not clans:
+            return await ctx.send("Please see how to add a clan with `+help add clan`")
+
         embeds = []
         for clan in clans:
             embed = discord.Embed(description="")
