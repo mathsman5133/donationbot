@@ -393,8 +393,7 @@ class Add(commands.Cog):
         self.bot.dispatch('event_register')
 
     @add.command(name="trophyboard")
-    @checks.manage_guild()
-    @requires_config('trophyboard', invalidate=True)
+    @manage_guild()
     async def add_trophyboard(self, ctx, *, name="trophyboard"):
         """Creates a trophyboard channel for trophy updates.
 
@@ -461,7 +460,7 @@ class Add(commands.Cog):
         )
 
     @add.command(name='donationboard')
-    @checks.manage_guild()
+    @manage_guild()
     async def add_donationboard(self, ctx, *, name='donationboard'):
         """Creates a donationboard channel for donation updates.
 

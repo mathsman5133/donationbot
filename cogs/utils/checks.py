@@ -52,13 +52,13 @@ async def before_invoke(ctx):
 
     if config_type == 'donationboard':
         if invalidate:
-            ctx.bot.utils.board_config.invalidate(ctx.bot.utils, channel.id, 'donation')
-        ctx.config = await ctx.bot.utils.board_config(channel.id, 'donation')
+            ctx.bot.utils.board_config.invalidate(ctx.bot.utils, channel.id)
+        ctx.config = await ctx.bot.utils.board_config(channel.id)
 
     elif config_type == 'trophyboard':
         if invalidate:
-            ctx.bot.utils.board_config.invalidate(ctx.bot.utils, channel.id, 'trophy')
-        ctx.config = await ctx.bot.utils.board_config(channel.id, 'trophy')
+            ctx.bot.utils.board_config.invalidate(ctx.bot.utils, channel.id)
+        ctx.config = await ctx.bot.utils.board_config(channel.id)
 
     elif config_type == 'event':
         if invalidate:
