@@ -194,6 +194,8 @@ class HelpCommand(commands.HelpCommand):
             page_or_embed.description = f'{command.description}\n\n{command.help}'
         else:
             page_or_embed.description = command.help or 'No help found...'
+        if isinstance(page_or_embed, discord.Embed):
+            print(page_or_embed.to_dict())
 
     async def send_command_help(self, command):
         # No pagination necessary for a single command.
