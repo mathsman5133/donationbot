@@ -122,11 +122,11 @@ def cache(maxsize=128, strategy=Strategy.lru, ignore_kwargs=False):
                     continue
 
         wrap = wrapper
-        wrap.invalidate = _invalidate
-        wrap.cache = _internal_cache
-        wrap.get_key = lambda *args, **kwargs: _make_key(args, kwargs)
-        wrap.get_stats = _stats
-        wrap.invalidate_containing = _invalidate_containing
+        func.invalidate = _invalidate
+        func.cache = _internal_cache
+        func.get_key = lambda *args, **kwargs: _make_key(args, kwargs)
+        func.get_stats = _stats
+        func.invalidate_containing = _invalidate_containing
         return func
 
         return wrap
