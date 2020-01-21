@@ -127,6 +127,8 @@ def cache(maxsize=128, strategy=Strategy.lru, ignore_kwargs=False):
         wrap.get_key = lambda *args, **kwargs: _make_key(args, kwargs)
         wrap.get_stats = _stats
         wrap.invalidate_containing = _invalidate_containing
+        return func
+
         return wrap
 
     return decorator
