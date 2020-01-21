@@ -245,6 +245,12 @@ class BackgroundManagement(commands.Cog):
 
     async def new_event_message(self, event, guild_id, channel_id, board_type):
         event_channel = self.bot.get_channel(event.channel_id)
+        if not event_channel:
+            log.error(f'Tried to update {board_type}board for event {event.event_name} '
+                      f'({event.id}) but couldn\'t find the channel. '
+                      f'Please let them know! Guild ID {guild_id}, Channel ID {channel_id}')
+            return
+
         if board_type == 'donation':
             colour = discord.Colour.gold()
         else:
