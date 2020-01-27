@@ -121,11 +121,6 @@ class Utils(commands.Cog):
         except Exception:
             return None
 
-    async def update_clan_tags(self):
-        query = "SELECT DISTINCT clan_tag FROM clans"
-        fetch = await self.bot.pool.fetch(query)
-        self.bot.coc._clan_updates = [n[0] for n in fetch]
-
     async def channel_log(self, channel_id, log_type, message, colour=None, embed=True):
         config = await self.log_config(channel_id, log_type)
         if not config.channel or not config.toggle:

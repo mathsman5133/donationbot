@@ -43,7 +43,7 @@ class DonationBoard(commands.Cog):
                     INNER JOIN clans
                     ON clans.channel_id = boards.channel_id
                     INNER JOIN players ON clans.clan_tag = players.clan_tag
-                    WHERE players.last_updated - now() < make_interval(mins := 5)
+                    WHERE now() - players.last_updated < '5 min':: interval
                 """
         fetch = await self.bot.pool.fetch(query)
 

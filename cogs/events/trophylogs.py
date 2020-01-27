@@ -20,8 +20,6 @@ class TrophyLogs(commands.Cog):
         self.bot = bot
         self._batch_data = []
         self._batch_lock = asyncio.Lock(loop=bot.loop)
-        self.batch_insert_loop.add_exception_type(asyncpg.PostgresConnectionError)
-        self.batch_insert_loop.start()
         self.report_task.add_exception_type(asyncpg.PostgresConnectionError)
         self.report_task.start()
 
@@ -30,10 +28,6 @@ class TrophyLogs(commands.Cog):
 
     def cog_unload(self):
         self.report_task.cancel()
-        self.batch_insert_loop.cancel()
-        self.bot.coc.remove_events(
-            self.on_clan_member_trophies_change
-        )
         for k, v in self._tasks:
             v.cancel()
 

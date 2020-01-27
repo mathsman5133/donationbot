@@ -14,7 +14,7 @@ class Syncer(commands.Cog):
     @tasks.loop()
     async def syncer(self):
         await self.bot.wait_until_ready()
-        query = "SELECT DISTINCT clan_tag FROM clans WHERE clans.guild_id = ANY($1::TEXT[])"
+        query = "SELECT DISTINCT clan_tag FROM clans WHERE clans.guild_id = ANY($1::BIGINT[])"
         fetch = await self.bot.pool.fetch(query, [g.id for g in self.bot.guilds])
 
         clans = await self.bot.coc.get_clans((n[0] for n in fetch), cache=False, update_cache=False).flatten()
