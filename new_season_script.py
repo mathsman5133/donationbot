@@ -125,4 +125,4 @@ async def new_season_pull(number, season_id):
 #     try:
 #         loop.run_until_complete(coc.get_clan('12345'))
 #     except: pass
-loop.run_until_complete(new_season_pull(sys.argv[0], sys.argv[1]))
+loop.run_until_complete(new_season_pull(int(sys.argv[0]), int(sys.argv[1])))
