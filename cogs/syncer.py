@@ -11,7 +11,7 @@ class Syncer(commands.Cog):
         self.syncer.cancel()
         self.add_new_players.cancel()
 
-    @tasks.loop()
+    @tasks.loop(minutes=1)
     async def syncer(self):
         await self.bot.wait_until_ready()
         query = "SELECT DISTINCT clan_tag FROM clans WHERE clans.guild_id = ANY($1::BIGINT[])"
