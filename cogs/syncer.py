@@ -1,6 +1,8 @@
 import time
-
 import logging
+
+import asyncpg
+import coc
 
 from discord.ext import commands, tasks
 
@@ -12,6 +14,8 @@ class Syncer(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.syncer.start()
+        self.syncer.add_exception_type(asyncpg.PostgresConnectionError, coc.HTTPException)
+
         self.add_new_players.start()
 
     def cog_unload(self):
@@ -107,6 +111,7 @@ class Syncer(commands.Cog):
                 """
         r = await self.bot.pool.execute(query, players)
         log.info(f"Update event players: {r}")
+        log.info(f"Sync timer: {(time.perf_counter() - self.last_update_start) * 1000}ms")
 
     @syncer.before_loop
     async def sync_before_invoke(self):
