@@ -28,7 +28,7 @@ class Syncer(commands.Cog):
                         "tag": n.tag,
                         "name": n.name,
                         "donations": n.donations,
-                        "received": n.reveived,
+                        "received": n.received,
                         "trophies": n.trophies,
                         "versus_trophies": n.versus_trophies,
                         "level": n.exp_level,
