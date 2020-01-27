@@ -108,11 +108,11 @@ class Syncer(commands.Cog):
         r = await self.bot.pool.execute(query, players)
         log.info(f"Update event players: {r}")
 
-    @syncer.before_invoke
+    @syncer.before_loop
     async def sync_before_invoke(self):
         self.last_update_start = time.perf_counter()
 
-    @syncer.after_invoke
+    @syncer.after_loop
     async def sync_after_invoke(self):
         log.info(f"Sync timer: {(time.perf_counter() - self.last_update_start) * 1000}ms")
 
@@ -194,11 +194,11 @@ class Syncer(commands.Cog):
             )
         log.info(f"Run add event players, {len(fetch)}")
 
-    @add_new_players.before_invoke
+    @add_new_players.before_loop
     async def new_p_before_invoke(self):
         self.last_new_player_update_start = time.perf_counter()
 
-    @add_new_players.after_invoke
+    @add_new_players.after_loop
     async def new_p_after_invoke(self):
         log.info(f"New Player timer: {(time.perf_counter() - self.last_new_player_update_start) * 1000}ms")
 
