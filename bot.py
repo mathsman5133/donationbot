@@ -210,7 +210,6 @@ class DonationBot(commands.Bot):
             await self.invoke(ctx)
 
     async def on_ready(self):
-        await self.utils.update_clan_tags()
         await self.change_presence(activity=discord.Game('+help for commands'))
         await self.init_prefixes()
 

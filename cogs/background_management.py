@@ -18,7 +18,7 @@ class BackgroundManagement(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.next_event_starts.start()
-        self.event_player_updater.start()
+        #self.event_player_updater.start()
 
     def cog_unload(self):
         self.next_event_starts.cancel()
@@ -425,7 +425,6 @@ class BackgroundManagement(commands.Cog):
     async def on_clan_claim(self, ctx, clan):
         e = discord.Embed(colour=discord.Colour.blue(), title='Clan Claimed')
         await self.send_claim_clan_stats(e, clan, ctx.guild)
-        await self.bot.utils.update_clan_tags()
         await self.bot.donationlogs.sync_temp_event_tasks()
         await self.bot.trophylogs.sync_temp_event_tasks()
 
@@ -433,7 +432,6 @@ class BackgroundManagement(commands.Cog):
     async def on_clan_unclaim(self, ctx, clan):
         e = discord.Embed(colour=discord.Colour.dark_blue(), title='Clan Unclaimed')
         await self.send_claim_clan_stats(e, clan, ctx.guild)
-        await self.bot.utils.update_clan_tags()
         await self.bot.donationlogs.sync_temp_event_tasks()
         await self.bot.trophylogs.sync_temp_event_tasks()
 
