@@ -36,7 +36,7 @@ class DonationLogs(commands.Cog):
         start = time.perf_counter()
         async with self._batch_lock:
             await self.bulk_report()
-        log.debug('Time taken: %s ms', (time.perf_counter() - start)*1000)
+        log.info('Time taken: %s ms', (time.perf_counter() - start)*1000)
 
     async def sync_temp_event_tasks(self):
         query = """SELECT channel_id 
@@ -73,7 +73,7 @@ class DonationLogs(commands.Cog):
     async def add_temp_events(self, channel_id, fmt):
         query = "INSERT INTO tempevents (channel_id, fmt, type) VALUES ($1, $2, $3)"
         await self.bot.pool.execute(query, channel_id, fmt, EVENTS_TABLE_TYPE)
-        log.debug(f'Added a message for channel id {channel_id} to tempevents db')
+        log.info(f'Added a message for channel id {channel_id} to tempevents db')
 
     async def create_temp_event_task(self, channel_id):
         try:
@@ -91,7 +91,7 @@ class DonationLogs(commands.Cog):
                 for n in fetch:
                     asyncio.ensure_future(self.bot.utils.channel_log(channel_id, EVENTS_TABLE_TYPE, n[0], embed=False))
 
-                log.debug(f'Dispatching {len(fetch)} logs after sleeping for {config.seconds} '
+                log.info(f'Dispatching {len(fetch)} logs after sleeping for {config.seconds} '
                           f'sec to channel {config.channel} ({config.channel_id})')
 
         except asyncio.CancelledError:
@@ -148,7 +148,7 @@ class DonationLogs(commands.Cog):
                 if config.seconds > 0:
                     await self.add_temp_events(config.channel_id, '\n'.join(x))
                 else:
-                    log.debug(f'Dispatching a log to channel '
+                    log.info(f'Dispatching a log to channel '
                               f'{config.channel} (ID {config.channel_id})')
                     asyncio.ensure_future(self.bot.utils.channel_log(config.channel_id, EVENTS_TABLE_TYPE,
                                                                      '\n'.join(x), embed=False))
@@ -158,7 +158,7 @@ class DonationLogs(commands.Cog):
                    WHERE reported=False
                 """
         removed = await self.bot.pool.execute(query)
-        log.debug('Removed events from the database. Status Code %s', removed)
+        log.info('Removed events from the database. Status Code %s', removed)
 
 
 def setup(bot):
