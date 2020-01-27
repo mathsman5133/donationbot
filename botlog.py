@@ -14,7 +14,7 @@ def setup_logging(bot):
     logging.getLogger('coc.http').setLevel(logging.WARNING)
 
     log = logging.getLogger()
-    log.setLevel(logging.DEBUG)
+    log.setLevel(logging.INFO)
     handler = logging.FileHandler(filename='donationtracker.log', encoding='utf-8', mode='w')
     handler.setLevel(logging.INFO)
     stream_handler = logging.StreamHandler()
