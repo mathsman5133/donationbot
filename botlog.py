@@ -41,8 +41,6 @@ def setup_logging(bot):
         def handle(self, record):
             if not creds.live:
                 return
-            if record.levelno < 20:
-                return
 
             to_send = fmt.format(record)
 
