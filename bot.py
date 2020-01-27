@@ -41,12 +41,6 @@ if creds.live:
     command_prefix = '+'
     key_names = 'test'
 else:
-    initial_extensions.extend(
-        (
-            'cogs.background_management',
-            'cogs.boards',
-        )
-    )
     command_prefix = '//'
     key_names = 'windows'
 
@@ -64,7 +58,6 @@ description = "A simple discord bot to track donations of clan families in clash
 
 
 async def get_pref(bot, message):
-    return "//"
     if not message.guild:
         # message is a DM
         return "+"
