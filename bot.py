@@ -235,7 +235,7 @@ if __name__ == '__main__':
 
     try:
         # configure the database connection
-        pool = loop.run_until_complete(Table.create_pool(creds.postgres, command_timeout=60))
+        pool = loop.run_until_complete(Table.create_pool(creds.postgres))
 
         bot = DonationBot()
         bot.pool = pool  # add db as attribute
