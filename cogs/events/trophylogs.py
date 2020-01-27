@@ -5,7 +5,6 @@ import logging
 import math
 import time
 
-from datetime import datetime
 from discord.ext import commands, tasks
 
 from cogs.utils.db_objects import SlimTrophyEvent
@@ -26,12 +25,6 @@ class TrophyLogs(commands.Cog):
         self.report_task.add_exception_type(asyncpg.PostgresConnectionError)
         self.report_task.start()
 
-        self.bot.coc.add_events(
-            self.on_clan_member_trophies_change,
-        )
-        self.bot.coc._clan_retry_interval = 60
-        self.bot.coc.start_updates('clan')
-
         self._tasks = {}
         asyncio.ensure_future(self.sync_temp_event_tasks())
 
@@ -43,30 +36,6 @@ class TrophyLogs(commands.Cog):
         )
         for k, v in self._tasks:
             v.cancel()
-
-    @tasks.loop(seconds=60.0)
-    async def batch_insert_loop(self):
-        log.debug('Starting batch insert loop.')
-        async with self._batch_lock:
-            await self.bulk_insert()
-
-    async def bulk_insert(self):
-        query = """INSERT INTO trophyevents (player_tag, player_name, clan_tag, 
-                                                 trophy_change, league_id, time, season_id)
-                        SELECT x.player_tag, x.player_name, x.clan_tag, 
-                               x.trophy_change, x.league_id, x.time, x.season_id
-                           FROM jsonb_to_recordset($1::jsonb) 
-                        AS x(player_tag TEXT, player_name TEXT, clan_tag TEXT, 
-                             trophy_change INTEGER, league_id INTEGER, time TIMESTAMP, season_id INTEGER
-                             )
-                """
-
-        if self._batch_data:
-            await self.bot.pool.execute(query, self._batch_data)
-            total = len(self._batch_data)
-            if total > 1:
-                log.debug('Registered %s trophy events to the database.', total)
-            self._batch_data.clear()
 
     @tasks.loop(seconds=60.0)
     async def report_task(self):
@@ -197,21 +166,6 @@ class TrophyLogs(commands.Cog):
                 """
         removed = await self.bot.pool.execute(query)
         log.debug('Removed events from the database. Status Code %s', removed)
-
-    async def on_clan_member_trophies_change(self, old_trophies, new_trophies, player, clan):
-        log.debug(f'Received on_clan_member_trophy_change event for player {player} of clan {clan}')
-        change = new_trophies - old_trophies
-
-        async with self._batch_lock:
-            self._batch_data.append({
-                'player_tag': player.tag,
-                'player_name': player.name,
-                'clan_tag': clan.tag,
-                'trophy_change': change,
-                'league_id': player.league.id,
-                'time': datetime.utcnow().isoformat(),
-                'season_id': await self.bot.seasonconfig.get_season_id()
-            })
 
 
 def setup(bot):

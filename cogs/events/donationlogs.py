@@ -5,7 +5,6 @@ import logging
 import math
 import time
 
-from datetime import datetime
 from discord.ext import commands, tasks
 
 from cogs.utils.db_objects import SlimDonationEvent
@@ -20,54 +19,16 @@ class DonationLogs(commands.Cog):
         self.bot = bot
         self._batch_data = []
         self._batch_lock = asyncio.Lock(loop=bot.loop)
-        self.batch_insert_loop.add_exception_type(asyncpg.PostgresConnectionError)
-        self.batch_insert_loop.start()
         self.report_task.add_exception_type(asyncpg.PostgresConnectionError)
         self.report_task.start()
-
-        self.bot.coc.add_events(
-            self.on_clan_member_donation,
-            self.on_clan_member_received
-        )
-        self.bot.coc._clan_retry_interval = 60
-        self.bot.coc.start_updates('clan')
 
         self._tasks = {}
         asyncio.ensure_future(self.sync_temp_event_tasks())
 
     def cog_unload(self):
         self.report_task.cancel()
-        self.batch_insert_loop.cancel()
-        self.bot.coc.remove_events(
-            self.on_clan_member_donation,
-            self.on_clan_member_received
-        )
         for k, v in self._tasks:
             v.cancel()
-
-    @tasks.loop(seconds=60.0)
-    async def batch_insert_loop(self):
-        log.debug('Starting batch insert loop for donationlogs.')
-        async with self._batch_lock:
-            await self.bulk_insert()
-
-    async def bulk_insert(self):
-        query = """INSERT INTO donationevents (player_tag, player_name, clan_tag, 
-                                                 donations, received, time, season_id)
-                        SELECT x.player_tag, x.player_name, x.clan_tag, 
-                               x.donations, x.received, x.time, x.season_id
-                           FROM jsonb_to_recordset($1::jsonb) 
-                        AS x(player_tag TEXT, player_name TEXT, clan_tag TEXT, 
-                             donations INTEGER, received INTEGER, time TIMESTAMP, season_id INTEGER
-                             )
-                """
-
-        if self._batch_data:
-            await self.bot.pool.execute(query, self._batch_data)
-            total = len(self._batch_data)
-            if total > 1:
-                log.debug('Registered %s donation events to the database.', total)
-            self._batch_data.clear()
 
     @tasks.loop(seconds=60.0)
     async def report_task(self):
@@ -198,42 +159,6 @@ class DonationLogs(commands.Cog):
                 """
         removed = await self.bot.pool.execute(query)
         log.debug('Removed events from the database. Status Code %s', removed)
-
-    async def on_clan_member_donation(self, old_donations, new_donations, player, clan):
-        log.debug(f'Received on_clan_member_donation event for player {player} of clan {clan}')
-        if old_donations > new_donations:
-            donations = new_donations
-        else:
-            donations = new_donations - old_donations
-
-        async with self._batch_lock:
-            self._batch_data.append({
-                'player_tag': player.tag,
-                'player_name': player.name,
-                'clan_tag': clan.tag,
-                'donations': donations,
-                'received': 0,
-                'time': datetime.utcnow().isoformat(),
-                'season_id': await self.bot.seasonconfig.get_season_id()
-            })
-
-    async def on_clan_member_received(self, old_received, new_received, player, clan):
-        log.debug(f'Received on_clan_member_received event for player {player} of clan {clan}')
-        if old_received > new_received:
-            received = new_received
-        else:
-            received = new_received - old_received
-
-        async with self._batch_lock:
-            self._batch_data.append({
-                'player_tag': player.tag,
-                'player_name': player.name,
-                'clan_tag': clan.tag,
-                'donations': 0,
-                'received': received,
-                'time': datetime.utcnow().isoformat(),
-                'season_id': await self.bot.seasonconfig.get_season_id()
-            })
 
 
 def setup(bot):

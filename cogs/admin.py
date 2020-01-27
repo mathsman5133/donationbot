@@ -13,14 +13,12 @@ import sys
 import copy
 import time
 import subprocess
-from typing import Union, Optional
+from typing import Optional
 
 from cogs.utils.formatters import TabularData
 from cogs.utils.converters import GlobalChannel
 
 # to expose to the eval command
-import datetime
-from collections import Counter
 
 
 class PerformanceMocker:

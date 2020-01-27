@@ -1,9 +1,7 @@
 import discord
 
 from collections import namedtuple
-from datetime import datetime, timedelta
-
-from cogs.utils.formatters import readable_time
+from datetime import timedelta
 
 
 class DatabasePlayer:

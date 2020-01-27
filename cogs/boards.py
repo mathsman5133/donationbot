@@ -1,4 +1,3 @@
-import asyncio
 import asyncpg
 import coc
 import discord
@@ -11,7 +10,6 @@ from discord.ext import commands, tasks
 
 from cogs.utils.db_objects import DatabaseMessage
 from cogs.utils.formatters import CLYTable, get_render_type
-from cogs.utils import checks
 
 
 log = logging.getLogger(__name__)
@@ -26,24 +24,7 @@ class DonationBoard(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-        self.clan_updates = []
-
         self._to_be_deleted = set()
-
-        self.bot.coc.add_events(
-            self.on_clan_member_donation,
-            self.on_clan_member_received,
-            self.on_clan_member_trophies_change,
-            self.on_clan_member_join
-                                )
-        self.bot.coc._clan_retry_interval = 60
-        self.bot.coc.start_updates('clan')
-
-        self._batch_lock = asyncio.Lock(loop=bot.loop)
-        self._data_batch = {}
-        self._clan_events = set()
-        self.bulk_insert_loop.add_exception_type(asyncpg.PostgresConnectionError)
-        self.bulk_insert_loop.start()
 
         self.update_board_loops.add_exception_type(asyncpg.PostgresConnectionError, coc.ClashOfClansException)
         self.update_board_loops.start()
@@ -52,34 +33,19 @@ class DonationBoard(commands.Cog):
         self.update_global_board.start()
 
     def cog_unload(self):
-        self.bulk_insert_loop.cancel()
         self.update_board_loops.cancel()
         self.update_global_board.cancel()
-        self.bot.coc.remove_events(
-            self.on_clan_member_donation,
-            self.on_clan_member_received,
-            self.on_clan_member_trophies_change,
-            self.on_clan_member_join
-        )
-
-    @tasks.loop(seconds=30.0)
-    async def bulk_insert_loop(self):
-        async with self._batch_lock:
-            await self.bulk_insert()
 
     @tasks.loop(seconds=60.0)
     async def update_board_loops(self):
-        async with self._batch_lock:
-            clan_tags = list(self._clan_events)
-            self._clan_events.clear()
-
         query = """SELECT DISTINCT boards.channel_id
                     FROM boards
                     INNER JOIN clans
                     ON clans.channel_id = boards.channel_id
-                    WHERE clans.clan_tag = ANY($1::TEXT[])
+                    INNER JOIN players ON clans.clan_tag = players.clan_tag
+                    WHERE players.last_updated - now() < make_interval(mins := 5)
                 """
-        fetch = await self.bot.pool.fetch(query, clan_tags)
+        fetch = await self.bot.pool.fetch(query)
 
         for n in fetch:
             try:
@@ -89,6 +55,7 @@ class DonationBoard(commands.Cog):
 
     @tasks.loop(hours=1)
     async def update_global_board(self):
+        await self.bot.wait_until_ready()
         query = """SELECT player_tag, donations
                    FROM players 
                    WHERE season_id=$1
@@ -119,47 +86,6 @@ class DonationBoard(commands.Cog):
             e.set_author(name="Global Donationboard", icon_url=self.bot.user.avatar_url)
             e.set_footer(text='Last Updated')
             await v.edit(embed=e, content=None)
-
-    async def bulk_insert(self):
-        query = """UPDATE players SET donations = players.donations + x.donations, 
-                                      received  = players.received  + x.received, 
-                                      trophies  = x.trophies
-                        FROM(
-                            SELECT x.player_tag, x.donations, x.received, x.trophies
-                                FROM jsonb_to_recordset($1::jsonb)
-                            AS x(player_tag TEXT, 
-                                 donations INTEGER, 
-                                 received INTEGER, 
-                                 trophies INTEGER)
-                            )
-                    AS x
-                    WHERE players.player_tag = x.player_tag
-                    AND players.season_id=$2
-                """
-
-        query2 = """UPDATE eventplayers SET donations = eventplayers.donations + x.donations, 
-                                            received  = eventplayers.received  + x.received,
-                                            trophies  = x.trophies   
-                        FROM(
-                            SELECT x.player_tag, x.donations, x.received, x.trophies
-                            FROM jsonb_to_recordset($1::jsonb)
-                            AS x(player_tag TEXT, 
-                                 donations INTEGER, 
-                                 received INTEGER, 
-                                 trophies INTEGER)
-                            )
-                    AS x
-                    WHERE eventplayers.player_tag = x.player_tag
-                    AND eventplayers.live = true                    
-                """
-        if self._data_batch:
-            response = await self.bot.pool.execute(query, list(self._data_batch.values()),
-                                                   await self.bot.seasonconfig.get_season_id())
-            log.debug(f'Registered donations/received to the database. Status Code {response}.')
-
-            response = await self.bot.pool.execute(query2, list(self._data_batch.values()))
-            log.debug(f'Registered donations/received to the events database. Status Code {response}.')
-            self._data_batch.clear()
 
     @commands.Cog.listener()
     async def on_guild_channel_delete(self, channel):
@@ -213,59 +139,6 @@ class DonationBoard(commands.Cog):
             message = await self.safe_delete(message_id=n, delete_message=False)
             if message:
                 await self.new_board_message(self.bot.get_channel(payload.channel_id), config.type)
-
-    async def on_clan_member_donation(self, old_donations, new_donations, player, clan):
-        log.debug(f'Received on_clan_member_donation event for player {player} of clan {clan}')
-        if old_donations > new_donations:
-            donations = new_donations
-        else:
-            donations = new_donations - old_donations
-
-        async with self._batch_lock:
-            try:
-                self._data_batch[player.tag]['donations'] = donations
-            except KeyError:
-                self._data_batch[player.tag] = {
-                    'player_tag': player.tag,
-                    'donations': donations,
-                    'received': 0,
-                    'trophies': player.trophies
-                }
-            self._clan_events.add(clan.tag)
-
-    async def on_clan_member_received(self, old_received, new_received, player, clan):
-        log.debug(f'Received on_clan_member_received event for player {player} of clan {clan}')
-        if old_received > new_received:
-            received = new_received
-        else:
-            received = new_received - old_received
-
-        async with self._batch_lock:
-            try:
-                self._data_batch[player.tag]['received'] = received
-            except KeyError:
-                self._data_batch[player.tag] = {
-                    'player_tag': player.tag,
-                    'donations': 0,
-                    'received': received,
-                    'trophies': player.trophies
-                }
-            self._clan_events.add(clan.tag)
-
-    async def on_clan_member_trophies_change(self, _, new_trophies, player, clan):
-        log.debug(f'Received on_clan_member_trophy_change event for player {player} of clan {clan}.')
-
-        async with self._batch_lock:
-            try:
-                self._data_batch[player.tag]['trophies'] = new_trophies
-            except KeyError:
-                self._data_batch[player.tag] = {
-                    'player_tag': player.tag,
-                    'donations': 0,
-                    'received': 0,
-                    'trophies': new_trophies
-                }
-            self._clan_events.add(clan.tag)
 
     async def on_clan_member_join(self, member, clan):
         player = await self.bot.coc.get_player(member.tag)

@@ -1,6 +1,5 @@
 import asyncio
 import discord
-import inspect
 import textwrap
 
 from datetime import datetime

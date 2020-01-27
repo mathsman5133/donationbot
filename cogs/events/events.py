@@ -6,8 +6,6 @@ import typing
 
 from discord.ext import commands
 from cogs.utils.converters import ClanConverter, PlayerConverter
-from cogs.utils.error_handler import error_handler
-from cogs.utils import formatters
 from cogs.utils.db_objects import SlimDummyLogConfig
 from cogs.utils.paginator import LogsPaginator
 

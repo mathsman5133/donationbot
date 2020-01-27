@@ -28,7 +28,8 @@ initial_extensions = [
     'cogs.reset_season',
     'cogs.stats',
     'cogs.trophies',
-    'cogs.last_updated'
+    'cogs.last_updated',
+    'cogs.syncer'
 ]
 if creds.live:
     initial_extensions.extend(
@@ -40,11 +41,17 @@ if creds.live:
     command_prefix = '+'
     key_names = 'test'
 else:
+    initial_extensions.extend(
+        (
+            'cogs.background_management',
+            'cogs.boards',
+        )
+    )
     command_prefix = '//'
     key_names = 'windows'
 
 
-class COCClient(coc.EventsClient):
+class COCClient(coc.Client):
     async def on_event_error(self, event_name, exception, *args, **kwargs):
         await clash_event_error(self.bot, event_name, exception, *args, **kwargs)
 
@@ -57,6 +64,7 @@ description = "A simple discord bot to track donations of clan families in clash
 
 
 async def get_pref(bot, message):
+    return "//"
     if not message.guild:
         # message is a DM
         return "+"

@@ -5,7 +5,7 @@ import typing
 
 from discord.ext import commands
 
-from cogs.utils import fuzzy, checks, formatters, paginator
+from cogs.utils import fuzzy, checks, paginator, formatters
 from cogs.utils.converters import ClanConverter, PlayerConverter
 
 

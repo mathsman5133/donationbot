@@ -4,7 +4,7 @@ import textwrap
 import traceback
 
 
-from cogs.utils import formatters, paginator, checks
+from cogs.utils import paginator, checks, formatters
 
 from discord.ext import commands
 

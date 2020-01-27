@@ -20,7 +20,12 @@ CREATE TABLE players (
     end_defenses integer default 0,
     start_best_trophies integer default 0,
     end_best_trophies integer default 0,
-    last_updated timestamp default now()
+    last_updated timestamp default now(),
+    name text default '',
+    league_id integer default 29000000,
+    versus_trophies integer default 0,
+    clan_tag text default '',
+    level integer default 0
     );
 create index player_tag_idx on players (player_tag);
 create index user_id_idx on players (user_id);
@@ -47,7 +52,12 @@ CREATE TABLE eventplayers (
     start_defenses integer default 0,
     end_defenses integer default 0,
     start_best_trophies integer default 0,
-    end_best_trophies integer default 0
+    end_best_trophies integer default 0,
+    name text default '',
+    league_id integer default 29000000,
+    versus_trophies integer default 0,
+    clan_tag text default '',
+    level integer default 0
 );
 create index player_tag_idx on players (player_tag);
 create index user_id_idx on players (user_id);
@@ -182,7 +192,8 @@ create table events (
     start_report boolean default false,
     donation_msg bigint default 0,
     trophy_msg bigint default 0
-)
+);
+
 
 CREATE OR REPLACE FUNCTION public.get_event_id(guild_id bigint)
  RETURNS integer
@@ -207,3 +218,29 @@ begin
 end;
 $function$
 ;
+
+CREATE OR REPLACE FUNCTION create_player_events_on_update()
+  RETURNS trigger AS
+$BODY$
+BEGIN
+   UPDATE players SET last_updated = now() WHERE player_tag = NEW.player_tag;
+
+   IF NEW.donations > OLD.donations THEN
+       INSERT INTO donationevents(player_tag, player_name, clan_tag, donations, received, time, season_id)
+       VALUES(NEW.player_tag, NEW.player_name, NEW.clan_tag, NEW.donations - OLD.donations, NEW.received - OLD.received, now(), NEW.season_id);
+
+   ELSIF NEW.trophies != OLD.trophies THEN
+       INSERT INTO trophyevents(player_tag, player_name, clan_tag, trophy_change, league_id, time, reported, season_id)
+       VALUES(NEW.player_tag, NEW.player_name, NEW.clan_tag, NEW.trophies - OLD.trophies, NEW.league_id, now(), NEW.season_id)
+
+   END IF;
+
+   RETURN NEW;
+END;
+$BODY$;
+
+CREATE TRIGGER update_events
+  BEFORE UPDATE
+  ON players
+  FOR EACH ROW
+  EXECUTE PROCEDURE create_player_events_on_update();

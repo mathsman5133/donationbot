@@ -1,5 +1,4 @@
 import discord
-import discord
 import asyncio
 import typing
 import datetime
@@ -9,8 +8,7 @@ import logging
 
 from discord.ext import commands
 from cogs.utils.checks import requires_config, manage_guild
-from cogs.utils.formatters import CLYTable
-from cogs.utils.converters import PlayerConverter, ClanConverter, DateConverter, TextChannel
+from cogs.utils.converters import PlayerConverter, DateConverter, TextChannel
 from cogs.utils import checks
 
 log = logging.getLogger(__name__)

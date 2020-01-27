@@ -11,7 +11,7 @@ from cogs.utils.paginator import Pages, EmbedPages
 from cogs.utils.formatters import CLYTable, readable_time, TabularData
 from cogs.utils.emoji_lookup import misc
 from cogs.utils.checks import requires_config
-from datetime import datetime, time
+from datetime import datetime
 from collections import Counter
 
 log = logging.getLogger(__name__)
