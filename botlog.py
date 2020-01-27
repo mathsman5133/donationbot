@@ -60,6 +60,12 @@ def setup_logging(bot):
     discord_hndlr = DiscordHandler()
     discord_hndlr.setLevel(logging.DEBUG)
     log.addHandler(discord_hndlr)
+    bot.pool.add_log_listener(postgres_log_listener)
+
+
+def postgres_log_listener(connection, message):
+    log = logging.getLogger("postgres")
+    log.info(f"postgres: {message}")
 
 
 def add_hooks(bot):
