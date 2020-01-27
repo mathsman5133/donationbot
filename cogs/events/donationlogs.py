@@ -91,7 +91,7 @@ class DonationLogs(commands.Cog):
                 for n in fetch:
                     asyncio.ensure_future(self.bot.utils.channel_log(channel_id, EVENTS_TABLE_TYPE, n[0], embed=False))
 
-                log.info(f'Dispatching {len(fetch)} logs after sleeping for {config.seconds} '
+                log.debug(f'Dispatching {len(fetch)} logs after sleeping for {config.seconds} '
                           f'sec to channel {config.channel} ({config.channel_id})')
 
         except asyncio.CancelledError:
