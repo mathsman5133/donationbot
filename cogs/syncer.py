@@ -11,11 +11,11 @@ class Syncer(commands.Cog):
         self.syncer.cancel()
         self.add_new_players.cancel()
 
-    @tasks.loop(minutes=1)
+    @tasks.loop()
     async def syncer(self):
         await self.bot.wait_until_ready()
-        query = "SELECT DISTINCT clan_tag FROM clans"
-        fetch = await self.bot.pool.fetch(query)
+        query = "SELECT DISTINCT clan_tag FROM clans WHERE clans.guild_id = ANY($1::TEXT[])"
+        fetch = await self.bot.pool.fetch(query, [g.id for g in self.bot.guilds])
 
         clans = await self.bot.coc.get_clans((n[0] for n in fetch), cache=False, update_cache=False).flatten()
 
@@ -33,7 +33,7 @@ class Syncer(commands.Cog):
                         "versus_trophies": n.versus_trophies,
                         "level": n.exp_level,
                         "clan_tag": n.clan and n.clan.tag,
-                        "league_id": n.league_id
+                        "league_id": n.league and n.league.id
                     }
                     for n in clan.itermembers
                 ]
@@ -55,14 +55,16 @@ class Syncer(commands.Cog):
                                     league_id INTEGER
                                 )
                 ON CONFLICT (player_tag, season_id)
-                DO UPDATE SET donations = players.donations + x.donations, 
-                              received  = players.received  + x.received, 
-                              trophies  = x.trophies,
-                              name      = x.name,
-                              versus_trophies = x.versus_trophies,
-                              level     = x.level,
-                              clan_tag  = x.clan_tag,
-                              league_id = x.league_id                                     
+                DO UPDATE SET donations = players.donations + excluded.donations, 
+                              received  = players.received  + excluded.received, 
+                              trophies  = excluded.trophies,
+                              name      = excluded.name,
+                              versus_trophies = excluded.versus_trophies,
+                              level     = excluded.level,
+                              clan_tag  = excluded.clan_tag,
+                              league_id = excluded.league_id   
+                 
+                                                 
                 """
         await self.bot.pool.execute(query, players)
 
@@ -86,14 +88,14 @@ class Syncer(commands.Cog):
                 WHERE events.start <= now()
                 AND events.finish >= now()
                 ON CONFLICT (player_tag, event_id)
-                DO UPDATE SET donations = eventplayers.donations + x.donations, 
-                              received  = eventplayers.received  + x.received, 
-                              trophies  = x.trophies,
-                              name      = x.name,
-                              versus_trophies = x.versus_trophies,
-                              level     = x.level,
-                              clan_tag  = x.clan_tag,
-                              league_id = x.league_id                                     
+                DO UPDATE SET donations = eventplayers.donations + excluded.donations, 
+                              received  = eventplayers.received  + excluded.received, 
+                              trophies  = excluded.trophies,
+                              name      = excluded.name,
+                              versus_trophies = excluded.versus_trophies,
+                              level     = excluded.level,
+                              clan_tag  = excluded.clan_tag,
+                              league_id = excluded.league_id                                     
                 """
         await self.bot.pool.execute(query, players)
 

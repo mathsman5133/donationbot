@@ -219,9 +219,10 @@ end;
 $function$
 ;
 
-CREATE OR REPLACE FUNCTION create_player_events_on_update()
-  RETURNS trigger AS
-$BODY$
+CREATE OR REPLACE FUNCTION public.create_player_events_on_update()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $BODY$
 BEGIN
    UPDATE players SET last_updated = now() WHERE player_tag = NEW.player_tag;
 
@@ -231,7 +232,7 @@ BEGIN
 
    ELSIF NEW.trophies != OLD.trophies THEN
        INSERT INTO trophyevents(player_tag, player_name, clan_tag, trophy_change, league_id, time, reported, season_id)
-       VALUES(NEW.player_tag, NEW.player_name, NEW.clan_tag, NEW.trophies - OLD.trophies, NEW.league_id, now(), NEW.season_id)
+       VALUES(NEW.player_tag, NEW.player_name, NEW.clan_tag, NEW.trophies - OLD.trophies, NEW.league_id, now(), NEW.season_id);
 
    END IF;
 
