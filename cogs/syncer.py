@@ -32,11 +32,11 @@ class Syncer(commands.Cog):
             players.extend(
                 [
                     {
-                        "tag": n.tag,
-                        "name": n.name,
+                        "player_tag": n.tag,
                         "donations": n.donations,
                         "received": n.received,
                         "trophies": n.trophies,
+                        "name": n.name,
                         "versus_trophies": n.versus_trophies,
                         "level": n.exp_level,
                         "clan_tag": n.clan and n.clan.tag,
