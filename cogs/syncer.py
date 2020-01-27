@@ -1,4 +1,11 @@
+import time
+
+import logging
+
 from discord.ext import commands, tasks
+
+
+log = logging.getLogger(__name__)
 
 
 class Syncer(commands.Cog):
@@ -66,7 +73,8 @@ class Syncer(commands.Cog):
                  
                                                  
                 """
-        await self.bot.pool.execute(query, players)
+        r = await self.bot.pool.execute(query, players)
+        log.info(f"Update players: {r}")
 
         query = """
                 INSERT INTO eventplayers (player_tag, donations, received, trophies, name, versus_trophies, level, clan_tag, league_id, event_id, live) 
@@ -97,7 +105,16 @@ class Syncer(commands.Cog):
                               clan_tag  = excluded.clan_tag,
                               league_id = excluded.league_id                                     
                 """
-        await self.bot.pool.execute(query, players)
+        r = await self.bot.pool.execute(query, players)
+        log.info(f"Update event players: {r}")
+
+    @syncer.before_invoke
+    async def sync_before_invoke(self):
+        self.last_update_start = time.perf_counter()
+
+    @syncer.after_invoke
+    async def sync_after_invoke(self):
+        log.info(f"Sync timer: {(time.perf_counter() - self.last_update_start) * 1000}ms")
 
     @tasks.loop(minutes=5)
     async def add_new_players(self):
@@ -175,6 +192,15 @@ class Syncer(commands.Cog):
                 player.best_trophies,
                 player.tag,
             )
+        log.info(f"Run add event players, {len(fetch)}")
+
+    @add_new_players.before_invoke
+    async def new_p_before_invoke(self):
+        self.last_new_player_update_start = time.perf_counter()
+
+    @add_new_players.after_invoke
+    async def new_p_after_invoke(self):
+        log.info(f"New Player timer: {(time.perf_counter() - self.last_new_player_update_start) * 1000}ms")
 
 
 def setup(bot):
