@@ -111,6 +111,8 @@ class Syncer(commands.Cog):
                 """
         r = await self.bot.pool.execute(query, players)
         log.info(f"Update event players: {r}")
+
+        self.last_update_start = time.perf_counter()
         log.info(f"Sync timer: {(time.perf_counter() - self.last_update_start) * 1000}ms")
 
     @syncer.before_loop
