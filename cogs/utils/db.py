@@ -512,6 +512,8 @@ class Table(metaclass=TableMeta):
         \*\*kwargs
             The arguments to forward to asyncpg.create_pool.
         """
+        def emit(con, message):
+            log.info(f"postgres: {message}")
 
         def _encode_jsonb(value):
             return json.dumps(value)
@@ -526,7 +528,10 @@ class Table(metaclass=TableMeta):
             if old_init is not None:
                 await old_init(con)
 
-        cls._pool = pool = await asyncpg.create_pool(uri, init=init, **kwargs)
+        async def setup(connection):
+            connection.add_log_listener(emit)
+
+        cls._pool = pool = await asyncpg.create_pool(uri, init=init, setup=setup, **kwargs)
         return pool
 
     @classmethod
