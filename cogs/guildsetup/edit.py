@@ -440,7 +440,7 @@ class Edit(commands.Cog):
                 """
         await ctx.db.execute(query, str(minutes), ctx.config.channel_id, 'donation')
         await ctx.send(f'Logs for {ctx.config.channel.mention} have been changed to {minutes} minutes. '
-                       f'Find which clans this affects with `+help info {ctx.config.channel.mention}`')
+                       f'Find which clans this affects with `+info {ctx.config.channel}`')
 
     @edit_donationlog.command(name='toggle')
     async def edit_donationlog_toggle(self, ctx):
@@ -508,7 +508,7 @@ class Edit(commands.Cog):
                 """
         await ctx.db.execute(query, str(minutes), ctx.config.channel_id, 'trophy')
         await ctx.send(f'Logs for {ctx.config.channel.mention} have been changed to {minutes} minutes. '
-                       'Find which clans this affects with `+help info trophylog`')
+                       f'Find which clans this affects with `+info {ctx.config.channel}`')
 
     @edit_trophylog.command(name='toggle')
     async def edit_trophylog_toggle(self, ctx):
