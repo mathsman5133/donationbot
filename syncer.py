@@ -11,7 +11,7 @@ import creds
 
 from cogs.utils.db import Table
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 
 log = logging.getLogger(__name__)
 SEASON_ID = 8
