@@ -19,22 +19,22 @@ class LastUpdated(commands.Cog):
         self.bot = bot
         self.last_updated = {}
         self.batch_lock = asyncio.Lock(loop=bot.loop)
-        self.bot.coc.add_events(
-            self.on_clan_member_name_change,
-            self.on_clan_member_donation,
-            self.on_clan_member_versus_trophies_change,
-            self.on_clan_member_level_change
-        )
-        self.loop.start()
-
-    def cog_unload(self):
-        self.bot.coc.remove_events(
-            self.on_clan_member_name_change,
-            self.on_clan_member_donation,
-            self.on_clan_member_versus_trophies_change,
-            self.on_clan_member_level_change
-        )
-        self.loop.cancel()
+    #     self.bot.coc.add_events(
+    #         self.on_clan_member_name_change,
+    #         self.on_clan_member_donation,
+    #         self.on_clan_member_versus_trophies_change,
+    #         self.on_clan_member_level_change
+    #     )
+    #     self.loop.start()
+    #
+    # def cog_unload(self):
+    #     self.bot.coc.remove_events(
+    #         self.on_clan_member_name_change,
+    #         self.on_clan_member_donation,
+    #         self.on_clan_member_versus_trophies_change,
+    #         self.on_clan_member_level_change
+    #     )
+    #     self.loop.cancel()
 
     @commands.Cog.listener()
     async def on_disconnect(self):

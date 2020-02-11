@@ -18,11 +18,11 @@ class BackgroundManagement(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.next_event_starts.start()
-        self.event_player_updater.start()
+        # self.event_player_updater.start()
 
     def cog_unload(self):
         self.next_event_starts.cancel()
-        self.event_player_updater.cancel()
+        # self.event_player_updater.cancel()
 
     @commands.command(hidden=True)
     @commands.is_owner()
