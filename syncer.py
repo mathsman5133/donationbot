@@ -22,7 +22,7 @@ pool = loop.run_until_complete(Table.create_pool(creds.postgres))
 coc_client = coc.login(creds.email, creds.password, client=coc.EventsClient, key_names="test", throttle_limit=30, key_count=3)
 
 board_batch_lock = asyncio.Lock(loop=loop)
-board_batch_data = []
+board_batch_data = {}
 
 donationlog_batch_lock = asyncio.Lock(loop=loop)
 donationlog_batch_data = []
@@ -229,28 +229,28 @@ async def event_player_updater():
     await pool.execute(query, to_insert)
     log.info(f'Loop for event updates finished. Took {(time.perf_counter() - start)*1000}ms')
 
-
-async def on_clan_member_league_change(self, old_league, new_league, player, clan):
-    if old_league.id > new_league.id:
-        return  # they dropped a league
-    if new_league.id == 29000000:
-        return  # unranked - probably start of season.
-
-    query = """SELECT channel_id 
-               FROM events
-               INNER JOIN eventplayers 
-               ON eventplayers.event_id = events.id
-               WHERE start_best_trophies < $1 
-               AND player_tag = $2
-            """
-    fetch = await self.bot.pool.fetch(query, player.trophies, player.tag)
-    if not fetch:
-        return
-
-    msg = f"Breaking new heights! {player} just got promoted to {new_league} league!"
-
-    for record in fetch:
-        await self.safe_send(self.bot.get_channel(record['channel_id']), msg)
+#
+# async def on_clan_member_league_change(old_league, new_league, player, clan):
+#     if old_league.id > new_league.id:
+#         return  # they dropped a league
+#     if new_league.id == 29000000:
+#         return  # unranked - probably start of season.
+#
+#     query = """SELECT channel_id
+#                FROM events
+#                INNER JOIN eventplayers
+#                ON eventplayers.event_id = events.id
+#                WHERE start_best_trophies < $1
+#                AND player_tag = $2
+#             """
+#     fetch = await self.bot.pool.fetch(query, player.trophies, player.tag)
+#     if not fetch:
+#         return
+#
+#     msg = f"Breaking new heights! {player} just got promoted to {new_league} league!"
+#
+#     for record in fetch:
+#         await self.safe_send(self.bot.get_channel(record['channel_id']), msg)
 
 
 @tasks.loop(minutes=1.0)
@@ -287,17 +287,17 @@ async def update(player_tag):
             'last_updated': datetime.datetime.utcnow().isoformat()
         }
 #
-async def on_clan_member_name_change(self, _, __, player, ___):
-    await self.update(player.tag)
+async def on_clan_member_name_change(_, __, player, ___):
+    await update(player.tag)
 
 # async def on_clan_member_donation(self, _, __, player, ___):
 #     await self.update(player.tag)
 
-async def on_clan_member_versus_trophies_change(self, _, __, player, ___):
-    await self.update(player.tag)
+async def on_clan_member_versus_trophies_change(_, __, player, ___):
+    await update(player.tag)
 
-async def on_clan_member_level_change(self, _, __, player, ___):
-    await self.update(player.tag)
+async def on_clan_member_level_change(_, __, player, ___):
+    await update(player.tag)
 
 # async def on_clan_member_trophies_change(self, _, __, player, ___):
 #     pass  # could be a defense - doesn't mean online
