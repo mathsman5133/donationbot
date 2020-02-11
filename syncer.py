@@ -417,4 +417,6 @@ if __name__ == "__main__":
         on_clan_member_name_change,
         on_clan_member_versus_trophies_change
     )
+    coc_client._clan_retry_interval = 60
+    coc_client.start_updates('clan')
     coc_client.run_forever()
