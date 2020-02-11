@@ -30,20 +30,19 @@ class DonationBoard(commands.Cog):
 
         self._to_be_deleted = set()
 
-        self.bot.coc.add_events(
-            self.on_clan_member_donation,
-            self.on_clan_member_received,
-            self.on_clan_member_trophies_change,
-            self.on_clan_member_join
-                                )
-        self.bot.coc._clan_retry_interval = 60
-        self.bot.coc.start_updates('clan')
+        # self.bot.coc.add_events(
+        #     self.on_clan_member_donation,
+        #     self.on_clan_member_received,
+        #     self.on_clan_member_trophies_change,
+        #     self.on_clan_member_join
+        #                         )
+        # self.bot.coc._clan_retry_interval = 60
+        # self.bot.coc.start_updates('clan')
 
         self._batch_lock = asyncio.Lock(loop=bot.loop)
         self._data_batch = {}
-        self._clan_events = set()
-        self.bulk_insert_loop.add_exception_type(asyncpg.PostgresConnectionError)
-        self.bulk_insert_loop.start()
+        # self.bulk_insert_loop.add_exception_type(asyncpg.PostgresConnectionError)
+        # self.bulk_insert_loop.start()
 
         self.update_board_loops.add_exception_type(asyncpg.PostgresConnectionError, coc.ClashOfClansException)
         self.update_board_loops.start()
@@ -52,15 +51,15 @@ class DonationBoard(commands.Cog):
         self.update_global_board.start()
 
     def cog_unload(self):
-        self.bulk_insert_loop.cancel()
+        # self.bulk_insert_loop.cancel()
         self.update_board_loops.cancel()
         self.update_global_board.cancel()
-        self.bot.coc.remove_events(
-            self.on_clan_member_donation,
-            self.on_clan_member_received,
-            self.on_clan_member_trophies_change,
-            self.on_clan_member_join
-        )
+        # self.bot.coc.remove_events(
+        #     self.on_clan_member_donation,
+        #     self.on_clan_member_received,
+        #     self.on_clan_member_trophies_change,
+        #     self.on_clan_member_join
+        # )
 
     @tasks.loop(seconds=30.0)
     async def bulk_insert_loop(self):
@@ -69,9 +68,9 @@ class DonationBoard(commands.Cog):
 
     @tasks.loop(seconds=60.0)
     async def update_board_loops(self):
-        async with self._batch_lock:
-            clan_tags = list(self._clan_events)
-            self._clan_events.clear()
+        async with self.bot.donationlogs._batch_lock:
+            clan_tags = list(self.bot.donationlogs._clans_updated)
+            self.bot.donationlogs._clans_updated.clear()
 
         query = """SELECT DISTINCT boards.channel_id
                     FROM boards

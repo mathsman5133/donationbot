@@ -44,7 +44,7 @@ else:
     key_names = 'windows'
 
 
-class COCClient(coc.EventsClient):
+class COCClient(coc.Client):
     async def on_event_error(self, event_name, exception, *args, **kwargs):
         await clash_event_error(self.bot, event_name, exception, *args, **kwargs)
 

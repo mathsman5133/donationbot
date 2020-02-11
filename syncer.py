@@ -1,6 +1,9 @@
 import asyncio
 import datetime
 import logging
+import time
+
+import coc
 
 from discord.ext import tasks
 
@@ -8,11 +11,17 @@ import creds
 
 from cogs.utils.db import Table
 
+logging.basicConfig(level=logging.INFO)
+
 log = logging.getLogger(__name__)
 SEASON_ID = 8
 
 loop = asyncio.get_event_loop()
 pool = loop.run_until_complete(Table.create_pool(creds.postgres))
+coc_client = coc.login(creds.email, creds.password, client=coc.EventsClient, key_names="test", throttle_limit=30, key_count=3)
+
+board_batch_lock = asyncio.Lock(loop=loop)
+board_batch_data = []
 
 donationlog_batch_lock = asyncio.Lock(loop=loop)
 donationlog_batch_data = []
@@ -26,7 +35,7 @@ last_updated_data = {}
 
 @tasks.loop(seconds=60.0)
 async def batch_insert_loop():
-    log.debug('Starting batch insert loop for donationlogs.')
+    log.info('Starting batch insert loop for donationlogs.')
     async with donationlog_batch_lock:
         await bulk_insert()
 
@@ -46,7 +55,7 @@ async def bulk_insert():
         await pool.execute(query, donationlog_batch_data)
         total = len(donationlog_batch_data)
         if total > 1:
-            log.debug('Registered %s donation events to the database.', total)
+            log.info('Registered %s donation events to the database.', total)
         donationlog_batch_data.clear()
 
 
@@ -68,6 +77,17 @@ async def on_clan_member_donation(old_donations, new_donations, player, clan):
             'season_id': SEASON_ID
         })
 
+    async with board_batch_lock:
+        try:
+            board_batch_data[player.tag]['donations'] = donations
+        except KeyError:
+            board_batch_data[player.tag] = {
+                'player_tag': player.tag,
+                'donations': donations,
+                'received': 0,
+                'trophies': player.trophies
+            }
+    await update(player.tag)
 
 async def on_clan_member_received(old_received, new_received, player, clan):
     log.debug(f'Received on_clan_member_received event for player {player} of clan {clan}')
@@ -87,10 +107,21 @@ async def on_clan_member_received(old_received, new_received, player, clan):
             'season_id': SEASON_ID
         })
 
+    async with board_batch_lock:
+        try:
+            board_batch_data[player.tag]['received'] = received
+        except KeyError:
+            board_batch_data[player.tag] = {
+                'player_tag': player.tag,
+                'donations': 0,
+                'received': received,
+                'trophies': player.trophies
+            }
+
 
 @tasks.loop(seconds=60.0)
 async def trophylog_batch_insert_loop():
-    log.debug('Starting batch insert loop.')
+    log.info('Starting batch insert loop.')
     async with trophylog_batch_lock:
         await trophylog_bulk_insert()
 
@@ -109,7 +140,7 @@ async def trophylog_bulk_insert():
         await pool.execute(query, trophylog_batch_data)
         total = len(trophylog_batch_data)
         if total > 1:
-            log.debug('Registered %s trophy events to the database.', total)
+            log.info('Registered %s trophy events to the database.', total)
         trophylog_batch_data.clear()
 
 
@@ -127,6 +158,18 @@ async def on_clan_member_trophies_change(old_trophies, new_trophies, player, cla
             'time': datetime.datetime.utcnow().isoformat(),
             'season_id': SEASON_ID
         })
+
+    async with board_batch_lock:
+        try:
+            board_batch_data[player.tag]['trophies'] = new_trophies
+        except KeyError:
+            board_batch_data[player.tag] = {
+                'player_tag': player.tag,
+                'donations': 0,
+                'received': 0,
+                'trophies': new_trophies
+            }
+
 
 @tasks.loop(hours=1)
 async def event_player_updater():
@@ -210,8 +253,9 @@ async def on_clan_member_league_change(self, old_league, new_league, player, cla
 
 
 @tasks.loop(minutes=1.0)
-async def loop():
+async def last_updated_loop():
     await update_db()
+
 
 async def update_db():
     query = """UPDATE players 
@@ -228,24 +272,25 @@ async def update_db():
                WHERE players.player_tag = x.player_tag
                AND players.season_id = $2
             """
-    async with :
-        await self.bot.pool.execute(
-            query, list(self.last_updated.values()), await self.bot.seasonconfig.get_season_id()
+    async with last_updated_batch_lock:
+        await pool.execute(
+            query, list(last_updated_data.values()), SEASON_ID
         )
-        self.last_updated.clear()
+        last_updated_data.clear()
 
-async def update(self, player_tag):
-    async with self.batch_lock:
-        self.last_updated[player_tag] = {
+
+async def update(player_tag):
+    async with last_updated_batch_lock:
+        last_updated_data[player_tag] = {
             'player_tag': player_tag,
-            'last_updated': datetime.utcnow().isoformat()
+            'last_updated': datetime.datetime.utcnow().isoformat()
         }
-
+#
 async def on_clan_member_name_change(self, _, __, player, ___):
     await self.update(player.tag)
 
-async def on_clan_member_donation(self, _, __, player, ___):
-    await self.update(player.tag)
+# async def on_clan_member_donation(self, _, __, player, ___):
+#     await self.update(player.tag)
 
 async def on_clan_member_versus_trophies_change(self, _, __, player, ___):
     await self.update(player.tag)
@@ -253,8 +298,122 @@ async def on_clan_member_versus_trophies_change(self, _, __, player, ___):
 async def on_clan_member_level_change(self, _, __, player, ___):
     await self.update(player.tag)
 
-async def on_clan_member_trophies_change(self, _, __, player, ___):
-    pass  # could be a defense - doesn't mean online
+# async def on_clan_member_trophies_change(self, _, __, player, ___):
+#     pass  # could be a defense - doesn't mean online
+#
+# async def on_clan_member_received(self, _, __, player, ___):
+#     pass  # don't have to be online to receive donations
 
-async def on_clan_member_received(self, _, __, player, ___):
-    pass  # don't have to be online to receive donations
+
+async def on_clan_member_join(member, clan):
+    player = await coc_client.get_player(member.tag)
+    player_query = """INSERT INTO players (
+                                    player_tag, 
+                                    donations, 
+                                    received, 
+                                    trophies, 
+                                    start_trophies, 
+                                    season_id,
+                                    start_friend_in_need,
+                                    start_sharing_is_caring,
+                                    start_attacks,
+                                    start_defenses,
+                                    start_best_trophies,
+                                    start_update
+                                    ) 
+                VALUES ($1,$2,$3,$4,$4,$5,$6,$7,$8,$9,$10,True) 
+                ON CONFLICT (player_tag, season_id) 
+                DO NOTHING
+            """
+
+    response = await pool.execute(
+        player_query,
+        player.tag,
+        player.donations,
+        player.received,
+        player.trophies,
+        SEASON_ID,
+        player.achievements_dict['Friend in Need'].value,
+        player.achievements_dict['Sharing is caring'].value,
+        player.attack_wins,
+        player.defense_wins,
+        player.best_trophies
+    )
+    log.debug(f'New member {member} joined clan {clan}. Performed a query to insert them into players. '
+              f'Status Code: {response}')
+
+    query = """SELECT events.id 
+               FROM events 
+               INNER JOIN clans 
+               ON clans.guild_id = events.guild_id 
+               WHERE clans.clan_tag = $1
+               AND events.start <= now()
+               AND events.finish >= now()
+            """
+    fetch = await pool.fetch(query, clan.tag)
+    if not fetch:
+        return
+
+    event_query = """INSERT INTO eventplayers (
+                                        player_tag,
+                                        trophies,
+                                        event_id,
+                                        start_friend_in_need,
+                                        start_sharing_is_caring,
+                                        start_attacks,
+                                        start_defenses,
+                                        start_trophies,
+                                        start_best_trophies,
+                                        start_update,
+                                        live
+                                        )
+                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, True, True)
+                        ON CONFLICT (player_tag, event_id)
+                        DO UPDATE 
+                        SET live=True
+                        WHERE eventplayers.player_tag = $1
+                        AND eventplayers.event_id = $2
+                    """
+
+    for n in fetch:
+        response = await pool.execute(
+            event_query,
+            player.tag,
+            player.trophies,
+            n['id'],
+            player.achievements_dict['Friend in Need'].value,
+            player.achievements_dict['Sharing is caring'].value,
+            player.attack_wins,
+            player.defense_wins,
+            player.trophies,
+            player.best_trophies
+          )
+
+        log.debug(f'New member {member} joined clan {clan}. '
+                  f'Performed a query to insert them into eventplayers. Status Code: {response}')
+
+
+@tasks.loop(seconds=60.0)
+async def update_clan_tags():
+    query = "SELECT DISTINCT(clan_tag) FROM clans"
+    fetch = await pool.fetch(query)
+    coc_client._clan_updates = [n[0] for n in fetch]
+
+if __name__ == "__main__":
+    print("STARTING")
+    update_clan_tags.start()
+    batch_insert_loop.start()
+    trophylog_batch_insert_loop.start()
+    event_player_updater.start()
+    last_updated_loop.start()
+
+    coc_client.add_events(
+        on_clan_member_donation,
+        on_clan_member_received,
+        on_clan_member_trophies_change,
+        on_clan_member_join,
+        on_clan_member_level_change,
+        on_clan_member_name_change,
+        on_clan_member_versus_trophies_change
+    )
+    coc_client.run_forever()

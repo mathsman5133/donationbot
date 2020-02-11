@@ -173,6 +173,7 @@ class Edit(commands.Cog):
             if not attachments:
                 return await ctx.send('You must pass in a url or upload an attachment.')
             url = attachments[0].url
+
         if url == 'https://catsareus/thecrazycatbot/123.jpg':
             return await ctx.send('Uh oh! That\'s an example URL - it doesn\'t work!')
 
@@ -348,6 +349,7 @@ class Edit(commands.Cog):
             if not attachments:
                 return await ctx.send('You must pass in a url or upload an attachment.')
             url = attachments[0].url
+
         if url == 'https://catsareus/thecrazycatbot/123.jpg':
             return await ctx.send('Uh oh! That\'s an example URL - it doesn\'t work!')
 
