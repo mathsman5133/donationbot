@@ -34,15 +34,16 @@ class Events(commands.Cog):
                     FROM {table_name}
                     WHERE {table_name}.clan_tag = ANY(
                                 SELECT DISTINCT clan_tag FROM clans
-                                WHERE guild_id=$1
+                                WHERE channel_id=$1
                                 )
                     ORDER BY {table_name}.time DESC
                     LIMIT $2
                 """
-        fetch = await ctx.db.fetch(query, ctx.guild.id, limit)
+        fetch = await ctx.db.fetch(query, ctx.channel.id, limit)
         if not fetch:
-            return await ctx.send('No events found. Please ensure you have '
-                                  'enabled logging and have claimed a clan.')
+            return await ctx.send(
+                'No events found. Please ensure you have enabled logging and have claimed a clan in this channel.'
+            )
 
         no_pages = math.ceil(len(fetch) / 20)
         title = f"Recent Events for Guild {ctx.guild.name}"
