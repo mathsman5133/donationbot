@@ -11,9 +11,10 @@ import creds
 
 from cogs.utils.db import Table
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 
 log = logging.getLogger(__name__)
+log.setLevel(logging.DEBUG)
 SEASON_ID = 8
 
 loop = asyncio.get_event_loop()
