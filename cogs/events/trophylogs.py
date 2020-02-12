@@ -141,6 +141,10 @@ class TrophyLogs(commands.Cog):
             self._tasks[channel_id] = self.bot.loop.create_task(self.create_temp_event_task(channel_id))
 
     async def bulk_report(self):
+        query = """SELECT DISTINCT clan_tag FROM trophyevents WHERE reported = False"""
+        fetch = await self.bot.pool.fetch(query)
+        self.bot.donationboard.tags_to_update.update(set(n[0] for n in fetch))
+
         query = """SELECT DISTINCT clans.channel_id 
                    FROM clans 
                         INNER JOIN trophyevents 

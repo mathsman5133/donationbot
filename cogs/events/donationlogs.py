@@ -143,6 +143,10 @@ class DonationLogs(commands.Cog):
             self._tasks[channel_id] = self.bot.loop.create_task(self.create_temp_event_task(channel_id))
 
     async def bulk_report(self):
+        query = """SELECT DISTINCT clan_tag FROM donationevents WHERE reported = False"""
+        fetch = await self.bot.pool.fetch(query)
+        self.bot.donationboard.tags_to_update.update(set(n[0] for n in fetch))
+
         query = """SELECT DISTINCT clans.channel_id 
                    FROM clans 
                    INNER JOIN donationevents 
@@ -177,7 +181,6 @@ class DonationLogs(commands.Cog):
 
             messages = []
             for x in events:
-                self._clans_updated.add(x['clan_tag'])
                 slim_event = SlimDonationEvent(x['donations'], x['received'], x['player_name'], x['clan_tag'])
                 clan_name = await self.bot.utils.get_clan_name(config.guild_id, slim_event.clan_tag)
                 messages.append(format_donation_log_message(slim_event, clan_name))

@@ -50,6 +50,9 @@ class DonationBoard(commands.Cog):
         self.update_global_board.add_exception_type(asyncpg.PostgresConnectionError, coc.ClashOfClansException)
         self.update_global_board.start()
 
+        self.tags_to_update = set()
+        self.last_updated_tags = {}
+
     def cog_unload(self):
         # self.bulk_insert_loop.cancel()
         self.update_board_loops.cancel()
@@ -68,9 +71,10 @@ class DonationBoard(commands.Cog):
 
     @tasks.loop(seconds=60.0)
     async def update_board_loops(self):
-        async with self.bot.donationlogs._batch_lock:
-            clan_tags = list(self.bot.donationlogs._clans_updated)
-            self.bot.donationlogs._clans_updated.clear()
+        clan_tags = self.tags_to_update.copy()
+        self.tags_to_update.clear()
+
+        self.last_updated_tags.update(**{n: datetime.utcnow() for n in clan_tags})
 
         query = """SELECT DISTINCT boards.channel_id
                     FROM boards
