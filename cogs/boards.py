@@ -52,6 +52,7 @@ class DonationBoard(commands.Cog):
 
         self.tags_to_update = set()
         self.last_updated_tags = {}
+        self.last_updated_channels = {}
 
     def cog_unload(self):
         # self.bulk_insert_loop.cancel()
@@ -87,6 +88,7 @@ class DonationBoard(commands.Cog):
         for n in fetch:
             try:
                 await self.update_board(n['channel_id'])
+                self.last_updated_channels[n['channel_id']] = datetime.utcnow()
             except:
                 pass
 
