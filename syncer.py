@@ -398,6 +398,7 @@ async def on_clan_member_join(member, clan):
 async def update_clan_tags():
     query = "SELECT DISTINCT(clan_tag) FROM clans"
     fetch = await pool.fetch(query)
+    log.info(f"Setting {len(fetch)} tags to update")
     coc_client._clan_updates = [n[0] for n in fetch]
 
 if __name__ == "__main__":
