@@ -17,9 +17,14 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
 SEASON_ID = 8
 
+class CustomCache(coc.Cache):
+    @property
+    def clan_config(self):
+        return coc.CacheConfig(2000, None)  # max_size, time to live
+
 loop = asyncio.get_event_loop()
 pool = loop.run_until_complete(Table.create_pool(creds.postgres))
-coc_client = coc.login(creds.email, creds.password, client=coc.EventsClient, key_names="test", throttle_limit=30, key_count=3)
+coc_client = coc.login(creds.email, creds.password, client=coc.EventsClient, key_names="test", throttle_limit=30, key_count=3, cache=CustomCache)
 
 board_batch_lock = asyncio.Lock(loop=loop)
 board_batch_data = {}
