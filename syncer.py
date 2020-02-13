@@ -61,7 +61,7 @@ async def bulk_insert():
 
 
 async def on_clan_member_donation(old_donations, new_donations, player, clan):
-    log.debug(f'Received on_clan_member_donation event for player {player} of clan {clan}')
+    log.info(f'Received on_clan_member_donation event for player {player} of clan {clan}')
     if old_donations > new_donations:
         donations = new_donations
     else:
@@ -91,7 +91,7 @@ async def on_clan_member_donation(old_donations, new_donations, player, clan):
     await update(player.tag)
 
 async def on_clan_member_received(old_received, new_received, player, clan):
-    log.debug(f'Received on_clan_member_received event for player {player} of clan {clan}')
+    log.info(f'Received on_clan_member_received event for player {player} of clan {clan}')
     if old_received > new_received:
         received = new_received
     else:
@@ -146,7 +146,7 @@ async def trophylog_bulk_insert():
 
 
 async def on_clan_member_trophies_change(old_trophies, new_trophies, player, clan):
-    log.debug(f'Received on_clan_member_trophy_change event for player {player} of clan {clan}')
+    log.info(f'Received on_clan_member_trophy_change event for player {player} of clan {clan}')
     change = new_trophies - old_trophies
 
     async with trophylog_batch_lock:
