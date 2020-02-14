@@ -64,6 +64,51 @@ async def bulk_insert():
             log.info('Registered %s donation events to the database.', total)
         donationlog_batch_data.clear()
 
+        
+@tasks.loop(seconds=60.0)
+async def board_insert_loop():
+    async with board_batch_lock:
+        await bulk_board_insert()
+        
+async def bulk_board_insert():
+    query = """UPDATE players SET donations = players.donations + x.donations, 
+                                  received  = players.received  + x.received, 
+                                  trophies  = x.trophies
+                    FROM(
+                        SELECT x.player_tag, x.donations, x.received, x.trophies
+                            FROM jsonb_to_recordset($1::jsonb)
+                        AS x(player_tag TEXT, 
+                             donations INTEGER, 
+                             received INTEGER, 
+                             trophies INTEGER)
+                        )
+                AS x
+                WHERE players.player_tag = x.player_tag
+                AND players.season_id=$2
+            """
+
+    query2 = """UPDATE eventplayers SET donations = eventplayers.donations + x.donations, 
+                                        received  = eventplayers.received  + x.received,
+                                        trophies  = x.trophies   
+                    FROM(
+                        SELECT x.player_tag, x.donations, x.received, x.trophies
+                        FROM jsonb_to_recordset($1::jsonb)
+                        AS x(player_tag TEXT, 
+                             donations INTEGER, 
+                             received INTEGER, 
+                             trophies INTEGER)
+                        )
+                AS x
+                WHERE eventplayers.player_tag = x.player_tag
+                AND eventplayers.live = true                    
+            """
+    if board_batch_data:
+        response = await pool.execute(query, list(self._data_batch.values()), SEASON_ID)
+        log.debug(f'Registered donations/received to the database. Status Code {response}.')
+        response = await pool.execute(query2, list(board_batch_data.values()))
+        log.debug(f'Registered donations/received to the events database. Status Code {response}.')
+        board_batch_data.clear()
+
 
 async def on_clan_member_donation(old_donations, new_donations, player, clan):
     log.info(f'Received on_clan_member_donation event for player {player} of clan {clan}')
@@ -413,6 +458,7 @@ if __name__ == "__main__":
     trophylog_batch_insert_loop.start()
     event_player_updater.start()
     last_updated_loop.start()
+    board_insert_loop.start()
 
     coc_client.add_events(
         on_clan_member_donation,
