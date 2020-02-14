@@ -377,7 +377,7 @@ async def on_clan_member_join(member, clan):
                 VALUES ($1,$2,$3,$4,$4,$5,$6::integer - $2::integer,$7,$8,$9,$10,True) 
                 ON CONFLICT (player_tag, season_id) 
                 DO UPDATE SET 
-                donations = $6::integer - start_friend_in_need,
+                donations = $6::integer - start_friend_in_need::integer,
                 trophies = $4
             """
 
