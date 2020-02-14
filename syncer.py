@@ -17,10 +17,12 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
 SEASON_ID = 8
 
+
 class CustomCache(coc.Cache):
     @property
     def clan_config(self):
         return coc.CacheConfig(2000, None)  # max_size, time to live
+
 
 loop = asyncio.get_event_loop()
 pool = loop.run_until_complete(Table.create_pool(creds.postgres))
@@ -103,7 +105,7 @@ async def bulk_board_insert():
                 AND eventplayers.live = true                    
             """
     if board_batch_data:
-        response = await pool.execute(query, list(self._data_batch.values()), SEASON_ID)
+        response = await pool.execute(query, list(board_batch_data.values()), SEASON_ID)
         log.debug(f'Registered donations/received to the database. Status Code {response}.')
         response = await pool.execute(query2, list(board_batch_data.values()))
         log.debug(f'Registered donations/received to the events database. Status Code {response}.')
