@@ -48,8 +48,7 @@ async def group_donations(bot, all_clan_events):
 
         messages = []
 
-        donation_matches = [x for x in clan_events if x.donations in set(n.received for n in clan_events if n.tag != x.tag)]
-        print(len(clan_events))
+        donation_matches = [x for x in clan_events if x.donations and x.donations in set(n.received for n in clan_events if n.tag != x.tag)]
 
         for match in donation_matches:
             corresponding_received = [x for x in clan_events if x.received == match.donations and x.tag != match.tag]
