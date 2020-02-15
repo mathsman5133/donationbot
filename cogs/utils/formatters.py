@@ -251,3 +251,19 @@ class CLYTable:
             index = number_emojis[index] if index <= 100 else misc['idle']
             fmt += f"{index}⠀`⠀{str(v[1]):\u00A0>13.13}⠀`  `⠀{str(v[2]):\u00A0>11.11}⠀`\n"
         return fmt
+
+
+def get_line_chunks(lines, chunk_size=13, max_size=1950):
+    if not lines:
+        return
+
+    chars = 0
+    idx_start = 0
+    for idx, line in enumerate(lines):
+        chars += len(line) + 1  # Need to count the eventual \n
+        if chars > max_size:
+            yield lines[idx_start:idx]
+            chars = len(line) + 1
+            idx_start = idx
+        if idx == len(lines) - 1:
+            yield lines[idx_start:]
