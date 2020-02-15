@@ -41,7 +41,6 @@ def get_received_combos(clan_events):
 
 
 async def group_donations(bot, all_clan_events):
-    print(all_clan_events)
     embeds = []
     for (tag, clan_events) in itertools.groupby(all_clan_events, key=lambda x: x['clan_tag']):
         clan_events = [SlimDonationEvent2(x['donations'], x['received'], x['player_name'], x['player_tag'], x['clan_tag']) for x in clan_events]
@@ -60,6 +59,10 @@ async def group_donations(bot, all_clan_events):
             if len(corresponding_received) > 1:
                 continue
                 # e.g. 1 player donates 20 and 2 players receive 20, we don't know who the donator gave troops to
+            if match not in clan_events:
+                continue  # not sure why, have to look into this
+            if corresponding_received[0] not in clan_events:
+                continue  # same issue
 
             if not messages:
                 messages.append("**Exact donation/received matches**")
@@ -89,14 +92,12 @@ async def group_donations(bot, all_clan_events):
             for x in (event, *received_combos):
                 messages.append(format_donation_log_message(x, clan.name))
                 clan_events.remove(x)
-        print(len(clan_events))
 
         for event in clan_events:
             if "\n**Unknown donation/received matches**" not in messages:
                 messages.append("\n**Unknown donation/received matches**")
             messages.append(format_donation_log_message(event, clan.name))
             clan_events.remove(event)
-        print(len(clan_events))
 
         hex_ = bytes.hex(str.encode(clan.tag))[:20]
 
@@ -107,7 +108,6 @@ async def group_donations(bot, all_clan_events):
             )
             e.set_author(name=f"{clan.name} ({clan.tag})", icon_url=clan.badge.url)
             e.set_footer(text="Reported at").timestamp = datetime.utcnow()
-            print(e.to_dict())
             embeds.append(e)
 
     return embeds
@@ -174,7 +174,10 @@ class DonationLogs(commands.Cog):
         log.debug('Starting bulk report loop for donations.')
         start = time.perf_counter()
         async with self._batch_lock:
-            await self.bulk_report()
+            try:
+                await self.bulk_report()
+            except:
+                pass
         log.debug('Time taken: %s ms', (time.perf_counter() - start)*1000)
 
     async def sync_temp_event_tasks(self):
@@ -229,7 +232,7 @@ class DonationLogs(commands.Cog):
 
                 for n in fetch:
                     if config.channel_id in TEST_CHANNEL_IDS:
-                        await self.bot.utils.channel_log(channel_id, EVENTS_TABLE_TYPE, embed_to_send=json.loads(n[0]))
+                        asyncio.ensure_future(self.bot.utils.channel_log(channel_id, EVENTS_TABLE_TYPE, embed_to_send=json.loads(n[0])))
                     else:
                         asyncio.ensure_future(
                             self.bot.utils.channel_log(channel_id, EVENTS_TABLE_TYPE, n[0])
