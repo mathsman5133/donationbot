@@ -106,7 +106,7 @@ async def group_donations(bot, all_clan_events):
                 description="\n".join(lines)
             )
             e.set_author(name=f"{clan.name} ({clan.tag})", icon_url=clan.badge.url)
-            e.set_footer(text="Reported at").timestamp = datetime.utcnow()
+            e.set_footer(text="Reported").timestamp = datetime.utcnow()
             embeds.append(e)
 
     return embeds
@@ -231,7 +231,7 @@ class DonationLogs(commands.Cog):
 
                 for n in fetch:
                     if config.channel_id in TEST_CHANNEL_IDS:
-                        asyncio.ensure_future(self.bot.utils.channel_log(channel_id, EVENTS_TABLE_TYPE, embed_to_send=json.loads(n[0])))
+                        asyncio.ensure_future(self.bot.utils.channel_log(channel_id, EVENTS_TABLE_TYPE, embed_to_send=discord.Embed.from_dict(json.loads(n[0]))))
                     else:
                         asyncio.ensure_future(
                             self.bot.utils.channel_log(channel_id, EVENTS_TABLE_TYPE, n[0])
