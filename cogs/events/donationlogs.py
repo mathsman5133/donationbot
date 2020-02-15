@@ -1,19 +1,117 @@
 import asyncio
 import asyncpg
 import discord
+import itertools
+import json
 import logging
 import math
 import time
+
+from binascii import hexlify
+from collections import namedtuple
 
 from datetime import datetime
 from discord.ext import commands, tasks
 
 from cogs.utils.db_objects import SlimDonationEvent
-from cogs.utils.formatters import format_donation_log_message
+from cogs.utils.formatters import format_donation_log_message, get_line_chunks
 
 log = logging.getLogger(__name__)
 
 EVENTS_TABLE_TYPE = 'donation'
+SlimDonationEvent2 = namedtuple("SlimDonationEvent", "donations received name tag clan_tag")
+TEST_CHANNEL_IDS = [595598923993710592, 594280479881035776]
+
+def get_received_combos(clan_events):
+    valid_events = [n for n in clan_events if n.received]
+    combos = {}
+    for n in valid_events:
+        for x in valid_events:
+            if n == x:
+                continue
+            combos[n.received + x.received] = (n, x)
+
+            for y in valid_events:
+                if y == x or y == n:
+                    continue
+
+                combos[x.received + n.received + y.received] = (n, x, y)
+
+    return combos
+
+
+async def group_donations(bot, all_clan_events):
+    print(all_clan_events)
+    embeds = []
+    for (tag, clan_events) in itertools.groupby(all_clan_events, key=lambda x: x['clan_tag']):
+        clan_events = [SlimDonationEvent2(x['donations'], x['received'], x['player_name'], x['player_tag'], x['clan_tag']) for x in clan_events]
+        clan = await bot.coc.get_clan(clan_events[0].clan_tag, cache=True, update_cache=False)
+
+        messages = []
+
+        donation_matches = [x for x in clan_events if x.donations in set(n.received for n in clan_events if n.tag != x.tag)]
+        print(len(clan_events))
+
+        for match in donation_matches:
+            corresponding_received = [x for x in clan_events if x.received == match.donations and x.tag != match.tag]
+
+            if not corresponding_received:
+                continue  # not sure why this would happen
+            if len(corresponding_received) > 1:
+                continue
+                # e.g. 1 player donates 20 and 2 players receive 20, we don't know who the donator gave troops to
+
+            if not messages:
+                messages.append("**Exact donation/received matches**")
+
+            messages.append(format_donation_log_message(match, clan.name))
+            clan_events.remove(match)
+
+            messages.append(format_donation_log_message(corresponding_received[0], clan.name))
+            clan_events.remove(corresponding_received[0])
+        print(len(clan_events))
+
+        possible_received_combos = get_received_combos(clan_events)
+
+        matches = [n for n in clan_events if n.donations in possible_received_combos.keys()]
+
+        for event in matches:
+            if "\n**Matched donations with a combo of received troops**" not in messages:
+                messages.append("\n**Matched donations with a combo of received troops**")
+
+            received_combos = possible_received_combos.get(event.donations)
+            if not all(x in clan_events for x in received_combos):
+                continue
+
+            if not received_combos:
+                continue
+
+            for x in (event, *received_combos):
+                messages.append(format_donation_log_message(x, clan.name))
+                clan_events.remove(x)
+        print(len(clan_events))
+
+        for event in clan_events:
+            if "\n**Unknown donation/received matches**" not in messages:
+                messages.append("\n**Unknown donation/received matches**")
+            messages.append(format_donation_log_message(event, clan.name))
+            clan_events.remove(event)
+        print(len(clan_events))
+
+        hex_ = bytes.hex(str.encode(clan.tag))[:20]
+
+        for lines in get_line_chunks(messages):
+            e = discord.Embed(
+                colour=int(int(''.join(filter(lambda x: x.isdigit(), hex_))) ** 0.3),
+                description="\n".join(lines)
+            )
+            e.set_author(name=f"{clan.name} ({clan.tag})", icon_url=clan.badge.url)
+            e.set_footer(text="Reported at").timestamp = datetime.utcnow()
+            print(e.to_dict())
+            embeds.append(e)
+
+    return embeds
+
 
 class DonationLogs(commands.Cog):
     def __init__(self, bot):
@@ -130,7 +228,12 @@ class DonationLogs(commands.Cog):
                 fetch = await self.bot.pool.fetch(query, channel_id, EVENTS_TABLE_TYPE)
 
                 for n in fetch:
-                    asyncio.ensure_future(self.bot.utils.channel_log(channel_id, EVENTS_TABLE_TYPE, n[0], embed=False))
+                    if config.channel_id in TEST_CHANNEL_IDS:
+                        await self.bot.utils.channel_log(channel_id, EVENTS_TABLE_TYPE, embed_to_send=json.loads(n[0]))
+                    else:
+                        asyncio.ensure_future(
+                            self.bot.utils.channel_log(channel_id, EVENTS_TABLE_TYPE, n[0])
+                        )
 
                 log.debug(f'Dispatching {len(fetch)} logs after sleeping for {config.seconds} '
                           f'sec to channel {config.channel} ({config.channel_id})')
@@ -151,7 +254,7 @@ class DonationLogs(commands.Cog):
                    FROM clans 
                    INNER JOIN donationevents 
                    ON clans.clan_tag = donationevents.clan_tag 
-                   WHERE donationevents.reported=False
+                   AND donationevents.reported = FALSE
                 """
         fetch = await self.bot.pool.fetch(query)
 
@@ -159,12 +262,13 @@ class DonationLogs(commands.Cog):
                           donationevents.donations, 
                           donationevents.received, 
                           donationevents.player_name, 
+                          donationevents.player_tag,
                           donationevents.time
                     FROM donationevents 
                         INNER JOIN clans 
                         ON clans.clan_tag = donationevents.clan_tag 
                     WHERE clans.channel_id=$1 
-                    AND donationevents.reported=False
+                    AND donationevents.reported = FALSE
                     ORDER BY donationevents.clan_tag, 
                              time DESC;
                 """
@@ -176,30 +280,39 @@ class DonationLogs(commands.Cog):
                 continue
             if not config.toggle:
                 continue
+            test_case = config.channel_id in TEST_CHANNEL_IDS
 
             events = await self.bot.pool.fetch(query, n[0])
 
-            messages = []
-            for x in events:
-                slim_event = SlimDonationEvent(x['donations'], x['received'], x['player_name'], x['clan_tag'])
-                clan_name = await self.bot.utils.get_clan_name(config.guild_id, slim_event.clan_tag)
-                messages.append(format_donation_log_message(slim_event, clan_name))
+            if test_case:
+                group_batch = await group_donations(self.bot, events)
+            else:
+                messages = []
+                for x in events:
+                    slim_event = SlimDonationEvent(x['donations'], x['received'], x['player_name'], x['clan_tag'])
+                    clan_name = await self.bot.utils.get_clan_name(config.guild_id, slim_event.clan_tag)
+                    messages.append(format_donation_log_message(slim_event, clan_name))
 
-            group_batch = []
-            for i in range(math.ceil(len(messages) / 20)):
-                group_batch.append(messages[i*20:(i+1)*20])
+                group_batch = []
+                for i in range(math.ceil(len(messages) / 20)):
+                    group_batch.append(messages[i * 20:(i + 1) * 20])
 
             for x in group_batch:
                 if config.seconds > 0:
-                    await self.add_temp_events(config.channel_id, '\n'.join(x))
+                    if test_case:
+                        await self.add_temp_events(config.channel_id, json.dumps(x.to_dict()))
+                    else:
+                        await self.add_temp_events(config.channel_id, '\n'.join(x))
                 else:
-                    log.debug(f'Dispatching a log to channel '
-                              f'{config.channel} (ID {config.channel_id})')
-                    asyncio.ensure_future(self.bot.utils.channel_log(config.channel_id, EVENTS_TABLE_TYPE,
-                                                                     '\n'.join(x), embed=False))
+                    log.debug(f'Dispatching a log to channel {config.channel} (ID {config.channel_id})')
+                    if test_case:
+                        await self.bot.utils.channel_log(config.channel_id, EVENTS_TABLE_TYPE, embed_to_send=x)
+                    else:
+                        asyncio.ensure_future(self.bot.utils.channel_log(config.channel_id, EVENTS_TABLE_TYPE,
+                                                                         '\n'.join(x), embed=False))
 
         query = """UPDATE donationevents
-                        SET reported=True
+                   SET reported=True
                    WHERE reported=False
                 """
         removed = await self.bot.pool.execute(query)

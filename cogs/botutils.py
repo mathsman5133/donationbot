@@ -126,12 +126,15 @@ class Utils(commands.Cog):
         fetch = await self.bot.pool.fetch(query)
         self.bot.coc._clan_updates = [n[0] for n in fetch]
 
-    async def channel_log(self, channel_id, log_type, message, colour=None, embed=True):
+    async def channel_log(self, channel_id, log_type, message=None, embed_to_send=None, colour=None, embed=True):
         config = await self.log_config(channel_id, log_type)
         if not config.channel or not config.toggle:
             return
 
-        if embed:
+        if embed_to_send:
+            e = embed_to_send
+            c = None
+        elif embed:
             e = discord.Embed(colour=colour or self.bot.colour,
                               description=message,
                               timestamp=datetime.datetime.utcnow())
