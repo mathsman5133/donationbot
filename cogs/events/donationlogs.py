@@ -14,7 +14,7 @@ from datetime import datetime
 from discord.ext import commands, tasks
 
 from cogs.utils.db_objects import SlimDonationEvent
-from cogs.utils.formatters import format_donation_log_message, get_line_chunks
+from cogs.utils.formatters import format_donation_log_message, format_donation_log_message_test, get_line_chunks
 
 log = logging.getLogger(__name__)
 
@@ -66,12 +66,11 @@ async def group_donations(bot, all_clan_events):
             if not messages:
                 messages.append("**Exact donation/received matches**")
 
-            messages.append(format_donation_log_message(match, clan.name))
+            messages.append(format_donation_log_message_test(match))
             clan_events.remove(match)
 
-            messages.append(format_donation_log_message(corresponding_received[0], clan.name))
+            messages.append(format_donation_log_message_test(corresponding_received[0]))
             clan_events.remove(corresponding_received[0])
-        print(len(clan_events))
 
         possible_received_combos = get_received_combos(clan_events)
 
@@ -89,13 +88,13 @@ async def group_donations(bot, all_clan_events):
                 continue
 
             for x in (event, *received_combos):
-                messages.append(format_donation_log_message(x, clan.name))
+                messages.append(format_donation_log_message_test(x))
                 clan_events.remove(x)
 
         for event in clan_events:
             if "\n**Unknown donation/received matches**" not in messages:
                 messages.append("\n**Unknown donation/received matches**")
-            messages.append(format_donation_log_message(event, clan.name))
+            messages.append(format_donation_log_message_test(event))
             clan_events.remove(event)
 
         hex_ = bytes.hex(str.encode(clan.tag))[:20]

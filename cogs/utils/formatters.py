@@ -83,6 +83,24 @@ def format_donation_log_message(player, clan_name):
     return f'{emoji2}{player.name} {emoji} {number} ({clan_name})'
 
 
+def format_donation_log_message_test(player):
+    if player.donations:
+        emoji = misc['donated']
+        emoji2 = misc['online']
+        if player.donations <= 100:
+            number = number_emojis[player.donations]
+        else:
+            number = str(player.donations)
+    else:
+        emoji = misc['received']
+        emoji2 = misc['offline']
+        if 0 < player.received <= 100:
+            number = number_emojis[player.received]
+        else:
+            number = str(player.received)
+    return f'{emoji2}{player.name} {emoji} {number}'
+
+
 def format_trophy_log_message(player, clan_name):
     trophies = player.trophies
     abs_trophies = abs(trophies)
