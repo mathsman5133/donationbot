@@ -234,7 +234,7 @@ class DonationLogs(commands.Cog):
                         asyncio.ensure_future(self.bot.utils.channel_log(channel_id, EVENTS_TABLE_TYPE, embed_to_send=discord.Embed.from_dict(json.loads(n[0]))))
                     else:
                         asyncio.ensure_future(
-                            self.bot.utils.channel_log(channel_id, EVENTS_TABLE_TYPE, n[0])
+                            self.bot.utils.channel_log(channel_id, EVENTS_TABLE_TYPE, n[0], embed=False)
                         )
 
                 log.debug(f'Dispatching {len(fetch)} logs after sleeping for {config.seconds} '
