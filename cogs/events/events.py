@@ -30,14 +30,15 @@ class Events(commands.Cog):
     async def recent_events(table_name, ctx, limit):
         col, col2 = columns(table_name)
 
-        query = f"""SELECT player_tag, {col}, {col2}, time, player_name
-                    FROM {table_name}
-                    WHERE {table_name}.clan_tag = ANY(
-                                SELECT DISTINCT clan_tag FROM clans
-                                WHERE channel_id=$1
-                                )
-                    ORDER BY {table_name}.time DESC
-                    LIMIT $2
+        query = f"""
+                SELECT player_tag, {col}, {col2}, time, player_name
+                FROM {table_name}
+                WHERE {table_name}.clan_tag = ANY(
+                            SELECT DISTINCT clan_tag FROM clans
+                            WHERE channel_id=$1
+                            )
+                ORDER BY {table_name}.time DESC
+LIMIT $2
                 """
         fetch = await ctx.db.fetch(query, ctx.channel.id, limit)
         if not fetch:

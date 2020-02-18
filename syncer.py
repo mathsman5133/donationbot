@@ -42,6 +42,80 @@ last_updated_data = {}
 
 
 @tasks.loop(seconds=60.0)
+async def main_syncer():
+    query = "SELECT DISTINCT(clan_tag) FROM clans"
+    fetch = await pool.fetch(query)
+
+    query = """
+            INSERT INTO players (
+                player_tag, 
+                player_name,
+                clan_tag,
+                prev_donations, 
+                prev_received,
+                season_id, 
+                trophies
+            )
+            SELECT x.player_tag, 
+                   x.player_name,
+                   x.clan_tag,
+                   x.donations, 
+                   x.received,
+                   $2,
+                   x.trophies
+
+            FROM jsonb_to_recordset($1::jsonb)
+            AS x(
+                player_tag TEXT,
+                player_name TEXT,
+                clan_tag TEXT,
+                donations INTEGER,
+                received INTEGER, 
+                trophies INTEGER
+            )
+            ON CONFLICT (player_tag, season_id)
+            DO UPDATE
+            SET player_name    = x.player_name,
+                clan_tag       = x.clan_tag,
+                prev_donations = x.donations,
+                prev_received  = x.received,
+                trophies       = x.trophies
+            """
+
+    players = []
+
+    async for clan in coc_client.get_clans((n[0] for n in fetch), cache=False, update_cache=False):
+        players.extend(
+            {
+                "player_tag": n.tag,
+                "player_name": n.name,
+                "clan_tag": n.clan and n.clan.tag
+                "donations": n.donations,
+                "received": n.received,
+                "trophies": n.trophies
+            }
+            for n in clan.itermembers
+        )
+
+    await pool.execute(query, players)
+
+
+@tasks.loop(seconds=60.0)
+async def insert_new_players():
+    query = "SELECT player_tag FROM players WHERE start_update = FALSE AND season_id = $1"
+    fetch = await pool.fetch(query, SEASON_ID)
+
+    players = []
+
+    async for player in coc_client.get_players((n[0] for n in fetch), cache=False, update_cache=False):
+        players.append({
+            "player_tag": player.tag,
+            "player_name": player.name,
+            "clan_tag": player.clan and player.clan.tag,
+            ""
+        })
+
+@tasks.loop(seconds=60.0)
 async def batch_insert_loop():
     log.info('Starting batch insert loop for donationlogs.')
     async with donationlog_batch_lock:
