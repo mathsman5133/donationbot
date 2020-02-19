@@ -458,7 +458,10 @@ if __name__ == "__main__":
     update_clan_tags.start()
     batch_insert_loop.start()
     trophylog_batch_insert_loop.start()
+
+    event_player_updater.add_exception_type(coc.HTTPException)
     event_player_updater.start()
+
     last_updated_loop.start()
     board_insert_loop.start()
 
