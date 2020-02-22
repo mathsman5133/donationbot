@@ -84,7 +84,8 @@ async def main_syncer():
             for n in clan.itermembers
         )
 
-    await pool.execute(query, players, SEASON_ID)
+    q = await pool.execute(query, players, SEASON_ID)
+    log.info(q)
 
 
 @tasks.loop(seconds=60.0)
@@ -122,7 +123,7 @@ async def insert_new_players():
         FROM jsonb_to_recordset($1::jsonb)
         AS x(
             player_name TEXT, 
-            player_tag INTEGER,
+            player_tag TEXT,
             clan_tag TEXT, 
             trophies INTEGER,
             versus_trophies INTEGER,
@@ -151,7 +152,8 @@ async def insert_new_players():
             "fin": player.achievements_dict["Friend in Need"].value,
             "sic": player.achievements_dict["Sharing is Caring"].value
         })
-    await pool.execute(query, players, SEASON_ID)
+    q = await pool.execute(query, players, SEASON_ID)
+    log.info(q)
 
 
 @tasks.loop(hours=1)
