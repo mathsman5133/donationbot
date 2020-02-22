@@ -224,12 +224,15 @@ AS $function$
         new_donations integer;
         new_received integer;
     BEGIN
+
         IF NEW.prev_donations != OLD.prev_donations THEN
             IF NEW.prev_donations > OLD.prev_donations THEN
                 new_donations := NEW.prev_donations - OLD.prev_donations;
+                raise notice 'new donations set';
             ELSE
                 new_donations := NEW.prev_donations;
                 NEW.fresh_update := TRUE;  -- player joined a new clan
+                raise notice 'new donations set else';
             end if;
 
             INSERT INTO donationevents (

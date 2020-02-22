@@ -62,8 +62,8 @@ async def main_syncer():
             DO UPDATE
             SET player_name    = excluded.player_name,
                 clan_tag       = excluded.clan_tag,
-                prev_donations = excluded.donations,
-                prev_received  = excluded.received,
+                prev_donations = excluded.prev_donations,
+                prev_received  = excluded.prev_received,
                 trophies       = excluded.trophies,
                 league_id      = excluded.league_id
             """
