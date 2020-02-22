@@ -17,6 +17,7 @@ from cogs.utils.db_objects import SlimDonationEvent
 from cogs.utils.formatters import format_donation_log_message, format_donation_log_message_test, get_line_chunks
 
 log = logging.getLogger(__name__)
+log.setLevel(logging.DEBUG)
 
 EVENTS_TABLE_TYPE = 'donation'
 SlimDonationEvent2 = namedtuple("SlimDonationEvent", "donations received name tag clan_tag")
