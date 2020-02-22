@@ -237,18 +237,17 @@ AS $function$
                 clan_tag,
                 donations,
                 received,
-                time,
+                "time",
                 player_name,
                 season_id
             )
-            SELECT NEW.player_tag,
+            VALUES (NEW.player_tag,
                    NEW.clan_tag,
                    new_donations,
                    0,
                    NOW(),
                    NEW.player_name,
-                   NEW.season_id
-            FROM NEW;
+                   NEW.season_id);
 
             NEW.donations := OLD.donations + new_donations;
         end if;
@@ -266,18 +265,17 @@ AS $function$
                 clan_tag,
                 donations,
                 received,
-                time,
+                "time",
                 player_name,
                 season_id
             )
-            SELECT NEW.player_tag,
-                   NEW.clan_tag,
-                   0,
-                   new_received,
-                   NOW(),
-                   NEW.player_name,
-                   NEW.season_id
-            FROM NEW;
+            VALUES (NEW.player_tag,
+                    NEW.clan_tag,
+                    0,
+                    new_received,
+                    NOW(),
+                    NEW.player_name,
+                    NEW.season_id);
 
             NEW.received := OLD.received + new_received;
         end if;
@@ -288,18 +286,17 @@ AS $function$
                 player_name,
                 clan_tag,
                 trophy_change,
-                time,
+                "time",
                 league_id,
                 season_id
             )
-            SELECT NEW.player_tag,
+            VALUES (NEW.player_tag,
                    NEW.player_name,
                    NEW.clan_tag,
                    NEW.trophies - OLD.trophies,
-                   NEW.league_id,
                    NOW(),
-                   NEW.season_id
-            FROM NEW;
+                   NEW.league_id,
+                   NEW.season_id);
         end if;
 
         IF NEW.clan_tag != OLD.clan_tag THEN
