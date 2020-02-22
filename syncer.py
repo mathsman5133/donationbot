@@ -150,7 +150,7 @@ async def insert_new_players():
             "defenses": player.defense_wins,
             "versus_attacks": player.versus_attack_wins,
             "fin": player.achievements_dict["Friend in Need"].value,
-            "sic": player.achievements_dict["Sharing is Caring"].value
+            "sic": player.achievements_dict["Sharing is caring"].value
         })
     q = await pool.execute(query, players, SEASON_ID)
     log.info(q)
