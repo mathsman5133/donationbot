@@ -3,6 +3,7 @@ import asyncpg
 import discord
 import logging
 import math
+import itertools
 import time
 
 from discord.ext import commands, tasks
@@ -148,16 +149,15 @@ class TrophyLogs(commands.Cog):
         removed = await self.bot.pool.execute(query)
         log.debug('Removed trophyevents from the database. Status Code %s', removed)
 
-        for n in fetch:
-            config = await self.bot.utils.log_config(n[0], EVENTS_TABLE_TYPE)
+        for channel_id, events in itertools.groupby(fetch, key=lambda n: n['channel_id']):
+            config = await self.bot.utils.log_config(channel_id, EVENTS_TABLE_TYPE)
             if not config:
                 continue
             if not config.toggle:
                 continue
             if config.seconds > 0:
                 continue
-
-            events = await self.bot.pool.fetch(query, n[0])
+            events = list(events)
 
             messages = []
             for x in events:
