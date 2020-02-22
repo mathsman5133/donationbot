@@ -305,3 +305,4 @@ if __name__ == "__main__":
     main_syncer.start()
     event_player_updater.start()
     insert_new_players.start()
+    asyncio.get_event_loop().run_forever()
