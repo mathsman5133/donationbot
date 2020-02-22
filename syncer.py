@@ -28,45 +28,75 @@ async def main_syncer():
     query = "SELECT DISTINCT(clan_tag) FROM clans"
     fetch = await pool.fetch(query)
 
-    query = """
-            INSERT INTO players (
-                player_tag, 
-                player_name,
-                clan_tag,
-                prev_donations, 
-                prev_received,
-                season_id, 
-                trophies,
-                league_id
-            )
-            SELECT x.player_tag, 
-                   x.player_name,
-                   x.clan_tag,
-                   x.donations, 
-                   x.received,
-                   $2,
-                   x.trophies,
-                   x.league_id
+    # query = """
+    #         INSERT INTO players (
+    #             player_tag,
+    #             player_name,
+    #             clan_tag,
+    #             prev_donations,
+    #             prev_received,
+    #             season_id,
+    #             trophies,
+    #             league_id
+    #         )
+    #         SELECT x.player_tag,
+    #                x.player_name,
+    #                x.clan_tag,
+    #                x.donations,
+    #                x.received,
+    #                $2,
+    #                x.trophies,
+    #                x.league_id
+    #
+    #         FROM jsonb_to_recordset($1::jsonb)
+    #         AS x(
+    #             player_tag TEXT,
+    #             player_name TEXT,
+    #             clan_tag TEXT,
+    #             donations INTEGER,
+    #             received INTEGER,
+    #             trophies INTEGER,
+    #             league_id INTEGER
+    #         )
+    #         ON CONFLICT (player_tag, season_id)
+    #         DO UPDATE
+    #         SET player_name    = excluded.player_name,
+    #             clan_tag       = excluded.clan_tag,
+    #             prev_donations = excluded.prev_donations,
+    #             prev_received  = excluded.prev_received,
+    #             trophies       = excluded.trophies,
+    #             league_id      = excluded.league_id
+    #         """
 
-            FROM jsonb_to_recordset($1::jsonb)
-            AS x(
-                player_tag TEXT,
-                player_name TEXT,
-                clan_tag TEXT,
-                donations INTEGER,
-                received INTEGER, 
-                trophies INTEGER,
-                league_id INTEGER
-            )
-            ON CONFLICT (player_tag, season_id)
-            DO UPDATE
-            SET player_name    = excluded.player_name,
-                clan_tag       = excluded.clan_tag,
-                prev_donations = excluded.prev_donations,
-                prev_received  = excluded.prev_received,
-                trophies       = excluded.trophies,
-                league_id      = excluded.league_id
-            """
+    query = """
+        UPDATE players
+        SET player_name    = x.player_name,
+            clan_tag       = x.clan_tag,
+            prev_donations = x.prev_donations,
+            prev_received  = x.prev_received,
+            trophies       = x.trophies,
+            league_id      = x.league_id
+        FROM(
+        SELECT x.player_tag,
+               x.player_name,
+               x.clan_tag,
+               x.prev_donations,
+               x.prev_received,
+               x.trophies,
+               x.league_id
+        FROM jsonb_to_recordset($1::jsonb)
+        AS x(
+            player_tag TEXT,
+            player_name TEXT,
+            clan_tag TEXT,
+            prev_donations INTEGER,
+            prev_received INTEGER, 
+            trophies INTEGER,
+            league_id INTEGER
+        )
+        ) AS x
+        WHERE players.player_tag = x.player_tag AND players.season_id = $2
+        """
 
     players = []
 
@@ -76,8 +106,8 @@ async def main_syncer():
                 "player_tag": n.tag,
                 "player_name": n.name,
                 "clan_tag": n.clan and n.clan.tag,
-                "donations": n.donations,
-                "received": n.received,
+                "prev_donations": n.donations,
+                "prev_received": n.received,
                 "trophies": n.trophies,
                 "league_id": n.league.id
             }
