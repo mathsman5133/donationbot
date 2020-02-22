@@ -147,7 +147,7 @@ async def insert_new_players():
             "versus_trophies": player.versus_trophies,
             "attacks": player.attack_wins,
             "defenses": player.defense_wins,
-            "versus_attacks": player.versus_attack_wins
+            "versus_attacks": player.versus_attack_wins,
             "fin": player.achievements_dict["Friend in Need"].value,
             "sic": player.achievements_dict["Sharing is Caring"].value
         })
