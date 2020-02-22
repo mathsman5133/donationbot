@@ -29,8 +29,11 @@ class Add(commands.Cog):
     async def insert_player(connection, player, season_id, in_event: bool = False, event_id: int = None):
         query = """INSERT INTO players (
                                     player_tag,
+                                    player_name,
                                     donations,
+                                    prev_donations,
                                     received,
+                                    prev_received,
                                     trophies,
                                     start_trophies,
                                     season_id,
@@ -41,12 +44,13 @@ class Add(commands.Cog):
                                     start_best_trophies,
                                     start_update
                                     )
-                    VALUES ($1, $2, $3, $4, $4, $5, $6, $7, $8, $9, $10, True)
+                    VALUES ($1, $2, $3, $3, $4, $4, $4, $5, $6, $7, $8, $9, $10, $11, True)
                     ON CONFLICT (player_tag, season_id) 
                     DO NOTHING
                 """
         await connection.execute(query,
                                  player.tag,
+                                 player.name,
                                  player.donations,
                                  player.received,
                                  player.trophies,

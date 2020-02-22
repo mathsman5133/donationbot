@@ -18,27 +18,9 @@ log.setLevel(logging.DEBUG)
 SEASON_ID = 8
 
 
-class CustomCache(coc.Cache):
-    @property
-    def clan_config(self):
-        return coc.CacheConfig(2000, None)  # max_size, time to live
-
-
 loop = asyncio.get_event_loop()
 pool = loop.run_until_complete(Table.create_pool(creds.postgres))
-coc_client = coc.login(creds.email, creds.password, client=coc.EventsClient, key_names="test", throttle_limit=30, key_count=3, cache=CustomCache)
-
-board_batch_lock = asyncio.Lock(loop=loop)
-board_batch_data = {}
-
-donationlog_batch_lock = asyncio.Lock(loop=loop)
-donationlog_batch_data = []
-
-trophylog_batch_lock = asyncio.Lock(loop=loop)
-trophylog_batch_data = []
-
-last_updated_batch_lock = asyncio.Lock(loop=loop)
-last_updated_data = {}
+coc_client = coc.login(creds.email, creds.password, key_names="test", throttle_limit=30, key_count=3)
 
 
 @tasks.loop(seconds=60.0)
@@ -54,7 +36,8 @@ async def main_syncer():
                 prev_donations, 
                 prev_received,
                 season_id, 
-                trophies
+                trophies,
+                league_id
             )
             SELECT x.player_tag, 
                    x.player_name,
@@ -62,7 +45,8 @@ async def main_syncer():
                    x.donations, 
                    x.received,
                    $2,
-                   x.trophies
+                   x.trophies,
+                   x.league_id
 
             FROM jsonb_to_recordset($1::jsonb)
             AS x(
@@ -71,7 +55,8 @@ async def main_syncer():
                 clan_tag TEXT,
                 donations INTEGER,
                 received INTEGER, 
-                trophies INTEGER
+                trophies INTEGER,
+                league_id INTEGER
             )
             ON CONFLICT (player_tag, season_id)
             DO UPDATE
@@ -79,7 +64,8 @@ async def main_syncer():
                 clan_tag       = x.clan_tag,
                 prev_donations = x.donations,
                 prev_received  = x.received,
-                trophies       = x.trophies
+                trophies       = x.trophies,
+                league_id      = x.league_id
             """
 
     players = []
@@ -89,10 +75,11 @@ async def main_syncer():
             {
                 "player_tag": n.tag,
                 "player_name": n.name,
-                "clan_tag": n.clan and n.clan.tag
+                "clan_tag": n.clan and n.clan.tag,
                 "donations": n.donations,
                 "received": n.received,
-                "trophies": n.trophies
+                "trophies": n.trophies,
+                "league_id": n.league.id
             }
             for n in clan.itermembers
         )
@@ -102,200 +89,69 @@ async def main_syncer():
 
 @tasks.loop(seconds=60.0)
 async def insert_new_players():
-    query = "SELECT player_tag FROM players WHERE start_update = FALSE AND season_id = $1"
+    query = "SELECT player_tag FROM players WHERE fresh_update = TRUE AND season_id = $1"
     fetch = await pool.fetch(query, SEASON_ID)
 
     players = []
 
+    query = """
+    UPDATE players
+    SET player_name  = x.player_name,
+        player_tag   = x.player_tag,
+        clan_tag     = x.clan_tag,
+        trophies     = x.trophies,
+        versus_trophies = x.versus_trophies,
+        fresh_update = FALSE,
+        attacks      = x.attacks  - players.start_attacks,
+        defenses     = x.defenses - players.start_defenses,
+        versus_attacks = x.versus_attacks,
+        donations    = x.fin + x.sic - players.start_friend_in_need - players.start_sharing_is_caring
+    
+    FROM(
+        SELECT x.player_name, 
+               x.player_tag,
+               x.clan_tag,
+               x.trophies,
+               x.versus_trophies,
+               x.attacks,
+               x.defenses,
+               x.versus_attacks,
+               x.fin,
+               x.sic
+                              
+        FROM jsonb_to_recordset($1::jsonb)
+        AS x(
+            player_name TEXT, 
+            player_tag INTEGER,
+            clan_tag TEXT, 
+            trophies INTEGER,
+            versus_trophies INTEGER,
+            attacks INTEGER,
+            defenses INTEGER,
+            versus_attacks INTEGER,
+            fin INTEGER,
+            sic INTEGER
+        )
+    )
+    AS x
+    WHERE players.player_tag = x.player_tag
+    AND players.season_id=$2
+    """
+
     async for player in coc_client.get_players((n[0] for n in fetch), cache=False, update_cache=False):
         players.append({
-            "player_tag": player.tag,
             "player_name": player.name,
+            "player_tag": player.tag,
             "clan_tag": player.clan and player.clan.tag,
-            ""
+            "trophies": player.trophies,
+            "versus_trophies": player.versus_trophies,
+            "attacks": player.attack_wins,
+            "defenses": player.defense_wins,
+            "versus_attacks": player.versus_attack_wins
+            "fin": player.achievements_dict["Friend in Need"].value,
+            "sic": player.achievements_dict["Sharing is Caring"].value
         })
-
-@tasks.loop(seconds=60.0)
-async def batch_insert_loop():
-    log.info('Starting batch insert loop for donationlogs.')
-    async with donationlog_batch_lock:
-        await bulk_insert()
-
-
-async def bulk_insert():
-    query = """INSERT INTO donationevents (player_tag, player_name, clan_tag, 
-                                             donations, received, time, season_id)
-                    SELECT x.player_tag, x.player_name, x.clan_tag, 
-                           x.donations, x.received, x.time, x.season_id
-                       FROM jsonb_to_recordset($1::jsonb) 
-                    AS x(player_tag TEXT, player_name TEXT, clan_tag TEXT, 
-                         donations INTEGER, received INTEGER, time TIMESTAMP, season_id INTEGER
-                         )
-            """
-
-    if donationlog_batch_data:
-        await pool.execute(query, donationlog_batch_data)
-        total = len(donationlog_batch_data)
-        if total > 1:
-            log.info('Registered %s donation events to the database.', total)
-        donationlog_batch_data.clear()
-
-        
-@tasks.loop(seconds=60.0)
-async def board_insert_loop():
-    async with board_batch_lock:
-        await bulk_board_insert()
-        
-async def bulk_board_insert():
-    query = """UPDATE players SET donations = players.donations + x.donations, 
-                                  received  = players.received  + x.received, 
-                                  trophies  = x.trophies
-                    FROM(
-                        SELECT x.player_tag, x.donations, x.received, x.trophies
-                            FROM jsonb_to_recordset($1::jsonb)
-                        AS x(player_tag TEXT, 
-                             donations INTEGER, 
-                             received INTEGER, 
-                             trophies INTEGER)
-                        )
-                AS x
-                WHERE players.player_tag = x.player_tag
-                AND players.season_id=$2
-            """
-
-    query2 = """UPDATE eventplayers SET donations = eventplayers.donations + x.donations, 
-                                        received  = eventplayers.received  + x.received,
-                                        trophies  = x.trophies   
-                    FROM(
-                        SELECT x.player_tag, x.donations, x.received, x.trophies
-                        FROM jsonb_to_recordset($1::jsonb)
-                        AS x(player_tag TEXT, 
-                             donations INTEGER, 
-                             received INTEGER, 
-                             trophies INTEGER)
-                        )
-                AS x
-                WHERE eventplayers.player_tag = x.player_tag
-                AND eventplayers.live = true                    
-            """
-    if board_batch_data:
-        response = await pool.execute(query, list(board_batch_data.values()), SEASON_ID)
-        log.debug(f'Registered donations/received to the database. Status Code {response}.')
-        response = await pool.execute(query2, list(board_batch_data.values()))
-        log.debug(f'Registered donations/received to the events database. Status Code {response}.')
-        board_batch_data.clear()
-
-
-async def on_clan_member_donation(old_donations, new_donations, player, clan):
-    log.info(f'Received on_clan_member_donation event for player {player} of clan {clan}')
-    if old_donations > new_donations:
-        donations = new_donations
-    else:
-        donations = new_donations - old_donations
-
-    async with donationlog_batch_lock:
-        donationlog_batch_data.append({
-            'player_tag': player.tag,
-            'player_name': player.name,
-            'clan_tag': clan.tag,
-            'donations': donations,
-            'received': 0,
-            'time': datetime.datetime.utcnow().isoformat(),
-            'season_id': SEASON_ID
-        })
-
-    async with board_batch_lock:
-        try:
-            board_batch_data[player.tag]['donations'] = donations
-        except KeyError:
-            board_batch_data[player.tag] = {
-                'player_tag': player.tag,
-                'donations': donations,
-                'received': 0,
-                'trophies': player.trophies
-            }
-    await update(player.tag)
-
-async def on_clan_member_received(old_received, new_received, player, clan):
-    log.info(f'Received on_clan_member_received event for player {player} of clan {clan}')
-    if old_received > new_received:
-        received = new_received
-    else:
-        received = new_received - old_received
-
-    async with donationlog_batch_lock:
-        donationlog_batch_data.append({
-            'player_tag': player.tag,
-            'player_name': player.name,
-            'clan_tag': clan.tag,
-            'donations': 0,
-            'received': received,
-            'time': datetime.datetime.utcnow().isoformat(),
-            'season_id': SEASON_ID
-        })
-
-    async with board_batch_lock:
-        try:
-            board_batch_data[player.tag]['received'] = received
-        except KeyError:
-            board_batch_data[player.tag] = {
-                'player_tag': player.tag,
-                'donations': 0,
-                'received': received,
-                'trophies': player.trophies
-            }
-
-
-@tasks.loop(seconds=60.0)
-async def trophylog_batch_insert_loop():
-    log.info('Starting batch insert loop.')
-    async with trophylog_batch_lock:
-        await trophylog_bulk_insert()
-
-async def trophylog_bulk_insert():
-    query = """INSERT INTO trophyevents (player_tag, player_name, clan_tag, 
-                                             trophy_change, league_id, time, season_id)
-                    SELECT x.player_tag, x.player_name, x.clan_tag, 
-                           x.trophy_change, x.league_id, x.time, x.season_id
-                       FROM jsonb_to_recordset($1::jsonb) 
-                    AS x(player_tag TEXT, player_name TEXT, clan_tag TEXT, 
-                         trophy_change INTEGER, league_id INTEGER, time TIMESTAMP, season_id INTEGER
-                         )
-            """
-
-    if trophylog_batch_data:
-        await pool.execute(query, trophylog_batch_data)
-        total = len(trophylog_batch_data)
-        if total > 1:
-            log.info('Registered %s trophy events to the database.', total)
-        trophylog_batch_data.clear()
-
-
-async def on_clan_member_trophies_change(old_trophies, new_trophies, player, clan):
-    log.info(f'Received on_clan_member_trophy_change event for player {player} of clan {clan}')
-    change = new_trophies - old_trophies
-
-    async with trophylog_batch_lock:
-        trophylog_batch_data.append({
-            'player_tag': player.tag,
-            'player_name': player.name,
-            'clan_tag': clan.tag,
-            'trophy_change': change,
-            'league_id': player.league.id,
-            'time': datetime.datetime.utcnow().isoformat(),
-            'season_id': SEASON_ID
-        })
-
-    async with board_batch_lock:
-        try:
-            board_batch_data[player.tag]['trophies'] = new_trophies
-        except KeyError:
-            board_batch_data[player.tag] = {
-                'player_tag': player.tag,
-                'donations': 0,
-                'received': 0,
-                'trophies': new_trophies
-            }
+    pool.execute(query, players, SEASON_ID)
 
 
 @tasks.loop(hours=1)
@@ -354,82 +210,6 @@ async def event_player_updater():
         await asyncio.sleep(0.01)
     await pool.execute(query, to_insert)
     log.info(f'Loop for event updates finished. Took {(time.perf_counter() - start)*1000}ms')
-
-#
-# async def on_clan_member_league_change(old_league, new_league, player, clan):
-#     if old_league.id > new_league.id:
-#         return  # they dropped a league
-#     if new_league.id == 29000000:
-#         return  # unranked - probably start of season.
-#
-#     query = """SELECT channel_id
-#                FROM events
-#                INNER JOIN eventplayers
-#                ON eventplayers.event_id = events.id
-#                WHERE start_best_trophies < $1
-#                AND player_tag = $2
-#             """
-#     fetch = await self.bot.pool.fetch(query, player.trophies, player.tag)
-#     if not fetch:
-#         return
-#
-#     msg = f"Breaking new heights! {player} just got promoted to {new_league} league!"
-#
-#     for record in fetch:
-#         await self.safe_send(self.bot.get_channel(record['channel_id']), msg)
-
-
-@tasks.loop(minutes=1.0)
-async def last_updated_loop():
-    await update_db()
-
-
-async def update_db():
-    query = """UPDATE players 
-               SET last_updated = x.last_updated
-               FROM(
-                   SELECT x.last_updated, x.player_tag
-                   FROM jsonb_to_recordset($1::jsonb)
-                   AS x(
-                       player_tag TEXT,
-                       last_updated TIMESTAMP
-                   )
-               )
-               AS x
-               WHERE players.player_tag = x.player_tag
-               AND players.season_id = $2
-            """
-    async with last_updated_batch_lock:
-        await pool.execute(
-            query, list(last_updated_data.values()), SEASON_ID
-        )
-        last_updated_data.clear()
-
-
-async def update(player_tag):
-    async with last_updated_batch_lock:
-        last_updated_data[player_tag] = {
-            'player_tag': player_tag,
-            'last_updated': datetime.datetime.utcnow().isoformat()
-        }
-#
-async def on_clan_member_name_change(_, __, player, ___):
-    await update(player.tag)
-
-# async def on_clan_member_donation(self, _, __, player, ___):
-#     await self.update(player.tag)
-
-async def on_clan_member_versus_trophies_change(_, __, player, ___):
-    await update(player.tag)
-
-async def on_clan_member_level_change(_, __, player, ___):
-    await update(player.tag)
-
-# async def on_clan_member_trophies_change(self, _, __, player, ___):
-#     pass  # could be a defense - doesn't mean online
-#
-# async def on_clan_member_received(self, _, __, player, ___):
-#     pass  # don't have to be online to receive donations
 
 
 async def on_clan_member_join(member, clan):
@@ -520,31 +300,8 @@ async def on_clan_member_join(member, clan):
                   f'Performed a query to insert them into eventplayers. Status Code: {response}')
 
 
-@tasks.loop(seconds=60.0)
-async def update_clan_tags():
-    query = "SELECT DISTINCT(clan_tag) FROM clans"
-    fetch = await pool.fetch(query)
-    log.info(f"Setting {len(fetch)} tags to update")
-    coc_client._clan_updates = [n[0] for n in fetch]
-
 if __name__ == "__main__":
     print("STARTING")
-    update_clan_tags.start()
-    batch_insert_loop.start()
-    trophylog_batch_insert_loop.start()
+    main_syncer.start()
     event_player_updater.start()
-    last_updated_loop.start()
-    board_insert_loop.start()
-
-    coc_client.add_events(
-        on_clan_member_donation,
-        on_clan_member_received,
-        on_clan_member_trophies_change,
-        on_clan_member_join,
-        on_clan_member_level_change,
-        on_clan_member_name_change,
-        on_clan_member_versus_trophies_change
-    )
-    coc_client._clan_retry_interval = 60
-    coc_client.start_updates('clan')
-    coc_client.run_forever()
+    insert_new_players.start()

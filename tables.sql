@@ -2,13 +2,22 @@ CREATE TABLE players (
     id serial PRIMARY KEY,
 
     player_tag TEXT,
-    donations INTEGER,
-    received INTEGER,
+    player_name TEXT,
+    clan_tag TEXT,
+    prev_donations INTEGER DEFAULT 0,
+    donations INTEGER DEFAULT 0,
+    prev_received INTEGER DEFAULT 0,
+    received INTEGER DEFAULT 0,
+    attacks integer,
+    defenses integer,
+    versus_attacks INTEGER,
     start_trophies integer,
     trophies integer,
+    versus_trophies INTEGER,
     user_id BIGINT,
     season_id integer,
     start_update boolean default false,
+    fresh_update boolean default false,
     final_update boolean default false,
     start_friend_in_need integer default 0,
     end_friend_in_need integer default 0,
@@ -182,7 +191,7 @@ create table events (
     start_report boolean default false,
     donation_msg bigint default 0,
     trophy_msg bigint default 0
-)
+);
 
 CREATE OR REPLACE FUNCTION public.get_event_id(guild_id bigint)
  RETURNS integer
@@ -207,3 +216,103 @@ begin
 end;
 $function$
 ;
+
+CREATE OR REPLACE FUNCTION public.player_events_trigger_function()
+RETURNS trigger
+AS $function$
+    DECLARE
+        new_donations integer;
+        new_received integer;
+    BEGIN
+        IF NEW.prev_donations != OLD.prev_donations THEN
+            IF NEW.prev_donations > OLD.prev_donations THEN
+                new_donations := NEW.prev_donations - OLD.prev_donations;
+            ELSE
+                new_donations := NEW.prev_donations;
+                NEW.fresh_update := TRUE;  -- player joined a new clan
+            end if;
+
+            INSERT INTO donationevents (
+                player_tag,
+                clan_tag,
+                donations,
+                received,
+                time,
+                player_name,
+                season_id
+            )
+            SELECT NEW.player_tag,
+                   NEW.clan_tag,
+                   new_donations,
+                   0,
+                   NOW(),
+                   NEW.player_name,
+                   NEW.season_id
+            FROM NEW;
+
+            NEW.donations := OLD.donations + new_donations;
+        end if;
+
+        IF NEW.prev_received != OLD.prev_received THEN
+            IF NEW.prev_received > OLD.prev_received THEN
+                new_received := NEW.prev_received - OLD.prev_received;
+            ELSE
+                new_received := NEW.prev_received;
+                NEW.fresh_update := TRUE;  -- player joined a new clan
+            end if;
+
+            INSERT INTO donationevents (
+                player_tag,
+                clan_tag,
+                donations,
+                received,
+                time,
+                player_name,
+                season_id
+            )
+            SELECT NEW.player_tag,
+                   NEW.clan_tag,
+                   0,
+                   new_received,
+                   NOW(),
+                   NEW.player_name,
+                   NEW.season_id
+            FROM NEW;
+
+            NEW.received := OLD.received + new_received;
+        end if;
+
+        IF NEW.trophies != OLD.trophies THEN
+            INSERT INTO trophyevents (
+                player_tag,
+                player_name,
+                clan_tag,
+                trophy_change,
+                time,
+                league_id,
+                season_id
+            )
+            SELECT NEW.player_tag,
+                   NEW.player_name,
+                   NEW.clan_tag,
+                   NEW.trophies - OLD.trophies,
+                   NEW.league_id,
+                   NOW(),
+                   NEW.season_id
+            FROM NEW;
+        end if;
+
+        IF NEW.clan_tag != OLD.clan_tag THEN
+            NEW.fresh_update := TRUE;  -- player joined a new clan
+        end if;
+
+        NEW.last_updated := NOW();
+
+        RETURN NEW;
+    END;
+$function$
+LANGUAGE plpgsql;
+
+CREATE TRIGGER player_events_trigger
+    BEFORE INSERT OR UPDATE ON players
+    FOR EACH ROW EXECUTE PROCEDURE public.player_events_trigger_function();

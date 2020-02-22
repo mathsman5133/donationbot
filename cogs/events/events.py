@@ -33,12 +33,11 @@ class Events(commands.Cog):
         query = f"""
                 SELECT player_tag, {col}, {col2}, time, player_name
                 FROM {table_name}
-                WHERE {table_name}.clan_tag = ANY(
-                            SELECT DISTINCT clan_tag FROM clans
-                            WHERE channel_id=$1
-                            )
+                INNER JOIN clans
+                ON clans.clan_tag = {table_name}.clan_tag
+                WHERE clans.channel_id = $1
                 ORDER BY {table_name}.time DESC
-LIMIT $2
+                LIMIT $2
                 """
         fetch = await ctx.db.fetch(query, ctx.channel.id, limit)
         if not fetch:
