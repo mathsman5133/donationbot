@@ -84,7 +84,7 @@ async def main_syncer():
             for n in clan.itermembers
         )
 
-    await pool.execute(query, players)
+    await pool.execute(query, players, SEASON_ID)
 
 
 @tasks.loop(seconds=60.0)
