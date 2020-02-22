@@ -60,12 +60,12 @@ async def main_syncer():
             )
             ON CONFLICT (player_tag, season_id)
             DO UPDATE
-            SET player_name    = x.player_name,
-                clan_tag       = x.clan_tag,
-                prev_donations = x.donations,
-                prev_received  = x.received,
-                trophies       = x.trophies,
-                league_id      = x.league_id
+            SET player_name    = excluded.player_name,
+                clan_tag       = excluded.clan_tag,
+                prev_donations = excluded.donations,
+                prev_received  = excluded.received,
+                trophies       = excluded.trophies,
+                league_id      = excluded.league_id
             """
 
     players = []
@@ -151,7 +151,7 @@ async def insert_new_players():
             "fin": player.achievements_dict["Friend in Need"].value,
             "sic": player.achievements_dict["Sharing is Caring"].value
         })
-    pool.execute(query, players, SEASON_ID)
+    await pool.execute(query, players, SEASON_ID)
 
 
 @tasks.loop(hours=1)
