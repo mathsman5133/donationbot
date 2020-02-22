@@ -20,7 +20,7 @@ log = logging.getLogger(__name__)
 
 EVENTS_TABLE_TYPE = 'donation'
 SlimDonationEvent2 = namedtuple("SlimDonationEvent", "donations received name tag clan_tag")
-TEST_CHANNEL_IDS = [595598923993710592, 594280479881035776, 680216594307350652]
+TEST_CHANNEL_IDS = [595598923993710592, 594280479881035776, 680216594307350652, 671799417136873504]
 
 def get_received_combos(clan_events):
     valid_events = [n for n in clan_events if n.received]
