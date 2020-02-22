@@ -224,7 +224,9 @@ AS $function$
         new_donations integer;
         new_received integer;
     BEGIN
-
+        IF NEW.ignore = TRUE THEN
+            RETURN NEW;
+        end if;
         IF NEW.prev_donations != OLD.prev_donations THEN
             IF NEW.prev_donations > OLD.prev_donations THEN
                 new_donations := NEW.prev_donations - OLD.prev_donations;

@@ -119,6 +119,7 @@ class DonationLogs(commands.Cog):
         asyncio.ensure_future(self.sync_temp_event_tasks())
 
         self._clans_updated = set()
+        self.report_task.start()
 
     def cog_unload(self):
         # self.report_task.cancel()
@@ -129,6 +130,7 @@ class DonationLogs(commands.Cog):
         # )
         for k, v in self._tasks:
             v.cancel()
+        self.report_task.cancel()
 
     @tasks.loop(seconds=60.0)
     async def report_task(self):
