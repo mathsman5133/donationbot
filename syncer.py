@@ -28,45 +28,45 @@ async def main_syncer():
     query = "SELECT DISTINCT(clan_tag) FROM clans"
     fetch = await pool.fetch(query)
 
-    # query = """
-    #         INSERT INTO players (
-    #             player_tag,
-    #             player_name,
-    #             clan_tag,
-    #             prev_donations,
-    #             prev_received,
-    #             season_id,
-    #             trophies,
-    #             league_id
-    #         )
-    #         SELECT x.player_tag,
-    #                x.player_name,
-    #                x.clan_tag,
-    #                x.donations,
-    #                x.received,
-    #                $2,
-    #                x.trophies,
-    #                x.league_id
-    #
-    #         FROM jsonb_to_recordset($1::jsonb)
-    #         AS x(
-    #             player_tag TEXT,
-    #             player_name TEXT,
-    #             clan_tag TEXT,
-    #             donations INTEGER,
-    #             received INTEGER,
-    #             trophies INTEGER,
-    #             league_id INTEGER
-    #         )
-    #         ON CONFLICT (player_tag, season_id)
-    #         DO UPDATE
-    #         SET player_name    = excluded.player_name,
-    #             clan_tag       = excluded.clan_tag,
-    #             prev_donations = excluded.prev_donations,
-    #             prev_received  = excluded.prev_received,
-    #             trophies       = excluded.trophies,
-    #             league_id      = excluded.league_id
-    #         """
+    query = """
+            INSERT INTO players (
+                player_tag,
+                player_name,
+                clan_tag,
+                prev_donations,
+                prev_received,
+                season_id,
+                trophies,
+                league_id
+            )
+            SELECT x.player_tag,
+                   x.player_name,
+                   x.clan_tag,
+                   x.donations,
+                   x.received,
+                   $2,
+                   x.trophies,
+                   x.league_id
+            
+            FROM jsonb_to_recordset($1::jsonb)
+            AS x(
+                player_tag TEXT,
+                player_name TEXT,
+                clan_tag TEXT,
+                donations INTEGER,
+                received INTEGER,
+                trophies INTEGER,
+                league_id INTEGER
+            )
+            ON CONFLICT (player_tag, season_id)
+            DO UPDATE
+            SET player_name    = excluded.player_name,
+                clan_tag       = excluded.clan_tag,
+                prev_donations = excluded.prev_donations,
+                prev_received  = excluded.prev_received,
+                trophies       = excluded.trophies,
+                league_id      = excluded.league_id
+            """
 
     query = """
         UPDATE players

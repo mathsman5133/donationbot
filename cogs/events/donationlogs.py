@@ -197,7 +197,7 @@ class DonationLogs(commands.Cog):
 
                 for x in group_batch:
                     log.debug(f'Dispatching a log to channel {config.channel} (ID {config.channel_id})')
-                    await self.bot.utils.channel_log(config.channel_id, EVENTS_TABLE_TYPE, embed_to_send=x)
+                    asyncio.ensure_future(self.bot.utils.channel_log(config.channel_id, EVENTS_TABLE_TYPE, embed_to_send=x))
 
                 if fetch:
                     log.debug(f'Dispatching {len(fetch)} logs after sleeping for {config.seconds} '
@@ -250,7 +250,7 @@ class DonationLogs(commands.Cog):
 
             for x in group_batch:
                 log.debug(f'Dispatching a log to channel {config.channel} (ID {config.channel_id})')
-                await self.bot.utils.channel_log(config.channel_id, EVENTS_TABLE_TYPE, embed_to_send=x)
+                asyncio.ensure_future(self.bot.utils.channel_log(config.channel_id, EVENTS_TABLE_TYPE, embed_to_send=x))
 
 
 def setup(bot):

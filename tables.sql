@@ -225,6 +225,7 @@ AS $function$
         new_received integer;
     BEGIN
         IF NEW.ignore = TRUE THEN
+            NEW.ignore = FALSE;
             RETURN NEW;
         end if;
         IF NEW.prev_donations != OLD.prev_donations THEN
