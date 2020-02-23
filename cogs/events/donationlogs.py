@@ -236,7 +236,10 @@ class DonationLogs(commands.Cog):
         removed = await self.bot.pool.execute(query)
         log.debug('Removed events from the database. Status Code %s', removed)
 
+        log.debug(fetch)
         for channel_id, events in itertools.groupby(fetch, key=lambda n: n['channel_id']):
+            log.debug(channel_id, events)
+
             config = await self.bot.utils.log_config(channel_id, 'donation')
 
             if not config:
