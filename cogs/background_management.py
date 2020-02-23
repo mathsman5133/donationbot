@@ -18,8 +18,13 @@ class BackgroundManagement(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.next_event_starts.start()
+
+        self.main_syncer.add_exception_type(Exception, BaseException)
         self.main_syncer.start()
+
+        self.insert_new_players.add_exception_type(Exception, BaseException)
         self.insert_new_players.start()
+
         self.event_player_updater2.start()
 
     def cog_unload(self):
@@ -497,9 +502,14 @@ class BackgroundManagement(commands.Cog):
 
         await self.bot.join_log_webhook.send(embed=e)
 
-
     @tasks.loop(seconds=60.0)
     async def main_syncer(self):
+        try:
+            await self.sync_clans()
+        except Exception as e:
+            log.exception(e)
+
+    async def sync_clans(self):
         query = "SELECT DISTINCT(clan_tag) FROM clans"
         fetch = await self.bot.pool.fetch(query)
 
