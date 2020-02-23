@@ -232,9 +232,10 @@ class DonationLogs(commands.Cog):
         fetch = await self.bot.pool.fetch(query)
         self.bot.donationboard.tags_to_update.update(set(n['clan_tag'] for n in fetch))
 
-        query = "UPDATE donationevents SET reported = TRUE WHERE reported = FALSE"
-        removed = await self.bot.pool.execute(query)
-        log.debug('Removed events from the database. Status Code %s', removed)
+        query = "UPDATE donationevents SET reported = TRUE WHERE reported = FALSE RETURNING clan_tag"
+        removed = await self.bot.pool.fetch(query)
+        log.debug('Removed donationevents from the database. Status Code %s', len(removed))
+        self.bot.donationboard.tags_to_update.update(set(n['clan_tag'] for n in fetch))
 
         sorted_fetch = sorted(fetch, key=lambda n: n['channel_id'])
 

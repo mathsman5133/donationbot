@@ -143,11 +143,11 @@ class TrophyLogs(commands.Cog):
                     ORDER BY time DESC
                 """
         fetch = await self.bot.pool.fetch(query)
-        self.bot.donationboard.tags_to_update.update(set(n['clan_tag'] for n in fetch))
 
-        query = "UPDATE trophyevents SET reported = TRUE WHERE reported = FALSE"
-        removed = await self.bot.pool.execute(query)
-        log.debug('Removed trophyevents from the database. Status Code %s', removed)
+        query = "UPDATE trophyevents SET reported = TRUE WHERE reported = FALSE RETURNING clan_tag"
+        removed = await self.bot.pool.fetch(query)
+        log.debug('Removed trophyevents from the database. Status Code %s', len(removed))
+        self.bot.donationboard.tags_to_update.update(set(n['clan_tag'] for n in fetch))
 
         for channel_id, events in itertools.groupby(sorted(fetch, key=lambda n: n['channel_id']), key=lambda n: n['channel_id']):
             config = await self.bot.utils.log_config(channel_id, EVENTS_TABLE_TYPE)

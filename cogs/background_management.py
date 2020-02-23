@@ -544,13 +544,7 @@ class BackgroundManagement(commands.Cog):
                     league_id INTEGER
                 )
                 ON CONFLICT (player_tag, season_id)
-                DO UPDATE
-                SET player_name    = excluded.player_name,
-                    clan_tag       = excluded.clan_tag,
-                    prev_donations = excluded.prev_donations,
-                    prev_received  = excluded.prev_received,
-                    trophies       = excluded.trophies,
-                    league_id      = excluded.league_id
+                DO NOTHING
                 """
 
         query = """
