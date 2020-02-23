@@ -18,11 +18,15 @@ class BackgroundManagement(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.next_event_starts.start()
-        # self.event_player_updater.start()
+        self.main_syncer.start()
+        self.insert_new_players.start()
+        self.event_player_updater2.start()
 
     def cog_unload(self):
         self.next_event_starts.cancel()
-        # self.event_player_updater.cancel()
+        self.main_syncer.cancel()
+        self.insert_new_players.cancel()
+        self.event_player_updater2.cancel()
 
     @commands.command(hidden=True)
     @commands.is_owner()
@@ -492,6 +496,226 @@ class BackgroundManagement(commands.Cog):
             e.set_footer(text='Bot Added').timestamp = guild.me.joined_at
 
         await self.bot.join_log_webhook.send(embed=e)
+
+
+    @tasks.loop(seconds=60.0)
+    async def main_syncer(self):
+        query = "SELECT DISTINCT(clan_tag) FROM clans"
+        fetch = await self.bot.pool.fetch(query)
+
+        query = """
+                INSERT INTO players (
+                    player_tag,
+                    player_name,
+                    clan_tag,
+                    prev_donations,
+                    prev_received,
+                    season_id,
+                    trophies,
+                    league_id
+                )
+                SELECT x.player_tag,
+                       x.player_name,
+                       x.clan_tag,
+                       x.donations,
+                       x.received,
+                       $2,
+                       x.trophies,
+                       x.league_id
+    
+                FROM jsonb_to_recordset($1::jsonb)
+                AS x(
+                    player_tag TEXT,
+                    player_name TEXT,
+                    clan_tag TEXT,
+                    donations INTEGER,
+                    received INTEGER,
+                    trophies INTEGER,
+                    league_id INTEGER
+                )
+                ON CONFLICT (player_tag, season_id)
+                DO UPDATE
+                SET player_name    = excluded.player_name,
+                    clan_tag       = excluded.clan_tag,
+                    prev_donations = excluded.prev_donations,
+                    prev_received  = excluded.prev_received,
+                    trophies       = excluded.trophies,
+                    league_id      = excluded.league_id
+                """
+
+        query = """
+            UPDATE players
+            SET player_name    = x.player_name,
+                clan_tag       = x.clan_tag,
+                prev_donations = x.prev_donations,
+                prev_received  = x.prev_received,
+                trophies       = x.trophies,
+                league_id      = x.league_id
+            FROM(
+            SELECT x.player_tag,
+                   x.player_name,
+                   x.clan_tag,
+                   x.prev_donations,
+                   x.prev_received,
+                   x.trophies,
+                   x.league_id
+            FROM jsonb_to_recordset($1::jsonb)
+            AS x(
+                player_tag TEXT,
+                player_name TEXT,
+                clan_tag TEXT,
+                prev_donations INTEGER,
+                prev_received INTEGER, 
+                trophies INTEGER,
+                league_id INTEGER
+            )
+            ) AS x
+            WHERE players.player_tag = x.player_tag AND players.season_id = $2
+            """
+
+        players = []
+
+        async for clan in self.bot.coc.get_clans((n[0] for n in fetch), cache=False, update_cache=False):
+            players.extend(
+                {
+                    "player_tag": n.tag,
+                    "player_name": n.name,
+                    "clan_tag": n.clan and n.clan.tag,
+                    "prev_donations": n.donations,
+                    "prev_received": n.received,
+                    "trophies": n.trophies,
+                    "league_id": n.league.id
+                }
+                for n in clan.itermembers
+            )
+
+        q = await self.bot.pool.execute(query, players, self.bot.seasonconfig.get_season_id())
+        log.info(q)
+
+    @tasks.loop(seconds=60.0)
+    async def insert_new_players(self):
+        query = "SELECT player_tag FROM players WHERE fresh_update = TRUE AND season_id = $1"
+        fetch = await self.bot.pool.fetch(query, self.bot.seasonconfig.get_season_id())
+
+        players = []
+
+        query = """
+        UPDATE players
+        SET player_name  = x.player_name,
+            player_tag   = x.player_tag,
+            clan_tag     = x.clan_tag,
+            trophies     = x.trophies,
+            versus_trophies = x.versus_trophies,
+            fresh_update = FALSE,
+            attacks      = x.attacks  - players.start_attacks,
+            defenses     = x.defenses - players.start_defenses,
+            versus_attacks = x.versus_attacks,
+            donations    = x.fin + x.sic - players.start_friend_in_need - players.start_sharing_is_caring
+    
+        FROM(
+            SELECT x.player_name, 
+                   x.player_tag,
+                   x.clan_tag,
+                   x.trophies,
+                   x.versus_trophies,
+                   x.attacks,
+                   x.defenses,
+                   x.versus_attacks,
+                   x.fin,
+                   x.sic
+    
+            FROM jsonb_to_recordset($1::jsonb)
+            AS x(
+                player_name TEXT, 
+                player_tag TEXT,
+                clan_tag TEXT, 
+                trophies INTEGER,
+                versus_trophies INTEGER,
+                attacks INTEGER,
+                defenses INTEGER,
+                versus_attacks INTEGER,
+                fin INTEGER,
+                sic INTEGER
+            )
+        )
+        AS x
+        WHERE players.player_tag = x.player_tag
+        AND players.season_id=$2
+        """
+
+        async for player in self.bot.coc.get_players((n[0] for n in fetch), cache=False, update_cache=False):
+            players.append({
+                "player_name": player.name,
+                "player_tag": player.tag,
+                "clan_tag": player.clan and player.clan.tag,
+                "trophies": player.trophies,
+                "versus_trophies": player.versus_trophies,
+                "attacks": player.attack_wins,
+                "defenses": player.defense_wins,
+                "versus_attacks": player.versus_attack_wins,
+                "fin": player.achievements_dict["Friend in Need"].value,
+                "sic": player.achievements_dict["Sharing is caring"].value
+            })
+        q = await self.bot.pool.execute(query, players, self.bot.seasonconfig.get_season_id())
+        log.info(q)
+
+
+    @tasks.loop(hours=1)
+    async def event_player_updater2(self):
+        query = "SELECT DISTINCT player_tag FROM eventplayers WHERE live = True;"
+        fetch = await self.bot.pool.fetch(query)
+
+        query = """UPDATE eventplayers
+                   SET donations             = x.end_fin + x.end_sic - eventplayers.start_friend_in_need - eventplayers.start_sharing_is_caring,
+                       trophies              = x.trophies,
+                       end_friend_in_need    = x.end_fin,
+                       end_sharing_is_caring = x.end_sic,
+                       end_attacks           = x.end_attacks,
+                       end_defenses          = x.end_defenses,
+                       end_best_trophies     = x.end_best_trophies
+                   FROM (
+                       SELECT x.player_tag,
+                              x.trophies,
+                              x.end_fin,
+                              x.end_sic,
+                              x.end_attacks,
+                              x.end_defenses,
+                              x.end_best_trophies
+                       FROM jsonb_to_recordset($1::jsonb)
+                       AS x (
+                           player_tag TEXT,
+                           trophies INTEGER,
+                           end_fin INTEGER,
+                           end_sic INTEGER,
+                           end_attacks INTEGER,
+                           end_defenses INTEGER,
+                           end_best_trophies INTEGER
+                           )
+                        )
+                   AS x
+                   WHERE eventplayers.player_tag = x.player_tag
+                   AND eventplayers.live = True
+                """
+
+        to_insert = []
+
+        log.info(f'Starting loop for event updates. {len(fetch)} players to update!')
+        start = time.perf_counter()
+        async for player in self.bot.coc.get_players((n[0] for n in fetch), update_cache=False):
+            to_insert.append(
+                {
+                    'player_tag': player.tag,
+                    'trophies': player.trophies,
+                    'end_fin': player.achievements_dict['Friend in Need'].value,
+                    'end_sic': player.achievements_dict['Sharing is caring'].value,
+                    'end_attacks': player.attack_wins,
+                    'end_defenses': player.defense_wins,
+                    'end_best_trophies': player.best_trophies
+                }
+            )
+            await asyncio.sleep(0.01)
+        await self.bot.pool.execute(query, to_insert)
+        log.info(f'Loop for event updates finished. Took {(time.perf_counter() - start) * 1000}ms')
 
 
 def setup(bot):
