@@ -226,7 +226,7 @@ class DonationLogs(commands.Cog):
                     ON clans.channel_id = logs.channel_id
                     WHERE donationevents.reported = FALSE
                     AND logs.type = 'donation'
-                    AND logs.interval > make_interval()
+                    AND logs.interval = make_interval()
                     ORDER BY time DESC
                 """
         fetch = await self.bot.pool.fetch(query)
@@ -245,6 +245,8 @@ class DonationLogs(commands.Cog):
             if not config:
                 continue
             if not config.toggle:
+                continue
+            if not config.channel:
                 continue
             # if config.seconds > 0:
             #     continue
