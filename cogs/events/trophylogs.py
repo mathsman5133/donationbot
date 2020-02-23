@@ -149,7 +149,7 @@ class TrophyLogs(commands.Cog):
         removed = await self.bot.pool.execute(query)
         log.debug('Removed trophyevents from the database. Status Code %s', removed)
 
-        for channel_id, events in itertools.groupby(sorted(fetch, lambda n: n['channel_id']), key=lambda n: n['channel_id']):
+        for channel_id, events in itertools.groupby(sorted(fetch, key=lambda n: n['channel_id']), key=lambda n: n['channel_id']):
             config = await self.bot.utils.log_config(channel_id, EVENTS_TABLE_TYPE)
             if not config:
                 continue
