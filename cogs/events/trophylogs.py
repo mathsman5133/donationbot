@@ -24,7 +24,7 @@ class TrophyLogs(commands.Cog):
         self.report_task.start()
 
         self._tasks = {}
-        asyncio.ensure_future(self.sync_temp_event_tasks())
+        #asyncio.ensure_future(self.sync_temp_event_tasks())
 
     def cog_unload(self):
         self.report_task.cancel()

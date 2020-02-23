@@ -117,7 +117,7 @@ class DonationLogs(commands.Cog):
         self.bot = bot
 
         self._tasks = {}
-        asyncio.ensure_future(self.sync_temp_event_tasks())
+        #asyncio.ensure_future(self.sync_temp_event_tasks())
 
         self._clans_updated = set()
         self.report_task.start()
