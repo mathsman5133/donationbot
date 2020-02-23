@@ -555,12 +555,14 @@ class BackgroundManagement(commands.Cog):
 
         query = """
             UPDATE players
-            SET player_name    = x.player_name,
-                clan_tag       = x.clan_tag,
-                prev_donations = x.prev_donations,
-                prev_received  = x.prev_received,
-                trophies       = x.trophies,
-                league_id      = x.league_id
+            SET player_name     = x.player_name,
+                clan_tag        = x.clan_tag,
+                prev_donations  = x.prev_donations,
+                prev_received   = x.prev_received,
+                trophies        = x.trophies,
+                league_id       = x.league_id,
+                versus_trophies = x.versus_trophies,
+                exp_level       = x.exp_level
             FROM(
             SELECT x.player_tag,
                    x.player_name,
@@ -568,7 +570,9 @@ class BackgroundManagement(commands.Cog):
                    x.prev_donations,
                    x.prev_received,
                    x.trophies,
-                   x.league_id
+                   x.league_id,
+                   x.versus_trophies,
+                   x.exp_level
             FROM jsonb_to_recordset($1::jsonb)
             AS x(
                 player_tag TEXT,
@@ -577,7 +581,9 @@ class BackgroundManagement(commands.Cog):
                 prev_donations INTEGER,
                 prev_received INTEGER, 
                 trophies INTEGER,
-                league_id INTEGER
+                league_id INTEGER,
+                versus_trophies INTEGER,
+                exp_level INTEGER
             )
             ) AS x
             WHERE players.player_tag = x.player_tag AND players.season_id = $2
@@ -594,7 +600,9 @@ class BackgroundManagement(commands.Cog):
                     "prev_donations": n.donations,
                     "prev_received": n.received,
                     "trophies": n.trophies,
-                    "league_id": n.league.id
+                    "league_id": n.league.id,
+                    "versus_trophies": n.versus_trophies,
+                    "exp_level": n.exp_level
                 }
                 for n in clan.itermembers
             )

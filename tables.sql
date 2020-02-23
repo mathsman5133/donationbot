@@ -254,6 +254,7 @@ AS $function$
                    NEW.season_id);
 
             NEW.donations := OLD.donations + new_donations;
+            NEW.last_updated := NOW();
         end if;
 
         IF NEW.prev_received != OLD.prev_received THEN
@@ -306,8 +307,9 @@ AS $function$
         IF NEW.clan_tag != OLD.clan_tag THEN
             NEW.fresh_update := TRUE;  -- player joined a new clan
         end if;
-
-        NEW.last_updated := NOW();
+        IF NEW.player_name != OLD.player_name OR NEW.versus_trophies != OLD.versus_trophies OR NEW.exp_level != OLD.exp_level THEN
+            NEW.last_updated := NOW();
+        end if;
 
         RETURN NEW;
     END;
