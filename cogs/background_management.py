@@ -628,8 +628,10 @@ class BackgroundManagement(commands.Cog):
             attacks      = x.attacks  - players.start_attacks,
             defenses     = x.defenses - players.start_defenses,
             versus_attacks = x.versus_attacks,
-            donations    = x.fin + x.sic - players.start_friend_in_need - players.start_sharing_is_caring
-    
+            donations    = x.fin + x.sic - players.start_friend_in_need - players.start_sharing_is_caring,
+            ignore       = TRUE,
+            prev_donations = x.fin + x.sic - players.start_friend_in_need - players.start_sharing_is_caring
+            
         FROM(
             SELECT x.player_name, 
                    x.player_tag,

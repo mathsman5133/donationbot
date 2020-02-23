@@ -768,7 +768,33 @@ class Edit(commands.Cog):
         async with ctx.typing():
             if not clans:
                 clans = await ctx.get_clans()
-            query = "UPDATE players SET fresh_update = TRUE WHERE player_tag = ANY($1::TEXT[]) AND season_id = $2"
+            query = """UPDATE players 
+                       SET donations = $1,
+                           ignore    = TRUE,
+                           fresh_update = TRUE
+                       WHERE player_tag = $2
+                       AND donations <= $1
+                       AND season_id = $3
+                       RETURNING player_tag;
+                    """
+            query2 = """UPDATE players 
+                        SET received = $1,
+                            ignore   = TRUE,
+                            fresh_update = TRUE
+                        WHERE player_tag = $2
+                        AND received <= $1  
+                        AND season_id = $3
+                        RETURNING player_tag;
+                     """
+            query3 = """UPDATE players
+                        SET trophies = $1,
+                            ignore   = TRUE,
+                            fresh_update = TRUE
+                        WHERE player_tag = $2
+                        AND trophies != $1
+                        AND season_id = $3
+                        RETURNING player_tag;               
+                     """
             query4 = """UPDATE eventplayers
                         SET live=TRUE
                         WHERE player_tag = ANY($1::TEXT[])
@@ -776,7 +802,10 @@ class Edit(commands.Cog):
                     """
             season_id = await self.bot.seasonconfig.get_season_id()
             for clan in clans:
-                await ctx.db.execute(query, [m.tag for m in clan.members], season_id)
+                for member in clan.members:
+                    await ctx.db.execute(query, member.donations, member.tag, season_id)
+                    await ctx.db.execute(query2, member.received, member.tag, season_id)
+                    await ctx.db.execute(query3, member.trophies, member.tag, season_id)
                 if ctx.config:
                     await ctx.db.execute(query4, [m.tag for m in clan.members], ctx.config.id)
 
@@ -789,7 +818,6 @@ class Edit(commands.Cog):
                 await self.bot.donationboard.update_board(int(id_))
 
             await ctx.send('All done - I\'ve force updated the boards too!')
-
     @commands.command(hidden=True)
     @commands.is_owner()
     async def reset_cooldown(self, ctx, guild_id: int = None):
