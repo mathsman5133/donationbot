@@ -589,13 +589,13 @@ class BackgroundManagement(commands.Cog):
                 for n in clan.itermembers
             )
 
-        q = await self.bot.pool.execute(query, players, self.bot.seasonconfig.get_season_id())
+        q = await self.bot.pool.execute(query, players, await self.bot.seasonconfig.get_season_id())
         log.info(q)
 
     @tasks.loop(seconds=60.0)
     async def insert_new_players(self):
         query = "SELECT player_tag FROM players WHERE fresh_update = TRUE AND season_id = $1"
-        fetch = await self.bot.pool.fetch(query, self.bot.seasonconfig.get_season_id())
+        fetch = await self.bot.pool.fetch(query, await self.bot.seasonconfig.get_season_id())
 
         players = []
 
@@ -656,7 +656,7 @@ class BackgroundManagement(commands.Cog):
                 "fin": player.achievements_dict["Friend in Need"].value,
                 "sic": player.achievements_dict["Sharing is caring"].value
             })
-        q = await self.bot.pool.execute(query, players, self.bot.seasonconfig.get_season_id())
+        q = await self.bot.pool.execute(query, players, await self.bot.seasonconfig.get_season_id())
         log.info(q)
 
 
