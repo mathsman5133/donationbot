@@ -236,8 +236,10 @@ class DonationLogs(commands.Cog):
         removed = await self.bot.pool.execute(query)
         log.debug('Removed events from the database. Status Code %s', removed)
 
+        sorted_fetch = sorted(fetch, key=lambda n: n['channel_id'])
+
         #log.debug(fetch)
-        for channel_id, events in itertools.groupby(fetch, key=lambda n: n['channel_id']):
+        for channel_id, events in itertools.groupby(sorted_fetch, key=lambda n: n['channel_id']):
             #log.debug(f"{channel_id},  {list(events)}")
 
             config = await self.bot.utils.log_config(channel_id, 'donation')

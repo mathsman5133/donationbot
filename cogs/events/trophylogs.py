@@ -139,7 +139,7 @@ class TrophyLogs(commands.Cog):
                     ON clans.channel_id = logs.channel_id
                     WHERE trophyevents.reported = FALSE
                     AND logs.type = 'trophy'
-                    AND logs.interval > make_interval()
+                    AND logs.interval = make_interval()
                     ORDER BY time DESC
                 """
         fetch = await self.bot.pool.fetch(query)
@@ -149,14 +149,14 @@ class TrophyLogs(commands.Cog):
         removed = await self.bot.pool.execute(query)
         log.debug('Removed trophyevents from the database. Status Code %s', removed)
 
-        for channel_id, events in itertools.groupby(fetch, key=lambda n: n['channel_id']):
+        for channel_id, events in itertools.groupby(sorted(fetch, lambda n: n['channel_id']), key=lambda n: n['channel_id']):
             config = await self.bot.utils.log_config(channel_id, EVENTS_TABLE_TYPE)
             if not config:
                 continue
             if not config.toggle:
                 continue
-            if config.seconds > 0:
-                continue
+            # if config.seconds > 0:
+            #     continue
             events = list(events)
 
             messages = []
