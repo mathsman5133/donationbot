@@ -238,7 +238,7 @@ class DonationLogs(commands.Cog):
 
         log.debug(fetch)
         for channel_id, events in itertools.groupby(fetch, key=lambda n: n['channel_id']):
-            log.debug(channel_id, events)
+            log.debug(f"{channel_id},  {list(events)}")
 
             config = await self.bot.utils.log_config(channel_id, 'donation')
 
@@ -249,6 +249,7 @@ class DonationLogs(commands.Cog):
             if config.seconds > 0:
                 continue
             events = list(events)
+            log.debug("running")
 
             group_batch = await group_donations(self.bot, events)
 
