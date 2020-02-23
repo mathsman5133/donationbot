@@ -430,16 +430,16 @@ class BackgroundManagement(commands.Cog):
         e = discord.Embed(colour=discord.Colour.blue(), title='Clan Claimed')
         await self.send_claim_clan_stats(e, clan, ctx.guild)
         await self.bot.utils.update_clan_tags()
-        await self.bot.donationlogs.sync_temp_event_tasks()
-        await self.bot.trophylogs.sync_temp_event_tasks()
+        # await self.bot.donationlogs.sync_temp_event_tasks()
+        # await self.bot.trophylogs.sync_temp_event_tasks()
 
     @commands.Cog.listener()
     async def on_clan_unclaim(self, ctx, clan):
         e = discord.Embed(colour=discord.Colour.dark_blue(), title='Clan Unclaimed')
         await self.send_claim_clan_stats(e, clan, ctx.guild)
         await self.bot.utils.update_clan_tags()
-        await self.bot.donationlogs.sync_temp_event_tasks()
-        await self.bot.trophylogs.sync_temp_event_tasks()
+        # await self.bot.donationlogs.sync_temp_event_tasks()
+        # await self.bot.trophylogs.sync_temp_event_tasks()
 
     async def send_guild_stats(self, e, guild):
         e.add_field(name='Name', value=guild.name)

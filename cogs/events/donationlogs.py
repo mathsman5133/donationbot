@@ -254,7 +254,7 @@ class DonationLogs(commands.Cog):
             group_batch = await group_donations(self.bot, events)
 
             for x in group_batch:
-                log.debug(f'Dispatching a log to channel {config.channel} (ID {config.channel_id})')
+                log.debug(f'Dispatching a log to channel {config.channel} (ID {config.channel_id}), {x}')
                 asyncio.ensure_future(self.bot.utils.channel_log(config.channel_id, EVENTS_TABLE_TYPE, embed_to_send=x))
 
 
