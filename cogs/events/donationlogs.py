@@ -236,9 +236,9 @@ class DonationLogs(commands.Cog):
         removed = await self.bot.pool.execute(query)
         log.debug('Removed events from the database. Status Code %s', removed)
 
-        log.debug(fetch)
+        #log.debug(fetch)
         for channel_id, events in itertools.groupby(fetch, key=lambda n: n['channel_id']):
-            log.debug(f"{channel_id},  {list(events)}")
+            #log.debug(f"{channel_id},  {list(events)}")
 
             config = await self.bot.utils.log_config(channel_id, 'donation')
 
@@ -246,10 +246,10 @@ class DonationLogs(commands.Cog):
                 continue
             if not config.toggle:
                 continue
-            if config.seconds > 0:
-                continue
+            # if config.seconds > 0:
+            #     continue
             events = list(events)
-            log.debug("running")
+            log.debug(f"running {channel_id}")
 
             group_batch = await group_donations(self.bot, events)
 
