@@ -283,7 +283,7 @@ class DonationLogs(commands.Cog):
                 messages = await get_basic_log(self.bot, config.guild_id, events)
                 for x in messages:
                     log.debug(f'Dispatching a detailed log to channel {config.channel} (ID {config.channel_id}), {x}')
-                    asyncio.ensure_future(self.bot.utils.safe_send(config.channel, x))
+                    asyncio.ensure_future(self.bot.utils.safe_send(config.channel, '\n'.join(x)))
 
     async def on_clan_member_donation(self, old_donations, new_donations, player, clan):
         log.debug(f'Received on_clan_member_donation event for player {player} of clan {clan}')
