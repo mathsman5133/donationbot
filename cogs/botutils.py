@@ -18,7 +18,8 @@ class Utils(commands.Cog):
                           channel_id, 
                           "interval", 
                           toggle,
-                          type 
+                          type,
+                          detailed 
                    FROM logs 
                    WHERE channel_id=$1 
                    AND type=$2
@@ -125,6 +126,12 @@ class Utils(commands.Cog):
         query = "SELECT DISTINCT clan_tag FROM clans"
         fetch = await self.bot.pool.fetch(query)
         self.bot.coc._clan_updates = [n[0] for n in fetch]
+
+    async def safe_send(self, channel, content=None, embed=None):
+        try:
+            return await channel.send(content, embed=embed)
+        except (discord.HTTPException, discord.Forbidden):
+            return
 
     async def channel_log(self, channel_id, log_type, message=None, embed_to_send=None, colour=None, embed=True):
         config = await self.log_config(channel_id, log_type)

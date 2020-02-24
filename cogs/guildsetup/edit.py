@@ -474,6 +474,44 @@ class Edit(commands.Cog):
             condition = 'off'
         await ctx.send(f'Logs for {ctx.config.channel.mention} have been turned {condition}.')
 
+    @edit_donationlog.command(name='style')
+    async def edit_donationlog_style(self, ctx):
+        """Toggle the donation style. This alternates between detailed and basic versions.
+
+        **Format**
+        :information_source: `+edit donationlog style`
+
+        **Example**
+        :white_check_mark: `+edit donationlog style`
+
+        **Required Permissions**
+        :warning: Manage Server
+        """
+        if not ctx.config:
+            return await ctx.send('Oops! It doesn\'t look like a donationlog is setup here. '
+                                  'Try `+info` to find where the registered channels are!')
+
+        query = """UPDATE logs
+                   SET detailed = NOT detailed
+                   WHERE channel_id = $1
+                   AND type = $2
+                   RETURNING detailed;
+                """
+        detailed = await ctx.db.fetchrow(query, ctx.config.channel_id, 'donation')
+        if detailed:
+            embed = discord.Embed(
+                description=f"Donationlog has been set to maximum detail. An example is below. Use `{ctx.prefix}{ctx.invoked_with}` to change to the basic version."
+            )
+            embed.set_image(url="https://cdn.discordapp.com/attachments/681438398455742536/681438471805861926/demo_basic.JPG")
+            return await ctx.send(embed=embed)
+
+        else:
+            embed = discord.Embed(
+                description=f"Donationlog has been set to basic detail. An example is below. Use `{ctx.prefix}{ctx.invoked_with}` to change to maximum detail version."
+            )
+            embed.set_image(url="https://cdn.discordapp.com/attachments/681438398455742536/681438506857398307/demo_detailed.JPG")
+            return await ctx.send(embed=embed)
+
     @edit.group(name='trophylog')
     @manage_guild()
     @requires_config('trophylog', invalidate=True)

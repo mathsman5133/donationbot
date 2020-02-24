@@ -3,6 +3,7 @@ import asyncpg
 import discord
 import logging
 import math
+import itertools
 import time
 
 from datetime import datetime
@@ -141,41 +142,39 @@ class TrophyLogs(commands.Cog):
             self._tasks[channel_id] = self.bot.loop.create_task(self.create_temp_event_task(channel_id))
 
     async def bulk_report(self):
-        query = """SELECT DISTINCT clan_tag FROM trophyevents WHERE reported = False"""
-        fetch = await self.bot.pool.fetch(query)
-        self.bot.donationboard.tags_to_update.update(set(n[0] for n in fetch))
-
-        query = """SELECT DISTINCT clans.channel_id 
-                   FROM clans 
-                        INNER JOIN trophyevents 
-                        ON clans.clan_tag = trophyevents.clan_tag 
-                   WHERE trophyevents.reported=False
+        query = """SELECT trophyevents.clan_tag,
+                          trophy_change,
+                          league_id,
+                          player_name,
+                          player_tag,
+                          time,
+                          clans.channel_id
+                    FROM trophyevents
+                    INNER JOIN clans 
+                    ON trophyevents.clan_tag = clans.clan_tag
+                    INNER JOIN logs
+                    ON clans.channel_id = logs.channel_id
+                    WHERE trophyevents.reported = FALSE
+                    AND logs.type = 'trophy'
+                    ORDER BY time DESC
                 """
         fetch = await self.bot.pool.fetch(query)
 
-        query = """SELECT trophyevents.clan_tag, 
-                          trophyevents.trophy_change,
-                          trophyevents.league_id, 
-                          trophyevents.player_name, 
-                          trophyevents.time
-                    FROM trophyevents 
-                        INNER JOIN clans 
-                        ON clans.clan_tag = trophyevents.clan_tag 
-                    WHERE clans.channel_id = $1 
-                    AND trophyevents.reported=False
-                    ORDER BY trophyevents.clan_tag, 
-                             time DESC;
-                """
+        query = "UPDATE trophyevents SET reported = TRUE WHERE reported = FALSE RETURNING clan_tag"
+        removed = await self.bot.pool.fetch(query)
+        log.debug('Removed trophyevents from the database. Status Code %s', len(removed))
+        self.bot.donationboard.tags_to_update.update(set(n['clan_tag'] for n in removed))
 
-        for n in fetch:
-            config = await self.bot.utils.log_config(n[0], EVENTS_TABLE_TYPE)
+        for channel_id, events in itertools.groupby(sorted(fetch, key=lambda n: n['channel_id']), key=lambda n: n['channel_id']):
+            config = await self.bot.utils.log_config(channel_id, EVENTS_TABLE_TYPE)
             if not config:
                 continue
             if not config.toggle:
                 continue
+            if not config.channel:
+                continue
 
-            events = await self.bot.pool.fetch(query, n[0])
-
+            events = list(events)
             messages = []
             for x in events:
                 slim_event = SlimTrophyEvent(x['trophy_change'], x['league_id'], x['player_name'], x['clan_tag'])
@@ -192,15 +191,8 @@ class TrophyLogs(commands.Cog):
                 else:
                     log.debug(f'Dispatching a log to channel '
                               f'{config.channel} (ID {config.channel_id})')
-                    asyncio.ensure_future(self.bot.utils.channel_log(config.channel_id, EVENTS_TABLE_TYPE,
-                                                                     '\n'.join(x), embed=False))
+                    asyncio.ensure_future(self.bot.utils.safe_send(config.channel, '\n'.join(x)))
 
-        query = """UPDATE trophyevents
-                        SET reported=True
-                   WHERE reported=False
-                """
-        removed = await self.bot.pool.execute(query)
-        log.debug('Removed events from the database. Status Code %s', removed)
 
     async def on_clan_member_trophies_change(self, old_trophies, new_trophies, player, clan):
         log.debug(f'Received on_clan_member_trophy_change event for player {player} of clan {clan}')

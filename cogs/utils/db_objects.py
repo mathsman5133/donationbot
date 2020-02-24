@@ -30,7 +30,7 @@ class DatabasePlayer:
 
 
 class LogConfig:
-    __slots__ = ('bot', 'guild_id', 'channel_id', 'interval', 'toggle', 'type')
+    __slots__ = ('bot', 'guild_id', 'channel_id', 'interval', 'toggle', 'type', 'detailed')
 
     def __init__(self, *, bot, record):
         self.bot = bot
@@ -40,6 +40,7 @@ class LogConfig:
         self.interval: timedelta = record['interval']
         self.toggle: bool = record['toggle']
         self.type: str = record['type']
+        self.detailed: bool = record['detailed']
 
     @property
     def guild(self) -> discord.Guild:
