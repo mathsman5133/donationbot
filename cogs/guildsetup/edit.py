@@ -502,14 +502,14 @@ class Edit(commands.Cog):
             embed = discord.Embed(
                 description=f"Donationlog has been set to maximum detail. An example is below. Use `{ctx.prefix}edit donationlog style` to change to the basic version."
             )
-            embed.set_image(url="https://cdn.discordapp.com/attachments/681438398455742536/681438471805861926/demo_basic.JPG")
+            embed.set_image(url="https://cdn.discordapp.com/attachments/681438398455742536/681438506857398307/demo_detailed.JPG")
             return await ctx.send(embed=embed)
 
         else:
             embed = discord.Embed(
                 description=f"Donationlog has been set to basic detail. An example is below. Use `{ctx.prefix}edit donationlog style` to change to maximum detail version."
             )
-            embed.set_image(url="https://cdn.discordapp.com/attachments/681438398455742536/681438506857398307/demo_detailed.JPG")
+            embed.set_image(url="https://cdn.discordapp.com/attachments/681438398455742536/681438471805861926/demo_basic.JPG")
             return await ctx.send(embed=embed)
 
     @edit.group(name='trophylog')
