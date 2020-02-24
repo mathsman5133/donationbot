@@ -111,5 +111,5 @@ async def new_season_pull(number=5000):
         counter += 1
 
 
-for _ in sys.argv[2]:
+for _ in range(int(sys.argv[1])):
     loop.run_until_complete(new_season_pull(1000))
