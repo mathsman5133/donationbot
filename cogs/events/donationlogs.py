@@ -221,7 +221,7 @@ class DonationLogs(commands.Cog):
                 else:
                     messages = await get_basic_log(self.bot, config.guild_id, fetch)
                     for x in messages:
-                        asyncio.ensure_future(self.bot.utils.safe_send(config.channel, x))
+                        asyncio.ensure_future(self.bot.utils.safe_send(config.channel, "\n".join(x)))
 
                 if fetch:
                     log.debug(f'Dispatching {len(fetch)} logs after sleeping for {config.seconds} '
