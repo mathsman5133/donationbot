@@ -198,6 +198,8 @@ class DonationLogs(commands.Cog):
 
                 await asyncio.sleep(config.seconds)
                 config = await self.bot.utils.log_config(channel_id, EVENTS_TABLE_TYPE)
+                if not config.channel:
+                    raise
 
                 query = """SELECT * 
                            FROM donationevents 
@@ -207,6 +209,7 @@ class DonationLogs(commands.Cog):
                            ON clans.channel_id = logs.channel_id 
                            WHERE donationevents.time > now() - logs.interval 
                            AND clans.channel_id = $1
+                           AND logs.toggle = TRUE
                         """
 
                 fetch = await self.bot.pool.fetch(query, channel_id)
@@ -269,6 +272,7 @@ class DonationLogs(commands.Cog):
                 continue
             if config.seconds > 0:
                 continue
+
             events = list(events)
             log.debug(f"running {channel_id}")
 

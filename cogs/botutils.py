@@ -130,7 +130,7 @@ class Utils(commands.Cog):
     async def safe_send(self, channel, content=None, embed=None):
         try:
             return await channel.send(content, embed=embed)
-        except (discord.HTTPException, discord.Forbidden):
+        except (discord.HTTPException, discord.Forbidden, AttributeError):
             return
 
     async def channel_log(self, channel_id, log_type, message=None, embed_to_send=None, colour=None, embed=True):
