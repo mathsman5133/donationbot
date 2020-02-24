@@ -115,9 +115,8 @@ async def get_basic_log(bot, guild_id, events):
 
     messages = []
     for x in all_events:
-        slim_event = SlimDonationEvent(x['donations'], x['received'], x['player_name'], x['clan_tag'])
-        clan_name = await bot.utils.get_clan_name(guild_id, slim_event.clan_tag)
-        messages.append(format_donation_log_message(slim_event, clan_name))
+        clan_name = await bot.utils.get_clan_name(guild_id, x.clan_tag)
+        messages.append(format_donation_log_message(x, clan_name))
 
     group_batch = []
     for i in range(math.ceil(len(messages) / 20)):
