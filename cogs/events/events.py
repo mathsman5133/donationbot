@@ -32,10 +32,9 @@ class Events(commands.Cog):
 
         query = f"""SELECT player_tag, {col}, {col2}, time, player_name
                     FROM {table_name}
-                    WHERE {table_name}.clan_tag = ANY(
-                                SELECT DISTINCT clan_tag FROM clans
-                                WHERE channel_id=$1
-                                )
+                    INNER JOIN clans
+                    ON clans.clan_tag = {table_name}.clan_tag
+                    WHERE clans.channel_id = $1
                     ORDER BY {table_name}.time DESC
                     LIMIT $2
                 """
@@ -46,7 +45,7 @@ class Events(commands.Cog):
             )
 
         no_pages = math.ceil(len(fetch) / 20)
-        title = f"Recent Events for Guild {ctx.guild.name}"
+        title = f"Recent Events for #{ctx.channel}"
 
         p = LogsPaginator(ctx, fetch, page_count=no_pages, title=title)
         await p.paginate()
@@ -60,8 +59,8 @@ class Events(commands.Cog):
                            {table_name}.time, 
                            {table_name}.player_name
                     FROM {table_name} 
-                        INNER JOIN players
-                        ON {table_name}.player_tag = players.player_tag 
+                    INNER JOIN players
+                    ON {table_name}.player_tag = players.player_tag 
                     WHERE players.user_id = $1 
                     ORDER BY time DESC 
                     LIMIT $2;
