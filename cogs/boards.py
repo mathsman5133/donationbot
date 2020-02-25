@@ -507,12 +507,12 @@ class DonationBoard(commands.Cog):
                 if config.render == 2:
                     table.add_row([index,
                                    y[1],
-                                   players.get(y['player_tag'], mock).name])
+                                   players.get(y['player_tag'], mock).name.replace("`", "")])
                 else:
                     table.add_row([index,
                                    y[1],
                                    y[2],
-                                   players.get(y['player_tag'], mock).name])
+                                   players.get(y['player_tag'], mock).name.replace("`", "")])
 
             render = get_render_type(config, table)
             fmt = render()
