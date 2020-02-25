@@ -15,7 +15,7 @@ logging.basicConfig(level=logging.INFO)
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
-SEASON_ID = 8
+SEASON_ID = 9
 
 
 class CustomCache(coc.Cache):
@@ -75,14 +75,18 @@ async def board_insert_loop():
 async def bulk_board_insert():
     query = """UPDATE players SET donations = players.donations + x.donations, 
                                   received  = players.received  + x.received, 
-                                  trophies  = x.trophies
+                                  trophies  = x.trophies,
+                                  clan_tag  = x.clan_tag,
+                                  player_name = x.player_name
                     FROM(
                         SELECT x.player_tag, x.donations, x.received, x.trophies
                             FROM jsonb_to_recordset($1::jsonb)
                         AS x(player_tag TEXT, 
                              donations INTEGER, 
                              received INTEGER, 
-                             trophies INTEGER)
+                             trophies INTEGER,
+                             clan_tag TEXT,
+                             player_name TEXT)
                         )
                 AS x
                 WHERE players.player_tag = x.player_tag
@@ -138,7 +142,9 @@ async def on_clan_member_donation(old_donations, new_donations, player, clan):
                 'player_tag': player.tag,
                 'donations': donations,
                 'received': 0,
-                'trophies': player.trophies
+                'trophies': player.trophies,
+                'player_name': player.name,
+                'clan_tag': player.clan and player.clan.tag
             }
     await update(player.tag)
 
@@ -237,6 +243,7 @@ async def event_player_updater():
                    end_attacks           = x.end_attacks,
                    end_defenses          = x.end_defenses,
                    end_best_trophies     = x.end_best_trophies
+                   
                FROM (
                    SELECT x.player_tag,
                           x.trophies,
@@ -341,7 +348,7 @@ async def update(player_tag):
 #
 async def on_clan_member_name_change(_, __, player, ___):
     await update(player.tag)
-
+#
 # async def on_clan_member_donation(self, _, __, player, ___):
 #     await self.update(player.tag)
 

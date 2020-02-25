@@ -853,6 +853,14 @@ class Edit(commands.Cog):
 
     @commands.command(hidden=True)
     @commands.is_owner()
+    async def nuke(self, ctx, clan_tag: str = None):
+        query = "UPDATE players SET donations = 0, received = 0 WHERE clan_tag = $1 AND season_id = $2"
+        await ctx.db.execute(query, clan_tag, await self.bot.seasonconfig.get_season_id())
+        ctx.config = None
+        await ctx.invoke(self.refresh, clans=[await self.bot.coc.get_clan(clan_tag)])
+
+    @commands.command(hidden=True)
+    @commands.is_owner()
     async def reset_cooldown(self, ctx, guild_id: int = None):
         if guild_id:
             ctx.guild = self.bot.get_guild(guild_id)
