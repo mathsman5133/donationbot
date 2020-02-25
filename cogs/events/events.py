@@ -16,7 +16,7 @@ log = logging.getLogger(__name__)
 
 def columns(table_name):
     if table_name == 'trophyevents':
-        return 'trophy_change', 'id'
+        return 'trophy_change', 'trophyevents.id'
     else:
         return 'donations', 'received'
 
