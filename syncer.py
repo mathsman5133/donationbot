@@ -174,7 +174,9 @@ async def on_clan_member_received(old_received, new_received, player, clan):
                 'player_tag': player.tag,
                 'donations': 0,
                 'received': received,
-                'trophies': player.trophies
+                'trophies': player.trophies,
+                'player_name': player.name,
+                'clan_tag': player.clan and player.clan.tag
             }
 
 
@@ -226,7 +228,9 @@ async def on_clan_member_trophies_change(old_trophies, new_trophies, player, cla
                 'player_tag': player.tag,
                 'donations': 0,
                 'received': 0,
-                'trophies': new_trophies
+                'trophies': new_trophies,
+                'player_name': player.name,
+                'clan_tag': player.clan and player.clan.tag
             }
 
 
