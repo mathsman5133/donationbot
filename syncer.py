@@ -14,7 +14,7 @@ from cogs.utils.db import Table
 logging.basicConfig(level=logging.INFO)
 
 log = logging.getLogger(__name__)
-log.setLevel(logging.DEBUG)
+log.setLevel(logging.INFO)
 SEASON_ID = 9
 
 
@@ -102,7 +102,9 @@ async def bulk_board_insert():
                         AS x(player_tag TEXT, 
                              donations INTEGER, 
                              received INTEGER, 
-                             trophies INTEGER)
+                             trophies INTEGER,
+                             clan_tag TEXT,
+                             player_name TEXT)
                         )
                 AS x
                 WHERE eventplayers.player_tag = x.player_tag
@@ -110,9 +112,9 @@ async def bulk_board_insert():
             """
     if board_batch_data:
         response = await pool.execute(query, list(board_batch_data.values()), SEASON_ID)
-        log.debug(f'Registered donations/received to the database. Status Code {response}.')
+        log.info(f'Registered donations/received to the database. Status Code {response}.')
         response = await pool.execute(query2, list(board_batch_data.values()))
-        log.debug(f'Registered donations/received to the events database. Status Code {response}.')
+        log.info(f'Registered donations/received to the events database. Status Code {response}.')
         board_batch_data.clear()
 
 
@@ -143,8 +145,8 @@ async def on_clan_member_donation(old_donations, new_donations, player, clan):
                 'donations': donations,
                 'received': 0,
                 'trophies': player.trophies,
-                'player_name': player.name,
-                'clan_tag': player.clan and player.clan.tag
+                'clan_tag': player.clan and player.clan.tag,
+                'player_name': player.name
             }
     await update(player.tag)
 
@@ -175,8 +177,8 @@ async def on_clan_member_received(old_received, new_received, player, clan):
                 'donations': 0,
                 'received': received,
                 'trophies': player.trophies,
-                'player_name': player.name,
-                'clan_tag': player.clan and player.clan.tag
+                'clan_tag': player.clan and player.clan.tag,
+                'player_name': player.name
             }
 
 
@@ -229,8 +231,8 @@ async def on_clan_member_trophies_change(old_trophies, new_trophies, player, cla
                 'donations': 0,
                 'received': 0,
                 'trophies': new_trophies,
-                'player_name': player.name,
-                'clan_tag': player.clan and player.clan.tag
+                'clan_tag': player.clan and player.clan.tag,
+                'player_name': player.name
             }
 
 
