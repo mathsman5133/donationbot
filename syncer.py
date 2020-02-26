@@ -79,7 +79,7 @@ async def bulk_board_insert():
                                   clan_tag  = x.clan_tag,
                                   player_name = x.player_name
                     FROM(
-                        SELECT x.player_tag, x.donations, x.received, x.trophies
+                        SELECT x.player_tag, x.donations, x.received, x.trophies, x.clan_tag, x.player_name
                             FROM jsonb_to_recordset($1::jsonb)
                         AS x(player_tag TEXT, 
                              donations INTEGER, 
