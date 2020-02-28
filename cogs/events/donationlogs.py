@@ -198,8 +198,6 @@ class DonationLogs(commands.Cog):
 
                 await asyncio.sleep(config.seconds)
                 config = await self.bot.utils.log_config(channel_id, EVENTS_TABLE_TYPE)
-                if not config.channel:
-                    raise
 
                 query = """SELECT * 
                            FROM donationevents 
