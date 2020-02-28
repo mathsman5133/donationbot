@@ -525,6 +525,73 @@ class Add(commands.Cog):
             f'Please add clans to the donationboard with `+add clan #{name} #CLANTAG`'
         )
 
+    @add.command(name='lastonlineboard')
+    @commands.is_owner()
+    @manage_guild()
+    async def add_lastonlineboard(self, ctx, *, name='lastonlineboard'):
+        """Creates a last online board channel for last online updates.
+
+        **Format**
+        :information_source: `+add lastonlineboard`
+
+        **Example**
+        :white_check_mark: `+add lastonlineboard`
+
+        **Required Permissions**
+        :warning: Manage Server
+        """
+        perms = ctx.channel.permissions_for(ctx.me)
+        if not perms.manage_channels:
+            return await ctx.send(
+                'I need manage channels permission to create the last online board!')
+
+        overwrites = {
+            ctx.me: discord.PermissionOverwrite(read_messages=True, send_messages=True,
+                                                read_message_history=True, embed_links=True,
+                                                manage_messages=True),
+            ctx.guild.default_role: discord.PermissionOverwrite(read_messages=True,
+                                                                send_messages=False,
+                                                                read_message_history=True)
+        }
+        reason = f'{str(ctx.author)} created a lastonlineboard channel.'
+
+        try:
+            channel = await ctx.guild.create_text_channel(name=name, overwrites=overwrites,
+                                                          reason=reason)
+        except discord.Forbidden:
+            return await ctx.send(
+                'I do not have permissions to create the last online board channel.')
+        except discord.HTTPException:
+            return await ctx.send('Creating the channel failed. Try checking the name?')
+
+        msg = await channel.send('Placeholder. Please do not remove or send messages in this channel!')
+
+        query = """INSERT INTO messages (
+                                message_id, 
+                                guild_id, 
+                                channel_id
+                            )
+                       VALUES ($1, $2, $3);
+                    """
+        query2 = """INSERT INTO boards (
+                            guild_id, 
+                            channel_id, 
+                            type,
+                            title,
+                            sort_by
+                        ) 
+                       VALUES ($1, $2, $3, $4, $5) 
+                       ON CONFLICT (channel_id) 
+                       DO UPDATE SET toggle = True;
+                    """
+
+        await ctx.db.execute(query, msg.id, ctx.guild.id, channel.id)
+        await ctx.db.execute(query2, ctx.guild.id, channel.id, 'lastonline', name.capitalize(), 'last_online')
+        await ctx.send(
+            f'Last online board channel created: {channel.mention}. '
+            f'Please add clans to the board with `+add clan #{name} #CLANTAG`'
+        )
+
     @add.command(name='donationlog')
     @requires_config('donationlog', invalidate=True)
     @manage_guild()

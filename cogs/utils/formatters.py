@@ -7,6 +7,8 @@ def get_render_type(config, table):
             render = table.donationboard_1
         else:
             render = table.donationboard_2
+    elif getattr(config, 'type', None) == 'last_online':
+        render = table.last_online_board
     else:
         if config.render == 1:
             render = table.trophyboard_1
@@ -185,6 +187,14 @@ class CLYTable:
 
     def clear_rows(self):
         self._rows = []
+
+    def last_online_board(self):
+        fmt = f"{misc['number']}`⠀{'Name':\u00A0>12.12}⠀` `⠀{'Last Online':\u00A0>9.9}⠀`\n"
+        for v in self._rows:
+            index = int(v[0]) + 1
+            index = number_emojis[index] if index <= 100 else misc['idle']
+            fmt += f"{index}`⠀{str(v[1]):\u00A0>6.6}⠀` `⠀{readable_time(v[2].total_seconds()):\u00A0>5.5}⠀`\n"
+        return fmt
 
     def donationboard_1(self):
         fmt = f"{misc['number']}`⠀{'Dons':\u00A0>6.6}⠀` `⠀{'Rec':\u00A0>5.5}⠀` `⠀{'Name':\u00A0<10.10}⠀`\n"
