@@ -157,6 +157,7 @@ class DonationLogs(commands.Cog):
         log.debug('Time taken: %s ms', (time.perf_counter() - start)*1000)
 
     async def sync_temp_event_tasks(self):
+        return
         query = """SELECT channel_id 
                    FROM logs 
                    WHERE toggle = True 
