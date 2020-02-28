@@ -66,7 +66,7 @@ async def get_pref(bot, message):
     return commands.when_mentioned_or(prefix)(bot, message)
 
 
-class DonationBot(commands.Bot):
+class DonationBot(commands.AutoShardedBot):
     def __init__(self):
         super().__init__(command_prefix=get_pref, case_insensitive=True,
                          description=description, pm_help=None, help_attrs=dict(hidden=True),
