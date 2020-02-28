@@ -193,7 +193,7 @@ class CLYTable:
         for v in self._rows:
             index = int(v[0]) + 1
             index = number_emojis[index] if index <= 100 else misc['idle']
-            fmt += f"{index}`⠀{str(v[1]):\u00A0>6.6}⠀` `⠀{readable_time(v[2].total_seconds()):\u00A0>5.5}⠀`\n"
+            fmt += f"{index}`⠀{str(v[1]):\u00A0>6.6}⠀` `⠀{v[2]:\u00A0>5.5}⠀`\n"
         return fmt
 
     def donationboard_1(self):
