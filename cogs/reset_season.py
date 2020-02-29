@@ -20,18 +20,18 @@ class SeasonConfig(commands.Cog, command_attrs=dict(hidden=True)):
         day.replace(hour=6, minute=0, second=0, microsecond=0)
         return day
 
-    @tasks.loop(time=datetime.time(hour=6, tzinfo=datetime.timezone.utc))
-    async def start_new_season(self):
-        log.debug('Starting season reset loop.')
-        now = datetime.datetime.utcnow()
-        next_monday = self.next_last_monday()
-
-        if now.day != next_monday.day:
-            return
-
-        log.critical('New season starting - via loop.')
-        await self.new_season()
-        await self.new_season_pull()
+    # @tasks.loop(time=datetime.time(hour=6, tzinfo=datetime.timezone.utc))
+    # async def start_new_season(self):
+    #     log.debug('Starting season reset loop.')
+    #     now = datetime.datetime.utcnow()
+    #     next_monday = self.next_last_monday()
+    #
+    #     if now.day != next_monday.day:
+    #         return
+    #
+    #     log.critical('New season starting - via loop.')
+    #     await self.new_season()
+    #     await self.new_season_pull()
 
     async def new_season(self):
         query = "INSERT INTO seasons (start, finish) VALUES ($1, $2)"
