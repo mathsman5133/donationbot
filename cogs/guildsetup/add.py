@@ -526,7 +526,6 @@ class Add(commands.Cog):
         )
 
     @add.command(name='lastonlineboard')
-    @commands.is_owner()
     @manage_guild()
     async def add_lastonlineboard(self, ctx, *, name='lastonlineboard'):
         """Creates a last online board channel for last online updates.
