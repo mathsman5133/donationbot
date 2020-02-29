@@ -189,11 +189,11 @@ class CLYTable:
         self._rows = []
 
     def last_online_board(self):
-        fmt = f"{misc['number']}`⠀{'Name':\u00A0>12.12}⠀` `⠀{'Last Online':\u00A0>9.9}⠀`\n"
+        fmt = f"{misc['number']}`⠀{'Name':\u00A0>12.12}⠀` `⠀{'Last Online':\u00A0>11.11}⠀`\n"
         for v in self._rows:
             index = int(v[0]) + 1
             index = number_emojis[index] if index <= 100 else misc['idle']
-            fmt += f"{index}`⠀{str(v[3]):\u00A0>12.12}⠀` `⠀{v[1]:\u00A0>9.9}⠀`\n"
+            fmt += f"{index}`⠀{str(v[3]):\u00A0>12.12}⠀` `⠀{v[1]:\u00A0>11.11}⠀`\n"
         return fmt
 
     def donationboard_1(self):
