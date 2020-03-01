@@ -585,7 +585,7 @@ class Add(commands.Cog):
                     """
 
         await ctx.db.execute(query, msg.id, ctx.guild.id, channel.id)
-        await ctx.db.execute(query2, ctx.guild.id, channel.id, 'lastonline', name.capitalize(), 'last_online')
+        await ctx.db.execute(query2, ctx.guild.id, channel.id, 'last_online', name.capitalize(), 'last_online')
         await ctx.send(
             f'Last online board channel created: {channel.mention}. '
             f'Please add clans to the board with `+add clan #{name} #CLANTAG`'
