@@ -1,5 +1,6 @@
 from discord.ext import commands
 
+PATRON_PERK_ROLES = [605349824472154134, 683559116731318423]
 
 class NoConfigFailure(commands.CheckFailure):
     pass
@@ -43,7 +44,7 @@ def is_patron_pred(ctx):
     if not member:
         return False
 
-    return any(r.id == 605349824472154134 for r in member.roles)
+    return any(r.id in PATRON_PERK_ROLES for r in member.roles)
 
 def is_patron():
     return commands.check(is_patron_pred)
