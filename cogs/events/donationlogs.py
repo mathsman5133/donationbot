@@ -254,6 +254,7 @@ class DonationLogs(commands.Cog):
                         try:
                             clan = await self.bot.coc.get_clan(clan_tag, cache=True)
                         except coc.NotFound:
+                            log.exception('coc not found')
                             continue
 
                         hex_ = bytes.hex(str.encode(clan.tag))[:20]
