@@ -195,8 +195,6 @@ class DonationLogs(commands.Cog):
                 """
         fetch = await self.bot.pool.fetch(query, EVENTS_TABLE_TYPE)
         for n in fetch:
-            if not n[0] == 594280479881035776:
-                continue
             channel_id = n[0]
             log.debug(f'Syncing task for Channel ID {channel_id}')
             task = self._tasks.get(channel_id)
@@ -334,7 +332,7 @@ class DonationLogs(commands.Cog):
             log.debug(f"running {channel_id}")
 
             if config.detailed:
-                if config.seconds > 0 and channel_id == 594280479881035776:
+                if config.seconds > 0:
                     responses = await get_detailed_log(self.bot, events, raw_events=True)
                     # in this case, responses will be in
                     # [(clan_tag, {"exact": [str], "combo": [str], "unknown": [str]})] form.
@@ -350,7 +348,7 @@ class DonationLogs(commands.Cog):
 
             else:
                 messages = await get_basic_log(self.bot, config.guild_id, events)
-                if config.seconds > 0 and channel_id == 594280479881035776:
+                if config.seconds > 0 and channel_id:
                     for n in messages:
                         await self.add_temp_events(channel_id, "\n".join(n))
                     continue
