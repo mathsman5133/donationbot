@@ -165,6 +165,15 @@ create table tempevents (
 );
 create index channel_id_idx on tempevents (channel_id);
 
+create table detailedtempevents (
+    id serial primary key,
+    channel_id bigint,
+    clan_tag text,
+    exact text,
+    combo text,
+    unknown text
+);
+
 CREATE TABLE seasons (
     id serial primary key,
     start timestamp,
@@ -182,7 +191,7 @@ create table events (
     start_report boolean default false,
     donation_msg bigint default 0,
     trophy_msg bigint default 0
-)
+);
 
 CREATE OR REPLACE FUNCTION public.get_event_id(guild_id bigint)
  RETURNS integer
