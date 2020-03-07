@@ -245,10 +245,15 @@ class DonationLogs(commands.Cog):
                         events = list(events)
 
                         events_fmt = {
-                            "exact": [n['exact'].split('\n') for n in events],
-                            "combo": [n['combo'].split('\n') for n in events],
-                            "unknown": [n['unknown'].split('\n') for n in events]
+                            "exact": [],
+                            "combo": [],
+                            "unknown": []
                         }
+                        for n in events:
+                            events_fmt["exact"].extend(n['exact'].split('\n'))
+                            events_fmt["combo"].extend(n['combo'].split('\n'))
+                            events_fmt["unknown"].extend(n['unknown'].split('\n'))
+
                         p = LineWrapper()
                         p.add_lines(get_events_fmt(events_fmt))
 
