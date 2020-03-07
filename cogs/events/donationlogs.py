@@ -241,7 +241,7 @@ class DonationLogs(commands.Cog):
 
                     embeds = []
 
-                    for clan_tag, events in itertools.groupby(sorted(fetch, key=lambda x: x['clan_tag'])):
+                    for clan_tag, events in itertools.groupby(sorted(fetch, key=lambda x: x['clan_tag']), key=lambda x: x['clan_tag']):
                         events = list(events)
 
                         events_fmt = {
@@ -254,7 +254,7 @@ class DonationLogs(commands.Cog):
                         try:
                             clan = await self.bot.coc.get_clan(clan_tag, cache=True)
                         except coc.NotFound:
-                            log.exception('coc not found')
+                            log.exception(f'{clan_tag} not found')
                             continue
 
                         hex_ = bytes.hex(str.encode(clan.tag))[:20]
