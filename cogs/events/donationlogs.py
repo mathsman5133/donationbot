@@ -12,7 +12,7 @@ from datetime import datetime
 from discord.ext import commands, tasks
 
 from cogs.utils.db_objects import SlimDonationEvent
-from cogs.utils.formatters import format_donation_log_message, format_donation_log_message_test, get_line_chunks
+from cogs.utils.formatters import format_donation_log_message, format_donation_log_message_test, get_line_chunks, LineWrapper
 
 log = logging.getLogger(__name__)
 
@@ -228,7 +228,7 @@ class DonationLogs(commands.Cog):
 
                 await asyncio.sleep(config.seconds)
                 config = await self.bot.utils.log_config(channel_id, EVENTS_TABLE_TYPE)
-                log.critical(config.channel_id + config.detailed + config.seconds)
+                log.critical(f'{config.channel_id} + {config.detailed} + {config.seconds}')
 
                 if config.detailed:
                     query = "DELETE FROM detailedtempevents WHERE channel_id = $1 RETURNING clan_tag, exact, combo, unknown"
@@ -268,11 +268,12 @@ class DonationLogs(commands.Cog):
                 else:
                     query = "DELETE FROM tempevents WHERE channel_id = $1 AND type = $2 RETURNING fmt"
                     fetch = await self.bot.pool.fetch(query, channel_id, EVENTS_TABLE_TYPE)
+                    p = LineWrapper()
 
                     for n in fetch:
-                        await config.channel.send(n[0])
-                        # asyncio.ensure_future(self.bot.utils.channel_log(channel_id, EVENTS_TABLE_TYPE,
-                        #                                                  n[0], embed=False))
+                        p.add_lines(n[0].split("\n"))
+                    for page in p.pages:
+                        asyncio.ensure_future(self.bot.utils.safe_send(config.channel, page))
 
         except asyncio.CancelledError:
             raise

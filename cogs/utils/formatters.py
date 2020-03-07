@@ -1,4 +1,5 @@
 from discord.utils import _string_width
+from discord.ext import commands
 from cogs.utils.emoji_lookup import emojis, misc, number_emojis
 
 def get_render_type(config, table):
@@ -295,3 +296,11 @@ def get_line_chunks(lines, chunk_size=13, max_size=1950):
             idx_start = idx
         if idx == len(lines) - 1:
             yield lines[idx_start:]
+
+
+class LineWrapper(commands.Paginator):
+    def __init__(self, max_size=2000):
+        super().__init__('', '', max_size=max_size)
+    def add_lines(self, lines, empty=False):
+        for line in lines:
+            self.add_line(line)
