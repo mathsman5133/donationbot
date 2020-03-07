@@ -7,8 +7,10 @@ import math
 import time
 
 from collections import namedtuple
-
 from datetime import datetime
+
+import coc
+
 from discord.ext import commands, tasks
 
 from cogs.utils.db_objects import SlimDonationEvent
@@ -249,7 +251,10 @@ class DonationLogs(commands.Cog):
                         }
                         messages = get_events_fmt(events_fmt)
 
-                        clan = await self.bot.coc.get_clan(clan_tag, cache=True)
+                        try:
+                            clan = await self.bot.coc.get_clan(clan_tag, cache=True)
+                        except coc.NotFound:
+                            continue
 
                         hex_ = bytes.hex(str.encode(clan.tag))[:20]
 
