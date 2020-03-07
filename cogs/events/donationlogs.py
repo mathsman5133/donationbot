@@ -228,7 +228,6 @@ class DonationLogs(commands.Cog):
 
                 await asyncio.sleep(config.seconds)
                 config = await self.bot.utils.log_config(channel_id, EVENTS_TABLE_TYPE)
-                log.critical(f'{config.channel_id} + {config.detailed} + {config.seconds}')
 
                 if config.detailed:
                     query = "DELETE FROM detailedtempevents WHERE channel_id = $1 RETURNING clan_tag, exact, combo, unknown"
