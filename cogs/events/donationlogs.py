@@ -180,8 +180,8 @@ class DonationLogs(commands.Cog):
         start = time.perf_counter()
         try:
             await self.bulk_report()
-        except:
-            pass
+        except Exception as e:
+            log.exception(e)
         log.debug('Time taken: %s ms', (time.perf_counter() - start)*1000)
 
     async def sync_temp_event_tasks(self):
