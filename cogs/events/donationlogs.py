@@ -277,7 +277,7 @@ class DonationLogs(commands.Cog):
 
         except asyncio.CancelledError:
             raise
-        except (OSError, discord.ConnectionClosed, asyncpg.PostgresConnectionError):
+        except:
             log.exception(f'Exception encountered while running task for {channel_id}')
             self._tasks[channel_id].cancel()
             self._tasks[channel_id] = self.bot.loop.create_task(self.create_temp_event_task(channel_id))
