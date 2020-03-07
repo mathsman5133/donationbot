@@ -225,6 +225,7 @@ class DonationLogs(commands.Cog):
                 if not config:
                     log.critical(f'Requested a task creation for channel id {channel_id}'
                                  ' but config was not found.')
+                    return
 
                 await asyncio.sleep(config.seconds)
                 config = await self.bot.utils.log_config(channel_id, EVENTS_TABLE_TYPE)
