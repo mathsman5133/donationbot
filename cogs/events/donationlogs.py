@@ -323,7 +323,7 @@ class DonationLogs(commands.Cog):
 
             if config.detailed:
                 if config.seconds > 0 and channel_id == 594280479881035776:
-                    responses = await get_detiled_log(self.bot, events, raw_events=True)
+                    responses = await get_detailed_log(self.bot, events, raw_events=True)
                     # in this case, responses will be in
                     # [(clan_tag, {"exact": [str], "combo": [str], "unknown": [str]})] form.
 
