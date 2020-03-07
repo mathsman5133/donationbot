@@ -228,6 +228,7 @@ class DonationLogs(commands.Cog):
 
                 await asyncio.sleep(config.seconds)
                 config = await self.bot.utils.log_config(channel_id, EVENTS_TABLE_TYPE)
+                log.critical(config.channel_id + config.detailed + config.seconds)
 
                 if config.detailed:
                     query = "DELETE FROM detailedtempevents WHERE channel_id = $1 RETURNING clan_tag, exact, combo, unknown"
@@ -262,15 +263,16 @@ class DonationLogs(commands.Cog):
                             embeds.append(e)
 
                     for n in embeds:
-                        asyncio.ensure_future(self.bot.utils.safe_send(config.channel, embed=n))
+                        await config.channel.send(config.channel, embed=n)
                         
                 else:
                     query = "DELETE FROM tempevents WHERE channel_id = $1 AND type = $2 RETURNING fmt"
                     fetch = await self.bot.pool.fetch(query, channel_id, EVENTS_TABLE_TYPE)
 
                     for n in fetch:
-                        asyncio.ensure_future(self.bot.utils.channel_log(channel_id, EVENTS_TABLE_TYPE,
-                                                                         n[0], embed=False))
+                        await config.channel.send(n[0])
+                        # asyncio.ensure_future(self.bot.utils.channel_log(channel_id, EVENTS_TABLE_TYPE,
+                        #                                                  n[0], embed=False))
 
         except asyncio.CancelledError:
             raise
@@ -338,6 +340,7 @@ class DonationLogs(commands.Cog):
                 if config.seconds > 0 and channel_id == 594280479881035776:
                     for n in messages:
                         await self.add_temp_events(channel_id, "\n".join(n))
+                    continue
 
                 for x in messages:
                     log.debug(f'Dispatching a detailed log to channel {config.channel} (ID {config.channel_id}), {x}')
