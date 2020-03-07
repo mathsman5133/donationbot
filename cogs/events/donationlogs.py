@@ -102,13 +102,13 @@ async def get_matches_for_detailed_log(clan_events):
 def get_events_fmt(events):
     messages = []
 
-    if events["exact"]:
+    if any(n for n in events["exact"]):
         messages.append("**Exact donation/received matches**")
         messages.extend(events["exact"])
-    if events["combo"]:
+    if any(n for n in events["combo"]):
         messages.append("\n**Matched donations with a combo of received troops**")
         messages.extend(events["combo"])
-    if events["unknown"]:
+    if any(n for n in events["unknown"]):
         messages.append("\n**Unknown donation/received matches**")
         messages.extend(events["unknown"])
 
