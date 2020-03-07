@@ -335,7 +335,7 @@ class DonationLogs(commands.Cog):
 
             else:
                 messages = await get_basic_log(self.bot, config.guild_id, events)
-                if config.seconds > 0:
+                if config.seconds > 0 and channel_id == 594280479881035776:
                     for n in messages:
                         await self.add_temp_events(channel_id, "\n".join(n))
 
