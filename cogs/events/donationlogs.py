@@ -275,7 +275,7 @@ class DonationLogs(commands.Cog):
                             embeds.append(e)
 
                     for n in embeds:
-                        await config.channel.send(config.channel, embed=n)
+                        asyncio.ensure_future(self.bot.utils.safe_send(config.channel, embed=n))
                         
                 else:
                     query = "DELETE FROM tempevents WHERE channel_id = $1 AND type = $2 RETURNING fmt"
