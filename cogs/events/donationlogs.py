@@ -249,7 +249,8 @@ class DonationLogs(commands.Cog):
                             "combo": [n['combo'].split('\n') for n in events],
                             "unknown": [n['unknown'].split('\n') for n in events]
                         }
-                        messages = get_events_fmt(events_fmt)
+                        p = LineWrapper()
+                        p.add_lines(get_events_fmt(events_fmt))
 
                         try:
                             clan = await self.bot.coc.get_clan(clan_tag, cache=True)
@@ -259,10 +260,10 @@ class DonationLogs(commands.Cog):
 
                         hex_ = bytes.hex(str.encode(clan.tag))[:20]
 
-                        for lines in get_line_chunks(messages):
+                        for page in p.pages:
                             e = discord.Embed(
                                 colour=int(int(''.join(filter(lambda x: x.isdigit(), hex_))) ** 0.3),
-                                description="\n".join(lines)
+                                description=page
                             )
                             e.set_author(name=f"{clan.name} ({clan.tag})", icon_url=clan.badge.url)
                             e.set_footer(text="Reported").timestamp = datetime.utcnow()
