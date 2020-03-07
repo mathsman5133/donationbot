@@ -331,7 +331,7 @@ class DonationLogs(commands.Cog):
                         await self.add_detailed_temp_events(channel_id, clan_tag, items)
                     continue
 
-                embeds = await get_detiled_log(self.bot, events)
+                embeds = await get_detailed_log(self.bot, events)
                 for x in embeds:
                     log.debug(f'Dispatching a log to channel {config.channel} (ID {config.channel_id}), {x}')
                     asyncio.ensure_future(self.bot.utils.safe_send(config.channel, embed=x))
