@@ -73,8 +73,8 @@ async def board_insert_loop():
         await bulk_board_insert()
         
 async def bulk_board_insert():
-    query = """UPDATE players SET donations = public.get_don_rec_max(x.old_dons, x.new_dons, players.donations), 
-                                  received  = public.get_don_rec_max(x.old_rec, x.new_rec, players.received), 
+    query = """UPDATE players SET donations = public.get_don_rec_max(x.old_dons, x.new_dons, COALESCE(players.donations, 0)), 
+                                  received  = public.get_don_rec_max(x.old_rec, x.new_rec, COALESCE(players.received, 0)), 
                                   trophies  = x.trophies,
                                   clan_tag  = x.clan_tag,
                                   player_name = x.player_name
