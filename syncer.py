@@ -73,17 +73,19 @@ async def board_insert_loop():
         await bulk_board_insert()
         
 async def bulk_board_insert():
-    query = """UPDATE players SET donations = players.donations + x.donations, 
-                                  received  = players.received  + x.received, 
+    query = """UPDATE players SET donations = public.get_don_rec_max(x.old_dons, x.new_dons, players.donations), 
+                                  received  = public.get_don_rec_max(x.old_rec, x.new_rec, players.received), 
                                   trophies  = x.trophies,
                                   clan_tag  = x.clan_tag,
                                   player_name = x.player_name
                     FROM(
-                        SELECT x.player_tag, x.donations, x.received, x.trophies, x.clan_tag, x.player_name
+                        SELECT x.player_tag, x.old_dons, x.new_dons, x.old_rec, x.new_rec, x.trophies, x.clan_tag, x.player_name
                             FROM jsonb_to_recordset($1::jsonb)
                         AS x(player_tag TEXT, 
-                             donations INTEGER, 
-                             received INTEGER, 
+                             old_dons INTEGER, 
+                             new_dons INTEGER,
+                             old_rec INTEGER, 
+                             new_rec INTEGER,
                              trophies INTEGER,
                              clan_tag TEXT,
                              player_name TEXT)
@@ -93,15 +95,17 @@ async def bulk_board_insert():
                 AND players.season_id=$2
             """
 
-    query2 = """UPDATE eventplayers SET donations = eventplayers.donations + x.donations, 
-                                        received  = eventplayers.received  + x.received,
+    query2 = """UPDATE eventplayers SET donations = public.get_don_rec_max(x.old_dons, x.new_dons, eventplayers.donations), 
+                                        received  = public.get_don_rec_max(x.old_rec, x.new_rec, eventplayers.received),
                                         trophies  = x.trophies   
                     FROM(
-                        SELECT x.player_tag, x.donations, x.received, x.trophies
+                        SELECT x.player_tag, x.old_dons, x.new_dons, x.old_rec, x.new_rec, x.trophies
                         FROM jsonb_to_recordset($1::jsonb)
                         AS x(player_tag TEXT, 
-                             donations INTEGER, 
-                             received INTEGER, 
+                             old_dons INTEGER, 
+                             new_dons INTEGER,
+                             old_rec INTEGER,
+                             new_rec INTEGER, 
                              trophies INTEGER,
                              clan_tag TEXT,
                              player_name TEXT)
@@ -138,12 +142,15 @@ async def on_clan_member_donation(old_donations, new_donations, player, clan):
 
     async with board_batch_lock:
         try:
-            board_batch_data[player.tag]['donations'] = donations
+            board_batch_data[player.tag]['old_dons'] = old_donations
+            board_batch_data[player.tag]['new_dons'] = old_donations
         except KeyError:
             board_batch_data[player.tag] = {
                 'player_tag': player.tag,
-                'donations': donations,
-                'received': 0,
+                'old_dons': old_donations,
+                'new_dons': new_donations,
+                'old_rec': player.received,
+                'new_rec': player.received,
                 'trophies': player.trophies,
                 'clan_tag': player.clan and player.clan.tag,
                 'player_name': player.name
@@ -170,12 +177,16 @@ async def on_clan_member_received(old_received, new_received, player, clan):
 
     async with board_batch_lock:
         try:
-            board_batch_data[player.tag]['received'] = received
+            board_batch_data[player.tag]['old_rec'] = old_received
+            board_batch_data[player.tag]['new_rec'] = new_received
+
         except KeyError:
             board_batch_data[player.tag] = {
                 'player_tag': player.tag,
-                'donations': 0,
-                'received': received,
+                'old_don': player.donations,
+                'new_don': player.donations,
+                'old_rec': old_received,
+                'new_rec': new_received,
                 'trophies': player.trophies,
                 'clan_tag': player.clan and player.clan.tag,
                 'player_name': player.name
@@ -228,8 +239,10 @@ async def on_clan_member_trophies_change(old_trophies, new_trophies, player, cla
         except KeyError:
             board_batch_data[player.tag] = {
                 'player_tag': player.tag,
-                'donations': 0,
-                'received': 0,
+                'old_don': player.donations,
+                'new_don': player.donations,
+                'old_rec': player.received,
+                'new_rec': player.received,
                 'trophies': new_trophies,
                 'clan_tag': player.clan and player.clan.tag,
                 'player_name': player.name

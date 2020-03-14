@@ -216,3 +216,29 @@ begin
 end;
 $function$
 ;
+
+
+CREATE OR REPLACE FUNCTION public.get_don_rec_max(game_old_count integer, game_count integer, db_old_count integer)
+ RETURNS integer
+ LANGUAGE plpgsql
+AS $function$
+declare
+  net_game_donations integer;
+begin
+    if game_count > db_old_count + game_count - game_old_count then
+        return game_count;
+
+    end if;
+
+    if game_old_count > game_count then
+        net_game_donations = game_count;
+    else
+        net_game_donations = game_count - game_old_count;
+
+    end if;
+    
+    return db_old_count + net_game_donations;
+
+end;
+$function$
+;
