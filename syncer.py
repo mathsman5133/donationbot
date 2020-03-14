@@ -143,7 +143,7 @@ async def on_clan_member_donation(old_donations, new_donations, player, clan):
     async with board_batch_lock:
         try:
             board_batch_data[player.tag]['old_dons'] = old_donations
-            board_batch_data[player.tag]['new_dons'] = old_donations
+            board_batch_data[player.tag]['new_dons'] = new_donations
         except KeyError:
             board_batch_data[player.tag] = {
                 'player_tag': player.tag,
