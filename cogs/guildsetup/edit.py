@@ -812,6 +812,7 @@ class Edit(commands.Cog):
         AND players.season_id=$2
         """
         await ctx.db.execute(query, player_data, await self.bot.seasonconfig.get_season_id())
+        await ctx.tick()
 
     @commands.command()
     @checks.manage_guild()
@@ -820,9 +821,7 @@ class Edit(commands.Cog):
     async def refresh(self, ctx, *, clans: ClanConverter = None):
         """Manually refresh all players in the database with current donations and received.
 
-        Note: it will only update their donations if the
-              amount recorded in-game is more than in the database.
-              Ie. if they have left and re-joined it won't update them, usually.
+        Note: this will update all players in the clan based on achievement counts at the season start.
 
         **Parameters**
         :key: Clan - tag, name or `all`.
@@ -843,43 +842,56 @@ class Edit(commands.Cog):
         **Cooldowns**
         :hourglass: You can only call this command once every **12 hours**
         """
+        query = """UPDATE players SET donations   = x.fin + x.sic - players.start_friend_in_need - players.start_sharing_is_caring,
+                                      received    = public.get_don_rec_max(x.received, x.received, players.received),
+                                      trophies    = x.trophies,
+                                      player_name = x.player_name,
+                                      clan_tag    = x.clan_tag
+                   FROM (
+                      SELECT x.player_tag, x.fin, x.sic, x.received, x.trophies, x.player_name, x.clan_tag
+                      FROM jsonb_to_recordset($1::jsonb)
+                      AS x(
+                         player_tag TEXT,
+                         fin INTEGER,
+                         sic INTEGER,
+                         received INTEGER,
+                         trophies INTEGER,
+                         player_name TEXT,
+                         clan_tag TEXT
+                      )
+                   )
+                   AS x
+                   WHERE players.player_tag = x.player_tag
+                   AND players.season_id = $2                      
+                """
+        query2 = """UPDATE eventplayers
+                    SET live=TRUE
+                    WHERE player_tag = ANY($1::TEXT[])
+                    AND event_id = $2
+                """
+        players = []
         async with ctx.typing():
             if not clans:
                 clans = await ctx.get_clans()
-            query = """UPDATE players 
-                       SET donations = $1
-                       WHERE player_tag = $2
-                       AND donations <= $1
-                       AND season_id = $3
-                       RETURNING player_tag;
-                    """
-            query2 = """UPDATE players 
-                        SET received = $1
-                        WHERE player_tag = $2
-                        AND received <= $1  
-                        AND season_id = $3
-                        RETURNING player_tag;
-                     """
-            query3 = """UPDATE players
-                        SET trophies = $1
-                        WHERE player_tag = $2
-                        AND trophies != $1
-                        AND season_id = $3
-                        RETURNING player_tag;               
-                     """
-            query4 = """UPDATE eventplayers
-                        SET live=TRUE
-                        WHERE player_tag = ANY($1::TEXT[])
-                        AND event_id = $2
-                    """
+
             season_id = await self.bot.seasonconfig.get_season_id()
+            player_tags = []
             for clan in clans:
-                for member in clan.members:
-                    await ctx.db.execute(query, member.donations, member.tag, season_id)
-                    await ctx.db.execute(query2, member.received, member.tag, season_id)
-                    await ctx.db.execute(query3, member.trophies, member.tag, season_id)
-                if ctx.config:
-                    await ctx.db.execute(query4, [m.tag for m in clan.members], ctx.config.id)
+                player_tags.extend((n.tag for n in clan.members))
+
+            async for player in self.bot.coc.get_players(player_tags):
+                players.append({
+                    "player_tag": player.tag,
+                    "fin": player.achievements_dict['Friend in Need'].value,
+                    "sic": player.achievements_dict['Sharing is caring'].value,
+                    "received": player.received,
+                    "trophies": player.trophies,
+                    "player_name": player.name,
+                    "clan_tag": player.clan and player.clan.tag
+                })
+            await ctx.bot.db.execute(query, players, season_id)
+            if ctx.config:
+                await ctx.bot.db.execute(query2, player_tags, ctx.config.id)
 
             dboard_channels = await self.bot.utils.get_board_channels(ctx.guild.id, 'donation')
             for id_ in dboard_channels:
