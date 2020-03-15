@@ -889,9 +889,9 @@ class Edit(commands.Cog):
                     "player_name": player.name,
                     "clan_tag": player.clan and player.clan.tag
                 })
-            await ctx.bot.db.execute(query, players, season_id)
+            await ctx.db.execute(query, players, season_id)
             if ctx.config:
-                await ctx.bot.db.execute(query2, player_tags, ctx.config.id)
+                await ctx.db.execute(query2, player_tags, ctx.config.id)
 
             dboard_channels = await self.bot.utils.get_board_channels(ctx.guild.id, 'donation')
             for id_ in dboard_channels:
