@@ -774,6 +774,46 @@ class Edit(commands.Cog):
             self.bot.dispatch('event_register')
 
     @commands.command()
+    @commands.is_owner()
+    async def globalrefresh(self, ctx):
+        query = "SELECT DISTINCT(clan_tag) FROM clans"
+        fetch = await ctx.db.fetch(query)
+
+        player_data = []
+        async for clan in self.bot.coc.get_clans((n[0] for n in fetch)):
+            for player in clan.members:
+                player_data.append({
+                    "player_tag": player.tag,
+                    "donations": player.donations,
+                    "received": player.received,
+                    "trophies": player.trophies,
+                    "clan_tag": clan.tag,
+                    "player_name": player.name
+                })
+
+        query = """
+        UPDATE players SET donations = public.get_don_rec_max(x.donations, x.donations, COALESCE(players.donations, 0)), 
+                           received  = public.get_don_rec_max(x.received, x.received, COALESCE(players.received, 0)), 
+                           trophies  = x.trophies,
+                           clan_tag  = x.clan_tag,
+                           player_name = x.player_name
+        FROM(
+            SELECT x.player_tag, x.donations, x.received, x.trophies, x.clan_tag, x.player_name
+                FROM jsonb_to_recordset($1::jsonb)
+            AS x(player_tag TEXT, 
+                 donations INTEGER,
+                 received INTEGER,
+                 trophies INTEGER,
+                 clan_tag TEXT,
+                 player_name TEXT)
+            )
+        AS x
+        WHERE players.player_tag = x.player_tag
+        AND players.season_id=$2
+        """
+        await ctx.db.execute(query, player_data, await self.bot.seasonconfig.get_season_id())
+
+    @commands.command()
     @checks.manage_guild()
     @requires_config('event')
     @commands.cooldown(1, 43200, commands.BucketType.guild)
