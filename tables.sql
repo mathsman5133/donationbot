@@ -225,15 +225,18 @@ AS $function$
 declare
   net_game_donations integer;
 begin
-    if game_count > db_old_count + game_count - game_old_count then
-        return game_count;
-
+    if game_old_count = game_count then
+        return greatest(game_count, db_old_count);
     end if;
 
-    if game_old_count > game_count then
-        net_game_donations = game_count;
+    if game_count > game_old_count then
+        if game_count > db_old_count + game_count - game_old_count then
+            return game_count;
+        else
+            net_game_donations = game_count - game_old_count;
+        end if;
     else
-        net_game_donations = game_count - game_old_count;
+        net_game_donations = game_count;
 
     end if;
     

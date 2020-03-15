@@ -179,12 +179,11 @@ async def on_clan_member_received(old_received, new_received, player, clan):
         try:
             board_batch_data[player.tag]['old_rec'] = old_received
             board_batch_data[player.tag]['new_rec'] = new_received
-
         except KeyError:
             board_batch_data[player.tag] = {
                 'player_tag': player.tag,
-                'old_don': player.donations,
-                'new_don': player.donations,
+                'old_dons': player.donations,
+                'new_dons': player.donations,
                 'old_rec': old_received,
                 'new_rec': new_received,
                 'trophies': player.trophies,
