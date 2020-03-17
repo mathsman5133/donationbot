@@ -11,6 +11,7 @@ from cogs.utils.paginator import Pages, EmbedPages
 from cogs.utils.formatters import CLYTable, readable_time, TabularData
 from cogs.utils.emoji_lookup import misc
 from cogs.utils.checks import requires_config
+from cogs.utils.converters import GlobalChannel
 from datetime import datetime, time
 from collections import Counter
 
@@ -385,7 +386,7 @@ class Info(commands.Cog, name='\u200bInfo'):
         await ctx.send(embed=embed)
 
     @commands.group(invoke_without_command=True)
-    async def info(self, ctx, channel: discord.TextChannel = None):
+    async def info(self, ctx, channel: GlobalChannel = None):
         """[Group] Allows the user to get info about a variety of the bot's features.
 
         Use this command to get info about all clans, boards and logs for the server.
@@ -405,14 +406,15 @@ class Info(commands.Cog, name='\u200bInfo'):
             return
 
         channels = {channel.id} if channel else set()
+        guild = channel and channel.guild or ctx.guild
 
         if not channels:
             query = "SELECT channel_id FROM logs WHERE guild_id = $1"
-            log_channels = await ctx.db.fetch(query, ctx.guild.id)
+            log_channels = await ctx.db.fetch(query, guild.id)
             channels.update({n["channel_id"] for n in log_channels})
 
             query = "SELECT channel_id FROM boards WHERE guild_id = $1"
-            board_channels = await ctx.db.fetch(query, ctx.guild.id)
+            board_channels = await ctx.db.fetch(query, guild.id)
             channels.update({n["channel_id"] for n in board_channels})
 
         embeds = []
@@ -423,7 +425,7 @@ class Info(commands.Cog, name='\u200bInfo'):
                 continue
 
             embed = discord.Embed(colour=self.bot.colour, description="")
-            embed.set_author(name=f"Info for #{channel}", icon_url=ctx.guild.me.avatar_url)
+            embed.set_author(name=f"Info for #{channel}", icon_url=guild.me.avatar_url)
 
             donationlog = await self.bot.utils.log_config(channel.id, "donation")
             if donationlog:

@@ -406,6 +406,68 @@ class Edit(commands.Cog):
         await self.bot.donationboard.update_board(ctx.config.channel_id)
         await ctx.confirm()
 
+    @edit.group(name="lastonlineboard")
+    @manage_guild()
+    @requires_config('lastonlineboard', invalidate=True, error=True)
+    async def edit_lastonlineboard(self, ctx):
+        if ctx.invoked_subcommand:
+            return
+
+        await ctx.send_help(ctx.command)
+
+    @edit_lastonlineboard.command(name='icon')
+    async def edit_lastonlineboard_icon(self, ctx, *, url: str = None):
+        """Specify an icon for the server's last-online board.
+
+        **Parameters**
+        :key: A URL (jpeg, jpg or png only) or uploaded attachment.
+
+        **Format**
+        :information_source: `+edit lastonlineboard icon URL`
+
+        **Example**
+        :white_check_mark: `+edit lastonlineboard icon https://catsareus/thecrazycatbot/123.jpg`
+        :white_check_mark: `+edit lastonlineboard icon` (with an attached image)
+
+        **Required Permissions**
+        :warning: Manage Server
+        """
+        if not url or not url_validator.match(url):
+            attachments = ctx.message.attachments
+            if not attachments:
+                return await ctx.send('You must pass in a url or upload an attachment.')
+            url = attachments[0].url
+
+        if url == 'https://catsareus/thecrazycatbot/123.jpg':
+            return await ctx.send('Uh oh! That\'s an example URL - it doesn\'t work!')
+
+        query = "UPDATE boards SET icon_url = $1 WHERE channel_id = $2"
+        await ctx.db.execute(query, url, ctx.config.channel_id)
+        await ctx.confirm()
+
+    @edit_lastonlineboard.command(name='title')
+    async def edit_lastonlineboard_title(self, ctx, *, title: str):
+        """Specify a title for the guild's last-online board.
+
+        **Parameters**
+        :key: Title (must be less than 50 characters).
+
+        **Format**
+        :information_source: `+edit lastonlineboard title TITLE`
+
+        **Example**
+        :white_check_mark: `+edit lastonlineboard title The Crazy Cat Bot Title`
+
+        **Required Permissions**
+        :warning: Manage Server
+        """
+        if len(title) >= 50:
+            return await ctx.send('Titles must be less than 50 characters.')
+
+        query = "UPDATE boards SET title = $1 WHERE channel_id = $2"
+        await ctx.db.execute(query, title, ctx.config.channel_id)
+        await ctx.confirm()
+
     @edit.group(name='donationlog')
     @manage_guild()
     @requires_config('donationlog', invalidate=True)

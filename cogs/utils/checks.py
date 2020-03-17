@@ -59,12 +59,7 @@ async def before_invoke(ctx):
     error = getattr(ctx, 'error_without_config', False)
     channel = getattr(ctx, 'custom_channel', ctx.channel)
 
-    if config_type == 'donationboard':
-        if invalidate:
-            ctx.bot.utils.board_config.invalidate(ctx.bot.utils, channel.id)
-        ctx.config = await ctx.bot.utils.board_config(channel.id)
-
-    elif config_type == 'trophyboard':
+    if config_type in ['donationboard', 'trophyboard', 'lastonlineboard']:
         if invalidate:
             ctx.bot.utils.board_config.invalidate(ctx.bot.utils, channel.id)
         ctx.config = await ctx.bot.utils.board_config(channel.id)
