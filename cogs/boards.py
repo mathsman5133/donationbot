@@ -277,6 +277,8 @@ class DonationBoard(commands.Cog):
             fetch = await self.bot.pool.fetch(query, channel_id)
 
         clans = await self.bot.coc.get_clans((n[0] for n in fetch)).flatten()
+        if not clans:
+            return
 
         players = []
         for n in clans:
