@@ -956,11 +956,9 @@ class Edit(commands.Cog):
                 await ctx.db.execute(query2, player_tags, ctx.config.id)
 
             dboard_channels = await self.bot.utils.get_board_channels(ctx.guild.id, 'donation')
-            for id_ in dboard_channels:
-                await self.bot.donationboard.update_board(int(id_))
-
             tboard_channels = await self.bot.utils.get_board_channels(ctx.guild.id, 'trophy')
-            for id_ in tboard_channels:
+            lonline_channels = await self.bot.utils.get_board_channels(ctx.guild.id, 'last_online')
+            for id_ in (*dboard_channels, *tboard_channels, *lonline_channels):
                 await self.bot.donationboard.update_board(int(id_))
 
             await ctx.send('All done - I\'ve force updated the boards too!')
