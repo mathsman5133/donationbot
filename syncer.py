@@ -238,8 +238,8 @@ async def on_clan_member_trophies_change(old_trophies, new_trophies, player, cla
         except KeyError:
             board_batch_data[player.tag] = {
                 'player_tag': player.tag,
-                'old_don': player.donations,
-                'new_don': player.donations,
+                'old_dons': player.donations,
+                'new_dons': player.donations,
                 'old_rec': player.received,
                 'new_rec': player.received,
                 'trophies': new_trophies,
