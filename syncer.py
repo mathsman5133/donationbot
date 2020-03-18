@@ -159,6 +159,7 @@ async def on_clan_member_donation(old_donations, new_donations, player, clan):
 
 async def on_clan_member_received(old_received, new_received, player, clan):
     log.info(f'Received on_clan_member_received event for player {player} of clan {clan}')
+    await update(player.tag)
     if old_received > new_received:
         received = new_received
     else:
@@ -247,6 +248,8 @@ async def on_clan_member_trophies_change(old_trophies, new_trophies, player, cla
                 'player_name': player.name
             }
 
+    if player.league and player.league.id == 29000022 and new_trophies > old_trophies:
+        await update(player.tag)
 
 @tasks.loop(hours=1)
 async def event_player_updater():
@@ -375,12 +378,12 @@ async def on_clan_member_versus_trophies_change(_, __, player, ___):
 
 async def on_clan_member_level_change(_, __, player, ___):
     await update(player.tag)
-
+#
 # async def on_clan_member_trophies_change(self, _, __, player, ___):
 #     pass  # could be a defense - doesn't mean online
 #
 # async def on_clan_member_received(self, _, __, player, ___):
-#     pass  # don't have to be online to receive donations
+#     await update(player.tag)  # don't have to be online to receive donations
 
 
 async def on_clan_member_join(member, clan):
