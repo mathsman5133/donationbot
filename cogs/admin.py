@@ -126,18 +126,12 @@ class Admin(commands.Cog):
     async def testdonationboard(self, ctx, limit: int):
         q = "SELECT DISTINCT player_name, donations, received, now() - last_updated FROM players INNER JOIN clans ON players.clan_tag  = clans.clan_tag WHERE clans.guild_id = $1 AND season_id = 9 ORDER BY donations DESC LIMIT $2;"
         fetch = await ctx.db.fetch(q, ctx.guild.id, limit)
-        players = [DonationBoardPlayer(n[0], n[1], n[2], n[3]) for n in fetch]
+        players = [DonationBoardPlayer(n[0], n[1], n[2], n[3], i + 1) for i, n in enumerate(fetch)]
         s = time.perf_counter()
         im = DonationBoardImage()
         renders = im.add_players(players)
         for n in renders:
             await ctx.send(f"{(time.perf_counter() - s) * 1000}ms", file=discord.File(n, 'test.jpg'))
-
-        if len(players) > 50:
-            s = time.perf_counter()
-            im = DonationBoardImage()
-            im.add_players(players[50:])
-            await ctx.send(f"{(time.perf_counter() - s) * 1000}ms", file=discord.File(im.render(), 'test.jpg'))
 
     @commands.command(hidden=True)
     async def load(self, ctx, *, module):

@@ -72,12 +72,12 @@ class DonationBoardImage:
             self.draw.text((halfway + RATIO_LEFT_COLUNM_WIDTH, MINIMUM_COLUMN_HEIGHT + 15), "Ratio", RATIO_RGB, font=SUPERCELL_FONT)
             self.draw.text((halfway + LAST_ONLINE_LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT + 15), "Last On", LAST_ONLINE_RGB, font=SUPERCELL_FONT)
 
-    def add_player(self, index, player):
+    def add_player(self, player):
         self.height += 82
         position = ((self.width or LEFT_COLUMN_WIDTH, self.height), (self.max_width, self.height + 60))
 
         self.draw.rectangle(position, fill=RECTANGLE_RGB)
-        self.draw.text((self.width + NUMBER_LEFT_COLUMN_WIDTH, self.height + 15), f"{index}.", NUMBER_RGB, font=SUPERCELL_FONT)
+        self.draw.text((self.width + NUMBER_LEFT_COLUMN_WIDTH, self.height + 15), f"{player.index}.", NUMBER_RGB, font=SUPERCELL_FONT)
         self.draw.text((self.width + NAME_LEFT_COLUMN_WIDTH, self.height + 15), player.name, NAME_RGB, font=SUPERCELL_FONT)
         self.draw.text((self.width + DONATIONS_LEFT_COLUMN_WIDTH, self.height + 15), str(player.donations), DONATIONS_RGB, font=SUPERCELL_FONT)
         self.draw.text((self.width + RECEIVED_LEFT_COLUMN_WIDTH, self.height + 15), str(player.received), RECEIVED_RGB, font=SUPERCELL_FONT)
@@ -91,21 +91,21 @@ class DonationBoardImage:
             self.add_headers(add_double_column=double_column)
 
             if double_column:
-                for i in range(n * 50 + 1, n * 50 + math.ceil(len(players) / 2) + 2):
-                    self.add_player(i, players[i - 1])
+                for p in players[n * 50: int(n + 0.5) * 50]:
+                    self.add_player(p)
 
                 self.width = IMAGE_WIDTH / 2 + 40
                 self.max_width = IMAGE_WIDTH
                 self.height = MINIMUM_COLUMN_HEIGHT
 
-                for i in range(n * 50 + math.ceil(len(players) / 2) + 2, n * 50 + len(players) + 1):
-                    self.add_player(i, players[i - 1])
+                for p in players[int((n + 0.5)) * 50: (n + 1) * 50]:
+                    self.add_player(p)
 
                 self.image = self.image.crop((0, 0, IMAGE_WIDTH, self.height + 80))
 
             else:
-                for i, player in enumerate(players[n * 50:]):
-                    self.add_player(i + 1, player)
+                for player in players[n * 50: (n + 1) * 50]:
+                    self.add_player(player)
 
                 self.image = self.image.crop((0, 0, IMAGE_WIDTH / 2 - 20, self.height + 80))
 
