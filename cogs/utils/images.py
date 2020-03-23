@@ -1,3 +1,4 @@
+import copy
 import io
 import logging
 import math
@@ -49,7 +50,7 @@ class DonationBoardImage:
         self.height = MINIMUM_COLUMN_HEIGHT
         self.width = 0
         self.max_width = IMAGE_WIDTH / 2 - 40
-        self.image = BACKGROUND
+        self.image = copy.deepcopy(BACKGROUND)
         self.draw = ImageDraw.Draw(self.image)
 
     def add_headers(self, add_double_column=False):
