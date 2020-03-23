@@ -10,9 +10,14 @@ log = logging.getLogger(__name__)
 
 BACKGROUND = Image.open(f"assets/dark_backdrop.jpg").resize((3000, 4500))
 
+SUPERCELL_FONT_FP = "assets/Supercell-Magic_5.ttf"
+SUPERCELL_FONT_SIZE = 40
+SUPERCELL_FONT = ImageFont.truetype(SUPERCELL_FONT_FP, SUPERCELL_FONT_SIZE)
 
-SUPERCELL_FONT = ImageFont.truetype("assets/Supercell-Magic_5.ttf", 40)
-REGULAR_FONT = ImageFont.truetype("assets/Roboto-Black.ttf", 200)
+REGULAR_FONT_FP = "assets/Roboto-Black.ttf"
+REGULAR_FONT_SIZE = 200
+REGULAR_FONT = ImageFont.truetype(REGULAR_FONT_FP, REGULAR_FONT_SIZE)
+
 IMAGE_WIDTH = 3000
 
 MINIMUM_COLUMN_HEIGHT = 318
@@ -53,11 +58,21 @@ class DonationBoardImage:
         self.image = copy.deepcopy(BACKGROUND)
         self.draw = ImageDraw.Draw(self.image)
 
+    def special_text(self, position, text, rgb, font_fp, font_size, max_width):
+        font = ImageFont.truetype(font_fp, font_size)
+        text_width, text_height = self.draw.textsize(text, font)
+        while text_width > max_width:
+            font_size -= 1
+            font = ImageFont.truetype(font_fp, font_size)
+            text_width, text_height = self.draw.textsize(text, font)
+
+        self.draw.text(position, text, rgb, font)
+
     def add_headers(self, add_double_column=False):
         if add_double_column:
-            self.draw.text((IMAGE_WIDTH / 4.5, 20), "Donation Board", (255, 255, 255), font=REGULAR_FONT)
+            self.special_text((IMAGE_WIDTH / 4.5, 20), "Donation Board", (255, 255, 255), REGULAR_FONT_FP, REGULAR_FONT_SIZE, max_width=1000)
         else:
-            self.draw.text((40, 20), "Donation Board", (255, 255, 255), font=REGULAR_FONT)
+            self.special_text((40, 20), "Donation Board", (255, 255, 255), REGULAR_FONT_FP, REGULAR_FONT_SIZE, max_width=1000)
 
         self.draw.rectangle(((LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT), ((IMAGE_WIDTH / 2) - 40, MINIMUM_COLUMN_HEIGHT + 60)), fill=HEADER_RECTANGLE_RGB)
         self.draw.text((NUMBER_LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT + 15), "#", NUMBER_RGB, font=SUPERCELL_FONT)
@@ -83,7 +98,7 @@ class DonationBoardImage:
 
         self.draw.rectangle(position, fill=RECTANGLE_RGB)
         self.draw.text((self.width + NUMBER_LEFT_COLUMN_WIDTH, self.height + 15), f"{player.index}.", NUMBER_RGB, font=SUPERCELL_FONT)
-        self.draw.text((self.width + NAME_LEFT_COLUMN_WIDTH, self.height + 15), player.name, NAME_RGB, font=SUPERCELL_FONT)
+        self.special_text((self.width + NAME_LEFT_COLUMN_WIDTH, self.height + 15), player.name, NAME_RGB, SUPERCELL_FONT_FP, SUPERCELL_FONT_SIZE, 180)
         self.draw.text((self.width + DONATIONS_LEFT_COLUMN_WIDTH, self.height + 15), str(player.donations), DONATIONS_RGB, font=SUPERCELL_FONT)
         self.draw.text((self.width + RECEIVED_LEFT_COLUMN_WIDTH, self.height + 15), str(player.received), RECEIVED_RGB, font=SUPERCELL_FONT)
         self.draw.text((self.width + RATIO_LEFT_COLUNM_WIDTH, self.height + 15), f"{round(player.donations / (player.received or 1), 2)}", RATIO_RGB, font=SUPERCELL_FONT)
@@ -119,8 +134,6 @@ class DonationBoardImage:
             self.__init__()
             log.critical(f"perf: {(time.perf_counter() - s) * 1000}ms")
 
-        self.__init__()
-        images.append(self.render())
         return images
 
     def render(self):
