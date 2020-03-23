@@ -96,6 +96,7 @@ class DonationBoardImage:
         self.image = self.image.resize((int(self.image.size[0] / 4), int(self.image.size[1] / 4)))
         buffer = io.BytesIO()
         self.image.save(buffer, format="png")
+        buffer.seek(0)
         return buffer
 
 
