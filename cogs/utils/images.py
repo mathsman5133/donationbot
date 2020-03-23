@@ -33,7 +33,7 @@ class DonationBoardImage:
         self.max_width = IMAGE_WIDTH / 2 - 40
         image = Image.open(f"assets/dark_backdrop.jpg")
         self.image = image.resize((3000, 4500))
-        self.draw = ImageDraw.Draw(image)
+        self.draw = ImageDraw.Draw(self.image)
 
     def add_headers(self, add_double_column=False):
         self.draw.rectangle(((LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT), ((IMAGE_WIDTH / 2) - 40, MINIMUM_COLUMN_HEIGHT + 60)), fill=RECTANGLE_RGB)

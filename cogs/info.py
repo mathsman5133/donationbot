@@ -236,8 +236,9 @@ class Info(commands.Cog, name='\u200bInfo'):
     def cog_unload(self):
         self.dbl_task.cancel()
 
-    @tasks.loop(hours=24)
+    @tasks.loop()
     async def dbl_task(self):
+        await asyncio.sleep(60 * 60 * 12)
         log.info('Attempting to post server count')
         try:
             await self.dbl_client.post_guild_count()
