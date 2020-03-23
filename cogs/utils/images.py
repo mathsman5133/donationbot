@@ -29,7 +29,7 @@ LAST_ONLINE_RGB = (200, 200, 200)
 class DonationBoardImage:
     def __init__(self):
         self.height = MINIMUM_COLUMN_HEIGHT
-        self.width = LEFT_COLUMN_WIDTH
+        self.width = 0
         self.max_width = IMAGE_WIDTH / 2 - 40
         image = Image.open(f"assets/dark_backdrop.jpg")
         self.image = image.resize((3000, 4500))
@@ -56,7 +56,7 @@ class DonationBoardImage:
 
     def add_player(self, index, player):
         self.height += 82
-        position = ((self.width, self.height), (self.max_width, self.height + 60))
+        position = ((self.width or MINIMUM_COLUMN_HEIGHT, self.height), (self.max_width, self.height + 60))
 
         self.draw.rectangle(position, fill=RECTANGLE_RGB)
         self.draw.text((self.width + NUMBER_LEFT_COLUMN_WIDTH, self.height + 15), f"{index}.", NUMBER_RGB, font=SUPERCELL_FONT)
