@@ -80,8 +80,7 @@ class Admin(commands.Cog):
         self.sessions = set()
         self.board_channels = []
 
-    @commands.Cog.listener()
-    async def on_ready(self):
+    def get_boards(self):
         self.board_channels = itertools.cycle(n for n in self.bot.get_guild(691779140059267084).text_channels)
 
     async def run_process(self, command):
@@ -130,6 +129,9 @@ class Admin(commands.Cog):
 
     @commands.command()
     async def testdonationboard(self, ctx, limit: int):
+        if not self.board_channels:
+            self.get_boards()
+
         q = "SELECT DISTINCT player_name, donations, received, now() - last_updated FROM players INNER JOIN clans ON players.clan_tag  = clans.clan_tag WHERE clans.guild_id = $1 AND season_id = 9 ORDER BY donations DESC LIMIT $2;"
         fetch = await ctx.db.fetch(q, ctx.guild.id, limit)
         players = [DonationBoardPlayer(n[0], n[1], n[2], n[3], i + 1) for i, n in enumerate(fetch)]
