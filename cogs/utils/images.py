@@ -80,7 +80,7 @@ class DonationBoardImage:
         self.draw.text((self.width + LAST_ONLINE_LEFT_COLUMN_WIDTH, self.height + 15), get_readable(player.last_online), LAST_ONLINE_RGB, font=SUPERCELL_FONT)
 
     def add_players(self, players):
-        double_column = len(players) > 50
+        double_column = len(players) > 25
         self.add_headers(add_double_column=double_column)
 
         if double_column:
