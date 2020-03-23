@@ -3,6 +3,8 @@ import math
 
 from PIL import ImageFont, Image, ImageDraw
 
+BACKGROUND = Image.open(f"assets/dark_backdrop.jpg").resize((3000, 4500))
+
 
 SUPERCELL_FONT = ImageFont.truetype("assets/Supercell-Magic_5.ttf", 40)
 REGULAR_FONT = ImageFont.truetype("assets/Roboto-Black.ttf", 200)
@@ -26,6 +28,7 @@ RECEIVED_RGB = (255, 100, 100)
 RATIO_RGB = (100, 100, 255)
 LAST_ONLINE_RGB = (200, 200, 200)
 
+
 def get_readable(delta):
     hours, remainder = divmod(int(delta.total_seconds()), 3600)
     minutes, seconds = divmod(remainder, 60)
@@ -42,8 +45,7 @@ class DonationBoardImage:
         self.height = MINIMUM_COLUMN_HEIGHT
         self.width = 0
         self.max_width = IMAGE_WIDTH / 2 - 40
-        image = Image.open(f"assets/dark_backdrop.jpg")
-        self.image = image.resize((3000, 4500))
+        self.image = BACKGROUND
         self.draw = ImageDraw.Draw(self.image)
 
     def add_headers(self, add_double_column=False):
@@ -84,20 +86,20 @@ class DonationBoardImage:
         if double_column:
             self.draw.text((IMAGE_WIDTH / 4.5, 20), "Donation Board", (255, 255, 255), font=REGULAR_FONT)
 
-            for i in range(1, math.ceil(len(players) / 2) + 1):
+            for i in range(1, math.ceil(len(players) / 2) + 2):
                 self.add_player(i, players[i - 1])
 
             self.width = IMAGE_WIDTH / 2 + 40
             self.max_width = IMAGE_WIDTH
             self.height = MINIMUM_COLUMN_HEIGHT
 
-            for i in range(math.ceil(len(players) / 2) + 1, len(players)):
+            for i in range(math.ceil(len(players) / 2) + 3, len(players)):
                 self.add_player(i, players[i - 1])
 
             self.image = self.image.crop((0, 0, IMAGE_WIDTH, self.height + 80))
 
         else:
-            self.draw.text((IMAGE_WIDTH / 9 + 40, 20), "Donation Board", (255, 255, 255), font=REGULAR_FONT)
+            self.draw.text((40, 20), "Donation Board", (255, 255, 255), font=REGULAR_FONT)
 
             for i, player in enumerate(players):
                 self.add_player(i + 1, player)
