@@ -25,6 +25,12 @@ RECEIVED_RGB = (255, 100, 100)
 RATIO_RGB = (100, 100, 255)
 LAST_ONLINE_RGB = (200, 200, 200)
 
+def get_readable(delta):
+    if delta.days:
+        return f"{delta.days}d {delta.hours}h"
+    else:
+        return f"{delta.hours}h {delta.minutes}m"
+
 
 class DonationBoardImage:
     def __init__(self):
@@ -64,7 +70,7 @@ class DonationBoardImage:
         self.draw.text((self.width + DONATIONS_LEFT_COLUMN_WIDTH, self.height + 15), str(player.donations), DONATIONS_RGB, font=SUPERCELL_FONT)
         self.draw.text((self.width + RECEIVED_LEFT_COLUMN_WIDTH, self.height + 15), str(player.received), RECEIVED_RGB, font=SUPERCELL_FONT)
         self.draw.text((self.width + RATIO_LEFT_COLUNM_WIDTH, self.height + 15), f"{round(player.donations / player.received, 2)}", RATIO_RGB, font=SUPERCELL_FONT)
-        self.draw.text((self.width + LAST_ONLINE_LEFT_COLUMN_WIDTH, self.height + 15), str(player.last_online), LAST_ONLINE_RGB, font=SUPERCELL_FONT)
+        self.draw.text((self.width + LAST_ONLINE_LEFT_COLUMN_WIDTH, self.height + 15), get_readable(player.last_online), LAST_ONLINE_RGB, font=SUPERCELL_FONT)
 
     def add_players(self, players):
         double_column = len(players) > 50
