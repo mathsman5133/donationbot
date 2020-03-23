@@ -45,25 +45,26 @@ class DonationBoardImage:
         self.draw.text((LAST_ONLINE_LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT + 15), "Last On", LAST_ONLINE_RGB, font=SUPERCELL_FONT)
 
         if add_double_column:
-            self.draw.rectangle(((IMAGE_WIDTH + LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT), ((IMAGE_WIDTH / 2) - 40, MINIMUM_COLUMN_HEIGHT + 60)), fill=RECTANGLE_RGB)
-            self.draw.text((IMAGE_WIDTH + NUMBER_LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT + 15), "#", NUMBER_RGB, font=SUPERCELL_FONT)
-            self.draw.text((IMAGE_WIDTH + NAME_LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT + 15), "Name", NAME_RGB, font=SUPERCELL_FONT)
-            self.draw.text((IMAGE_WIDTH + DONATIONS_LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT + 15), "Dons", DONATIONS_RGB, font=SUPERCELL_FONT)
-            self.draw.text((IMAGE_WIDTH + RECEIVED_LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT + 15), "Rec", RECEIVED_RGB, font=SUPERCELL_FONT)
-            self.draw.text((IMAGE_WIDTH + RATIO_LEFT_COLUNM_WIDTH, MINIMUM_COLUMN_HEIGHT + 15), "Ratio", RATIO_RGB, font=SUPERCELL_FONT)
-            self.draw.text((IMAGE_WIDTH + LAST_ONLINE_LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT + 15), "Last On", LAST_ONLINE_RGB, font=SUPERCELL_FONT)
+            halfway = IMAGE_WIDTH / 2 + 40
+            self.draw.rectangle(((IMAGE_WIDTH + LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT), ((IMAGE_WIDTH / 2) + 40, MINIMUM_COLUMN_HEIGHT + 60)), fill=RECTANGLE_RGB)
+            self.draw.text((halfway + NUMBER_LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT + 15), "#", NUMBER_RGB, font=SUPERCELL_FONT)
+            self.draw.text((halfway + NAME_LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT + 15), "Name", NAME_RGB, font=SUPERCELL_FONT)
+            self.draw.text((halfway + DONATIONS_LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT + 15), "Dons", DONATIONS_RGB, font=SUPERCELL_FONT)
+            self.draw.text((halfway + RECEIVED_LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT + 15), "Rec", RECEIVED_RGB, font=SUPERCELL_FONT)
+            self.draw.text((halfway + RATIO_LEFT_COLUNM_WIDTH, MINIMUM_COLUMN_HEIGHT + 15), "Ratio", RATIO_RGB, font=SUPERCELL_FONT)
+            self.draw.text((halfway + LAST_ONLINE_LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT + 15), "Last On", LAST_ONLINE_RGB, font=SUPERCELL_FONT)
 
     def add_player(self, index, player):
         self.height += 82
         position = ((self.width, self.height), (self.max_width, self.height + 60))
 
         self.draw.rectangle(position, fill=RECTANGLE_RGB)
-        self.draw.text((NUMBER_LEFT_COLUMN_WIDTH, self.height + 15), f"{index}.", NUMBER_RGB, font=SUPERCELL_FONT)
-        self.draw.text((NAME_LEFT_COLUMN_WIDTH, self.height + 15), player.name, NAME_RGB, font=SUPERCELL_FONT)
-        self.draw.text((DONATIONS_LEFT_COLUMN_WIDTH, self.height + 15), str(player.donations), DONATIONS_RGB, font=SUPERCELL_FONT)
-        self.draw.text((RECEIVED_LEFT_COLUMN_WIDTH, self.height + 15), str(player.received), RECEIVED_RGB, font=SUPERCELL_FONT)
-        self.draw.text((RATIO_LEFT_COLUNM_WIDTH, self.height + 15), f"{round(player.donations / player.received, 2)}", RATIO_RGB, font=SUPERCELL_FONT)
-        self.draw.text((LAST_ONLINE_LEFT_COLUMN_WIDTH, self.height + 15), str(player.last_online), LAST_ONLINE_RGB, font=SUPERCELL_FONT)
+        self.draw.text((self.width + NUMBER_LEFT_COLUMN_WIDTH, self.height + 15), f"{index}.", NUMBER_RGB, font=SUPERCELL_FONT)
+        self.draw.text((self.width + NAME_LEFT_COLUMN_WIDTH, self.height + 15), player.name, NAME_RGB, font=SUPERCELL_FONT)
+        self.draw.text((self.width + DONATIONS_LEFT_COLUMN_WIDTH, self.height + 15), str(player.donations), DONATIONS_RGB, font=SUPERCELL_FONT)
+        self.draw.text((self.width + RECEIVED_LEFT_COLUMN_WIDTH, self.height + 15), str(player.received), RECEIVED_RGB, font=SUPERCELL_FONT)
+        self.draw.text((self.width + RATIO_LEFT_COLUNM_WIDTH, self.height + 15), f"{round(player.donations / player.received, 2)}", RATIO_RGB, font=SUPERCELL_FONT)
+        self.draw.text((self.width + LAST_ONLINE_LEFT_COLUMN_WIDTH, self.height + 15), str(player.last_online), LAST_ONLINE_RGB, font=SUPERCELL_FONT)
 
     def add_players(self, players):
         double_column = len(players) > 50
