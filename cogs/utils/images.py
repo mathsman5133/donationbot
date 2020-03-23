@@ -53,6 +53,8 @@ class DonationBoardImage:
         self.draw = ImageDraw.Draw(self.image)
 
     def add_headers(self, add_double_column=False):
+        self.image = BACKGROUND
+        self.draw = ImageDraw.Draw(self.image)
         if add_double_column:
             self.draw.text((IMAGE_WIDTH / 4.5, 20), "Donation Board", (255, 255, 255), font=REGULAR_FONT)
         else:
@@ -117,6 +119,9 @@ class DonationBoardImage:
             images.append(self.render())
             self.__init__()
             log.critical(f"perf: {(time.perf_counter() - s) * 1000}ms")
+
+        self.__init__()
+        images.append(self.render())
         return images
 
     def render(self):
