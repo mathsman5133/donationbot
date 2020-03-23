@@ -49,6 +49,11 @@ class DonationBoardImage:
         self.draw = ImageDraw.Draw(self.image)
 
     def add_headers(self, add_double_column=False):
+        if add_double_column:
+            self.draw.text((IMAGE_WIDTH / 4.5, 20), "Donation Board", (255, 255, 255), font=REGULAR_FONT)
+        else:
+            self.draw.text((40, 20), "Donation Board", (255, 255, 255), font=REGULAR_FONT)
+
         self.draw.rectangle(((LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT), ((IMAGE_WIDTH / 2) - 40, MINIMUM_COLUMN_HEIGHT + 60)), fill=HEADER_RECTANGLE_RGB)
         self.draw.text((NUMBER_LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT + 15), "#", NUMBER_RGB, font=SUPERCELL_FONT)
         self.draw.text((NAME_LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT + 15), "Name", NAME_RGB, font=SUPERCELL_FONT)
@@ -80,31 +85,32 @@ class DonationBoardImage:
         self.draw.text((self.width + LAST_ONLINE_LEFT_COLUMN_WIDTH, self.height + 15), get_readable(player.last_online), LAST_ONLINE_RGB, font=SUPERCELL_FONT)
 
     def add_players(self, players):
-        double_column = len(players) > 25
-        self.add_headers(add_double_column=double_column)
+        images = []
+        for n in range(math.ceil(len(players) / 50)):
+            double_column = len(players[n * 50:]) > 25
+            self.add_headers(add_double_column=double_column)
 
-        if double_column:
-            self.draw.text((IMAGE_WIDTH / 4.5, 20), "Donation Board", (255, 255, 255), font=REGULAR_FONT)
+            if double_column:
+                for i in range(n * 50 + 1, n * 50 + math.ceil(len(players) / 2) + 2):
+                    self.add_player(i, players[i - 1])
 
-            for i in range(1, math.ceil(len(players) / 2) + 2):
-                self.add_player(i, players[i - 1])
+                self.width = IMAGE_WIDTH / 2 + 40
+                self.max_width = IMAGE_WIDTH
+                self.height = MINIMUM_COLUMN_HEIGHT
 
-            self.width = IMAGE_WIDTH / 2 + 40
-            self.max_width = IMAGE_WIDTH
-            self.height = MINIMUM_COLUMN_HEIGHT
+                for i in range(n * 50 + math.ceil(len(players) / 2) + 2, n * 50 + len(players) + 1):
+                    self.add_player(i, players[i - 1])
 
-            for i in range(math.ceil(len(players) / 2) + 3, len(players)):
-                self.add_player(i, players[i - 1])
+                self.image = self.image.crop((0, 0, IMAGE_WIDTH, self.height + 80))
 
-            self.image = self.image.crop((0, 0, IMAGE_WIDTH, self.height + 80))
+            else:
+                for i, player in enumerate(players[n * 50:]):
+                    self.add_player(i + 1, player)
 
-        else:
-            self.draw.text((40, 20), "Donation Board", (255, 255, 255), font=REGULAR_FONT)
+                self.image = self.image.crop((0, 0, IMAGE_WIDTH / 2 - 20, self.height + 80))
 
-            for i, player in enumerate(players):
-                self.add_player(i + 1, player)
-
-            self.image = self.image.crop((0, 0, IMAGE_WIDTH / 2 - 20, self.height + 80))
+            images.append(self.render())
+            self.__init__()
 
     def render(self):
         self.image = self.image.resize((int(self.image.size[0] / 4), int(self.image.size[1] / 4)))

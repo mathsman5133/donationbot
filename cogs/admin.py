@@ -129,8 +129,9 @@ class Admin(commands.Cog):
         players = [DonationBoardPlayer(n[0], n[1], n[2], n[3]) for n in fetch]
         s = time.perf_counter()
         im = DonationBoardImage()
-        im.add_players(players[:50])
-        await ctx.send(f"{(time.perf_counter() - s) * 1000}ms", file=discord.File(im.render(), 'test.jpg'))
+        renders = im.add_players(players)
+        for n in renders:
+            await ctx.send(f"{(time.perf_counter() - s) * 1000}ms", file=discord.File(n, 'test.jpg'))
 
         if len(players) > 50:
             s = time.perf_counter()
