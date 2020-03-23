@@ -119,3 +119,5 @@ SlimTrophyEvent = namedtuple('SlimTrophyEvent', 'trophies league_id name clan_ta
 SlimEventConfig = namedtuple('SlimEventConfig', 'id start finish event_name channel_id guild_id')
 SlimDummyBoardConfig = namedtuple('SlimDummyBoardConfig', 'type render title icon_url sort_by')
 SlimDummyLogConfig = namedtuple('SlimDummyLogConfig', 'type title icon_url')
+
+DonationBoardPlayer = namedtuple("DonationBoardPlayer", "name donations received last_online")

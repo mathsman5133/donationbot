@@ -17,6 +17,8 @@ from typing import Union, Optional
 
 from cogs.utils.formatters import TabularData
 from cogs.utils.converters import GlobalChannel
+from cogs.utils.db_objects import DonationBoardPlayer
+from cogs.utils.images import DonationBoardImage
 
 # to expose to the eval command
 import datetime
@@ -119,6 +121,15 @@ class Admin(commands.Cog):
                     coll = ""
                 coll += line
             await ctx.send(coll)
+
+    @commands.command()
+    async def testdonationboard(self, ctx):
+        q = "SELECT player_name, donations, received, last_updated FROM players INNER JOIN clans ON players.clan_tag  = clans.clan_tag WHERE clans.guild_id = $1 AND season_id = 9 ORDER BY donations DESC LIMIT 100;"
+        fetch = await ctx.db.fetch(q, ctx.guild.id)
+        players = [DonationBoardPlayer(n[0], n[1], n[2], n[3]) for n in fetch]
+        im = DonationBoardImage()
+        im.add_players(players)
+        await ctx.send(file=discord.File(im.render(), 'test.jpg'))
 
     @commands.command(hidden=True)
     async def load(self, ctx, *, module):

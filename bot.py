@@ -49,8 +49,14 @@ class COCClient(coc.Client):
         await clash_event_error(self.bot, event_name, exception, *args, **kwargs)
 
 
-coc_client = coc.login(creds.email, creds.password, client=COCClient,
-                       key_names=key_names, throttle_limit=30, key_count=3)
+coc_client = coc.login(
+    creds.email,
+    creds.password,
+    client=COCClient,
+    key_names=key_names,
+    throttle_limit=30,
+    key_count=3,
+)
 
 
 description = "A simple discord bot to track donations of clan families in clash of clans."
