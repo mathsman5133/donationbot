@@ -25,6 +25,11 @@ class Add(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
+    @commands.command()
+    @commands.is_owner()
+    async def load(self, ctx, *, ext):
+        self.bot.load_extension(ext)
+
     @staticmethod
     async def insert_player(connection, player, season_id, in_event: bool = False, event_id: int = None):
         query = """INSERT INTO players (
