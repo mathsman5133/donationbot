@@ -124,7 +124,7 @@ class Admin(commands.Cog):
 
     @commands.command()
     async def testdonationboard(self, ctx):
-        q = "SELECT player_name, donations, received, last_updated FROM players INNER JOIN clans ON players.clan_tag  = clans.clan_tag WHERE clans.guild_id = $1 AND season_id = 9 ORDER BY donations DESC LIMIT 100;"
+        q = "SELECT DISTINCT player_name, donations, received, last_updated FROM players INNER JOIN clans ON players.clan_tag  = clans.clan_tag WHERE clans.guild_id = $1 AND season_id = 9 ORDER BY donations DESC LIMIT 100;"
         fetch = await ctx.db.fetch(q, ctx.guild.id)
         players = [DonationBoardPlayer(n[0], n[1], n[2], n[3]) for n in fetch]
         im = DonationBoardImage()
