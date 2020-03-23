@@ -27,7 +27,7 @@ class Add(commands.Cog):
 
     @commands.command()
     @commands.is_owner()
-    async def load(self, ctx, *, ext):
+    async def load2(self, ctx, *, ext):
         self.bot.load_extension(ext)
 
     @staticmethod
