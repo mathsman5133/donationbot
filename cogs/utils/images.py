@@ -17,7 +17,8 @@ RECEIVED_LEFT_COLUMN_WIDTH = 820
 RATIO_LEFT_COLUNM_WIDTH = 1020
 LAST_ONLINE_LEFT_COLUMN_WIDTH = 1220
 
-RECTANGLE_RGB = (40, 40, 70)
+HEADER_RECTANGLE_RGB = (40, 40, 70)
+RECTANGLE_RGB = (60,80,100)
 NUMBER_RGB = (200, 200, 255)
 NAME_RGB = (255, 255, 255)
 DONATIONS_RGB = (100, 255, 100)
@@ -46,7 +47,7 @@ class DonationBoardImage:
         self.draw = ImageDraw.Draw(self.image)
 
     def add_headers(self, add_double_column=False):
-        self.draw.rectangle(((LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT), ((IMAGE_WIDTH / 2) - 40, MINIMUM_COLUMN_HEIGHT + 60)), fill=RECTANGLE_RGB)
+        self.draw.rectangle(((LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT), ((IMAGE_WIDTH / 2) - 40, MINIMUM_COLUMN_HEIGHT + 60)), fill=HEADER_RECTANGLE_RGB)
         self.draw.text((NUMBER_LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT + 15), "#", NUMBER_RGB, font=SUPERCELL_FONT)
         self.draw.text((NAME_LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT + 15), "Name", NAME_RGB, font=SUPERCELL_FONT)
         self.draw.text((DONATIONS_LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT + 15), "Dons", DONATIONS_RGB, font=SUPERCELL_FONT)
@@ -56,7 +57,7 @@ class DonationBoardImage:
 
         if add_double_column:
             halfway = IMAGE_WIDTH / 2 + 40
-            self.draw.rectangle(((IMAGE_WIDTH + LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT), ((IMAGE_WIDTH / 2) + 40, MINIMUM_COLUMN_HEIGHT + 60)), fill=RECTANGLE_RGB)
+            self.draw.rectangle(((IMAGE_WIDTH + LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT), ((IMAGE_WIDTH / 2) + 40, MINIMUM_COLUMN_HEIGHT + 60)), fill=HEADER_RECTANGLE_RGB)
             self.draw.text((halfway + NUMBER_LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT + 15), "#", NUMBER_RGB, font=SUPERCELL_FONT)
             self.draw.text((halfway + NAME_LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT + 15), "Name", NAME_RGB, font=SUPERCELL_FONT)
             self.draw.text((halfway + DONATIONS_LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT + 15), "Dons", DONATIONS_RGB, font=SUPERCELL_FONT)
@@ -84,14 +85,14 @@ class DonationBoardImage:
             self.draw.text((IMAGE_WIDTH / 4.5, 20), "Donation Board", (255, 255, 255), font=REGULAR_FONT)
 
             for i in range(1, math.ceil(len(players) / 2) + 1):
-                self.add_player(i, players[i])
+                self.add_player(i, players[i - 1])
 
             self.width = IMAGE_WIDTH / 2 + 40
             self.max_width = IMAGE_WIDTH
             self.height = MINIMUM_COLUMN_HEIGHT
 
-            for i in range(math.ceil(len(players) / 2) + 1, len(players) - 1):
-                self.add_player(i, players[i])
+            for i in range(math.ceil(len(players) / 2) + 1, len(players)):
+                self.add_player(i, players[i - 1])
 
             self.image = self.image.crop((0, 0, IMAGE_WIDTH, self.height + 80))
 
@@ -99,7 +100,7 @@ class DonationBoardImage:
             self.draw.text((IMAGE_WIDTH / 9 + 40, 20), "Donation Board", (255, 255, 255), font=REGULAR_FONT)
 
             for i, player in enumerate(players):
-                self.add_player(i, player)
+                self.add_player(i + 1, player)
 
             self.image = self.image.crop((0, 0, IMAGE_WIDTH / 2 - 20, self.height + 80))
 
