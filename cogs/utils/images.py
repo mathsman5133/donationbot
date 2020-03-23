@@ -94,9 +94,10 @@ class DonationBoardImage:
 
     def render(self):
         self.image = self.image.resize((int(self.image.size[0] / 4), int(self.image.size[1] / 4)))
-        with io.BytesIO() as output:
-            self.image.save(output, format="png")
-            buffer = output.getbuffer()
+        buffer = io.BytesIO()
+        self.image.save(buffer, format="png")
+        buffer.seek(0)
         return buffer
+
 
 
