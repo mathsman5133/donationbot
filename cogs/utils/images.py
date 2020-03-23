@@ -26,10 +26,14 @@ RATIO_RGB = (100, 100, 255)
 LAST_ONLINE_RGB = (200, 200, 200)
 
 def get_readable(delta):
+    hours, remainder = divmod(int(delta.total_seconds), 3600)
+    minutes, seconds = divmod(remainder, 60)
+    days, hours = divmod(hours, 24)
+
     if delta.days:
-        return f"{delta.days}d {delta.hours}h"
+        return f"{days}d {hours}h"
     else:
-        return f"{delta.hours}h {delta.minutes}m"
+        return f"{hours}h {minutes}m"
 
 
 class DonationBoardImage:
