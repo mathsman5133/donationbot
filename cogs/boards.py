@@ -2,15 +2,18 @@ import asyncio
 import asyncpg
 import coc
 import discord
+import itertools
 import logging
 import math
+import time
 
 from collections import namedtuple
 from datetime import datetime
 from discord.ext import commands, tasks
 
-from cogs.utils.db_objects import DatabaseMessage
+from cogs.utils.db_objects import DatabaseMessage, DonationBoardPlayer
 from cogs.utils.formatters import CLYTable, get_render_type
+from cogs.utils.images import DonationBoardImage
 from cogs.utils import checks
 
 
@@ -42,6 +45,10 @@ class DonationBoard(commands.Cog):
         self.tags_to_update = set()
         self.last_updated_tags = {}
         self.last_updated_channels = {}
+        self.board_channels = []
+
+    def get_boards(self):
+        self.board_channels = itertools.cycle(n for n in self.bot.get_guild(691779140059267084).text_channels)
 
     def cog_unload(self):
         self.update_board_loops.cancel()
@@ -345,6 +352,48 @@ class DonationBoard(commands.Cog):
     async def forceboard(self, ctx, channel_id: int = None):
         await self.update_board(channel_id or ctx.channel.id)
         await ctx.confirm()
+
+    @commands.command()
+    @commands.is_owner()
+    async def testdonationboard(self, ctx):
+        if not self.board_channels:
+            self.get_boards()
+
+        q = "SELECT DISTINCT player_name, donations, received, now() - last_updated, count(*) FROM players INNER JOIN clans ON players.clan_tag  = clans.clan_tag WHERE clans.guild_id = $1 AND season_id = 9 ORDER BY donations DESC LIMIT 50;"
+        fetch = await ctx.db.fetch(q, ctx.guild.id)
+        players = [DonationBoardPlayer(n[0], n[1], n[2], n[3], i + 1) for i, n in enumerate(fetch)]
+        s = time.perf_counter()
+        im = DonationBoardImage()
+        im.add_players(players)
+        r = im.render()
+        m = await next(self.board_channels).send(f"{(time.perf_counter() - s) * 1000}ms", file=discord.File(r, 'test.jpg'))
+        e = discord.Embed()
+        e.set_image(url=m.attachments[0].url)
+        e.set_footer(text=f"Page 1/{math.ceil(fetch[0][4] / 50)}")
+        await ctx.send(embed=e)
+
+    @commands.Cog.listener()
+    async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent):
+        if not payload.channel_id == 594286547449282587:
+            return
+        if payload.user_id == self.bot.user.id:
+            return
+
+        m = await self.bot.get_channel(payload.channel_id).fetch_message(payload.message_id)
+        page = m.embeds[0].footer['text'][5]
+        q = "SELECT DISTINCT player_name, donations, received, now() - last_updated, count(*) FROM players INNER JOIN clans ON players.clan_tag  = clans.clan_tag WHERE clans.guild_id = $1 AND season_id = 9 ORDER BY donations DESC LIMIT 50 OFFSET $2;"
+        fetch = await self.bot.pool.fetch(q, payload.guild_id, page * 50)
+        players = [DonationBoardPlayer(n[0], n[1], n[2], n[3], i + page * 50 + 1) for i, n in enumerate(fetch)]
+        s = time.perf_counter()
+        im = DonationBoardImage()
+        im.add_players(players)
+        r = im.render()
+        m = await next(self.board_channels).send(f"{(time.perf_counter() - s) * 1000}ms",
+                                                 file=discord.File(r, 'test.jpg'))
+        e = discord.Embed()
+        e.set_image(url=m.attachments[0].url)
+        e.set_footer(text=f"Page {page + 1}/{math.ceil(fetch[0][4] / 50)}")
+        await m.edit(embed=e)
 
 
 def setup(bot):

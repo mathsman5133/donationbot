@@ -78,10 +78,6 @@ class Admin(commands.Cog):
         self.bot = bot
         self._last_result = None
         self.sessions = set()
-        self.board_channels = []
-
-    def get_boards(self):
-        self.board_channels = itertools.cycle(n for n in self.bot.get_guild(691779140059267084).text_channels)
 
     async def run_process(self, command):
         try:
@@ -126,23 +122,6 @@ class Admin(commands.Cog):
                     coll = ""
                 coll += line
             await ctx.send(coll)
-
-    @commands.command()
-    async def testdonationboard(self, ctx, limit: int):
-        if not self.board_channels:
-            self.get_boards()
-
-        q = "SELECT DISTINCT player_name, donations, received, now() - last_updated FROM players INNER JOIN clans ON players.clan_tag  = clans.clan_tag WHERE clans.guild_id = $1 AND season_id = 9 ORDER BY donations DESC LIMIT $2;"
-        fetch = await ctx.db.fetch(q, ctx.guild.id, limit)
-        players = [DonationBoardPlayer(n[0], n[1], n[2], n[3], i + 1) for i, n in enumerate(fetch)]
-        s = time.perf_counter()
-        im = DonationBoardImage()
-        renders = im.add_players(players)
-        for n in renders:
-            m = await next(self.board_channels).send(f"{(time.perf_counter() - s) * 1000}ms", file=discord.File(n, 'test.jpg'))
-            e = discord.Embed()
-            e.set_image(url=m.attachments[0].url)
-            await ctx.send(embed=e)
 
     @commands.command(hidden=True)
     async def load(self, ctx, *, module):

@@ -105,36 +105,30 @@ class DonationBoardImage:
         self.draw.text((self.width + LAST_ONLINE_LEFT_COLUMN_WIDTH, self.height + 15), get_readable(player.last_online), LAST_ONLINE_RGB, font=SUPERCELL_FONT)
 
     def add_players(self, players):
-        images = []
-        for n in range(math.ceil(len(players) / 50)):
-            s = time.perf_counter()
-            double_column = len(players[n * 50:]) > 25
-            self.add_headers(add_double_column=double_column)
+        s = time.perf_counter()
+        double_column = len(players) > 25
+        self.add_headers(add_double_column=double_column)
 
-            if double_column:
-                for p in players[n * 50: int((n + 0.5) * 50)]:
-                    self.add_player(p)
+        if double_column:
+            for p in players[:25]:
+                self.add_player(p)
 
-                self.width = IMAGE_WIDTH / 2 + 40
-                self.max_width = IMAGE_WIDTH
-                self.height = MINIMUM_COLUMN_HEIGHT
+            self.width = IMAGE_WIDTH / 2 + 40
+            self.max_width = IMAGE_WIDTH
+            self.height = MINIMUM_COLUMN_HEIGHT
 
-                for p in players[int((n + 0.5) * 50): (n + 1) * 50]:
-                    self.add_player(p)
+            for p in players[25:50]:
+                self.add_player(p)
 
-                self.image = self.image.crop((0, 0, IMAGE_WIDTH, self.height + 80))
+            self.image = self.image.crop((0, 0, IMAGE_WIDTH, self.height + 80))
 
-            else:
-                for player in players[n * 50: (n + 1) * 50]:
-                    self.add_player(player)
+        else:
+            for player in players:
+                self.add_player(player)
 
-                self.image = self.image.crop((0, 0, IMAGE_WIDTH / 2 - 20, self.height + 80))
+            self.image = self.image.crop((0, 0, IMAGE_WIDTH / 2 - 20, self.height + 80))
 
-            images.append(self.render())
-            self.__init__()
-            log.critical(f"perf: {(time.perf_counter() - s) * 1000}ms")
-
-        return images
+        log.critical(f"perf: {(time.perf_counter() - s) * 1000}ms")
 
     def render(self):
         self.image = self.image.resize((int(self.image.size[0] / 4), int(self.image.size[1] / 4)))
