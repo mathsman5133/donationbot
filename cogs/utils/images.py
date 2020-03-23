@@ -49,10 +49,10 @@ class DonationBoardImage:
         self.draw = ImageDraw.Draw(self.image)
 
     def add_headers(self, add_double_column=False):
-        if add_double_column:
-            self.draw.text((IMAGE_WIDTH / 4.5, 20), "Donation Board", (255, 255, 255), font=REGULAR_FONT)
-        else:
-            self.draw.text((40, 20), "Donation Board", (255, 255, 255), font=REGULAR_FONT)
+        # if add_double_column:
+        #     self.draw.text((IMAGE_WIDTH / 4.5, 20), "Donation Board", (255, 255, 255), font=REGULAR_FONT)
+        # else:
+        #     self.draw.text((40, 20), "Donation Board", (255, 255, 255), font=REGULAR_FONT)
 
         self.draw.rectangle(((LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT), ((IMAGE_WIDTH / 2) - 40, MINIMUM_COLUMN_HEIGHT + 60)), fill=HEADER_RECTANGLE_RGB)
         self.draw.text((NUMBER_LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT + 15), "#", NUMBER_RGB, font=SUPERCELL_FONT)
@@ -91,14 +91,14 @@ class DonationBoardImage:
             self.add_headers(add_double_column=double_column)
 
             if double_column:
-                for p in players[n * 50: int(n + 0.5) * 50]:
+                for p in players[n * 50: int((n + 0.5) * 50)]:
                     self.add_player(p)
 
                 self.width = IMAGE_WIDTH / 2 + 40
                 self.max_width = IMAGE_WIDTH
                 self.height = MINIMUM_COLUMN_HEIGHT
 
-                for p in players[int((n + 0.5)) * 50: (n + 1) * 50]:
+                for p in players[int((n + 0.5) * 50): (n + 1) * 50]:
                     self.add_player(p)
 
                 self.image = self.image.crop((0, 0, IMAGE_WIDTH, self.height + 80))
