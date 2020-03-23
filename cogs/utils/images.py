@@ -111,6 +111,7 @@ class DonationBoardImage:
 
             images.append(self.render())
             self.__init__()
+        return images
 
     def render(self):
         self.image = self.image.resize((int(self.image.size[0] / 4), int(self.image.size[1] / 4)))
