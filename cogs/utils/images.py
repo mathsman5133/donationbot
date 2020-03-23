@@ -26,7 +26,7 @@ RATIO_RGB = (100, 100, 255)
 LAST_ONLINE_RGB = (200, 200, 200)
 
 def get_readable(delta):
-    hours, remainder = divmod(int(delta.total_seconds), 3600)
+    hours, remainder = divmod(int(delta.total_seconds()), 3600)
     minutes, seconds = divmod(remainder, 60)
     days, hours = divmod(hours, 24)
 
