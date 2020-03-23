@@ -78,7 +78,11 @@ class Admin(commands.Cog):
         self.bot = bot
         self._last_result = None
         self.sessions = set()
-        self.board_channels = itertools.cycle(n for n in bot.get_guild(691779140059267084).text_channels)
+        self.board_channels = []
+
+    @commands.Cog.listener()
+    async def on_ready(self):
+        self.board_channels = itertools.cycle(n for n in self.bot.get_guild(691779140059267084).text_channels)
 
     async def run_process(self, command):
         try:
