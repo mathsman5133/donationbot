@@ -66,7 +66,7 @@ class DonationBoardImage:
 
     def add_player(self, index, player):
         self.height += 82
-        position = ((self.width or MINIMUM_COLUMN_HEIGHT, self.height), (self.max_width, self.height + 60))
+        position = ((self.width or LEFT_COLUMN_WIDTH, self.height), (self.max_width, self.height + 60))
 
         self.draw.rectangle(position, fill=RECTANGLE_RGB)
         self.draw.text((self.width + NUMBER_LEFT_COLUMN_WIDTH, self.height + 15), f"{index}.", NUMBER_RGB, font=SUPERCELL_FONT)
