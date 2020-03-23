@@ -1,7 +1,11 @@
 import io
+import logging
 import math
+import time
 
 from PIL import ImageFont, Image, ImageDraw
+
+log = logging.getLogger(__name__)
 
 BACKGROUND = Image.open(f"assets/dark_backdrop.jpg").resize((3000, 4500))
 
@@ -49,10 +53,10 @@ class DonationBoardImage:
         self.draw = ImageDraw.Draw(self.image)
 
     def add_headers(self, add_double_column=False):
-        # if add_double_column:
-        #     self.draw.text((IMAGE_WIDTH / 4.5, 20), "Donation Board", (255, 255, 255), font=REGULAR_FONT)
-        # else:
-        #     self.draw.text((40, 20), "Donation Board", (255, 255, 255), font=REGULAR_FONT)
+        if add_double_column:
+            self.draw.text((IMAGE_WIDTH / 4.5, 20), "Donation Board", (255, 255, 255), font=REGULAR_FONT)
+        else:
+            self.draw.text((40, 20), "Donation Board", (255, 255, 255), font=REGULAR_FONT)
 
         self.draw.rectangle(((LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT), ((IMAGE_WIDTH / 2) - 40, MINIMUM_COLUMN_HEIGHT + 60)), fill=HEADER_RECTANGLE_RGB)
         self.draw.text((NUMBER_LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT + 15), "#", NUMBER_RGB, font=SUPERCELL_FONT)
@@ -87,6 +91,7 @@ class DonationBoardImage:
     def add_players(self, players):
         images = []
         for n in range(math.ceil(len(players) / 50)):
+            s = time.perf_counter()
             double_column = len(players[n * 50:]) > 25
             self.add_headers(add_double_column=double_column)
 
@@ -111,6 +116,7 @@ class DonationBoardImage:
 
             images.append(self.render())
             self.__init__()
+            log.critical(f"perf: {(time.perf_counter() - s) * 1000}ms")
         return images
 
     def render(self):

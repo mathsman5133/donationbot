@@ -7,6 +7,7 @@ import textwrap
 import importlib
 from contextlib import redirect_stdout
 import io
+import itertools
 import os
 import re
 import sys
@@ -77,6 +78,7 @@ class Admin(commands.Cog):
         self.bot = bot
         self._last_result = None
         self.sessions = set()
+        self.board_channels = itertools.cycle(n for n in bot.get_guild(691779140059267084).text_channels)
 
     async def run_process(self, command):
         try:
@@ -131,7 +133,10 @@ class Admin(commands.Cog):
         im = DonationBoardImage()
         renders = im.add_players(players)
         for n in renders:
-            await ctx.send(f"{(time.perf_counter() - s) * 1000}ms", file=discord.File(n, 'test.jpg'))
+            m = await next(self.board_channels).send(f"{(time.perf_counter() - s) * 1000}ms", file=discord.File(n, 'test.jpg'))
+            e = discord.Embed()
+            e.set_image(url=m.attachments[0].url)
+            await ctx.send(embed=e)
 
     @commands.command(hidden=True)
     async def load(self, ctx, *, module):
