@@ -79,7 +79,7 @@ class DonationBoardImage:
             self.max_width = IMAGE_WIDTH
             self.height = MINIMUM_COLUMN_HEIGHT
 
-            for i in range(math.ceil(len(players) / 2) + 1, len(players) + 1):
+            for i in range(math.ceil(len(players) / 2) + 1, len(players)):
                 self.add_player(i, players[i])
 
             self.image = self.image.crop((0, 0, IMAGE_WIDTH, self.height + 80))
