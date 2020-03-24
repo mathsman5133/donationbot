@@ -408,8 +408,9 @@ class DonationBoard(commands.Cog):
             return
         if payload.user_id == 230214242618441728:
             log.critical(payload.emoji.name)
-        if payload.emoji.name not in ("BLACK RIGHTWARDS ARROW}", "\N{LEFTWARDS BLACK ARROW}"):
+        if payload.emoji.name not in (":arrow_left:", ":arrow_right:"):
             return
+        log.critical('cool')
 
         message = await self.bot.utils.get_message(self.bot.get_channel(payload.channel_id), payload.message_id)
         if not message:
@@ -422,7 +423,7 @@ class DonationBoard(commands.Cog):
         if not fetch:
             return
 
-        if str(payload.emoji) == "\N{BLACK RIGHTWARDS ARROW}":
+        if str(payload.emoji) == ":arrow_right:":
             offset = int(message.embeds[0]._footer['text'][5]) * 50
         else:
             offset = (int(message.embeds[0]._footer['text'][5]) - 1) * 50
