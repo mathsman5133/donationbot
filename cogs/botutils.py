@@ -40,7 +40,8 @@ class Utils(commands.Cog):
                           sort_by,
                           toggle,
                           type,
-                          in_event
+                          in_event,
+                          message_id
                    FROM boards 
                    WHERE channel_id = $1
                 """
