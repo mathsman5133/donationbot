@@ -11,7 +11,7 @@ from collections import namedtuple
 from datetime import datetime
 from discord.ext import commands, tasks
 
-from cogs.utils.db_objects import DatabaseMessage, DonationBoardPlayer
+from cogs.utils.db_objects import DatabaseMessage, DonationBoardPlayer, BoardConfig
 from cogs.utils.formatters import CLYTable, get_render_type
 from cogs.utils.images import DonationBoardImage
 from cogs.utils import checks
@@ -45,14 +45,17 @@ class DonationBoard(commands.Cog):
         self.tags_to_update = set()
         self.last_updated_tags = {}
         self.last_updated_channels = {}
-        self.board_channels = []
-
-    def get_boards(self):
-        self.board_channels = itertools.cycle(n for n in self.bot.get_guild(691779140059267084).text_channels)
+        self._board_channels = []
 
     def cog_unload(self):
         self.update_board_loops.cancel()
         self.update_global_board.cancel()
+
+    @property
+    def board_channels(self):
+        if not self._board_channels:
+            self._board_channels = itertools.cycle(n for n in self.bot.get_guild(691779140059267084).text_channels)
+        return self._board_channels
 
     @tasks.loop(seconds=60.0)
     async def update_board_loops(self):
@@ -74,7 +77,7 @@ class DonationBoard(commands.Cog):
                 await self.update_board(n['channel_id'])
                 self.last_updated_channels[n['channel_id']] = datetime.utcnow()
             except:
-                pass
+                log.exception("board failed...")
 
     @tasks.loop(hours=1)
     async def update_global_board(self):
@@ -276,6 +279,9 @@ class DonationBoard(commands.Cog):
         if not config.channel:
             return
 
+        if config.type == "donation" and not config.in_event and config.channel_id == 594280479881035776:
+            return await self.new_donationboard_updater(config)
+
         if config.in_event:
             query = """SELECT DISTINCT clan_tag FROM clans WHERE channel_id=$1 AND in_event=$2"""
             fetch = await self.bot.pool.fetch(query, channel_id, config.in_event)
@@ -337,6 +343,33 @@ class DonationBoard(commands.Cog):
             e.set_footer(text='Last Updated')
             await v.edit(embed=e, content=None)
 
+    async def new_donationboard_updater(self, config, offset = 0):
+        start = time.perf_counter()
+        query = f"""SELECT DISTINCT player_name,
+                                    donations,
+                                    received,
+                                    now() - last_updated
+                   FROM players
+                   INNER JOIN clans
+                   ON clans.clan_tag = players.clan_tag
+                   WHERE clans.channel_id = $1
+                   AND season_id = $2
+                   ORDER BY {'donations' if config.sort_by == 'donation' else config.sort_by} DESC
+                   LIMIT 50
+                   OFFSET $3
+                """
+        fetch = await self.bot.pool.fetch(query, config.channel_id, await self.bot.seasonconfig.get_season_id(), offset)
+        players = [DonationBoardPlayer(n[0], n[1], n[2], n[3], i + offset + 1) for i, n in enumerate(fetch)]
+
+        image = DonationBoardImage(config.title)
+        image.add_players(players)
+        render = image.render()
+        logged_board_message = await next(self.board_channels).send(f"{(time.perf_counter() - start) * 1000}ms", file=discord.File(render, 'donationboard.png'))
+        e = discord.Embed()
+        e.set_image(url=logged_board_message.attachments[0].url)
+        e.set_footer(text=f"Page {offset / 50 + 1}. Use the reactions to change pages.")
+        await self.bot.http.edit_message(config.channel_id, config.message_id, embed=e.to_dict())
+
     @staticmethod
     def get_colour(board_type, in_event):
         if board_type == 'donation':
@@ -356,45 +389,44 @@ class DonationBoard(commands.Cog):
     @commands.command()
     @commands.is_owner()
     async def testdonationboard(self, ctx):
-        if not self.board_channels:
-            self.get_boards()
-
         q = "SELECT DISTINCT player_name, donations, received, now() - last_updated FROM players INNER JOIN clans ON players.clan_tag  = clans.clan_tag WHERE clans.guild_id = $1 AND season_id = 9 ORDER BY donations DESC LIMIT 50;"
         fetch = await ctx.db.fetch(q, ctx.guild.id)
         players = [DonationBoardPlayer(n[0], n[1], n[2], n[3], i + 1) for i, n in enumerate(fetch)]
         s = time.perf_counter()
-        im = DonationBoardImage()
+        im = DonationBoardImage(None)
         im.add_players(players)
         r = im.render()
         m = await next(self.board_channels).send(f"{(time.perf_counter() - s) * 1000}ms", file=discord.File(r, 'test.jpg'))
         e = discord.Embed()
         e.set_image(url=m.attachments[0].url)
-        e.set_footer(text=f"Page 1/5")
+        e.set_footer(text=f"Page 1. Use the reactions to change pages.")
         await ctx.send(embed=e)
 
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent):
-        if not payload.channel_id == 594286547449282587:
-            return
         if payload.user_id == self.bot.user.id:
             return
+        if str(payload.emoji) not in (":track_left:", ":track_right:"):
+            return
 
-        m = await self.bot.get_channel(payload.channel_id).fetch_message(payload.message_id)
-        page = int(m.embeds[0]._footer['text'][5])
-        q = "SELECT DISTINCT player_name, donations, received, now() - last_updated FROM players INNER JOIN clans ON players.clan_tag  = clans.clan_tag WHERE clans.guild_id = $1 AND season_id = 9 ORDER BY donations DESC LIMIT 50 OFFSET $2;"
-        fetch = await self.bot.pool.fetch(q, payload.guild_id, page * 50)
-        players = [DonationBoardPlayer(n[0], n[1], n[2], n[3], i + page * 50 + 1) for i, n in enumerate(fetch)]
-        s = time.perf_counter()
-        im = DonationBoardImage()
-        im.add_players(players)
-        r = im.render()
-        msg = await next(self.board_channels).send(f"{(time.perf_counter() - s) * 1000}ms",
-                                                 file=discord.File(r, 'test.jpg'))
-        e = discord.Embed()
-        e.set_image(url=msg.attachments[0].url)
-        e.set_footer(text=f"Page {page + 1}/5")
-        await m.edit(embed=e)
+        message = await self.bot.utils.get_message(self.bot.get_channel(payload.channel_id), payload.message_id)
+        if not message:
+            return
+        if not message.author.id == self.bot.user.id:
+            return
 
+        query = "SELECT * FROM boards WHERE message_id = $1 AND type = 'donation'"
+        fetch = await self.bot.pool.fetchrow(query, payload.message_id)
+        if not fetch:
+            return
+
+        if str(payload.emoji) == ":track_right:":
+            offset = int(message.embeds[0]._footer['text'][5]) * 50
+        else:
+            offset = (int(message.embeds[0]._footer['text'][5]) - 1) * 50
+
+        config = BoardConfig(bot=self.bot, record=fetch)
+        await self.new_donationboard_updater(config, offset)
 
 def setup(bot):
     bot.add_cog(DonationBoard(bot))

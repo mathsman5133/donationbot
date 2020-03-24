@@ -51,14 +51,15 @@ def get_readable(delta):
 
 
 class DonationBoardImage:
-    def __init__(self):
+    def __init__(self, title):
+        self.title = title or "Donation Board"
         self.height = MINIMUM_COLUMN_HEIGHT
         self.width = 0
         self.max_width = IMAGE_WIDTH / 2 - 40
         self.image = copy.deepcopy(BACKGROUND)
         self.draw = ImageDraw.Draw(self.image)
 
-    def special_text(self, position, text, rgb, font_fp, font_size, max_width):
+    def special_text(self, position, text, rgb, font_fp, font_size, max_width, centre_align=False):
         font = ImageFont.truetype(font_fp, font_size)
         text_width, text_height = self.draw.textsize(text, font)
         while text_width > max_width:
@@ -66,13 +67,16 @@ class DonationBoardImage:
             font = ImageFont.truetype(font_fp, font_size)
             text_width, text_height = self.draw.textsize(text, font)
 
+        if centre_align:
+            position = (int((IMAGE_WIDTH - text_width) / 2), position[1])
+
         self.draw.text(position, text, rgb, font)
 
     def add_headers(self, add_double_column=False):
         if add_double_column:
-            self.special_text((IMAGE_WIDTH / 4.5, 20), "Donation Board", (255, 255, 255), REGULAR_FONT_FP, REGULAR_FONT_SIZE, max_width=2000)
+            self.special_text((IMAGE_WIDTH / 4.5, 20), self.title, (255, 255, 255), REGULAR_FONT_FP, REGULAR_FONT_SIZE, max_width=2200, centre_align=True)
         else:
-            self.special_text((40, 20), "Donation Board", (255, 255, 255), REGULAR_FONT_FP, REGULAR_FONT_SIZE, max_width=2000)
+            self.special_text((40, 20), self.title, (255, 255, 255), REGULAR_FONT_FP, REGULAR_FONT_SIZE, max_width=2200, centre_align=True)
 
         self.draw.rectangle(((LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT), ((IMAGE_WIDTH / 2) - 40, MINIMUM_COLUMN_HEIGHT + 60)), fill=HEADER_RECTANGLE_RGB)
         self.draw.text((NUMBER_LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT + 15), "#", NUMBER_RGB, font=SUPERCELL_FONT)
