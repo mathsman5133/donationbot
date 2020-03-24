@@ -381,7 +381,7 @@ class DonationBoard(commands.Cog):
 
         m = await self.bot.get_channel(payload.channel_id).fetch_message(payload.message_id)
         page = m.embeds[0]._footer['text'][5]
-        q = "SELECT DISTINCT player_name, donations, received, now() - last_updated, count(*) FROM players INNER JOIN clans ON players.clan_tag  = clans.clan_tag WHERE clans.guild_id = $1 AND season_id = 9 ORDER BY donations DESC LIMIT 50 OFFSET $2;"
+        q = "SELECT DISTINCT player_name, donations, received, now() - last_updated FROM players INNER JOIN clans ON players.clan_tag  = clans.clan_tag WHERE clans.guild_id = $1 AND season_id = 9 ORDER BY donations DESC LIMIT 50 OFFSET $2;"
         fetch = await self.bot.pool.fetch(q, payload.guild_id, page * 50)
         players = [DonationBoardPlayer(n[0], n[1], n[2], n[3], i + page * 50 + 1) for i, n in enumerate(fetch)]
         s = time.perf_counter()
@@ -392,7 +392,7 @@ class DonationBoard(commands.Cog):
                                                  file=discord.File(r, 'test.jpg'))
         e = discord.Embed()
         e.set_image(url=m.attachments[0].url)
-        e.set_footer(text=f"Page {page + 1}/{math.ceil(fetch[0][4] / 50)}")
+        e.set_footer(text=f"Page {page + 1}/5")
         await m.edit(embed=e)
 
 
