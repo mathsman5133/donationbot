@@ -354,7 +354,10 @@ class DonationBoard(commands.Cog):
         except (AttributeError, KeyError, ValueError, IndexError):
             page = 1
 
-        offset += (page - 1) * 50
+        if page == 1:
+            offset = 0
+        else:
+            offset += (page - 1) * 50
 
         query = f"""SELECT DISTINCT player_name,
                                     donations,
