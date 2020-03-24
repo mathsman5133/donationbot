@@ -11,7 +11,7 @@ log = logging.getLogger(__name__)
 BACKGROUND = Image.open(f"assets/dark_backdrop.jpg").resize((3000, 4500))
 
 SUPERCELL_FONT_FP = "assets/DejaVuSans-Bold.ttf"
-SUPERCELL_FONT_SIZE = 60
+SUPERCELL_FONT_SIZE = 50
 SUPERCELL_FONT = ImageFont.truetype(SUPERCELL_FONT_FP, SUPERCELL_FONT_SIZE)
 
 REGULAR_FONT_FP = "assets/Roboto-Black.ttf"
