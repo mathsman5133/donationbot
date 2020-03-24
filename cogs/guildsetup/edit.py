@@ -931,6 +931,7 @@ class Edit(commands.Cog):
                     WHERE player_tag = ANY($1::TEXT[])
                     AND event_id = $2
                 """
+        query3 = "UPDATE players SET clan_tag = NULL WHERE clan_tag = ANY($1::TEXT[]) AND player_tag != ANY($1::TEXT[])"
         players = []
         async with ctx.typing():
             if not clans:
@@ -954,6 +955,8 @@ class Edit(commands.Cog):
             await ctx.db.execute(query, players, season_id)
             if ctx.config:
                 await ctx.db.execute(query2, player_tags, ctx.config.id)
+
+            await ctx.db.execute(query3, [n.tag for n in clans], player_tags)
 
             dboard_channels = await self.bot.utils.get_board_channels(ctx.guild.id, 'donation')
             tboard_channels = await self.bot.utils.get_board_channels(ctx.guild.id, 'trophy')

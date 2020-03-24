@@ -133,7 +133,7 @@ async def on_clan_member_donation(old_donations, new_donations, player, clan):
         donationlog_batch_data.append({
             'player_tag': player.tag,
             'player_name': player.name,
-            'clan_tag': clan.tag,
+            'clan_tag': clan and clan.tag,
             'donations': donations,
             'received': 0,
             'time': datetime.datetime.utcnow().isoformat(),
@@ -169,7 +169,7 @@ async def on_clan_member_received(old_received, new_received, player, clan):
         donationlog_batch_data.append({
             'player_tag': player.tag,
             'player_name': player.name,
-            'clan_tag': clan.tag,
+            'clan_tag': clan and clan.tag,
             'donations': 0,
             'received': received,
             'time': datetime.datetime.utcnow().isoformat(),
@@ -400,11 +400,12 @@ async def on_clan_member_join(member, clan):
                                     start_attacks,
                                     start_defenses,
                                     start_best_trophies,
-                                    start_update
+                                    start_update,
+                                    clan_tag
                                     ) 
-                VALUES ($1,$2,$3,$4,$4,$5,$6,$7,$8,$9,$10,True) 
+                VALUES ($1,$2,$3,$4,$4,$5,$6,$7,$8,$9,$10,True, $11) 
                 ON CONFLICT (player_tag, season_id) 
-                DO NOTHING
+                DO UPDATE SET clan_tag = $11
             """
 
     response = await pool.execute(
@@ -418,7 +419,8 @@ async def on_clan_member_join(member, clan):
         player.achievements_dict['Sharing is caring'].value,
         player.attack_wins,
         player.defense_wins,
-        player.best_trophies
+        player.best_trophies,
+        clan.tag
     )
     log.debug(f'New member {member} joined clan {clan}. Performed a query to insert them into players. '
               f'Status Code: {response}')
@@ -472,6 +474,11 @@ async def on_clan_member_join(member, clan):
 
         log.debug(f'New member {member} joined clan {clan}. '
                   f'Performed a query to insert them into eventplayers. Status Code: {response}')
+
+
+async def on_clan_member_leave(member, clan):
+    query = "UPDATE players SET clan_tag = NULL where player_tag = $1 AND season_id = $2"
+    await pool.execute(query, member.tag, SEASON_ID)
 
 
 @tasks.loop(seconds=60.0)
