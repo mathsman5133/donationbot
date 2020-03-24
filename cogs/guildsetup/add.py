@@ -484,9 +484,14 @@ class Add(commands.Cog):
                 'I need manage channels permission to create the donationboard!')
 
         overwrites = {
-            ctx.me: discord.PermissionOverwrite(read_messages=True, send_messages=True,
-                                                read_message_history=True, embed_links=True,
-                                                manage_messages=True),
+            ctx.me: discord.PermissionOverwrite(
+                read_messages=True,
+                send_messages=True,
+                read_message_history=True,
+                embed_links=True,
+                manage_messages=True,
+                add_reactions=True
+            ),
             ctx.guild.default_role: discord.PermissionOverwrite(read_messages=True,
                                                                 send_messages=False,
                                                                 read_message_history=True)
@@ -502,7 +507,9 @@ class Add(commands.Cog):
         except discord.HTTPException:
             return await ctx.send('Creating the channel failed. Try checking the name?')
 
-        msg = await channel.send('Placeholder')
+        msg = await channel.send('Placeholder.... please don\'t delete!')
+        msg.add_reaction("\N{BLACK LEFT-POINTING TRIANGLE}\ufe0f")
+        msg.add_reaction("\N{BLACK RIGHT-POINTING TRIANGLE}\ufe0f")
 
         query = """INSERT INTO messages (
                             message_id, 
