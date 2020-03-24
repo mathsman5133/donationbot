@@ -359,7 +359,7 @@ class DonationBoard(commands.Cog):
         if not self.board_channels:
             self.get_boards()
 
-        q = "SELECT DISTINCT player_name, donations, received, now() - last_updated, count(*) FROM players INNER JOIN clans ON players.clan_tag  = clans.clan_tag WHERE clans.guild_id = $1 AND season_id = 9 ORDER BY donations DESC LIMIT 50;"
+        q = "SELECT DISTINCT player_name, donations, received, now() - last_updated FROM players INNER JOIN clans ON players.clan_tag  = clans.clan_tag WHERE clans.guild_id = $1 AND season_id = 9 ORDER BY donations DESC LIMIT 50;"
         fetch = await ctx.db.fetch(q, ctx.guild.id)
         players = [DonationBoardPlayer(n[0], n[1], n[2], n[3], i + 1) for i, n in enumerate(fetch)]
         s = time.perf_counter()
@@ -369,7 +369,7 @@ class DonationBoard(commands.Cog):
         m = await next(self.board_channels).send(f"{(time.perf_counter() - s) * 1000}ms", file=discord.File(r, 'test.jpg'))
         e = discord.Embed()
         e.set_image(url=m.attachments[0].url)
-        e.set_footer(text=f"Page 1/{math.ceil(fetch[0][4] / 50)}")
+        e.set_footer(text=f"Page 1/5")
         await ctx.send(embed=e)
 
     @commands.Cog.listener()
