@@ -406,6 +406,8 @@ class DonationBoard(commands.Cog):
     async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent):
         if payload.user_id == self.bot.user.id:
             return
+        if payload.user_id == 230214242618441728:
+            log.critical(str(payload.emoji))
         if str(payload.emoji) not in ("\N{BLACK RIGHTWARDS ARROW}", "\N{LEFTWARDS BLACK ARROW}"):
             return
 
