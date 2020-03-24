@@ -22,8 +22,8 @@ log = logging.getLogger(__name__)
 MockPlayer = namedtuple('MockPlayer', 'clan name')
 mock = MockPlayer('Unknown', 'Unknown')
 
-LEFT_EMOJI = "\u2B05"    # [:arrow_left:]
-RIGHT_EMOJI = "\u27A1"   # [:arrow_right:]
+LEFT_EMOJI = discord.PartialEmoji(name="\N{BLACK LEFT-POINTING TRIANGLE}\ufe0f", id=None, animated=False)    # [:arrow_left:]
+RIGHT_EMOJI = discord.PartialEmoji(name="\N{BLACK RIGHT-POINTING TRIANGLE}\ufe0f", id=None, animated=False)   # [:arrow_right:]
 
 
 class DonationBoard(commands.Cog):
