@@ -70,9 +70,9 @@ class DonationBoardImage:
 
     def add_headers(self, add_double_column=False):
         if add_double_column:
-            self.special_text((IMAGE_WIDTH / 4.5, 20), "Donation Board", (255, 255, 255), REGULAR_FONT_FP, REGULAR_FONT_SIZE, max_width=1000)
+            self.special_text((IMAGE_WIDTH / 4.5, 20), "Donation Board", (255, 255, 255), REGULAR_FONT_FP, REGULAR_FONT_SIZE, max_width=2000)
         else:
-            self.special_text((40, 20), "Donation Board", (255, 255, 255), REGULAR_FONT_FP, REGULAR_FONT_SIZE, max_width=1000)
+            self.special_text((40, 20), "Donation Board", (255, 255, 255), REGULAR_FONT_FP, REGULAR_FONT_SIZE, max_width=2000)
 
         self.draw.rectangle(((LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT), ((IMAGE_WIDTH / 2) - 40, MINIMUM_COLUMN_HEIGHT + 60)), fill=HEADER_RECTANGLE_RGB)
         self.draw.text((NUMBER_LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT + 15), "#", NUMBER_RGB, font=SUPERCELL_FONT)
@@ -98,7 +98,7 @@ class DonationBoardImage:
 
         self.draw.rectangle(position, fill=RECTANGLE_RGB)
         self.draw.text((self.width + NUMBER_LEFT_COLUMN_WIDTH, self.height + 15), f"{player.index}.", NUMBER_RGB, font=SUPERCELL_FONT)
-        self.special_text((self.width + NAME_LEFT_COLUMN_WIDTH, self.height + 15), player.name, NAME_RGB, SUPERCELL_FONT_FP, SUPERCELL_FONT_SIZE, 180)
+        self.special_text((self.width + NAME_LEFT_COLUMN_WIDTH, self.height + 15), player.name, NAME_RGB, SUPERCELL_FONT_FP, SUPERCELL_FONT_SIZE, 400)
         self.draw.text((self.width + DONATIONS_LEFT_COLUMN_WIDTH, self.height + 15), str(player.donations), DONATIONS_RGB, font=SUPERCELL_FONT)
         self.draw.text((self.width + RECEIVED_LEFT_COLUMN_WIDTH, self.height + 15), str(player.received), RECEIVED_RGB, font=SUPERCELL_FONT)
         self.draw.text((self.width + RATIO_LEFT_COLUNM_WIDTH, self.height + 15), f"{round(player.donations / (player.received or 1), 2)}", RATIO_RGB, font=SUPERCELL_FONT)
