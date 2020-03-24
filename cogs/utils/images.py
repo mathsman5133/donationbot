@@ -10,7 +10,7 @@ log = logging.getLogger(__name__)
 
 BACKGROUND = Image.open(f"assets/dark_backdrop.jpg").resize((3000, 4500))
 
-SUPERCELL_FONT_FP = "assets/Supercell-Magic_5.ttf"
+SUPERCELL_FONT_FP = "assets/DejaVuSans-Bold.ttf"
 SUPERCELL_FONT_SIZE = 40
 SUPERCELL_FONT = ImageFont.truetype(SUPERCELL_FONT_FP, SUPERCELL_FONT_SIZE)
 
