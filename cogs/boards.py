@@ -279,7 +279,7 @@ class DonationBoard(commands.Cog):
         if not config.channel:
             return
 
-        if config.type == "donation" and not config.in_event and config.channel_id == 594280479881035776:
+        if config.type == "donation" and not config.in_event and config.channel_id == 600826545598234624:
             return await self.new_donationboard_updater(config)
 
         if config.in_event:
