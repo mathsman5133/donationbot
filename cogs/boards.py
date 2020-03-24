@@ -409,6 +409,7 @@ class DonationBoard(commands.Cog):
         if payload.user_id == 230214242618441728:
             log.critical(str(payload.emoji))
         if str(payload.emoji) not in ("\N{BLACK RIGHTWARDS ARROW}", "\N{LEFTWARDS BLACK ARROW}"):
+            log.critical("emoji not found")
             return
 
         message = await self.bot.utils.get_message(self.bot.get_channel(payload.channel_id), payload.message_id)
