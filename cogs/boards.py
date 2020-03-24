@@ -408,7 +408,7 @@ class DonationBoard(commands.Cog):
             return
         if payload.user_id == 230214242618441728:
             log.critical(payload.emoji.name)
-        if payload.emoji.name not in (":arrow_left:", ":arrow_right:"):
+        if payload.emoji not in ("\N{BLACK LEFT-POINTING TRIANGLE}", "\N{BLACK RIGHT-POINTING TRIANGLE}"):
             return
         log.critical('cool')
 
@@ -423,7 +423,7 @@ class DonationBoard(commands.Cog):
         if not fetch:
             return
 
-        if str(payload.emoji) == ":arrow_right:":
+        if str(payload.emoji) == "\N{BLACK RIGHT-POINTING TRIANGLE}":
             offset = int(message.embeds[0]._footer['text'][5]) * 50
         else:
             offset = (int(message.embeds[0]._footer['text'][5]) - 1) * 50
