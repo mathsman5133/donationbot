@@ -283,7 +283,6 @@ class DonationBoard(commands.Cog):
             return
 
         if config.type == "donation" and not config.in_event:
-            return
             return await self.new_donationboard_updater(config)
 
         if config.in_event:

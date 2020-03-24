@@ -109,7 +109,6 @@ class DonationBoardImage:
         self.draw.text((self.width + LAST_ONLINE_LEFT_COLUMN_WIDTH, self.height + 15), get_readable(player.last_online), LAST_ONLINE_RGB, font=SUPERCELL_FONT)
 
     def add_players(self, players):
-        s = time.perf_counter()
         double_column = len(players) > 25
         self.add_headers(add_double_column=double_column)
 
@@ -131,8 +130,6 @@ class DonationBoardImage:
                 self.add_player(player)
 
             self.image = self.image.crop((0, 0, IMAGE_WIDTH / 2 - 20, self.height + 80))
-
-        log.critical(f"perf: {(time.perf_counter() - s) * 1000}ms")
 
     def render(self):
         self.image = self.image.resize((int(self.image.size[0] / 4), int(self.image.size[1] / 4)))
