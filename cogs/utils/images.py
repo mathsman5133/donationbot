@@ -76,7 +76,7 @@ class DonationBoardImage:
         if add_double_column:
             self.special_text((IMAGE_WIDTH / 4.5, 20), self.title, (255, 255, 255), REGULAR_FONT_FP, REGULAR_FONT_SIZE, max_width=2200, centre_align=True)
         else:
-            self.special_text((40, 20), self.title, (255, 255, 255), REGULAR_FONT_FP, REGULAR_FONT_SIZE, max_width=2200, centre_align=True)
+            self.special_text((40, 20), self.title, (255, 255, 255), REGULAR_FONT_FP, REGULAR_FONT_SIZE, max_width=2200, centre_align=False)
 
         self.draw.rectangle(((LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT), ((IMAGE_WIDTH / 2) - 40, MINIMUM_COLUMN_HEIGHT + 60)), fill=HEADER_RECTANGLE_RGB)
         self.draw.text((NUMBER_LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT + 15), "#", NUMBER_RGB, font=SUPERCELL_FONT)
