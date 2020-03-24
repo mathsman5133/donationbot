@@ -931,7 +931,7 @@ class Edit(commands.Cog):
                     WHERE player_tag = ANY($1::TEXT[])
                     AND event_id = $2
                 """
-        query3 = "UPDATE players SET clan_tag = NULL WHERE clan_tag = ANY($1::TEXT[]) AND player_tag != ANY($1::TEXT[])"
+        query3 = "UPDATE players SET clan_tag = NULL WHERE clan_tag = ANY($1::TEXT[]) AND player_tag != ANY($2::TEXT[])"
         players = []
         async with ctx.typing():
             if not clans:
