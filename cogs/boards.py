@@ -388,10 +388,10 @@ class DonationBoard(commands.Cog):
         im = DonationBoardImage()
         im.add_players(players)
         r = im.render()
-        m = await next(self.board_channels).send(f"{(time.perf_counter() - s) * 1000}ms",
+        msg = await next(self.board_channels).send(f"{(time.perf_counter() - s) * 1000}ms",
                                                  file=discord.File(r, 'test.jpg'))
         e = discord.Embed()
-        e.set_image(url=m.attachments[0].url)
+        e.set_image(url=msg.attachments[0].url)
         e.set_footer(text=f"Page {page + 1}/5")
         await m.edit(embed=e)
 
