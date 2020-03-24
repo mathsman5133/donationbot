@@ -80,7 +80,7 @@ class DonationBoard(commands.Cog):
                 await self.update_board(n['channel_id'])
                 self.last_updated_channels[n['channel_id']] = datetime.utcnow()
             except:
-                log.exception("board failed...")
+                log.exception(f"board failed...\nChannel ID: {n['channel_id']}")
 
     @tasks.loop(hours=1)
     async def update_global_board(self):
@@ -394,7 +394,7 @@ class DonationBoard(commands.Cog):
         e = discord.Embed(colour=discord.Colour.blue())
         e.set_image(url=logged_board_message.attachments[0].url)
         e.set_footer(text=f"Page {int(offset / 50 + 1)}. Last Updated").timestamp = datetime.utcnow()
-        await message.edit(embed=e)
+        await message.edit(content=None, embed=e)
 
     @staticmethod
     def get_colour(board_type, in_event):
