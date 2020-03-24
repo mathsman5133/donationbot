@@ -42,7 +42,7 @@ class Utils(commands.Cog):
                           type,
                           in_event,
                           message_id
-                   FROM boards 
+                   FROM boards
                    WHERE channel_id = $1
                 """
         fetch = await self.bot.pool.fetchrow(query, channel_id)

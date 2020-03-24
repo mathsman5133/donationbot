@@ -367,7 +367,7 @@ class DonationBoard(commands.Cog):
         logged_board_message = await next(self.board_channels).send(f"{(time.perf_counter() - start) * 1000}ms", file=discord.File(render, 'donationboard.png'))
         e = discord.Embed()
         e.set_image(url=logged_board_message.attachments[0].url)
-        e.set_footer(text=f"Page {offset / 50 + 1}. Use the reactions to change pages.")
+        e.set_footer(text=f"Page {int(offset / 50 + 1)}. Use the reactions to change pages. Last Updated").timestamp = datetime.utcnow()
         await self.bot.http.edit_message(config.channel_id, config.message_id, embed=e.to_dict())
 
     @staticmethod
@@ -406,8 +406,8 @@ class DonationBoard(commands.Cog):
     async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent):
         if payload.user_id == self.bot.user.id:
             return
-        if str(payload.emoji) not in ("➡", "⬅"):
-            return
+        # if str(payload.emoji) not in ("➡", "⬅"):
+        #     return
 
         message = await self.bot.utils.get_message(self.bot.get_channel(payload.channel_id), payload.message_id)
         if not message:
