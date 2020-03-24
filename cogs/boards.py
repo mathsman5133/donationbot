@@ -408,7 +408,7 @@ class DonationBoard(commands.Cog):
             return
         if payload.user_id == 230214242618441728:
             log.critical(payload.emoji.name)
-        if payload.emoji not in ("\N{BLACK LEFT-POINTING TRIANGLE}", "\N{BLACK RIGHT-POINTING TRIANGLE}"):
+        if str(payload.emoji) not in ("\N{BLACK LEFT-POINTING TRIANGLE}", "\N{BLACK RIGHT-POINTING TRIANGLE}"):
             return
         log.critical('cool')
 
