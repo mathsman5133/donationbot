@@ -406,8 +406,8 @@ class DonationBoard(commands.Cog):
     async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent):
         if payload.user_id == self.bot.user.id:
             return
-        # if str(payload.emoji) not in ("➡", "⬅"):
-        #     return
+        if str(payload.emoji) not in ("\N{BLACK RIGHTWARDS ARROW}", "\N{LEFTWARDS BLACK ARROW}"):
+            return
 
         message = await self.bot.utils.get_message(self.bot.get_channel(payload.channel_id), payload.message_id)
         if not message:
@@ -420,7 +420,7 @@ class DonationBoard(commands.Cog):
         if not fetch:
             return
 
-        if str(payload.emoji) == "➡":
+        if str(payload.emoji) == "\N{BLACK RIGHTWARDS ARROW}":
             offset = int(message.embeds[0]._footer['text'][5]) * 50
         else:
             offset = (int(message.embeds[0]._footer['text'][5]) - 1) * 50
