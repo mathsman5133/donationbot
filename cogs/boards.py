@@ -349,6 +349,12 @@ class DonationBoard(commands.Cog):
     async def new_donationboard_updater(self, config, offset = 0):
         start = time.perf_counter()
         message = await self.bot.utils.get_message(config.channel, config.message_id)
+        if not message:
+            message = await config.channel.send("Placeholder.... do not delete me!")
+            await message.add_reaction(":arrow_backward:")
+            await message.add_reaction(":arrow_forward:")
+            await self.bot.pool.execute("UPDATE boards SET message_id = $1 WHERE channel_id = $2", message.id, config.channel_id)
+
         try:
             page = int(message.embeds[0]._footer['text'][5])
         except (AttributeError, KeyError, ValueError, IndexError):
