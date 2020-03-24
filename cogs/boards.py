@@ -22,6 +22,9 @@ log = logging.getLogger(__name__)
 MockPlayer = namedtuple('MockPlayer', 'clan name')
 mock = MockPlayer('Unknown', 'Unknown')
 
+LEFT_EMOJI = "\u2B05"    # [:arrow_left:]
+RIGHT_EMOJI = "\u27A1"   # [:arrow_right:]
+
 
 class DonationBoard(commands.Cog):
     """Contains all DonationBoard Configurations.
@@ -408,7 +411,7 @@ class DonationBoard(commands.Cog):
             return
         if payload.user_id == 230214242618441728:
             log.critical(payload.emoji.name)
-        if str(payload.emoji) not in ("\N{BLACK LEFT-POINTING TRIANGLE}", "\N{BLACK RIGHT-POINTING TRIANGLE}"):
+        if str(payload.emoji) not in (LEFT_EMOJI, RIGHT_EMOJI):
             return
         log.critical('cool')
 
@@ -423,7 +426,7 @@ class DonationBoard(commands.Cog):
         if not fetch:
             return
 
-        if str(payload.emoji) == "\N{BLACK RIGHT-POINTING TRIANGLE}":
+        if str(payload.emoji) == RIGHT_EMOJI:
             offset = int(message.embeds[0]._footer['text'][5]) * 50
         else:
             offset = (int(message.embeds[0]._footer['text'][5]) - 1) * 50
