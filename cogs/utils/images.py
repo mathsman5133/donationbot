@@ -68,15 +68,15 @@ class DonationBoardImage:
             text_width, text_height = self.draw.textsize(text, font)
 
         if centre_align:
-            position = (int((IMAGE_WIDTH - text_width) / 2), position[1])
+            position = (int((max_width - text_width) / 2), position[1])
 
         self.draw.text(position, text, rgb, font)
 
     def add_headers(self, add_double_column=False):
         if add_double_column:
-            self.special_text((IMAGE_WIDTH / 4.5, 20), self.title, (255, 255, 255), REGULAR_FONT_FP, REGULAR_FONT_SIZE, max_width=2200, centre_align=True)
+            self.special_text((IMAGE_WIDTH / 4.5, 20), self.title, (255, 255, 255), REGULAR_FONT_FP, REGULAR_FONT_SIZE, max_width=IMAGE_WIDTH - 40, centre_align=True)
         else:
-            self.special_text((40, 20), self.title, (255, 255, 255), REGULAR_FONT_FP, REGULAR_FONT_SIZE, max_width=1100, centre_align=False)
+            self.special_text((40, 20), self.title, (255, 255, 255), REGULAR_FONT_FP, REGULAR_FONT_SIZE, max_width=int(IMAGE_WIDTH / 2) - 40, centre_align=True)
 
         self.draw.rectangle(((LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT), ((IMAGE_WIDTH / 2) - 40, MINIMUM_COLUMN_HEIGHT + 60)), fill=HEADER_RECTANGLE_RGB)
         self.draw.text((NUMBER_LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT + 2), "#", NUMBER_RGB, font=SUPERCELL_FONT)
