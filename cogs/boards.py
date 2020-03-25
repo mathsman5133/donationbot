@@ -393,7 +393,7 @@ class DonationBoard(commands.Cog):
         )
         e = discord.Embed(colour=discord.Colour.blue())
         e.set_image(url=logged_board_message.attachments[0].url)
-        e.set_footer(text=f"Page {int(offset / 50 + 1)}. Last Updated").timestamp = datetime.utcnow()
+        e.set_footer(text=f"Page {int(offset / 25 + 1)}. Last Updated").timestamp = datetime.utcnow()
         await message.edit(content=None, embed=e)
 
     @staticmethod
