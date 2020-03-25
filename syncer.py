@@ -401,9 +401,10 @@ async def on_clan_member_join(member, clan):
                                     start_defenses,
                                     start_best_trophies,
                                     start_update,
-                                    clan_tag
+                                    clan_tag,
+                                    player_name
                                     ) 
-                VALUES ($1,$2,$3,$4,$4,$5,$6,$7,$8,$9,$10,True, $11) 
+                VALUES ($1,$2,$3,$4,$4,$5,$6,$7,$8,$9,$10,True, $11, $12) 
                 ON CONFLICT (player_tag, season_id) 
                 DO UPDATE SET clan_tag = $11
             """
@@ -420,7 +421,8 @@ async def on_clan_member_join(member, clan):
         player.attack_wins,
         player.defense_wins,
         player.best_trophies,
-        clan.tag
+        clan.tag,
+        player.name
     )
     log.debug(f'New member {member} joined clan {clan}. Performed a query to insert them into players. '
               f'Status Code: {response}')

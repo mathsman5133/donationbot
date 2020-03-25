@@ -360,10 +360,10 @@ class DonationBoard(commands.Cog):
         except (AttributeError, KeyError, ValueError, IndexError):
             page = 1
 
-        if page == 1:
+        offset += (page - 1) * 25
+
+        if offset < 0:
             offset = 0
-        else:
-            offset += (page - 1) * 50
 
         query = f"""SELECT DISTINCT player_name,
                                     donations,
@@ -375,7 +375,7 @@ class DonationBoard(commands.Cog):
                    WHERE clans.channel_id = $1
                    AND season_id = $2
                    ORDER BY {'donations' if config.sort_by == 'donation' else config.sort_by} DESC
-                   LIMIT 50
+                   LIMIT 25
                    OFFSET $3
 
                 """
@@ -447,9 +447,9 @@ class DonationBoard(commands.Cog):
             return
 
         if payload.emoji == RIGHT_EMOJI:
-            offset = 50
+            offset = 25
         elif payload.emoji == LEFT_EMOJI:
-            offset = -50
+            offset = -25
         else:
             offset = 0
 
