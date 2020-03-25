@@ -382,6 +382,9 @@ class DonationBoard(commands.Cog):
         fetch = await self.bot.pool.fetch(query, config.channel_id, await self.bot.seasonconfig.get_season_id(), offset)
         players = [DonationBoardPlayer(n[0], n[1], n[2], n[3], i + offset + 1) for i, n in enumerate(fetch)]
 
+        if not players:
+            return  # they scrolled too far
+
         image = DonationBoardImage(config.title)
         image.add_players(players)
         render = image.render()
@@ -430,6 +433,13 @@ class DonationBoard(commands.Cog):
 
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent):
+        await self.reaction_action(payload)
+
+    @commands.Cog.listener()
+    async def on_raw_reaction_remove(self, payload: discord.RawReactionActionEvent):
+        await self.reaction_action(payload)
+
+    async def reaction_action(self, payload):
         if payload.user_id == self.bot.user.id:
             return
         if payload.emoji not in (LEFT_EMOJI, RIGHT_EMOJI):

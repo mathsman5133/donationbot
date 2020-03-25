@@ -511,27 +511,20 @@ class Add(commands.Cog):
         msg.add_reaction("\N{BLACK LEFT-POINTING TRIANGLE}\ufe0f")
         msg.add_reaction("\N{BLACK RIGHT-POINTING TRIANGLE}\ufe0f")
 
-        query = """INSERT INTO messages (
-                            message_id, 
-                            guild_id, 
-                            channel_id
-                        )
-                   VALUES ($1, $2, $3);
-                """
-        query2 = """INSERT INTO boards (
+        query = """INSERT INTO boards (
                         guild_id, 
                         channel_id, 
                         type,
                         title,
-                        sort_by
+                        sort_by,
+                        message_id
                     ) 
-                   VALUES ($1, $2, $3, $4, $5) 
+                   VALUES ($1, $2, $3, $4, $5, $6) 
                    ON CONFLICT (channel_id) 
                    DO UPDATE SET toggle = True;
                 """
 
-        await ctx.db.execute(query, msg.id, ctx.guild.id, channel.id)
-        await ctx.db.execute(query2, ctx.guild.id, channel.id, 'donation', name.capitalize(), 'donation')
+        await ctx.db.execute(query, ctx.guild.id, channel.id, 'donation', name.capitalize(), 'donation', msg.id)
         await ctx.send(
             f'Donationboard channel created: {channel.mention}. '
             f'Please add clans to the donationboard with `+add clan #{name} #CLANTAG`'
