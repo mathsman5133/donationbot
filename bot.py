@@ -56,6 +56,7 @@ coc_client = coc.login(
     key_names=key_names,
     throttle_limit=30,
     key_count=3,
+    cache=None
 )
 
 
