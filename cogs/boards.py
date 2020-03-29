@@ -420,7 +420,7 @@ class DonationBoard(commands.Cog):
         if config.icon_url:
             try:
                 icon_bytes = await self.bot.http.get_from_cdn(config.icon_url)
-            except:
+            except discord.Forbidden:
                 await self.bot.pool.execute("UPDATE boards SET icon_url = NULL WHERE channel_id = $1", config.channel_id)
                 icon_bytes = None
         else:

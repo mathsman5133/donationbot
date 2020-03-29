@@ -80,9 +80,9 @@ class DonationBoardImage:
 
     def add_headers(self, add_double_column=False):
         if add_double_column:
-            self.special_text((IMAGE_WIDTH / 4.5, 20), self.title, (255, 255, 255), REGULAR_FONT_FP, REGULAR_FONT_SIZE, max_width=IMAGE_WIDTH - 40, centre_align=True, offset=180)
+            self.special_text((IMAGE_WIDTH / 4.5, 20), self.title, (255, 255, 255), REGULAR_FONT_FP, REGULAR_FONT_SIZE, max_width=IMAGE_WIDTH - 40, centre_align=True, offset=180 if self.icon_bytes else 0)
         else:
-            self.special_text((40, 20), self.title, (255, 255, 255), REGULAR_FONT_FP, REGULAR_FONT_SIZE, max_width=int(IMAGE_WIDTH / 2) - 40, centre_align=True, offset=180)
+            self.special_text((40, 20), self.title, (255, 255, 255), REGULAR_FONT_FP, REGULAR_FONT_SIZE, max_width=int(IMAGE_WIDTH / 2) - 40, centre_align=True, offset=180 if self.icon_bytes else 0)
 
         if self.icon_bytes:
             icon = Image.open(io.BytesIO(self.icon_bytes)).resize((180, 180))
@@ -115,7 +115,7 @@ class DonationBoardImage:
         self.special_text((self.width + NAME_LEFT_COLUMN_WIDTH, self.height + 2), str(player.name), NAME_RGB, SUPERCELL_FONT_FP, SUPERCELL_FONT_SIZE, 450)
         self.draw.text((self.width + DONATIONS_LEFT_COLUMN_WIDTH, self.height + 2), str(player.donations), DONATIONS_RGB, font=SUPERCELL_FONT)
         self.draw.text((self.width + RECEIVED_LEFT_COLUMN_WIDTH, self.height + 2), str(player.received), RECEIVED_RGB, font=SUPERCELL_FONT)
-        self.draw.text((self.width + RATIO_LEFT_COLUNM_WIDTH, self.height + 2), f"{round(player.donations or 0 / (player.received or 1), 2)}", RATIO_RGB, font=SUPERCELL_FONT)
+        self.draw.text((self.width + RATIO_LEFT_COLUNM_WIDTH, self.height + 2), f"{round((player.donations or 0) / (player.received or 1), 2)}", RATIO_RGB, font=SUPERCELL_FONT)
         self.draw.text((self.width + LAST_ONLINE_LEFT_COLUMN_WIDTH, self.height + 2), get_readable(player.last_online), LAST_ONLINE_RGB, font=SUPERCELL_FONT)
 
     def add_players(self, players):
