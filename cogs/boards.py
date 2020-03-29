@@ -376,6 +376,9 @@ class DonationBoard(commands.Cog):
         except (AttributeError, KeyError, ValueError, IndexError):
             page = 1
 
+        if page + add_pages < 1:
+            return  # don't bother about page 0's
+
         offset = 0
 
         for i in range(1, page + add_pages):
