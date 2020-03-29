@@ -366,7 +366,12 @@ class DonationBoard(commands.Cog):
         start = time.perf_counter()
         message = await self.bot.utils.get_message(config.channel, config.message_id)
         if not message:
-            message = await config.channel.send("Placeholder.... do not delete me!")
+            try:
+                message = await config.channel.send("Placeholder.... do not delete me!")
+            except discord.Forbidden:
+                await self.bot.pool.execute("UPDATE boards SET toggle = FALSE WHERE channel_id = $1", config.channel_id)
+                return
+
             await message.add_reaction(LEFT_EMOJI)
             await message.add_reaction(RIGHT_EMOJI)
             await self.bot.pool.execute("UPDATE boards SET message_id = $1 WHERE channel_id = $2", message.id, config.channel_id)
@@ -413,7 +418,11 @@ class DonationBoard(commands.Cog):
             return  # they scrolled too far
 
         if config.icon_url:
-            icon_bytes = await self.bot.http.get_from_cdn(config.icon_url)
+            try:
+                icon_bytes = await self.bot.http.get_from_cdn(config.icon_url)
+            except:
+                await self.bot.pool.execute("UPDATE boards SET icon_url = NULL WHERE channel_id = $1", config.channel_id)
+                icon_bytes = None
         else:
             icon_bytes = None
 
