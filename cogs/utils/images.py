@@ -84,8 +84,9 @@ class DonationBoardImage:
         else:
             self.special_text((40, 20), self.title, (255, 255, 255), REGULAR_FONT_FP, REGULAR_FONT_SIZE, max_width=int(IMAGE_WIDTH / 2) - 40, centre_align=True, offset=180)
 
-        icon = Image.open(io.BytesIO(self.icon_bytes)).resize((180, 180))
-        self.image.paste(icon, (10, 10))
+        if self.icon_bytes:
+            icon = Image.open(io.BytesIO(self.icon_bytes)).resize((180, 180))
+            self.image.paste(icon, (10, 10))
 
         self.draw.rectangle(((LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT), ((IMAGE_WIDTH / 2) - 40, MINIMUM_COLUMN_HEIGHT + 100)), fill=HEADER_RECTANGLE_RGB)
         self.draw.text((NUMBER_LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT + 2), "#", NUMBER_RGB, font=SUPERCELL_FONT)

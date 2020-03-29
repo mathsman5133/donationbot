@@ -407,7 +407,10 @@ class DonationBoard(commands.Cog):
         if not players:
             return  # they scrolled too far
 
-        icon_bytes = await self.bot.http.get_from_cdn(config.icon_url)
+        if config.icon_url:
+            icon_bytes = await self.bot.http.get_from_cdn(config.icon_url)
+        else:
+            icon_bytes = None
 
         image = DonationBoardImage(config.title, icon_bytes)
 
