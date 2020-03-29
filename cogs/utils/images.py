@@ -23,7 +23,7 @@ IMAGE_WIDTH = 4000
 MINIMUM_COLUMN_HEIGHT = 200
 LEFT_COLUMN_WIDTH = 20
 NUMBER_LEFT_COLUMN_WIDTH = 40
-NAME_LEFT_COLUMN_WIDTH = 180
+NAME_LEFT_COLUMN_WIDTH = 220
 DONATIONS_LEFT_COLUMN_WIDTH = 720
 RECEIVED_LEFT_COLUMN_WIDTH = 1020
 RATIO_LEFT_COLUNM_WIDTH = 1320
@@ -112,7 +112,7 @@ class DonationBoardImage:
 
         self.draw.rectangle(position, fill=RECTANGLE_RGB)
         self.draw.text((self.width + NUMBER_LEFT_COLUMN_WIDTH, self.height + 2), f"{player.index}.", NUMBER_RGB, font=SUPERCELL_FONT)
-        self.special_text((self.width + NAME_LEFT_COLUMN_WIDTH, self.height + 2), str(player.name), NAME_RGB, SUPERCELL_FONT_FP, SUPERCELL_FONT_SIZE, 400)
+        self.special_text((self.width + NAME_LEFT_COLUMN_WIDTH, self.height + 2), str(player.name), NAME_RGB, SUPERCELL_FONT_FP, SUPERCELL_FONT_SIZE, 450)
         self.draw.text((self.width + DONATIONS_LEFT_COLUMN_WIDTH, self.height + 2), str(player.donations), DONATIONS_RGB, font=SUPERCELL_FONT)
         self.draw.text((self.width + RECEIVED_LEFT_COLUMN_WIDTH, self.height + 2), str(player.received), RECEIVED_RGB, font=SUPERCELL_FONT)
         self.draw.text((self.width + RATIO_LEFT_COLUNM_WIDTH, self.height + 2), f"{round(player.donations or 0 / (player.received or 1), 2)}", RATIO_RGB, font=SUPERCELL_FONT)

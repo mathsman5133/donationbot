@@ -401,7 +401,7 @@ class DonationBoard(commands.Cog):
             query,
             config.channel_id,
             await self.bot.seasonconfig.get_season_id(),
-            self.get_next_per_page(page, config.per_page),
+            self.get_next_per_page(page + add_pages, config.per_page),
             offset
         )
         players = [DonationBoardPlayer(n[0], n[1], n[2], n[3], i + offset + 1) for i, n in enumerate(fetch)]
