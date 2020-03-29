@@ -508,8 +508,8 @@ class Add(commands.Cog):
             return await ctx.send('Creating the channel failed. Try checking the name?')
 
         msg = await channel.send('Placeholder.... please don\'t delete!')
-        msg.add_reaction("\N{BLACK LEFT-POINTING TRIANGLE}\ufe0f")
-        msg.add_reaction("\N{BLACK RIGHT-POINTING TRIANGLE}\ufe0f")
+        await msg.add_reaction("\N{BLACK LEFT-POINTING TRIANGLE}\ufe0f")
+        await msg.add_reaction("\N{BLACK RIGHT-POINTING TRIANGLE}\ufe0f")
 
         query = """INSERT INTO boards (
                         guild_id, 
