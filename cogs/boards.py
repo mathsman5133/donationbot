@@ -346,7 +346,23 @@ class DonationBoard(commands.Cog):
             e.set_footer(text='Last Updated')
             await v.edit(embed=e, content=None)
 
-    async def new_donationboard_updater(self, config, offset = 0):
+    @staticmethod
+    def get_next_per_page(page_no, config_per_page):
+        if config_per_page == 0:
+            lookup = {
+                1: 15,
+                2: 15,
+                3: 20,
+                4: 25,
+                5: 25
+            }
+            if page_no > 5:
+                return 50
+            return lookup[page_no]
+
+        return config_per_page
+
+    async def new_donationboard_updater(self, config, offset=0):
         start = time.perf_counter()
         message = await self.bot.utils.get_message(config.channel, config.message_id)
         if not message:
@@ -360,7 +376,8 @@ class DonationBoard(commands.Cog):
         except (AttributeError, KeyError, ValueError, IndexError):
             page = 1
 
-        offset += (page - 1) * 25
+        for i in range(1, page - 1):
+            offset += self.get_next_per_page(i, config.per_page)
 
         if offset < 0:
             offset = 0
@@ -375,25 +392,35 @@ class DonationBoard(commands.Cog):
                    WHERE clans.channel_id = $1
                    AND season_id = $2
                    ORDER BY {'donations' if config.sort_by == 'donation' else config.sort_by} DESC
-                   LIMIT 25
-                   OFFSET $3
-
+                   LIMIT $3
+                   OFFSET $4
                 """
-        fetch = await self.bot.pool.fetch(query, config.channel_id, await self.bot.seasonconfig.get_season_id(), offset)
+        fetch = await self.bot.pool.fetch(
+            query,
+            config.channel_id,
+            await self.bot.seasonconfig.get_season_id(),
+            self.get_next_per_page(page, config.per_page),
+            offset
+        )
         players = [DonationBoardPlayer(n[0], n[1], n[2], n[3], i + offset + 1) for i, n in enumerate(fetch)]
 
         if not players:
             return  # they scrolled too far
 
-        image = DonationBoardImage(config.title)
+        icon_bytes = await self.bot.http.get_from_cdn(config.icon_url)
+
+        image = DonationBoardImage(config.title, icon_bytes)
+
         image.add_players(players)
         render = image.render()
+
         logged_board_message = await next(self.board_channels).send(
             f"Perf: {(time.perf_counter() - start) * 1000}ms\n"
             f"Channel: {config.channel_id}\n"
             f"Guild: {config.guild_id}",
             file=discord.File(render, 'donationboard.png')
         )
+
         e = discord.Embed(colour=discord.Colour.blue())
         e.set_image(url=logged_board_message.attachments[0].url)
         e.set_footer(text=f"Page {int(offset / 25 + 1)}. Last Updated").timestamp = datetime.utcnow()
@@ -415,7 +442,7 @@ class DonationBoard(commands.Cog):
         await self.update_board(channel_id or ctx.channel.id)
         await ctx.confirm()
 
-    @commands.command()
+    @commands.command(hidden=True)
     @commands.is_owner()
     async def testdonationboard(self, ctx):
         q = "SELECT DISTINCT player_name, donations, received, now() - last_updated FROM players INNER JOIN clans ON players.clan_tag  = clans.clan_tag WHERE clans.guild_id = $1 AND season_id = 9 ORDER BY donations DESC LIMIT 50;"

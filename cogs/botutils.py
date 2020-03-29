@@ -41,7 +41,8 @@ class Utils(commands.Cog):
                           toggle,
                           type,
                           in_event,
-                          message_id
+                          message_id,
+                          per_page
                    FROM boards
                    WHERE channel_id = $1
                 """

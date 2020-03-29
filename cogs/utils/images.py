@@ -8,26 +8,26 @@ from PIL import ImageFont, Image, ImageDraw
 
 log = logging.getLogger(__name__)
 
-BACKGROUND = Image.open(f"assets/dark_backdrop.jpg").resize((3000, 4500))
+BACKGROUND = Image.open(f"assets/dark_backdrop.jpg").resize((4000, 4500))
 
 SUPERCELL_FONT_FP = "assets/DejaVuSans-Bold.ttf"
-SUPERCELL_FONT_SIZE = 50
+SUPERCELL_FONT_SIZE = 70
 SUPERCELL_FONT = ImageFont.truetype(SUPERCELL_FONT_FP, SUPERCELL_FONT_SIZE)
 
 REGULAR_FONT_FP = "assets/Roboto-Black.ttf"
-REGULAR_FONT_SIZE = 200
+REGULAR_FONT_SIZE = 140
 REGULAR_FONT = ImageFont.truetype(REGULAR_FONT_FP, REGULAR_FONT_SIZE)
 
-IMAGE_WIDTH = 3000
+IMAGE_WIDTH = 4000
 
-MINIMUM_COLUMN_HEIGHT = 318
+MINIMUM_COLUMN_HEIGHT = 200
 LEFT_COLUMN_WIDTH = 20
 NUMBER_LEFT_COLUMN_WIDTH = 40
-NAME_LEFT_COLUMN_WIDTH = 170
-DONATIONS_LEFT_COLUMN_WIDTH = 620
-RECEIVED_LEFT_COLUMN_WIDTH = 820
-RATIO_LEFT_COLUNM_WIDTH = 1020
-LAST_ONLINE_LEFT_COLUMN_WIDTH = 1220
+NAME_LEFT_COLUMN_WIDTH = 180
+DONATIONS_LEFT_COLUMN_WIDTH = 720
+RECEIVED_LEFT_COLUMN_WIDTH = 1020
+RATIO_LEFT_COLUNM_WIDTH = 1320
+LAST_ONLINE_LEFT_COLUMN_WIDTH = 1620
 
 HEADER_RECTANGLE_RGB = (40, 40, 70)
 RECTANGLE_RGB = (60,80,100)
@@ -51,34 +51,43 @@ def get_readable(delta):
 
 
 class DonationBoardImage:
-    def __init__(self, title):
+    def __init__(self, title, icon_bytes):
         self.title = title or "Donation Board"
+        self.icon_bytes = icon_bytes
         self.height = MINIMUM_COLUMN_HEIGHT
         self.width = 0
         self.max_width = IMAGE_WIDTH / 2 - 40
         self.image = copy.deepcopy(BACKGROUND)
         self.draw = ImageDraw.Draw(self.image)
 
-    def special_text(self, position, text, rgb, font_fp, font_size, max_width, centre_align=False):
+    def special_text(self, position, text, rgb, font_fp, font_size, max_width, centre_align=False, offset=0):
         font = ImageFont.truetype(font_fp, font_size)
         text_width, text_height = self.draw.textsize(text, font)
-        while text_width > max_width:
+
+        need_to_offset = False
+        while text_width > max_width - offset:
             font_size -= 1
             font = ImageFont.truetype(font_fp, font_size)
             text_width, text_height = self.draw.textsize(text, font)
+            need_to_offset = True
 
         if centre_align:
             position = (int((max_width - text_width) / 2), position[1])
+        if need_to_offset:
+            position = (position[0] + offset, position[1])
 
         self.draw.text(position, text, rgb, font)
 
     def add_headers(self, add_double_column=False):
         if add_double_column:
-            self.special_text((IMAGE_WIDTH / 4.5, 20), self.title, (255, 255, 255), REGULAR_FONT_FP, REGULAR_FONT_SIZE, max_width=IMAGE_WIDTH - 40, centre_align=True)
+            self.special_text((IMAGE_WIDTH / 4.5, 20), self.title, (255, 255, 255), REGULAR_FONT_FP, REGULAR_FONT_SIZE, max_width=IMAGE_WIDTH - 40, centre_align=True, offset=180)
         else:
-            self.special_text((40, 20), self.title, (255, 255, 255), REGULAR_FONT_FP, REGULAR_FONT_SIZE, max_width=int(IMAGE_WIDTH / 2) - 40, centre_align=True)
+            self.special_text((40, 20), self.title, (255, 255, 255), REGULAR_FONT_FP, REGULAR_FONT_SIZE, max_width=int(IMAGE_WIDTH / 2) - 40, centre_align=True, offset=180)
 
-        self.draw.rectangle(((LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT), ((IMAGE_WIDTH / 2) - 40, MINIMUM_COLUMN_HEIGHT + 60)), fill=HEADER_RECTANGLE_RGB)
+        icon = Image.open(io.BytesIO(self.icon_bytes)).resize((180, 180))
+        self.image.paste(icon, (10, 10))
+
+        self.draw.rectangle(((LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT), ((IMAGE_WIDTH / 2) - 40, MINIMUM_COLUMN_HEIGHT + 100)), fill=HEADER_RECTANGLE_RGB)
         self.draw.text((NUMBER_LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT + 2), "#", NUMBER_RGB, font=SUPERCELL_FONT)
         self.draw.text((NAME_LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT + 2), "Name", NAME_RGB, font=SUPERCELL_FONT)
         self.draw.text((DONATIONS_LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT + 2), "Dons", DONATIONS_RGB, font=SUPERCELL_FONT)
@@ -97,15 +106,15 @@ class DonationBoardImage:
             self.draw.text((halfway + LAST_ONLINE_LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT + 2), "Last On", LAST_ONLINE_RGB, font=SUPERCELL_FONT)
 
     def add_player(self, player):
-        self.height += 82
-        position = ((self.width or LEFT_COLUMN_WIDTH, self.height), (self.max_width, self.height + 60))
+        self.height += 100
+        position = ((self.width or LEFT_COLUMN_WIDTH, self.height), (self.max_width, self.height + 80))
 
         self.draw.rectangle(position, fill=RECTANGLE_RGB)
         self.draw.text((self.width + NUMBER_LEFT_COLUMN_WIDTH, self.height + 2), f"{player.index}.", NUMBER_RGB, font=SUPERCELL_FONT)
         self.special_text((self.width + NAME_LEFT_COLUMN_WIDTH, self.height + 2), str(player.name), NAME_RGB, SUPERCELL_FONT_FP, SUPERCELL_FONT_SIZE, 400)
         self.draw.text((self.width + DONATIONS_LEFT_COLUMN_WIDTH, self.height + 2), str(player.donations), DONATIONS_RGB, font=SUPERCELL_FONT)
         self.draw.text((self.width + RECEIVED_LEFT_COLUMN_WIDTH, self.height + 2), str(player.received), RECEIVED_RGB, font=SUPERCELL_FONT)
-        self.draw.text((self.width + RATIO_LEFT_COLUNM_WIDTH, self.height + 2), f"{round(player.donations / (player.received or 1), 2)}", RATIO_RGB, font=SUPERCELL_FONT)
+        self.draw.text((self.width + RATIO_LEFT_COLUNM_WIDTH, self.height + 2), f"{round(player.donations or 0 / (player.received or 1), 2)}", RATIO_RGB, font=SUPERCELL_FONT)
         self.draw.text((self.width + LAST_ONLINE_LEFT_COLUMN_WIDTH, self.height + 2), get_readable(player.last_online), LAST_ONLINE_RGB, font=SUPERCELL_FONT)
 
     def add_players(self, players):
@@ -129,7 +138,7 @@ class DonationBoardImage:
             for player in players:
                 self.add_player(player)
 
-            self.image = self.image.crop((0, 0, IMAGE_WIDTH / 2 - 20, self.height + 80))
+            self.image = self.image.crop((0, 0, IMAGE_WIDTH / 2 - 20, self.height + 120))
 
     def render(self):
         self.image = self.image.resize((int(self.image.size[0] / 4), int(self.image.size[1] / 4)))

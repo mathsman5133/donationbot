@@ -204,30 +204,59 @@ class Edit(commands.Cog):
         await ctx.db.execute(query, title, ctx.config.channel_id)
         await ctx.confirm()
 
-    @edit_donationboard.command(name='sort')
-    async def edit_donationboard_sort(self, ctx, *, sort_by: SortByConverter):
-        """Change which column the donationboard is sorted by.
+    # @edit_donationboard.command(name='sort')
+    # async def edit_donationboard_sort(self, ctx, *, sort_by: SortByConverter):
+    #     """Change which column the donationboard is sorted by.
+    #
+    #     **Parameters**
+    #     :key: Column to sort by (must be either `donations` or `received`).
+    #
+    #     **Format**
+    #     :information_source: `+edit donationboard sort COLUMN`
+    #
+    #     **Example**
+    #     :white_check_mark: `+edit donationboard sort donations`
+    #     :white_check_mark: `+edit donationboard sort received`
+    #
+    #     **Required Permissions**
+    #     :warning: Manage Server
+    #     """
+    #     if sort_by not in ['donations', 'received']:
+    #         return await ctx.send("Oops, that didn't look right! Try `donations` or `received` instead.")
+    #
+    #     query = "UPDATE boards SET sort_by = $1 WHERE channel_id = $2"
+    #     await ctx.db.execute(query, sort_by, ctx.config.channel_id)
+    #     await self.bot.donationboard.update_board(ctx.config.channel_id)
+    #     await ctx.confirm()
+
+    @edit_donationboard.command(name='perpage')
+    async def edit_donationboard_per_page(self, ctx, per_page: int):
+        """Change how many players are displayed on each page of the donationboard.
+
+        By default, it is 15 for the first and second pages, then 20, 25, 25, 50 etc.
+        You can restore the default settings by running `+edit donationboard perpage 0`.
 
         **Parameters**
-        :key: Column to sort by (must be either `donations` or `received`).
+        :key: The number of players per page. Must be a number (25).
 
         **Format**
-        :information_source: `+edit donationboard sort COLUMN`
+        :information_source: `+edit donationboard perpage NUMBER`
 
         **Example**
-        :white_check_mark: `+edit donationboard sort donations`
-        :white_check_mark: `+edit donationboard sort received`
+        :white_check_mark: `+edit donationboard perpage 15`
+        :white_check_mark: `+edit donationboard perpage 50`
 
         **Required Permissions**
         :warning: Manage Server
         """
-        if sort_by not in ['donations', 'received']:
-            return await ctx.send("Oops, that didn't look right! Try `donations` or `received` instead.")
+        if per_page < 0:
+            return await ctx.send("You can't have a negative number of players per page!")
 
-        query = "UPDATE boards SET sort_by = $1 WHERE channel_id = $2"
-        await ctx.db.execute(query, sort_by, ctx.config.channel_id)
+        query = "UPDATE boards SET per_page = $1 WHERE channel_id = $2"
+        await ctx.db.execute(query, per_page, ctx.config.channel_id)
         await self.bot.donationboard.update_board(ctx.config.channel_id)
         await ctx.confirm()
+
 
     @edit.group(name='trophyboard')
     @manage_guild()
