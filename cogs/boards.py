@@ -362,7 +362,7 @@ class DonationBoard(commands.Cog):
 
         return config_per_page
 
-    async def new_donationboard_updater(self, config, offset=0):
+    async def new_donationboard_updater(self, config, add_pages=0):
         start = time.perf_counter()
         message = await self.bot.utils.get_message(config.channel, config.message_id)
         if not message:
@@ -376,7 +376,9 @@ class DonationBoard(commands.Cog):
         except (AttributeError, KeyError, ValueError, IndexError):
             page = 1
 
-        for i in range(1, page - 1):
+        offset = 0
+
+        for i in range(1, page + add_pages):
             offset += self.get_next_per_page(i, config.per_page)
 
         if offset < 0:
@@ -426,7 +428,7 @@ class DonationBoard(commands.Cog):
 
         e = discord.Embed(colour=discord.Colour.blue())
         e.set_image(url=logged_board_message.attachments[0].url)
-        e.set_footer(text=f"Page {int(offset / 25 + 1)}. Last Updated").timestamp = datetime.utcnow()
+        e.set_footer(text=f"Page {page + add_pages}. Last Updated").timestamp = datetime.utcnow()
         await message.edit(content=None, embed=e)
 
     @staticmethod
@@ -487,9 +489,9 @@ class DonationBoard(commands.Cog):
             return
 
         if payload.emoji == RIGHT_EMOJI:
-            offset = 25
+            offset = 1
         elif payload.emoji == LEFT_EMOJI:
-            offset = -25
+            offset = -1
         else:
             offset = 0
 
