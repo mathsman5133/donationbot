@@ -96,7 +96,7 @@ async def new_season_pull(number=5000):
     counter = 0
     data = []
     async for player in client.get_players((n[0] for n in fetch), cache=False, update_cache=False):
-        if counter == 500:
+        if counter == 100:
             # This is basically to ensure we don't have 10k records in memory at any one time.
             # Safety net incase something fails, too.
             q = await pool.execute(query, data, SEASON_ID)
@@ -120,6 +120,6 @@ async def new_season_pull(number=5000):
 
 for _ in range(int(sys.argv[1])):
     try:
-        loop.run_until_complete(new_season_pull(5000))
+        loop.run_until_complete(new_season_pull(1000))
     except:
         continue
