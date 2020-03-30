@@ -247,7 +247,7 @@ class DonationBoard(commands.Cog):
             sort_by = column_2 if sort_by == 'gain' else column_1
         elif board_type == 'last_online':
             column_1 = 'now() - last_updated'
-            column_2 = 'players.id'
+            column_2 = 'id'
             sort_by = 'last_updated'
         else:
             return

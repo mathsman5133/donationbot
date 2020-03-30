@@ -82,10 +82,10 @@ class Donations(commands.Cog):
             user = ctx.author
 
         query = """SELECT player_tag, donations, received, user_id 
-                    FROM players 
-                    WHERE user_id = $1 
-                    AND season_id=$2
-                    ORDER BY donations DESC NULLS LAST
+                   FROM players 
+                   WHERE user_id = $1 
+                   AND season_id=$2
+                   ORDER BY donations DESC NULLS LAST
                 """
         fetch = await ctx.db.fetch(query, user.id, await self.bot.seasonconfig.get_season_id())
         if not fetch:
