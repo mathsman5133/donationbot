@@ -123,14 +123,16 @@ class DonationBoardImage:
         self.add_headers(add_double_column=double_column)
 
         if double_column:
-            for p in players[:25]:
+            no_players = len(players)
+
+            for p in players[:int(no_players / 2)]:
                 self.add_player(p)
 
             self.width = IMAGE_WIDTH / 2 + 40
             self.max_width = IMAGE_WIDTH
             self.height = MINIMUM_COLUMN_HEIGHT
 
-            for p in players[25:50]:
+            for p in players[int(no_players / 2):]:
                 self.add_player(p)
 
             self.image = self.image.crop((0, 0, IMAGE_WIDTH, self.height + 80))
