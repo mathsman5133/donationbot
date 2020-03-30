@@ -3,6 +3,7 @@ import asyncpg
 import coc
 import discord
 import itertools
+import io
 import logging
 import math
 import time
@@ -10,6 +11,7 @@ import time
 from collections import namedtuple
 from datetime import datetime
 from discord.ext import commands, tasks
+from PIL import Image, UnidentifiedImageError
 
 from cogs.utils.db_objects import DatabaseMessage, DonationBoardPlayer, BoardConfig
 from cogs.utils.formatters import CLYTable, get_render_type
@@ -303,7 +305,7 @@ class DonationBoard(commands.Cog):
         try:
             top_players = await self.get_top_players(players, config.type, config.sort_by, config.in_event)
         except:
-            log.error(
+            log.exception(
                 f"{clans} channelid: {channel_id}, guildid: {config.guild_id},"
                 f" sort: {config.sort_by}, event: {config.in_event}, type: {config.type}"
             )
@@ -420,13 +422,14 @@ class DonationBoard(commands.Cog):
         if config.icon_url:
             try:
                 icon_bytes = await self.bot.http.get_from_cdn(config.icon_url)
-            except discord.Forbidden:
+                icon = Image.open(io.BytesIO(icon_bytes)).resize((180, 180))
+            except (discord.Forbidden, UnidentifiedImageError):
                 await self.bot.pool.execute("UPDATE boards SET icon_url = NULL WHERE channel_id = $1", config.channel_id)
-                icon_bytes = None
+                icon = None
         else:
-            icon_bytes = None
+            icon = None
 
-        image = DonationBoardImage(config.title, icon_bytes)
+        image = DonationBoardImage(config.title, icon)
 
         image.add_players(players)
         render = image.render()
