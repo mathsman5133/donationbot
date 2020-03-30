@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import sys
+import time
 
 import coc
 
@@ -18,7 +19,7 @@ SEASON_ID = 10
 
 for _ in range(10):
     try:
-        await client.get_clan('abc123')
+        loop.run_until_complete(client.get_clan('abc123'))
     except:
         pass
 
@@ -102,7 +103,7 @@ async def new_season_pull(number=5000):
             q2 = await pool.execute(query2, data, SEASON_ID - 1)
             data.clear()
             counter = 0
-            log.info(f"Done query: {q}, {q2}")
+            log.info(f"Done query: {q}, {q2}, {time.time()}")
 
 
         data.append({
