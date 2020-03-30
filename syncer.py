@@ -493,14 +493,21 @@ async def update_clan_tags():
 
 if __name__ == "__main__":
     print("STARTING")
+    update_clan_tags.add_exception_type(Exception, BaseException)
     update_clan_tags.start()
+
+    batch_insert_loop.add_exception_type(Exception, BaseException)
     batch_insert_loop.start()
+
+    trophylog_batch_insert_loop.add_exception_type(Exception, BaseException)
     trophylog_batch_insert_loop.start()
 
     event_player_updater.add_exception_type(coc.HTTPException)
     event_player_updater.start()
 
+    last_updated_loop.add_exception_type(Exception, BaseException)
     last_updated_loop.start()
+    board_insert_loop.add_exception_type(Exception, BaseException)
     board_insert_loop.start()
 
     coc_client.add_events(
