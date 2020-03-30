@@ -16,6 +16,12 @@ pool = loop.run_until_complete(Table.create_pool(creds.postgres))
 
 SEASON_ID = 10
 
+for _ in range(10):
+    try:
+        await client.get_clan('abc123')
+    except:
+        pass
+
 
 async def new_season_pull(number=5000):
     query = "SELECT DISTINCT player_tag FROM players WHERE season_id = $1 AND start_update = False LIMIT $2;"
