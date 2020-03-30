@@ -12,7 +12,7 @@ log = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
 loop = asyncio.get_event_loop()
-client = coc.login(creds.email, creds.password, key_names='test', key_count=5, throttle_limit=30)
+client = coc.login(creds.email, creds.password, key_names='test', key_count=3, throttle_limit=30)
 pool = loop.run_until_complete(Table.create_pool(creds.postgres))
 
 SEASON_ID = 10
