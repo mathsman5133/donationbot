@@ -15,7 +15,7 @@ logging.basicConfig(level=logging.INFO)
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
-SEASON_ID = 9
+SEASON_ID = 10
 
 
 class CustomCache(coc.Cache):
