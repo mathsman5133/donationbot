@@ -411,8 +411,7 @@ class Add(commands.Cog):
         **Required Permissions**
         :warning: Manage Server
         """
-        perms = ctx.channel.permissions_for(ctx.me)
-        if not perms.manage_channels:
+        if not ctx.me.guild_permissions.manage_channels:
             return await ctx.send(
                 'I need manage channels permission to create the trophyboard!'
             )
@@ -478,8 +477,7 @@ class Add(commands.Cog):
         **Required Permissions**
         :warning: Manage Server
         """
-        perms = ctx.channel.permissions_for(ctx.me)
-        if not perms.manage_channels:
+        if not ctx.me.guild_permissions.manage_channels:
             return await ctx.send(
                 'I need manage channels permission to create the donationboard!')
 
@@ -544,8 +542,7 @@ class Add(commands.Cog):
         **Required Permissions**
         :warning: Manage Server
         """
-        perms = ctx.channel.permissions_for(ctx.me)
-        if not perms.manage_channels:
+        if not ctx.me.guild_permissions.manage_channels:
             return await ctx.send(
                 'I need manage channels permission to create the last online board!')
 
