@@ -119,4 +119,7 @@ async def new_season_pull(number=5000):
 
 
 for _ in range(int(sys.argv[1])):
-    loop.run_until_complete(new_season_pull(1000))
+    try:
+        loop.run_until_complete(new_season_pull(5000))
+    except:
+        continue
