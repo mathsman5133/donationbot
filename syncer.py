@@ -122,8 +122,8 @@ async def bulk_board_insert():
         board_batch_data.clear()
 
 
-async def on_clan_member_donation(old_donations, new_donations, player, clan):
-    log.info(f'Received on_clan_member_donation event for player {player} of clan {clan}')
+async def on_clan_member_donation(old_donations, new_donations, player):
+    log.info(f'Received on_clan_member_donation event for player {player} of clan {player.clan}')
     if old_donations > new_donations:
         donations = new_donations
     else:
@@ -133,7 +133,7 @@ async def on_clan_member_donation(old_donations, new_donations, player, clan):
         donationlog_batch_data.append({
             'player_tag': player.tag,
             'player_name': player.name,
-            'clan_tag': clan and clan.tag,
+            'clan_tag': player.clan and player.clan.tag,
             'donations': donations,
             'received': 0,
             'time': datetime.datetime.utcnow().isoformat(),
@@ -157,8 +157,9 @@ async def on_clan_member_donation(old_donations, new_donations, player, clan):
             }
     await update(player.tag)
 
-async def on_clan_member_received(old_received, new_received, player, clan):
-    log.info(f'Received on_clan_member_received event for player {player} of clan {clan}')
+
+async def on_clan_member_received(old_received, new_received, player):
+    log.info(f'Received on_clan_member_received event for player {player} of clan {player.clan}')
     await update(player.tag)
     if old_received > new_received:
         received = new_received
@@ -169,7 +170,7 @@ async def on_clan_member_received(old_received, new_received, player, clan):
         donationlog_batch_data.append({
             'player_tag': player.tag,
             'player_name': player.name,
-            'clan_tag': clan and clan.tag,
+            'clan_tag': player.clan and player.clan.tag,
             'donations': 0,
             'received': received,
             'time': datetime.datetime.utcnow().isoformat(),
@@ -218,15 +219,15 @@ async def trophylog_bulk_insert():
         trophylog_batch_data.clear()
 
 
-async def on_clan_member_trophies_change(old_trophies, new_trophies, player, clan):
-    log.info(f'Received on_clan_member_trophy_change event for player {player} of clan {clan}')
+async def on_clan_member_trophies_change(old_trophies, new_trophies, player):
+    log.info(f'Received on_clan_member_trophy_change event for player {player} of clan {player.clan}')
     change = new_trophies - old_trophies
 
     async with trophylog_batch_lock:
         trophylog_batch_data.append({
             'player_tag': player.tag,
             'player_name': player.name,
-            'clan_tag': clan.tag,
+            'clan_tag': player.clan and player.clan.tag,
             'trophy_change': change,
             'league_id': player.league.id,
             'time': datetime.datetime.utcnow().isoformat(),
@@ -367,16 +368,16 @@ async def update(player_tag):
             'last_updated': datetime.datetime.utcnow().isoformat()
         }
 #
-async def on_clan_member_name_change(_, __, player, ___):
+async def on_clan_member_name_change(_, __, player):
     await update(player.tag)
 #
 # async def on_clan_member_donation(self, _, __, player, ___):
 #     await self.update(player.tag)
 
-async def on_clan_member_versus_trophies_change(_, __, player, ___):
+async def on_clan_member_versus_trophies_change(_, __, player):
     await update(player.tag)
 
-async def on_clan_member_level_change(_, __, player, ___):
+async def on_clan_member_level_change(_, __, player):
     await update(player.tag)
 #
 # async def on_clan_member_trophies_change(self, _, __, player, ___):
