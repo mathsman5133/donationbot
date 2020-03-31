@@ -405,7 +405,7 @@ class DonationBoard(commands.Cog):
         query = f"""SELECT DISTINCT player_name,
                                     donations,
                                     received,
-                                    donations / NULLIF(received, 0) AS "ratio"
+                                    donations / NULLIF(received, 0) AS "ratio",
                                     now() - last_updated
                    FROM players
                    INNER JOIN clans
