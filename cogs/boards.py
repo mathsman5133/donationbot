@@ -27,6 +27,7 @@ mock = MockPlayer('Unknown', 'Unknown')
 REFRESH_EMOJI = discord.PartialEmoji(name="refresh", id=694395354841350254, animated=False)
 LEFT_EMOJI = discord.PartialEmoji(name="\N{BLACK LEFT-POINTING TRIANGLE}\ufe0f", id=None, animated=False)    # [:arrow_left:]
 RIGHT_EMOJI = discord.PartialEmoji(name="\N{BLACK RIGHT-POINTING TRIANGLE}\ufe0f", id=None, animated=False)   # [:arrow_right:]
+PERCENTAGE_EMOJI = discord.PartialEmoji(name="percent", id=694463772135260169, animated=False)
 
 
 class DonationBoard(commands.Cog):
@@ -378,6 +379,7 @@ class DonationBoard(commands.Cog):
             await message.add_reaction(REFRESH_EMOJI)
             await message.add_reaction(LEFT_EMOJI)
             await message.add_reaction(RIGHT_EMOJI)
+            await message.add_reaction(PERCENTAGE_EMOJI)
             await self.bot.pool.execute("UPDATE boards SET message_id = $1 WHERE channel_id = $2", message.id, config.channel_id)
 
         try:
@@ -410,6 +412,7 @@ class DonationBoard(commands.Cog):
                    WHERE clans.channel_id = $1
                    AND season_id = $2
                    ORDER BY {'donations' if config.sort_by == 'donation' else config.sort_by} DESC
+                   NULLS LAST
                    LIMIT $3
                    OFFSET $4
                 """
@@ -514,10 +517,18 @@ class DonationBoard(commands.Cog):
 
         if payload.emoji == RIGHT_EMOJI:
             offset = 1
+
         elif payload.emoji == LEFT_EMOJI:
             offset = -1
+
         elif payload.emoji == REFRESH_EMOJI:
+            query = "UPDATE boards SET sort_by = 'donations' WHERE channel_id = $1"
+            await self.bot.pool.execute(query, payload.channel_id)
             hard_reset = True
+
+        elif payload.emoji == PERCENTAGE_EMOJI:
+            query = "UPDATE boards SET sort_by = 'donations / NULLIF(received, 0)' WHERE channel_id = $1"
+            await self.bot.pool.execute(query, payload.channel_id)
 
         config = BoardConfig(bot=self.bot, record=fetch)
         await self.new_donationboard_updater(config, offset, reset=hard_reset)
