@@ -498,7 +498,7 @@ class DonationBoard(commands.Cog):
     async def reaction_action(self, payload):
         if payload.user_id == self.bot.user.id:
             return
-        if payload.emoji not in (REFRESH_EMOJI, LEFT_EMOJI, RIGHT_EMOJI):
+        if payload.emoji not in (REFRESH_EMOJI, LEFT_EMOJI, RIGHT_EMOJI, PERCENTAGE_EMOJI):
             return
 
         message = await self.bot.utils.get_message(self.bot.get_channel(payload.channel_id), payload.message_id)
