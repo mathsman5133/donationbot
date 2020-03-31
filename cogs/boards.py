@@ -24,6 +24,7 @@ log = logging.getLogger(__name__)
 MockPlayer = namedtuple('MockPlayer', 'clan name')
 mock = MockPlayer('Unknown', 'Unknown')
 
+REFRESH_EMOJI = discord.PartialEmoji(name="refresh", id=694395354841350254, animated=False)
 LEFT_EMOJI = discord.PartialEmoji(name="\N{BLACK LEFT-POINTING TRIANGLE}\ufe0f", id=None, animated=False)    # [:arrow_left:]
 RIGHT_EMOJI = discord.PartialEmoji(name="\N{BLACK RIGHT-POINTING TRIANGLE}\ufe0f", id=None, animated=False)   # [:arrow_right:]
 
@@ -364,7 +365,7 @@ class DonationBoard(commands.Cog):
 
         return config_per_page
 
-    async def new_donationboard_updater(self, config, add_pages=0):
+    async def new_donationboard_updater(self, config, add_pages=0, reset=False):
         start = time.perf_counter()
         message = await self.bot.utils.get_message(config.channel, config.message_id)
         if not message:
@@ -374,6 +375,7 @@ class DonationBoard(commands.Cog):
                 await self.bot.pool.execute("UPDATE boards SET toggle = FALSE WHERE channel_id = $1", config.channel_id)
                 return
 
+            await message.add_reaction(REFRESH_EMOJI)
             await message.add_reaction(LEFT_EMOJI)
             await message.add_reaction(RIGHT_EMOJI)
             await self.bot.pool.execute("UPDATE boards SET message_id = $1 WHERE channel_id = $2", message.id, config.channel_id)
@@ -388,11 +390,15 @@ class DonationBoard(commands.Cog):
 
         offset = 0
 
-        for i in range(1, page + add_pages):
-            offset += self.get_next_per_page(i, config.per_page)
-
-        if offset < 0:
+        if reset:
             offset = 0
+            page = 1
+        else:
+            for i in range(1, page + add_pages):
+                offset += self.get_next_per_page(i, config.per_page)
+
+            if offset < 0:
+                offset = 0
 
         query = f"""SELECT DISTINCT player_name,
                                     donations,
@@ -489,7 +495,7 @@ class DonationBoard(commands.Cog):
     async def reaction_action(self, payload):
         if payload.user_id == self.bot.user.id:
             return
-        if payload.emoji not in (LEFT_EMOJI, RIGHT_EMOJI):
+        if payload.emoji not in (REFRESH_EMOJI, LEFT_EMOJI, RIGHT_EMOJI):
             return
 
         message = await self.bot.utils.get_message(self.bot.get_channel(payload.channel_id), payload.message_id)
@@ -503,15 +509,18 @@ class DonationBoard(commands.Cog):
         if not fetch:
             return
 
+        hard_reset = False
+        offset = 0
+
         if payload.emoji == RIGHT_EMOJI:
             offset = 1
         elif payload.emoji == LEFT_EMOJI:
             offset = -1
-        else:
-            offset = 0
+        elif payload.emoji == REFRESH_EMOJI:
+            hard_reset = True
 
         config = BoardConfig(bot=self.bot, record=fetch)
-        await self.new_donationboard_updater(config, offset)
+        await self.new_donationboard_updater(config, offset, reset=hard_reset)
 
 
 def setup(bot):

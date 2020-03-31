@@ -506,6 +506,7 @@ class Add(commands.Cog):
             return await ctx.send('Creating the channel failed. Try checking the name?')
 
         msg = await channel.send('Placeholder.... please don\'t delete!')
+        await msg.add_reaction("<:refresh:694395354841350254>")
         await msg.add_reaction("\N{BLACK LEFT-POINTING TRIANGLE}\ufe0f")
         await msg.add_reaction("\N{BLACK RIGHT-POINTING TRIANGLE}\ufe0f")
 
