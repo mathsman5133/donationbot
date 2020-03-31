@@ -405,6 +405,7 @@ class DonationBoard(commands.Cog):
         query = f"""SELECT DISTINCT player_name,
                                     donations,
                                     received,
+                                    donations / NULLIF(received, 0) AS "ratio"
                                     now() - last_updated
                    FROM players
                    INNER JOIN clans
@@ -522,13 +523,13 @@ class DonationBoard(commands.Cog):
             offset = -1
 
         elif payload.emoji == REFRESH_EMOJI:
-            query = "UPDATE boards SET sort_by = 'donations' WHERE channel_id = $1"
-            await self.bot.pool.execute(query, payload.channel_id)
+            query = "UPDATE boards SET sort_by = 'donations' WHERE channel_id = $1 RETURNING *"
+            fetch = await self.bot.pool.fetchrow(query, payload.channel_id)
             hard_reset = True
 
         elif payload.emoji == PERCENTAGE_EMOJI:
-            query = "UPDATE boards SET sort_by = 'donations / NULLIF(received, 0)' WHERE channel_id = $1"
-            await self.bot.pool.execute(query, payload.channel_id)
+            query = "UPDATE boards SET sort_by = 'ratio' WHERE channel_id = $1 RETURNING *"
+            fetch = await self.bot.pool.fetchrow(query, payload.channel_id)
 
         config = BoardConfig(bot=self.bot, record=fetch)
         await self.new_donationboard_updater(config, offset, reset=hard_reset)
