@@ -544,7 +544,7 @@ class DonationBoard(commands.Cog):
             season_offset = -1
 
         config = BoardConfig(bot=self.bot, record=fetch)
-        await self.new_donationboard_updater(config, offset, season_change=season_offset, reset=hard_reset)
+        await self.new_donationboard_updater(config, offset, season_offset=season_offset, reset=hard_reset)
 
 
 def setup(bot):
