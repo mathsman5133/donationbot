@@ -403,7 +403,7 @@ class DonationBoard(commands.Cog):
         else:
             for i in range(1, page + add_pages):
                 offset += self.get_next_per_page(i, config.per_page)
-            season_id + season_offset
+            season_id += season_offset
 
         if season_id < 1:
             season_id = await self.bot.seasonconfig.get_season_id()
