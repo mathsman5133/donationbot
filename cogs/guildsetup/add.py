@@ -510,6 +510,7 @@ class Add(commands.Cog):
         await msg.add_reaction("\N{BLACK LEFT-POINTING TRIANGLE}\ufe0f")
         await msg.add_reaction("\N{BLACK RIGHT-POINTING TRIANGLE}\ufe0f")
         await msg.add_reaction("<:percent:694463772135260169>")
+        await msg.add_reaction("<:historical:694812540290465832>")
 
         query = """INSERT INTO boards (
                         guild_id, 

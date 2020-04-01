@@ -28,6 +28,7 @@ REFRESH_EMOJI = discord.PartialEmoji(name="refresh", id=694395354841350254, anim
 LEFT_EMOJI = discord.PartialEmoji(name="\N{BLACK LEFT-POINTING TRIANGLE}\ufe0f", id=None, animated=False)    # [:arrow_left:]
 RIGHT_EMOJI = discord.PartialEmoji(name="\N{BLACK RIGHT-POINTING TRIANGLE}\ufe0f", id=None, animated=False)   # [:arrow_right:]
 PERCENTAGE_EMOJI = discord.PartialEmoji(name="percent", id=694463772135260169, animated=False)
+HISTORICAL_EMOJI = discord.PartialEmoji(name="historical", id=694812540290465832, animated=False)
 
 
 class DonationBoard(commands.Cog):
@@ -366,7 +367,7 @@ class DonationBoard(commands.Cog):
 
         return config_per_page
 
-    async def new_donationboard_updater(self, config, add_pages=0, reset=False):
+    async def new_donationboard_updater(self, config, add_pages=0, season_offset=0, reset=False):
         start = time.perf_counter()
         message = await self.bot.utils.get_message(config.channel, config.message_id)
         if not message:
@@ -380,12 +381,15 @@ class DonationBoard(commands.Cog):
             await message.add_reaction(LEFT_EMOJI)
             await message.add_reaction(RIGHT_EMOJI)
             await message.add_reaction(PERCENTAGE_EMOJI)
+            await message.add_reaction(HISTORICAL_EMOJI)
             await self.bot.pool.execute("UPDATE boards SET message_id = $1 WHERE channel_id = $2", message.id, config.channel_id)
 
         try:
-            page = int(message.embeds[0]._footer['text'][5])
+            page = int(message.embeds[0]._footer['text'].split(";")[0].split(" ")[1])
+            season_id = int(message.embeds[0]._footer['text'].split(";")[1].split(" ")[1])
         except (AttributeError, KeyError, ValueError, IndexError):
             page = 1
+            season_id = await self.bot.seasonconfig.get_season_id()
 
         if page + add_pages < 1:
             return  # don't bother about page 0's
@@ -395,12 +399,16 @@ class DonationBoard(commands.Cog):
         if reset:
             offset = 0
             page = 1
+            season_id = await self.bot.seasonconfig.get_season_id()
         else:
             for i in range(1, page + add_pages):
                 offset += self.get_next_per_page(i, config.per_page)
+            season_id + season_offset
 
-            if offset < 0:
-                offset = 0
+        if season_id < 1:
+            season_id = await self.bot.seasonconfig.get_season_id()
+        if offset < 0:
+            offset = 0
 
         query = f"""SELECT DISTINCT player_name,
                                     donations,
@@ -420,7 +428,7 @@ class DonationBoard(commands.Cog):
         fetch = await self.bot.pool.fetch(
             query,
             config.channel_id,
-            await self.bot.seasonconfig.get_season_id(),
+            season_id,
             self.get_next_per_page(page + add_pages, config.per_page),
             offset
         )
@@ -453,7 +461,7 @@ class DonationBoard(commands.Cog):
 
         e = discord.Embed(colour=discord.Colour.blue())
         e.set_image(url=logged_board_message.attachments[0].url)
-        e.set_footer(text=f"Page {page + add_pages}. Last Updated").timestamp = datetime.utcnow()
+        e.set_footer(text=f"Page {page + add_pages};Season {season_id};").timestamp = datetime.utcnow()
         await message.edit(content=None, embed=e)
 
     @staticmethod
@@ -499,7 +507,7 @@ class DonationBoard(commands.Cog):
     async def reaction_action(self, payload):
         if payload.user_id == self.bot.user.id:
             return
-        if payload.emoji not in (REFRESH_EMOJI, LEFT_EMOJI, RIGHT_EMOJI, PERCENTAGE_EMOJI):
+        if payload.emoji not in (REFRESH_EMOJI, LEFT_EMOJI, RIGHT_EMOJI, PERCENTAGE_EMOJI, HISTORICAL_EMOJI):
             return
 
         message = await self.bot.utils.get_message(self.bot.get_channel(payload.channel_id), payload.message_id)
@@ -515,6 +523,7 @@ class DonationBoard(commands.Cog):
 
         hard_reset = False
         offset = 0
+        season_offset = 0
 
         if payload.emoji == RIGHT_EMOJI:
             offset = 1
@@ -531,8 +540,11 @@ class DonationBoard(commands.Cog):
             query = "UPDATE boards SET sort_by = 'ratio' WHERE channel_id = $1 RETURNING *"
             fetch = await self.bot.pool.fetchrow(query, payload.channel_id)
 
+        elif payload.emoji == HISTORICAL_EMOJI:
+            season_offset = -1
+
         config = BoardConfig(bot=self.bot, record=fetch)
-        await self.new_donationboard_updater(config, offset, reset=hard_reset)
+        await self.new_donationboard_updater(config, offset, season_change=season_offset, reset=hard_reset)
 
 
 def setup(bot):
