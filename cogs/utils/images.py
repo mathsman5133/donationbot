@@ -143,13 +143,12 @@ class DonationBoardImage:
             for player in players:
                 self.add_player(player)
 
-        self.draw.text((40, self.height + 30), f"Season: {self.season_start} - {self.season_finish}.", NAME_RGB, font=SEASON_FONT)
-        self.height += 80
+        self.draw.text((40, self.height + 130), f"Season: {self.season_start} - {self.season_finish}.", NAME_RGB, font=SEASON_FONT)
 
         if double_column:
-            self.image = self.image.crop((0, 0, IMAGE_WIDTH, self.height + 80))
+            self.image = self.image.crop((0, 0, IMAGE_WIDTH, self.height + 100))
         else:
-            self.image = self.image.crop((0, 0, IMAGE_WIDTH / 2 - 20, self.height + 120))
+            self.image = self.image.crop((0, 0, IMAGE_WIDTH / 2 - 20, self.height + 140))
 
 
     def render(self):
