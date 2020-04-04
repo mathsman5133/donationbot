@@ -18,6 +18,8 @@ REGULAR_FONT_FP = "assets/Roboto-Black.ttf"
 REGULAR_FONT_SIZE = 140
 REGULAR_FONT = ImageFont.truetype(REGULAR_FONT_FP, REGULAR_FONT_SIZE)
 
+SEASON_FONT = ImageFont.truetype(REGULAR_FONT_FP, 50)
+
 IMAGE_WIDTH = 4000
 
 MINIMUM_COLUMN_HEIGHT = 200
@@ -51,9 +53,10 @@ def get_readable(delta):
 
 
 class DonationBoardImage:
-    def __init__(self, title, icon):
+    def __init__(self, title, icon, season_start, season_finish):
         self.title = title or "Donation Board"
         self.icon = icon
+        self.season_start, self.season_finish = season_start, season_finish
         self.height = MINIMUM_COLUMN_HEIGHT
         self.width = 0
         self.max_width = IMAGE_WIDTH / 2 - 40
@@ -71,9 +74,11 @@ class DonationBoardImage:
             text_width, text_height = self.draw.textsize(text, font)
             need_to_offset = True
 
-        if centre_align:
+        if need_to_offset and centre_align:
+            position = (int((max_width - text_width + offset) / 2), position[1])
+        elif centre_align:
             position = (int((max_width - text_width) / 2), position[1])
-        if need_to_offset:
+        elif offset:
             position = (position[0] + offset, position[1])
 
         self.draw.text(position, text, rgb, font)
@@ -134,13 +139,18 @@ class DonationBoardImage:
             for p in players[int(no_players / 2):]:
                 self.add_player(p)
 
-            self.image = self.image.crop((0, 0, IMAGE_WIDTH, self.height + 80))
-
         else:
             for player in players:
                 self.add_player(player)
 
+        self.draw.text((40, self.height + 30), f"Season: {self.season_start} - {self.season_finish}.", SEASON_FONT)
+        self.height += 80
+
+        if double_column:
+            self.image = self.image.crop((0, 0, IMAGE_WIDTH, self.height + 80))
+        else:
             self.image = self.image.crop((0, 0, IMAGE_WIDTH / 2 - 20, self.height + 120))
+
 
     def render(self):
         self.image = self.image.resize((int(self.image.size[0] / 4), int(self.image.size[1] / 4)))

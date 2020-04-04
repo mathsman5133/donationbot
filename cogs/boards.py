@@ -447,7 +447,10 @@ class DonationBoard(commands.Cog):
         else:
             icon = None
 
-        image = DonationBoardImage(config.title, icon)
+        fetch = await self.bot.pool.fetchrow("SELECT start, finish FROM seasons WHERE id = $1", season_id)
+        season_start, season_finish = fetch[0].strftime('%d-%b-%Y'), fetch[1].strftime('%d-%b-%Y')
+
+        image = DonationBoardImage(config.title, icon, season_start, season_finish)
 
         image.add_players(players)
         render = image.render()
