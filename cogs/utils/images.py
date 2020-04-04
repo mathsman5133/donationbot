@@ -143,7 +143,7 @@ class DonationBoardImage:
             for player in players:
                 self.add_player(player)
 
-        self.draw.text((40, self.height + 30), f"Season: {self.season_start} - {self.season_finish}.", SEASON_FONT)
+        self.draw.text((40, self.height + 30), f"Season: {self.season_start} - {self.season_finish}.", NAME_RGB, font=SEASON_FONT)
         self.height += 80
 
         if double_column:
