@@ -28,6 +28,8 @@ REFRESH_EMOJI = discord.PartialEmoji(name="refresh", id=694395354841350254, anim
 LEFT_EMOJI = discord.PartialEmoji(name="\N{BLACK LEFT-POINTING TRIANGLE}\ufe0f", id=None, animated=False)    # [:arrow_left:]
 RIGHT_EMOJI = discord.PartialEmoji(name="\N{BLACK RIGHT-POINTING TRIANGLE}\ufe0f", id=None, animated=False)   # [:arrow_right:]
 PERCENTAGE_EMOJI = discord.PartialEmoji(name="percent", id=694463772135260169, animated=False)
+GAIN_EMOJI = discord.PartialEmoji(name="gain", id=696280508933472256, animated=False)
+LAST_ONLINE_EMOJI = discord.PartialEmoji(name="lastonline", id=696292732599271434, animated=False)
 HISTORICAL_EMOJI = discord.PartialEmoji(name="historical", id=694812540290465832, animated=False)
 
 
@@ -289,7 +291,8 @@ class DonationBoard(commands.Cog):
 
         if config.type == "donation" and not config.in_event:
             return await self.new_donationboard_updater(config)
-        if config.channel_id == 628125396294172672:
+        if config.type == "trophy" and not config.in_event:
+            return
             return await self.new_donationboard_updater(config)
 
         if config.in_event:
@@ -422,7 +425,7 @@ class DonationBoard(commands.Cog):
                                     donations,
                                     received,
                                     trophies,
-                                    now() - last_updated,
+                                    now() - last_updated AS "last_online",
                                     donations / NULLIF(received, 0) AS "ratio",
                                     trophies - start_trophies AS "gain"
                    FROM players
@@ -524,7 +527,7 @@ class DonationBoard(commands.Cog):
     async def reaction_action(self, payload):
         if payload.user_id == self.bot.user.id:
             return
-        if payload.emoji not in (REFRESH_EMOJI, LEFT_EMOJI, RIGHT_EMOJI, PERCENTAGE_EMOJI, HISTORICAL_EMOJI):
+        if payload.emoji not in (REFRESH_EMOJI, LEFT_EMOJI, RIGHT_EMOJI, PERCENTAGE_EMOJI, GAIN_EMOJI, LAST_ONLINE_EMOJI, HISTORICAL_EMOJI):
             return
 
         message = await self.bot.utils.get_message(self.bot.get_channel(payload.channel_id), payload.message_id)
@@ -556,6 +559,14 @@ class DonationBoard(commands.Cog):
 
         elif payload.emoji == PERCENTAGE_EMOJI:
             query = "UPDATE boards SET sort_by = 'ratio' WHERE channel_id = $1 RETURNING *"
+            fetch = await self.bot.pool.fetchrow(query, payload.channel_id)
+
+        elif payload.emoji == GAIN_EMOJI:
+            query = "UPDATE boards SET sort_by = 'gain' WHERE channel_id = $1 RETURNING *"
+            fetch = await self.bot.pool.fetchrow(query, payload.channel_id)
+
+        elif payload.emoji == LAST_ONLINE_EMOJI:
+            query = "UPDATE boards SET sort_by = 'last_online' WHERE channel_id = $1 RETURNING *"
             fetch = await self.bot.pool.fetchrow(query, payload.channel_id)
 
         elif payload.emoji == HISTORICAL_EMOJI:

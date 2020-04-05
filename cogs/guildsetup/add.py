@@ -437,6 +437,12 @@ class Add(commands.Cog):
             return await ctx.send('Creating the channel failed. Try checking the name?')
 
         msg = await channel.send('Placeholder')
+        await msg.add_reaction("<:refresh:694395354841350254>")
+        await msg.add_reaction("\N{BLACK LEFT-POINTING TRIANGLE}\ufe0f")
+        await msg.add_reaction("\N{BLACK RIGHT-POINTING TRIANGLE}\ufe0f")
+        await msg.add_reaction("<:gain:696280508933472256>")
+        await msg.add_reaction("<:lastonline:696292732599271434>")
+        await msg.add_reaction("<:historical:694812540290465832>")
 
         query = """INSERT INTO messages (
                             message_id, 
@@ -510,6 +516,7 @@ class Add(commands.Cog):
         await msg.add_reaction("\N{BLACK LEFT-POINTING TRIANGLE}\ufe0f")
         await msg.add_reaction("\N{BLACK RIGHT-POINTING TRIANGLE}\ufe0f")
         await msg.add_reaction("<:percent:694463772135260169>")
+        await msg.add_reaction("<:lastonline:696292732599271434>")
         await msg.add_reaction("<:historical:694812540290465832>")
 
         query = """INSERT INTO boards (
@@ -545,6 +552,7 @@ class Add(commands.Cog):
         **Required Permissions**
         :warning: Manage Server
         """
+        return await ctx.send("Last online boards are deprecated. Please use a donationboard or trophyboard instead - or even better, both!")
         if not ctx.me.guild_permissions.manage_channels:
             return await ctx.send(
                 'I need manage channels permission to create the last online board!')
