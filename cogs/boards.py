@@ -476,7 +476,7 @@ class DonationBoard(commands.Cog):
             file=discord.File(render, f'{config.type}board.png')
         )
 
-        e = discord.Embed(colour=discord.Colour.blue())
+        e = discord.Embed(colour=discord.Colour.blue() if donationboard else discord.Colour.green())
         e.set_image(url=logged_board_message.attachments[0].url)
         e.set_footer(text=f"Page {page + add_pages};Season {season_id};").timestamp = datetime.utcnow()
         await message.edit(content=None, embed=e)
