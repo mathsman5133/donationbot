@@ -257,7 +257,6 @@ class Edit(commands.Cog):
         await self.bot.donationboard.update_board(ctx.config.channel_id)
         await ctx.confirm()
 
-
     @edit.group(name='trophyboard')
     @manage_guild()
     @requires_config('trophyboard', invalidate=True, error=True)
@@ -408,32 +407,61 @@ class Edit(commands.Cog):
         query = "UPDATE boards SET title = $1 WHERE channel_id = $2"
         await ctx.db.execute(query, title, ctx.config.channel_id)
         await ctx.confirm()
+    #
+    # @edit_trophyboard.command(name='sort')
+    # async def edit_trophyboard_sort(self, ctx, *, sort_by: SortByConverter):
+    #     """Change which column the trophyboard is sorted by.
+    #
+    #     **Parameters**
+    #     :key: Column to sort by (must be either `trophies`, `gain` or `loss` (opposite gain)).
+    #
+    #     **Format**
+    #     :information_source: `+edit trophyboard sort COLUMN`
+    #
+    #     **Example**
+    #     :white_check_mark: `+edit trophyboard sort trophies`
+    #     :white_check_mark: `+edit trophyboard sort gain`
+    #     :white_check_mark: `+edit trophyboard sort loss`
+    #
+    #     **Required Permissions**
+    #     :warning: Manage Server
+    #     """
+    #     if sort_by not in ['trophies', 'gain', 'loss']:
+    #         return await ctx.send("Oops, that didn't look right! Try `trophies`, `gain` or `loss` instead.")
+    #
+    #     query = "UPDATE boards SET sort_by = $1 WHERE channel_id = $2"
+    #     await ctx.db.execute(query, sort_by, ctx.config.channel_id)
+    #     await self.bot.donationboard.update_board(ctx.config.channel_id)
+    #     await ctx.confirm()
 
-    @edit_trophyboard.command(name='sort')
-    async def edit_trophyboard_sort(self, ctx, *, sort_by: SortByConverter):
-        """Change which column the trophyboard is sorted by.
+    @edit_trophyboard.command(name='perpage')
+    async def edit_trophyboard_per_page(self, ctx, per_page: int):
+        """Change how many players are displayed on each page of the trophyboard.
+
+        By default, it is 15 for the first and second pages, then 20, 25, 25, 50 etc.
+        You can restore the default settings by running `+edit trophyboard perpage 0`.
 
         **Parameters**
-        :key: Column to sort by (must be either `trophies`, `gain` or `loss` (opposite gain)).
+        :key: The number of players per page. Must be a number (25).
 
         **Format**
-        :information_source: `+edit trophyboard sort COLUMN`
+        :information_source: `+edit trophyboard perpage NUMBER`
 
         **Example**
-        :white_check_mark: `+edit trophyboard sort trophies`
-        :white_check_mark: `+edit trophyboard sort gain`
-        :white_check_mark: `+edit trophyboard sort loss`
+        :white_check_mark: `+edit trophyboard perpage 15`
+        :white_check_mark: `+edit trophyboard perpage 50`
 
         **Required Permissions**
         :warning: Manage Server
         """
-        if sort_by not in ['trophies', 'gain', 'loss']:
-            return await ctx.send("Oops, that didn't look right! Try `trophies`, `gain` or `loss` instead.")
+        if per_page < 0:
+            return await ctx.send("You can't have a negative number of players per page!")
 
-        query = "UPDATE boards SET sort_by = $1 WHERE channel_id = $2"
-        await ctx.db.execute(query, sort_by, ctx.config.channel_id)
+        query = "UPDATE boards SET per_page = $1 WHERE channel_id = $2"
+        await ctx.db.execute(query, per_page, ctx.config.channel_id)
         await self.bot.donationboard.update_board(ctx.config.channel_id)
         await ctx.confirm()
+
 
     @edit.group(name="lastonlineboard")
     @manage_guild()
