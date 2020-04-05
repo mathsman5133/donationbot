@@ -41,13 +41,17 @@ RECEIVED_RGB = (255, 100, 100)
 RATIO_RGB = (150, 220, 225)
 LAST_ONLINE_RGB = (200, 200, 200)
 
+T_TROPHIES_LEFT_COLUMN_WIDTH = 840
+T_GAIN_LEFT_COLUMN_WIDTH = 1120
+T_LAST_ONLINE_LEFT_COLUMN_WIDTH = 1420
+
 T_HEADER_RECTANGLE_RGB = (100, 125, 104)
-T_RECTANGLE_RGB = (134, 163, 149)
+T_RECTANGLE_RGB = (118, 140, 129)
 T_NUMBER_RGB = (209, 227, 212)
 T_NAME_RGB = (232, 250, 235)
 T_TROPHIES_RGB = (224, 230, 69)
 T_GAIN_RGB = (33, 193, 204)
-T_LAST_ONLINE_RGB = (232, 96, 42)
+T_LAST_ONLINE_RGB = (194, 64, 14)
 
 
 def get_readable(delta):
@@ -211,18 +215,18 @@ class TrophyBoardImage:
         self.draw.rectangle(((LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT), ((IMAGE_WIDTH / 2) - 40, MINIMUM_COLUMN_HEIGHT + 100)), fill=T_HEADER_RECTANGLE_RGB)
         self.draw.text((NUMBER_LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT + 2), "#", T_NUMBER_RGB, font=SUPERCELL_FONT)
         self.draw.text((NAME_LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT + 2), "Name", T_NAME_RGB, font=SUPERCELL_FONT)
-        self.draw.text((DONATIONS_LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT + 2), "Cups", T_TROPHIES_RGB, font=SUPERCELL_FONT)
-        self.draw.text((RECEIVED_LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT + 2), "Gain", T_GAIN_RGB, font=SUPERCELL_FONT)
-        self.draw.text((LAST_ONLINE_LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT + 2), "Last On", T_LAST_ONLINE_RGB, font=SUPERCELL_FONT)
+        self.draw.text((T_TROPHIES_LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT + 2), "Cups", T_TROPHIES_RGB, font=SUPERCELL_FONT)
+        self.draw.text((T_GAIN_LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT + 2), "Gain", T_GAIN_RGB, font=SUPERCELL_FONT)
+        self.draw.text((T_LAST_ONLINE_LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT + 2), "Last On", T_LAST_ONLINE_RGB, font=SUPERCELL_FONT)
 
         if add_double_column:
             halfway = IMAGE_WIDTH / 2 + 40
             self.draw.rectangle(((IMAGE_WIDTH + LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT), ((IMAGE_WIDTH / 2) + 40, MINIMUM_COLUMN_HEIGHT + 60)), fill=T_HEADER_RECTANGLE_RGB)
             self.draw.text((halfway + NUMBER_LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT + 2), "#", T_NUMBER_RGB, font=SUPERCELL_FONT)
             self.draw.text((halfway + NAME_LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT + 2), "Name", T_NAME_RGB, font=SUPERCELL_FONT)
-            self.draw.text((halfway + DONATIONS_LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT + 2), "Cups", T_TROPHIES_RGB, font=SUPERCELL_FONT)
-            self.draw.text((halfway + RECEIVED_LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT + 2), "Gain", T_GAIN_RGB, font=SUPERCELL_FONT)
-            self.draw.text((halfway + LAST_ONLINE_LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT + 2), "Last On", T_LAST_ONLINE_RGB, font=SUPERCELL_FONT)
+            self.draw.text((halfway + T_TROPHIES_LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT + 2), "Cups", T_TROPHIES_RGB, font=SUPERCELL_FONT)
+            self.draw.text((halfway + T_GAIN_LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT + 2), "Gain", T_GAIN_RGB, font=SUPERCELL_FONT)
+            self.draw.text((halfway + T_LAST_ONLINE_LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT + 2), "Last On", T_LAST_ONLINE_RGB, font=SUPERCELL_FONT)
 
     def add_player(self, player):
         self.height += 100
@@ -231,9 +235,9 @@ class TrophyBoardImage:
         self.draw.rectangle(position, fill=T_RECTANGLE_RGB)
         self.draw.text((self.width + NUMBER_LEFT_COLUMN_WIDTH, self.height + 2), f"{player.index}.", T_NUMBER_RGB, font=SUPERCELL_FONT)
         self.special_text((self.width + NAME_LEFT_COLUMN_WIDTH, self.height + 2), str(player.name), T_NAME_RGB, SUPERCELL_FONT_FP, SUPERCELL_FONT_SIZE, 450)
-        self.draw.text((self.width + DONATIONS_LEFT_COLUMN_WIDTH, self.height + 2), str(player.trophies), T_TROPHIES_RGB, font=SUPERCELL_FONT)
-        self.draw.text((self.width + RECEIVED_LEFT_COLUMN_WIDTH, self.height + 2), str(player.gain), T_GAIN_RGB, font=SUPERCELL_FONT)
-        self.draw.text((self.width + LAST_ONLINE_LEFT_COLUMN_WIDTH, self.height + 2), get_readable(player.last_online), T_LAST_ONLINE_RGB, font=SUPERCELL_FONT)
+        self.draw.text((self.width + T_TROPHIES_LEFT_COLUMN_WIDTH, self.height + 2), str(player.trophies), T_TROPHIES_RGB, font=SUPERCELL_FONT)
+        self.draw.text((self.width + T_GAIN_LEFT_COLUMN_WIDTH, self.height + 2), str(player.gain), T_GAIN_RGB, font=SUPERCELL_FONT)
+        self.draw.text((self.width + T_LAST_ONLINE_LEFT_COLUMN_WIDTH, self.height + 2), get_readable(player.last_online), T_LAST_ONLINE_RGB, font=SUPERCELL_FONT)
 
     def add_players(self, players):
         double_column = len(players) > 25
