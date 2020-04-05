@@ -289,10 +289,7 @@ class DonationBoard(commands.Cog):
         if not config.channel:
             return
 
-        if config.type == "donation" and not config.in_event:
-            return await self.new_donationboard_updater(config)
-        if config.type == "trophy" and not config.in_event:
-            return
+        if config.type in ["donation", "trophy"] and not config.in_event:
             return await self.new_donationboard_updater(config)
 
         if config.in_event:
