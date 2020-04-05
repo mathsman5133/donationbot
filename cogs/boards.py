@@ -533,7 +533,7 @@ class DonationBoard(commands.Cog):
         if not message.author.id == self.bot.user.id:
             return
 
-        query = "SELECT * FROM boards WHERE message_id = $1 AND type = 'donation'"
+        query = "SELECT * FROM boards WHERE message_id = $1"
         fetch = await self.bot.pool.fetchrow(query, payload.message_id)
         if not fetch:
             return
