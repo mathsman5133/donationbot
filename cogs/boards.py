@@ -549,8 +549,9 @@ class DonationBoard(commands.Cog):
             offset = -1
 
         elif payload.emoji == REFRESH_EMOJI:
-            query = "UPDATE boards SET sort_by = 'donations' WHERE channel_id = $1 RETURNING *"
-            fetch = await self.bot.pool.fetchrow(query, payload.channel_id)
+            original_sort = 'donations' if fetch['type'] == 'donation' else 'trophies'
+            query = "UPDATE boards SET sort_by = $1 WHERE channel_id = $2 RETURNING *"
+            fetch = await self.bot.pool.fetchrow(query, original_sort, payload.channel_id)
             hard_reset = True
 
         elif payload.emoji == PERCENTAGE_EMOJI:
