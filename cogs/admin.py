@@ -18,8 +18,6 @@ from typing import Union, Optional
 
 from cogs.utils.formatters import TabularData
 from cogs.utils.converters import GlobalChannel
-from cogs.utils.db_objects import DonationBoardPlayer
-from cogs.utils.images import DonationBoardImage
 
 # to expose to the eval command
 import datetime
