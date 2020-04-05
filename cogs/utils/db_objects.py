@@ -122,4 +122,4 @@ SlimEventConfig = namedtuple('SlimEventConfig', 'id start finish event_name chan
 SlimDummyBoardConfig = namedtuple('SlimDummyBoardConfig', 'type render title icon_url sort_by')
 SlimDummyLogConfig = namedtuple('SlimDummyLogConfig', 'type title icon_url')
 
-DonationBoardPlayer = namedtuple("DonationBoardPlayer", "name donations received last_online index")
+BoardPlayer = namedtuple("DonationBoardPlayer", "name donations received trophies last_online gain index")

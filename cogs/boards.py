@@ -13,9 +13,9 @@ from datetime import datetime
 from discord.ext import commands, tasks
 from PIL import Image, UnidentifiedImageError
 
-from cogs.utils.db_objects import DatabaseMessage, DonationBoardPlayer, BoardConfig
+from cogs.utils.db_objects import DatabaseMessage, BoardPlayer, BoardConfig
 from cogs.utils.formatters import CLYTable, get_render_type
-from cogs.utils.images import DonationBoardImage
+from cogs.utils.images import DonationBoardImage, TrophyBoardImage
 from cogs.utils import checks
 
 
@@ -289,6 +289,8 @@ class DonationBoard(commands.Cog):
 
         if config.type == "donation" and not config.in_event:
             return await self.new_donationboard_updater(config)
+        if config.channel_id == 628125396294172672:
+            return await self.new_donationboard_updater(config)
 
         if config.in_event:
             query = """SELECT DISTINCT clan_tag FROM clans WHERE channel_id=$1 AND in_event=$2"""
@@ -368,6 +370,7 @@ class DonationBoard(commands.Cog):
         return config_per_page
 
     async def new_donationboard_updater(self, config, add_pages=0, season_offset=0, reset=False):
+        donationboard = config.type == 'donation'
         start = time.perf_counter()
         message = await self.bot.utils.get_message(config.channel, config.message_id)
         if not message:
@@ -380,7 +383,12 @@ class DonationBoard(commands.Cog):
             await message.add_reaction(REFRESH_EMOJI)
             await message.add_reaction(LEFT_EMOJI)
             await message.add_reaction(RIGHT_EMOJI)
-            await message.add_reaction(PERCENTAGE_EMOJI)
+            if donationboard:
+                await message.add_reaction(PERCENTAGE_EMOJI)
+            else:
+                pass
+                # await message.add_reaction(gain emoji)
+
             await message.add_reaction(HISTORICAL_EMOJI)
             await self.bot.pool.execute("UPDATE boards SET message_id = $1 WHERE channel_id = $2", message.id, config.channel_id)
 
@@ -413,8 +421,10 @@ class DonationBoard(commands.Cog):
         query = f"""SELECT DISTINCT player_name,
                                     donations,
                                     received,
+                                    trophies,
                                     now() - last_updated,
-                                    donations / NULLIF(received, 0) AS "ratio"
+                                    donations / NULLIF(received, 0) AS "ratio",
+                                    trophies - start_trophies AS "gain"
                    FROM players
                    INNER JOIN clans
                    ON clans.clan_tag = players.clan_tag
@@ -432,7 +442,8 @@ class DonationBoard(commands.Cog):
             self.get_next_per_page(page + add_pages, config.per_page),
             offset
         )
-        players = [DonationBoardPlayer(n[0], n[1], n[2], n[3], i + offset + 1) for i, n in enumerate(fetch)]
+
+        players = [BoardPlayer(n[0], n[1], n[2], n[3], n[4], n[6], i + offset + 1) for i, n in enumerate(fetch)]
 
         if not players:
             return  # they scrolled too far
@@ -450,7 +461,10 @@ class DonationBoard(commands.Cog):
         fetch = await self.bot.pool.fetchrow("SELECT start, finish FROM seasons WHERE id = $1", season_id)
         season_start, season_finish = fetch[0].strftime('%d-%b-%Y'), fetch[1].strftime('%d-%b-%Y')
 
-        image = DonationBoardImage(config.title, icon, season_start, season_finish)
+        if donationboard:
+            image = DonationBoardImage(config.title, icon, season_start, season_finish)
+        else:
+            image = TrophyBoardImage(config.title, icon, season_start, season_finish)
 
         image.add_players(players)
         render = image.render()
@@ -459,7 +473,7 @@ class DonationBoard(commands.Cog):
             f"Perf: {(time.perf_counter() - start) * 1000}ms\n"
             f"Channel: {config.channel_id}\n"
             f"Guild: {config.guild_id}",
-            file=discord.File(render, 'donationboard.png')
+            file=discord.File(render, f'{config.type}board.png')
         )
 
         e = discord.Embed(colour=discord.Colour.blue())
@@ -488,7 +502,7 @@ class DonationBoard(commands.Cog):
     async def testdonationboard(self, ctx):
         q = "SELECT DISTINCT player_name, donations, received, now() - last_updated FROM players INNER JOIN clans ON players.clan_tag  = clans.clan_tag WHERE clans.guild_id = $1 AND season_id = 9 ORDER BY donations DESC LIMIT 50;"
         fetch = await ctx.db.fetch(q, ctx.guild.id)
-        players = [DonationBoardPlayer(n[0], n[1], n[2], n[3], i + 1) for i, n in enumerate(fetch)]
+        players = [BoardPlayer(n[0], n[1], n[2], n[3], i + 1) for i, n in enumerate(fetch)]
         s = time.perf_counter()
         im = DonationBoardImage(None)
         im.add_players(players)
