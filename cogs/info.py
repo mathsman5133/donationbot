@@ -17,6 +17,30 @@ from collections import Counter
 
 log = logging.getLogger(__name__)
 
+WELCOME_MESSAGE = """
+Some handy hints:
+
+ • My prefix is `+`, or {self.bot.user.mention}. See how to change it with `+help edit prefix`
+ • All commands have super-detailed help commands; please use them!
+ • Usage: `+help command_name`, for example, try `+help donationlog`!
+
+ 
+A few frequently used commands to get started:
+
+ • `+help add` (check out the subcommands)
+ • `+add donationlog #channel #clantag` will setup a donationlog for your clan.
+ • `+add boards #clantag` will setup donation and trophyboards for your clan.
+ • `+info` will show you info about boards and logs on the server.\n
+
+ 
+Other Info:
+
+ • There are lots of how-to's and other support on the [support server](https://discord.gg/ePt8y4V) if you get stuck.
+ • Please share the bot with your friends! [Bot Invite]({self.invite_link})
+ • Please support us on [Patreon](https://www.patreon.com/donationtracker)!
+ • Have a good day!
+"""
+
 
 class HelpPaginator(Pages):
     def __init__(self, help_command, ctx, entries, *, per_page=9):
@@ -274,22 +298,7 @@ class Info(commands.Cog, name='\u200bInfo'):
 
     @property
     def welcome_message(self):
-        fmt = f"""**Some handy hints:**\n' \
-                 • My prefix is `+`, or {self.bot.user.mention}. See how to change it with `+help edit prefix`
-                 • All commands have super-detailed help commands; please use them!
-                 • Usage: `+help command_name`, for example, try `+help donationlog`!\n
-                 A few frequently used commands to get started:
-                 • `+help add` (check out the subcommands)
-                 • `+add donationlog #channel #clantag` will setup a donationlog for your clan.
-                 • `+add donationboard` will setup a donationboard for your server.
-                 • `+info` will show you info about boards and logs on the server.\n
-                 • There are lots of how-to\'s and other support on the [support server](https://discord.gg/ePt8y4V) if you get stuck.
-                 • Please share the bot with your friends! [Bot Invite]({self.invite_link})
-                 • Please support us on [Patreon](https://www.patreon.com/donationtracker)!
-                 • Have a good day!
-               """
-        e = discord.Embed(colour=self.bot.colour,
-                          description=fmt)
+        e = discord.Embed(colour=self.bot.colour, description=WELCOME_MESSAGE)
         e.set_author(name='Hello! I\'m the Donation Tracker!', icon_url=self.bot.user.avatar_url)
         return e
 

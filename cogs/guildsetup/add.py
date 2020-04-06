@@ -437,11 +437,11 @@ class Add(commands.Cog):
         except discord.HTTPException:
             return await ctx.send('Creating the channel failed. Try checking the name?')
 
-        await ctx.invoke(self.add_donationboard, channel=channel, use_channel=True)
-        await ctx.invoke(self.add_trophyboard, channel=channel, use_channel=True)
-
         for tag in clan_tags:
             await ctx.invoke(self.add_clan, channel=channel, clan_tag=tag)
+
+        await ctx.invoke(self.add_donationboard, channel=channel, use_channel=True)
+        await ctx.invoke(self.add_trophyboard, channel=channel, use_channel=True)
 
     @add.command(name="trophyboard")
     @manage_guild()
@@ -516,7 +516,7 @@ class Add(commands.Cog):
                 ON CONFLICT (channel_id, type) 
                 DO UPDATE SET message_id = $3, toggle = True;
                 """
-        await ctx.db.execute(query, ctx.guild.id, channel.id, msg.id, 'trophy', "Trophy Leader-Board", 'trophies')
+        await ctx.db.execute(query, ctx.guild.id, channel.id, msg.id, 'trophy', "Trophy Leaderboard", 'trophies')
         await self.bot.donationboard.update_board(message_id=msg.id)
         await ctx.send(
             f"Your board channel: {channel} now has a registered trophyboard. "
@@ -598,7 +598,7 @@ class Add(commands.Cog):
                 ON CONFLICT (channel_id, type) 
                 DO UPDATE SET message_id = $3, toggle = True;
                 """
-        await ctx.db.execute(query, ctx.guild.id, channel.id, msg.id, 'donation', "Donation Leader-Board", 'donations')
+        await ctx.db.execute(query, ctx.guild.id, channel.id, msg.id, 'donation', "Donation Leaderboard", 'donations')
         await self.bot.donationboard.update_board(message_id=msg.id)
         await ctx.send(
             f"Your board channel: {channel} now has a registered donationboard. "

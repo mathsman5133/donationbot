@@ -393,7 +393,7 @@ class DonationBoard(commands.Cog):
                 # await message.add_reaction(gain emoji)
 
             await message.add_reaction(HISTORICAL_EMOJI)
-            await self.bot.pool.execute("UPDATE boards SET message_id = $1 WHERE channel_id = $2", message.id, config.channel_id)
+            await self.bot.pool.execute("UPDATE boards SET message_id = $1 WHERE channel_id = $2 AND type = $3", message.id, config.channel_id, config.type)
 
         try:
             page = int(message.embeds[0]._footer['text'].split(";")[0].split(" ")[1])
@@ -456,7 +456,7 @@ class DonationBoard(commands.Cog):
                 icon_bytes = await self.bot.http.get_from_cdn(config.icon_url)
                 icon = Image.open(io.BytesIO(icon_bytes)).resize((180, 180))
             except (discord.Forbidden, UnidentifiedImageError):
-                await self.bot.pool.execute("UPDATE boards SET icon_url = NULL WHERE channel_id = $1", config.channel_id)
+                await self.bot.pool.execute("UPDATE boards SET icon_url = NULL WHERE message_id = $1", message.id)
                 icon = None
         else:
             icon = None
@@ -553,21 +553,21 @@ class DonationBoard(commands.Cog):
 
         elif payload.emoji == REFRESH_EMOJI:
             original_sort = 'donations' if fetch['type'] == 'donation' else 'trophies'
-            query = "UPDATE boards SET sort_by = $1 WHERE channel_id = $2 RETURNING *"
-            fetch = await self.bot.pool.fetchrow(query, original_sort, payload.channel_id)
+            query = "UPDATE boards SET sort_by = $1 WHERE message_id = $2 RETURNING *"
+            fetch = await self.bot.pool.fetchrow(query, original_sort, payload.message_id)
             hard_reset = True
 
         elif payload.emoji == PERCENTAGE_EMOJI:
-            query = "UPDATE boards SET sort_by = 'ratio' WHERE channel_id = $1 RETURNING *"
-            fetch = await self.bot.pool.fetchrow(query, payload.channel_id)
+            query = "UPDATE boards SET sort_by = 'ratio' WHERE message_id = $1 RETURNING *"
+            fetch = await self.bot.pool.fetchrow(query, payload.message_id)
 
         elif payload.emoji == GAIN_EMOJI:
-            query = "UPDATE boards SET sort_by = 'gain' WHERE channel_id = $1 RETURNING *"
-            fetch = await self.bot.pool.fetchrow(query, payload.channel_id)
+            query = "UPDATE boards SET sort_by = 'gain' WHERE message_id = $1 RETURNING *"
+            fetch = await self.bot.pool.fetchrow(query, payload.message_id)
 
         elif payload.emoji == LAST_ONLINE_EMOJI:
-            query = "UPDATE boards SET sort_by = 'last_online' WHERE channel_id = $1 RETURNING *"
-            fetch = await self.bot.pool.fetchrow(query, payload.channel_id)
+            query = "UPDATE boards SET sort_by = 'last_online ASC, player_name' WHERE message_id = $1 RETURNING *"
+            fetch = await self.bot.pool.fetchrow(query, payload.message_id)
 
         elif payload.emoji == HISTORICAL_EMOJI:
             season_offset = -1

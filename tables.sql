@@ -92,7 +92,8 @@ CREATE TABLE boards (
     id serial PRIMARY KEY,
 
     guild_id BIGINT,
-    channel_id BIGINT unique,
+    channel_id BIGINT,
+    message_id BIGINT unique,
     icon_url TEXT,
     title TEXT,
     render INTEGER default 1,
@@ -102,6 +103,7 @@ CREATE TABLE boards (
     in_event boolean default false
     );
 
+alter table boards add unique (channel_id, type);
 
 CREATE TABLE messages (
     id serial PRIMARY KEY,
