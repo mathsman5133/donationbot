@@ -102,7 +102,6 @@ class Add(commands.Cog):
 
     @add.command(name='clan')
     @checks.manage_guild()
-    @requires_config('event')
     async def add_clan(self, ctx, channel: typing.Optional[discord.TextChannel], clan_tag: str):
         """Link a clan to your server.
         This will add all accounts in clan to the database, if not already added.
@@ -157,20 +156,15 @@ class Add(commands.Cog):
                                   'be removed once the clan has been added.\n'
                                   '<https://cdn.discordapp.com/attachments/'
                                   '605352421929123851/634226338852503552/Screenshot_20191017-140812.png>')
-        in_event = False
-        if ctx.config:
-            if ctx.config.start < datetime.datetime.utcnow():
-                in_event = await ctx.prompt('Would you like this clan to be in the current event?')
 
-        query = "INSERT INTO clans (clan_tag, guild_id, channel_id, clan_name, in_event) VALUES ($1, $2, $3, $4, $5)"
-        await ctx.db.execute(query, clan.tag, ctx.guild.id, channel.id, clan.name, in_event)
+        query = "INSERT INTO clans (clan_tag, guild_id, channel_id, clan_name) VALUES ($1, $2, $3, $4)"
+        await ctx.db.execute(query, clan.tag, ctx.guild.id, channel.id, clan.name)
 
         await ctx.send('Clan has been added. Please wait a moment while all players are added.')
 
         season_id = await self.bot.seasonconfig.get_season_id()
         async for member in clan.get_detailed_members():
-            await self.insert_player(ctx.db, member, season_id, in_event,
-                                     getattr(ctx.config, 'event_id', None))
+            await self.insert_player(ctx.db, member, season_id, False, None)
 
         await ctx.send('Clan and all members have been added to the database (if not already added)')
         ctx.channel = channel  # modify for `on_clan_claim` listener
@@ -397,95 +391,31 @@ class Add(commands.Cog):
         await ctx.send(embed=e)
         self.bot.dispatch('event_register')
 
-    @add.command(name="trophyboard")
+    @add.command(name="boards", aliases=["board"])
     @manage_guild()
-    async def add_trophyboard(self, ctx, *, name="trophyboard"):
-        """Creates a trophyboard channel for trophy updates.
+    async def add_boards(self, ctx, *clan_tags):
+        """Convenient method to create a board channel, and setup donation and trophyboards in one command.
+
+        Pass in a list of clan tags seperated by a space ( ) to claim these clans to the board.
+        Please make sure all clans have `dt` attached to the end of the clan description, before running this command.
+
+        **Parameters**
+        :key: Clan tags (#clantag) seperated by a space.
 
         **Format**
-        :information_source: `+add trophyboard`
+        :information_source: `+add boards #CLANTAG`
 
         **Example**
-        :white_check_mark: `+add trophyboard`
+        :white_check_mark: `+add boards`
+        :white_check_mark: `+add boards #P0LYJC8C`
+        :white_check_mark: `+add boards #P0LYJC8C #8J8QJ2LV #P9U9YVG`
 
         **Required Permissions**
         :warning: Manage Server
+
         """
         if not ctx.me.guild_permissions.manage_channels:
-            return await ctx.send(
-                'I need manage channels permission to create the trophyboard!'
-            )
-
-        overwrites = {
-            ctx.me: discord.PermissionOverwrite(read_messages=True, send_messages=True,
-                                                read_message_history=True, embed_links=True,
-                                                manage_messages=True),
-            ctx.guild.default_role: discord.PermissionOverwrite(read_messages=True,
-                                                                send_messages=False,
-                                                                read_message_history=True)
-        }
-        reason = f'{str(ctx.author)} created a trophyboard channel.'
-
-        try:
-            channel = await ctx.guild.create_text_channel(name=name,
-                                                          overwrites=overwrites,
-                                                          reason=reason)
-        except discord.Forbidden:
-            return await ctx.send(
-                'I do not have permissions to create the trophyboard channel.')
-        except discord.HTTPException:
-            return await ctx.send('Creating the channel failed. Try checking the name?')
-
-        msg = await channel.send('Placeholder')
-        await msg.add_reaction("<:refresh:694395354841350254>")
-        await msg.add_reaction("\N{BLACK LEFT-POINTING TRIANGLE}\ufe0f")
-        await msg.add_reaction("\N{BLACK RIGHT-POINTING TRIANGLE}\ufe0f")
-        await msg.add_reaction("<:gain:696280508933472256>")
-        await msg.add_reaction("<:lastonline:696292732599271434>")
-        await msg.add_reaction("<:historical:694812540290465832>")
-
-        query = """INSERT INTO messages (
-                            message_id, 
-                            guild_id, 
-                            channel_id
-                        ) 
-                   VALUES ($1, $2, $3);
-                """
-        query2 = """INSERT INTO boards (
-                        guild_id, 
-                        channel_id, 
-                        type,
-                        title,
-                        sort_by
-                    ) 
-                VALUES ($1, $2, $3, $4, $5) 
-                ON CONFLICT (channel_id) 
-                DO UPDATE SET toggle = True;
-                """
-        await ctx.db.execute(query, msg.id, ctx.guild.id, channel.id)
-        await ctx.db.execute(query2, ctx.guild.id, channel.id, 'trophy', name.capitalize(), 'trophies')
-        await ctx.send(
-            f'Trophyboard channel created: {channel.mention}.'
-            f'Please add clans to the trophyboard with `+add clan #{name} #CLANTAG`'
-        )
-
-    @add.command(name='donationboard')
-    @manage_guild()
-    async def add_donationboard(self, ctx, *, name='donationboard'):
-        """Creates a donationboard channel for donation updates.
-
-        **Format**
-        :information_source: `+add donationboard`
-
-        **Example**
-        :white_check_mark: `+add donationboard`
-
-        **Required Permissions**
-        :warning: Manage Server
-        """
-        if not ctx.me.guild_permissions.manage_channels:
-            return await ctx.send(
-                'I need manage channels permission to create the donationboard!')
+            return await ctx.send('I need manage channels permission to create your board channel!')
 
         overwrites = {
             ctx.me: discord.PermissionOverwrite(
@@ -493,25 +423,162 @@ class Add(commands.Cog):
                 send_messages=True,
                 read_message_history=True,
                 embed_links=True,
-                manage_messages=True,
-                add_reactions=True
+                manage_messages=True
             ),
-            ctx.guild.default_role: discord.PermissionOverwrite(read_messages=True,
-                                                                send_messages=False,
-                                                                read_message_history=True)
+            ctx.guild.default_role: discord.PermissionOverwrite(read_messages=True, send_messages=False, read_message_history=True)
         }
-        reason = f'{str(ctx.author)} created a donationboard channel.'
+        reason = f'{str(ctx.author)} created a boards channel.'
 
         try:
-            channel = await ctx.guild.create_text_channel(name=name, overwrites=overwrites,
-                                                          reason=reason)
+            channel = await ctx.guild.create_text_channel(name="dt-boards", overwrites=overwrites, reason=reason)
         except discord.Forbidden:
             return await ctx.send(
-                'I do not have permissions to create the donationboard channel.')
+                'I do not have permissions to create the trophyboard channel.')
         except discord.HTTPException:
             return await ctx.send('Creating the channel failed. Try checking the name?')
 
-        msg = await channel.send('Placeholder.... please don\'t delete!')
+        await ctx.invoke(self.add_donationboard, channel=channel)
+        await ctx.invoke(self.add_trophyboard, channel=channel)
+
+        for tag in clan_tags:
+            await ctx.invoke(self.add_clan, channel=channel, clan_tag=tag)
+
+    @add.command(name="trophyboard")
+    @manage_guild()
+    async def add_trophyboard(self, ctx, *, channel: discord.TextChannel = None):
+        """Registers a trophy-board to the channel, or creates a new channel for you.
+
+        If you don't pass in a channel (#mention), it will create a new #dt-boards channel for you.
+
+        **Parameters**
+        :key: A channel (#mention etc.)
+
+        **Format**
+        :information_source: `+add trophyboard #CHANNEL`
+
+        **Example**
+        :white_check_mark: `+add trophyboard`
+        :white_check_mark: `+add trophyboard #CHANNEL`
+
+        **Required Permissions**
+        :warning: Manage Server
+        """
+        if channel:
+            fetch = await ctx.db.fetch("SELECT type FROM boards WHERE channel_id = $1", channel.id)
+            if not fetch:
+                return await ctx.send("I cannot setup a board here, because the bot didn't create the channel! Try again with `+add boards`.")
+            if any(n['type'] == 'trophy' for n in fetch):
+                return await ctx.send("A trophyboard is already setup here.")
+
+        else:
+            if not ctx.me.guild_permissions.manage_channels:
+                return await ctx.send(
+                    'I need manage channels permission to create your board channel!'
+                )
+
+            overwrites = {
+                ctx.me: discord.PermissionOverwrite(read_messages=True, send_messages=True,
+                                                    read_message_history=True, embed_links=True,
+                                                    manage_messages=True),
+                ctx.guild.default_role: discord.PermissionOverwrite(read_messages=True,
+                                                                    send_messages=False,
+                                                                    read_message_history=True)
+            }
+            reason = f'{str(ctx.author)} created a boards channel.'
+
+            try:
+                channel = await ctx.guild.create_text_channel(name="dt-boards",
+                                                              overwrites=overwrites,
+                                                              reason=reason)
+            except discord.Forbidden:
+                return await ctx.send(
+                    'I do not have permissions to create the trophyboard channel.')
+            except discord.HTTPException:
+                return await ctx.send('Creating the channel failed. Try checking the name?')
+
+        msg = await channel.send('Trophyboard Placeholder. Please do not delete me!')
+        await msg.add_reaction("<:refresh:694395354841350254>")
+        await msg.add_reaction("\N{BLACK LEFT-POINTING TRIANGLE}\ufe0f")
+        await msg.add_reaction("\N{BLACK RIGHT-POINTING TRIANGLE}\ufe0f")
+        await msg.add_reaction("<:gain:696280508933472256>")
+        await msg.add_reaction("<:lastonline:696292732599271434>")
+        await msg.add_reaction("<:historical:694812540290465832>")
+
+        query = """INSERT INTO boards (
+                        guild_id, 
+                        channel_id, 
+                        message_id,
+                        type,
+                        title,
+                        sort_by
+                    ) 
+                VALUES ($1, $2, $3, $4, $5, $6) 
+                ON CONFLICT (channel_id, type) 
+                DO UPDATE SET message_id = $3, toggle = True;
+                """
+        await ctx.db.execute(query, ctx.guild.id, channel.id, msg.id, 'trophy', "Trophy Leader-Board", 'trophies')
+        await self.bot.donationboard.update_board(message_id=msg.id)
+        await ctx.send(
+            f"Your board channel: {channel} now has a registered trophyboard. "
+            f"Please use `+info` to see which clans are registered, "
+            f"and use `+add clan #{channel.name} #clantag` to add more clans."
+        )
+
+    @add.command(name='donationboard')
+    @manage_guild()
+    async def add_donationboard(self, ctx, *, channel: discord.TextChannel = None):
+        """Registers a donation-board to the channel, or creates a new channel for you.
+
+        If you don't pass in a channel (#mention), it will create a new #dt-boards channel for you.
+
+        **Parameters**
+        :key: A channel (#mention etc.)
+
+        **Format**
+        :information_source: `+add donationboard #CHANNEL`
+
+        **Example**
+        :white_check_mark: `+add donationboard`
+        :white_check_mark: `+add donationboard #CHANNEL`
+
+        **Required Permissions**
+        :warning: Manage Server
+        """
+        if channel:
+            fetch = await ctx.db.fetch("SELECT type FROM boards WHERE channel_id = $1", channel.id)
+            if not fetch:
+                return await ctx.send(
+                    "I cannot setup a board here, because the bot didn't create the channel! Try again with `+add boards`.")
+            if any(n['type'] == 'donation' for n in fetch):
+                return await ctx.send("A donationboard is already setup here.")
+
+        else:
+            if not ctx.me.guild_permissions.manage_channels:
+                return await ctx.send(
+                    'I need manage channels permission to create your board channel!'
+                )
+
+            overwrites = {
+                ctx.me: discord.PermissionOverwrite(read_messages=True, send_messages=True,
+                                                    read_message_history=True, embed_links=True,
+                                                    manage_messages=True),
+                ctx.guild.default_role: discord.PermissionOverwrite(read_messages=True,
+                                                                    send_messages=False,
+                                                                    read_message_history=True)
+            }
+            reason = f'{str(ctx.author)} created a boards channel.'
+
+            try:
+                channel = await ctx.guild.create_text_channel(name="dt-boards",
+                                                              overwrites=overwrites,
+                                                              reason=reason)
+            except discord.Forbidden:
+                return await ctx.send(
+                    'I do not have permissions to create the boards channel.')
+            except discord.HTTPException:
+                return await ctx.send('Creating the channel failed. Try checking the name?')
+
+        msg = await channel.send('Donationboard Placeholder. Please don\'t delete me!')
         await msg.add_reaction("<:refresh:694395354841350254>")
         await msg.add_reaction("\N{BLACK LEFT-POINTING TRIANGLE}\ufe0f")
         await msg.add_reaction("\N{BLACK RIGHT-POINTING TRIANGLE}\ufe0f")
@@ -522,87 +589,29 @@ class Add(commands.Cog):
         query = """INSERT INTO boards (
                         guild_id, 
                         channel_id, 
+                        message_id,
                         type,
                         title,
-                        sort_by,
-                        message_id
+                        sort_by
                     ) 
-                   VALUES ($1, $2, $3, $4, $5, $6) 
-                   ON CONFLICT (channel_id) 
-                   DO UPDATE SET toggle = True;
+                VALUES ($1, $2, $3, $4, $5, $6) 
+                ON CONFLICT (channel_id, type) 
+                DO UPDATE SET message_id = $3, toggle = True;
                 """
-
-        await ctx.db.execute(query, ctx.guild.id, channel.id, 'donation', name.capitalize(), 'donation', msg.id)
+        await ctx.db.execute(query, ctx.guild.id, channel.id, msg.id, 'donation', "Donation Leader-Board", 'donations')
+        await self.bot.donationboard.update_board(message_id=msg.id)
         await ctx.send(
-            f'Donationboard channel created: {channel.mention}. '
-            f'Please add clans to the donationboard with `+add clan #{name} #CLANTAG`'
+            f"Your board channel: {channel} now has a registered donationboard. "
+            f"Please use `+info` to see which clans are registered, "
+            f"and use `+add clan #{channel.name} #clantag` to add more clans."
         )
 
     @add.command(name='lastonlineboard')
     @manage_guild()
     async def add_lastonlineboard(self, ctx, *, name='lastonlineboard'):
-        """Creates a last online board channel for last online updates.
-
-        **Format**
-        :information_source: `+add lastonlineboard`
-
-        **Example**
-        :white_check_mark: `+add lastonlineboard`
-
-        **Required Permissions**
-        :warning: Manage Server
+        """Last online boards are deprecated. Please use a donationboard or trophyboard instead - or even better, both!
         """
         return await ctx.send("Last online boards are deprecated. Please use a donationboard or trophyboard instead - or even better, both!")
-        if not ctx.me.guild_permissions.manage_channels:
-            return await ctx.send(
-                'I need manage channels permission to create the last online board!')
-
-        overwrites = {
-            ctx.me: discord.PermissionOverwrite(read_messages=True, send_messages=True,
-                                                read_message_history=True, embed_links=True,
-                                                manage_messages=True),
-            ctx.guild.default_role: discord.PermissionOverwrite(read_messages=True,
-                                                                send_messages=False,
-                                                                read_message_history=True)
-        }
-        reason = f'{str(ctx.author)} created a lastonlineboard channel.'
-
-        try:
-            channel = await ctx.guild.create_text_channel(name=name, overwrites=overwrites,
-                                                          reason=reason)
-        except discord.Forbidden:
-            return await ctx.send(
-                'I do not have permissions to create the last online board channel.')
-        except discord.HTTPException:
-            return await ctx.send('Creating the channel failed. Try checking the name?')
-
-        msg = await channel.send('Placeholder. Please do not remove or send messages in this channel!')
-
-        query = """INSERT INTO messages (
-                                message_id, 
-                                guild_id, 
-                                channel_id
-                            )
-                       VALUES ($1, $2, $3);
-                    """
-        query2 = """INSERT INTO boards (
-                            guild_id, 
-                            channel_id, 
-                            type,
-                            title,
-                            sort_by
-                        ) 
-                       VALUES ($1, $2, $3, $4, $5) 
-                       ON CONFLICT (channel_id) 
-                       DO UPDATE SET toggle = True;
-                    """
-
-        await ctx.db.execute(query, msg.id, ctx.guild.id, channel.id)
-        await ctx.db.execute(query2, ctx.guild.id, channel.id, 'last_online', name.capitalize(), 'last_online')
-        await ctx.send(
-            f'Last online board channel created: {channel.mention}. '
-            f'Please add clans to the board with `+add clan #{name} #CLANTAG`'
-        )
 
     @add.command(name='donationlog')
     @requires_config('donationlog', invalidate=True)

@@ -279,8 +279,11 @@ class DonationBoard(commands.Cog):
             fetch = await self.bot.pool.fetch(query, [n.tag for n in players], season_id)
         return fetch
 
-    async def update_board(self, channel_id):
-        config = await self.bot.utils.board_config(channel_id)
+    async def update_board(self, channel_id=None, board_type=None, message_id=None):
+        if message_id:
+            config = await self.bot.utils.board_config(message_id)
+        else:
+            config = await self.bot.utils.board_config_from_channel(channel_id, board_type)
 
         if not config:
             return
@@ -493,8 +496,8 @@ class DonationBoard(commands.Cog):
 
     @commands.command(hidden=True)
     @commands.is_owner()
-    async def forceboard(self, ctx, channel_id: int = None):
-        await self.update_board(channel_id or ctx.channel.id)
+    async def forceboard(self, ctx, message_id: int = None):
+        await self.update_board(message_id=message_id)
         await ctx.confirm()
 
     @commands.command(hidden=True)

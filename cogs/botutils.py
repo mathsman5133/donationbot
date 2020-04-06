@@ -31,7 +31,35 @@ class Utils(commands.Cog):
         return LogConfig(bot=self.bot, record=fetch)
 
     @cache()
-    async def board_config(self, channel_id: int) -> Union[BoardConfig, None]:
+    async def board_config(self, message_id: int) -> Union[BoardConfig, None]:
+        query = """SELECT guild_id, 
+                          channel_id,
+                          icon_url,
+                          title,
+                          render,
+                          sort_by,
+                          toggle,
+                          type,
+                          in_event,
+                          message_id,
+                          per_page
+                   FROM boards
+                   WHERE message_id = $1
+                """
+        fetch = await self.bot.pool.fetchrow(query, message_id)
+
+        if not fetch:
+            return None
+
+        return BoardConfig(bot=self.bot, record=fetch)
+
+    @cache()
+    async def get_board_channels(self, guild_id: int, board_type: str) -> Union[List[int], None]:
+        query = "SELECT message_id FROM boards WHERE guild_id = $1 AND type = $2 AND toggle = True;"
+        fetch = await self.bot.pool.fetch(query, guild_id, board_type)
+        return [n["message_id"] for n in fetch]
+
+    async def board_config_from_channel(self, channel_id: int, board_type: str) -> Union[BoardConfig, None]:
         query = """SELECT guild_id, 
                           channel_id,
                           icon_url,
@@ -45,34 +73,29 @@ class Utils(commands.Cog):
                           per_page
                    FROM boards
                    WHERE channel_id = $1
+                   AND type = $2
                 """
-        fetch = await self.bot.pool.fetchrow(query, channel_id)
+        fetch = await self.bot.pool.fetchrow(query, channel_id, board_type)
 
         if not fetch:
             return None
 
         return BoardConfig(bot=self.bot, record=fetch)
 
-    @cache()
-    async def get_board_channels(self, guild_id: int, board_type: str) -> Union[List[int], None]:
-        query = "SELECT channel_id FROM boards WHERE guild_id = $1 AND type = $2 AND toggle = True;"
-        fetch = await self.bot.pool.fetch(query, guild_id, board_type)
-        return [n["channel_id"] for n in fetch]
-
     async def get_board_configs(self, guild_id: int, board_type: str, invalidate=False) -> List[BoardConfig]:
         if invalidate:
             self.get_board_channels.invalidate(self, guild_id, board_type)
 
-        channel_ids = await self.get_board_channels(guild_id, board_type)
+        message_ids = await self.get_board_channels(guild_id, board_type)
 
-        if not channel_ids:
+        if not message_ids:
             return list()
 
-        channel_ids = [int(n) for n in channel_ids]
+        message_ids = [int(n) for n in message_ids]
 
         configs = list()
 
-        for n in channel_ids:
+        for n in message_ids:
             if invalidate:
                 self.board_config.invalidate(self, n)
 

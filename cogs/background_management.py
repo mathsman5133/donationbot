@@ -231,12 +231,12 @@ class BackgroundManagement(commands.Cog):
 
         donationboard_configs = await self.bot.utils.get_board_configs(event.guild_id, 'donation')
         for config in donationboard_configs:
-            await self.bot.donationboard.update_board(config.channel_id)
+            await self.bot.donationboard.update_board(config.channel_id, config.type)
             await self.new_event_message(event, event.guild_id, config.channel_id, 'donation')
 
         trophyboard_configs = await self.bot.utils.get_board_configs(event.guild_id, 'trophy')
         for config in trophyboard_configs:
-            await self.bot.donationboard.update_board(config.channel_id)
+            await self.bot.donationboard.update_board(config.channel_id, config.type)
             await self.new_event_message(event, event.guild_id, config.channel_id, 'trophy')
 
         await self.safe_send(channel, f'Boards have been updated. Enjoy your event! '
@@ -306,12 +306,12 @@ class BackgroundManagement(commands.Cog):
 
         donationboard_configs = await self.bot.utils.get_board_configs(event.guild_id, 'donation')
         for config in donationboard_configs:
-            await self.bot.donationboard.update_board(config.channel_id)
+            await self.bot.donationboard.update_board(config.channel_id, config.type)
             await self.remove_event_msg(event.id, config.channel, 'donation')
 
         trophyboard_configs = await self.bot.utils.get_board_configs(event.guild_id, 'trophy')
         for config in trophyboard_configs:
-            await self.bot.donationboard.update_board(config.channel_id)
+            await self.bot.donationboard.update_board(config.channel_id, config.type)
             await self.remove_event_msg(event.id, config.channel, 'trophy')
 
         # todo: crunch some numbers.
