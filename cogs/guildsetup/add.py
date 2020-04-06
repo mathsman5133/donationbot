@@ -437,15 +437,15 @@ class Add(commands.Cog):
         except discord.HTTPException:
             return await ctx.send('Creating the channel failed. Try checking the name?')
 
-        await ctx.invoke(self.add_donationboard, channel=channel)
-        await ctx.invoke(self.add_trophyboard, channel=channel)
+        await ctx.invoke(self.add_donationboard, channel=channel, use_channel=True)
+        await ctx.invoke(self.add_trophyboard, channel=channel, use_channel=True)
 
         for tag in clan_tags:
             await ctx.invoke(self.add_clan, channel=channel, clan_tag=tag)
 
     @add.command(name="trophyboard")
     @manage_guild()
-    async def add_trophyboard(self, ctx, *, channel: discord.TextChannel = None):
+    async def add_trophyboard(self, ctx, *, channel: discord.TextChannel = None, use_channel=False):
         """Registers a trophy-board to the channel, or creates a new channel for you.
 
         If you don't pass in a channel (#mention), it will create a new #dt-boards channel for you.
@@ -463,7 +463,7 @@ class Add(commands.Cog):
         **Required Permissions**
         :warning: Manage Server
         """
-        if channel:
+        if channel and not use_channel:
             fetch = await ctx.db.fetch("SELECT type FROM boards WHERE channel_id = $1", channel.id)
             if not fetch:
                 return await ctx.send("I cannot setup a board here, because the bot didn't create the channel! Try again with `+add boards`.")
@@ -526,7 +526,7 @@ class Add(commands.Cog):
 
     @add.command(name='donationboard')
     @manage_guild()
-    async def add_donationboard(self, ctx, *, channel: discord.TextChannel = None):
+    async def add_donationboard(self, ctx, *, channel: discord.TextChannel = None, use_channel=False):
         """Registers a donation-board to the channel, or creates a new channel for you.
 
         If you don't pass in a channel (#mention), it will create a new #dt-boards channel for you.
@@ -544,7 +544,7 @@ class Add(commands.Cog):
         **Required Permissions**
         :warning: Manage Server
         """
-        if channel:
+        if channel and not use_channel:
             fetch = await ctx.db.fetch("SELECT type FROM boards WHERE channel_id = $1", channel.id)
             if not fetch:
                 return await ctx.send(
