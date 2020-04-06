@@ -50,7 +50,7 @@ class DonationBoard(commands.Cog):
         self.update_board_loops.start()
 
         self.update_global_board.add_exception_type(asyncpg.PostgresConnectionError, coc.ClashOfClansException)
-        self.update_global_board.start()
+        #self.update_global_board.start()
 
         self.tags_to_update = set()
         self.last_updated_tags = {}
@@ -59,7 +59,7 @@ class DonationBoard(commands.Cog):
 
     def cog_unload(self):
         self.update_board_loops.cancel()
-        self.update_global_board.cancel()
+        #self.update_global_board.cancel()
 
     @property
     def board_channels(self):
@@ -211,8 +211,7 @@ class DonationBoard(commands.Cog):
 
         await m.delete()
 
-    async def get_board_messages(self, channel_id, number_of_msg=None):
-        config = await self.bot.utils.board_config(channel_id)
+    async def get_board_messages(self, config, number_of_msg=None):
         if not (config.channel or config.toggle):
             return
 
@@ -322,7 +321,7 @@ class DonationBoard(commands.Cog):
 
         message_count = math.ceil(len(top_players) / 20)
 
-        messages = await self.get_board_messages(channel_id, number_of_msg=message_count)
+        messages = await self.get_board_messages(config, number_of_msg=message_count)
         if not messages:
             return
 
