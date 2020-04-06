@@ -470,7 +470,7 @@ class Add(commands.Cog):
             if any(n['type'] == 'trophy' for n in fetch):
                 return await ctx.send("A trophyboard is already setup here.")
 
-        else:
+        elif not channel:
             if not ctx.me.guild_permissions.manage_channels:
                 return await ctx.send(
                     'I need manage channels permission to create your board channel!'
@@ -552,7 +552,7 @@ class Add(commands.Cog):
             if any(n['type'] == 'donation' for n in fetch):
                 return await ctx.send("A donationboard is already setup here.")
 
-        else:
+        elif not channel:
             if not ctx.me.guild_permissions.manage_channels:
                 return await ctx.send(
                     'I need manage channels permission to create your board channel!'
