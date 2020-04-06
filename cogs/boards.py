@@ -89,8 +89,6 @@ class DonationBoard(commands.Cog):
             except:
                 log.exception(f"old board failed...\nChannel ID: {n['channel_id']}")
 
-    @tasks.loop(seconds=60.0)
-
     @tasks.loop(hours=1)
     async def update_global_board(self):
         query = """SELECT player_tag, donations
