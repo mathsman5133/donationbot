@@ -1,5 +1,4 @@
 import discord
-import discord
 import asyncio
 import typing
 import datetime
@@ -9,8 +8,7 @@ import logging
 
 from discord.ext import commands
 from cogs.utils.checks import requires_config, manage_guild
-from cogs.utils.formatters import CLYTable
-from cogs.utils.converters import PlayerConverter, ClanConverter, DateConverter, TextChannel
+from cogs.utils.converters import PlayerConverter, DateConverter, TextChannel
 from cogs.utils import checks
 
 log = logging.getLogger(__name__)
@@ -437,8 +435,10 @@ class Add(commands.Cog):
         except discord.HTTPException:
             return await ctx.send('Creating the channel failed. Try checking the name?')
 
+        old_channel = ctx.channel
         for tag in clan_tags:
             await ctx.invoke(self.add_clan, channel=channel, clan_tag=tag)
+        ctx.channel = old_channel  # add_clan modifies this so we need to revert it
 
         await ctx.invoke(self.add_donationboard, channel=channel, use_channel=True)
         await ctx.invoke(self.add_trophyboard, channel=channel, use_channel=True)
