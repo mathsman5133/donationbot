@@ -163,7 +163,7 @@ class Edit(commands.Cog):
             return await ctx.send("You can't have a negative number of players per page!")
 
         query = "UPDATE boards SET per_page = $1 WHERE channel_id = $2 AND type = 'donation' RETURNING message_id"
-        result = await ctx.db.fetchrow(query, per_page, ctx.config.channel_id)
+        result = await ctx.db.fetchrow(query, per_page, channel.id)
 
         if not result:
             return await ctx.send(f"I couldn't find a donationboard setup in {channel}. Either #mention a valid board channel, or set one up with `+help add donationboard`.")
@@ -274,7 +274,7 @@ class Edit(commands.Cog):
             return await ctx.send("You can't have a negative number of players per page!")
 
         query = "UPDATE boards SET per_page = $1 WHERE channel_id = $2 AND type = 'trophy' RETURNING message_id"
-        result = await ctx.db.fetchrow(query, per_page, ctx.config.channel_id)
+        result = await ctx.db.fetchrow(query, per_page, channel.id)
 
         if not result:
             return await ctx.send(f"I couldn't find a trophyboard setup in {channel}. Either #mention a valid board channel, or set one up with `+help add trophyboard`.")
@@ -778,8 +778,7 @@ class Edit(commands.Cog):
 
             dboard_channels = await self.bot.utils.get_board_channels(ctx.guild.id, 'donation')
             tboard_channels = await self.bot.utils.get_board_channels(ctx.guild.id, 'trophy')
-            lonline_channels = await self.bot.utils.get_board_channels(ctx.guild.id, 'last_online')
-            for id_ in (*dboard_channels, *tboard_channels, *lonline_channels):
+            for id_ in (*dboard_channels, *tboard_channels):
                 await self.bot.donationboard.update_board(message_id=int(id_))
 
             await ctx.send('All done - I\'ve force updated the boards too!')

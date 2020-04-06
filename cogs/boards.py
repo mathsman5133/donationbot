@@ -74,7 +74,7 @@ class DonationBoard(commands.Cog):
 
         self.last_updated_tags.update(**{n: datetime.utcnow() for n in clan_tags})
 
-        query = """SELECT DISTINCT boards.channel_id
+        query = """SELECT DISTINCT boards.channel_id, boards.type
                     FROM boards
                     INNER JOIN clans
                     ON clans.channel_id = boards.channel_id
@@ -84,10 +84,12 @@ class DonationBoard(commands.Cog):
 
         for n in fetch:
             try:
-                await self.update_board(n['channel_id'])
+                await self.update_board(n['channel_id'], n['type'])
                 self.last_updated_channels[n['channel_id']] = datetime.utcnow()
             except:
-                log.exception(f"board failed...\nChannel ID: {n['channel_id']}")
+                log.exception(f"old board failed...\nChannel ID: {n['channel_id']}")
+
+    @tasks.loop(seconds=60.0)
 
     @tasks.loop(hours=1)
     async def update_global_board(self):
