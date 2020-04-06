@@ -20,9 +20,9 @@ log = logging.getLogger(__name__)
 WELCOME_MESSAGE = """
 Some handy hints:
 
- • My prefix is `+`, or {self.bot.user.mention}. See how to change it with `+help edit prefix`
+ • My prefix is `+`, or <@!427301910291415051>. See how to change it with `+help edit prefix`
  • All commands have super-detailed help commands; please use them!
- • Usage: `+help command_name`, for example, try `+help donationlog`!
+ • Usage: `+help command_name`. For example, try `+help donationlog`
 
  
 A few frequently used commands to get started:
@@ -30,7 +30,7 @@ A few frequently used commands to get started:
  • `+help add` (check out the subcommands)
  • `+add donationlog #channel #clantag` will setup a donationlog for your clan.
  • `+add boards #clantag` will setup donation and trophyboards for your clan.
- • `+info` will show you info about boards and logs on the server.\n
+ • `+info` will show you info about boards and logs on the server.
 
  
 Other Info:
