@@ -5,6 +5,8 @@ import logging
 import textwrap
 import time
 
+import pytz
+
 from discord.ext import commands, tasks
 
 from cogs.utils.db_objects import SlimEventConfig
@@ -28,6 +30,65 @@ class BackgroundManagement(commands.Cog):
     @commands.is_owner()
     async def forceguild(self, ctx, guild_id: int):
         self.bot.dispatch('guild_join', self.bot.get_guild(guild_id))
+
+    @tasks.loop()
+    async def daily_history_updater(self):
+        now = datetime.datetime.now(pytz.utc)
+
+        if now.hour < 4:
+            five_am = now.replace(hour=4, minute=0, second=0, microsecond=0)
+        else:
+            tomorrow = now + datetime.timedelta(days=1)
+            five_am = tomorrow.replace(hour=4, minute=0, second=0, microsecond=0)
+
+        await asyncio.sleep((five_am - now).total_seconds())
+
+        query = """INSERT INTO players_history (
+                                    player_tag, 
+                                    donations, 
+                                    received, 
+                                    user_id, 
+                                    friend_in_need, 
+                                    sharing_is_caring, 
+                                    trophies, 
+                                    best_trophies, 
+                                    last_updated, 
+                                    league_id, 
+                                    versus_trophies, 
+                                    clan_tag, 
+                                    level, 
+                                    player_name, 
+                                    attacks, 
+                                    defenses, 
+                                    versus_attacks, 
+                                    exp_level, 
+                                    games_champion, 
+                                    well_seasoned
+                                )             
+                   SELECT player_tag,
+                          donations,
+                          received,
+                          user_id,
+                          end_friend_in_need,
+                          end_sharing_is_caring,
+                          trophies,
+                          end_best_trophies,
+                          last_updated,
+                          league_id,
+                          versus_trophies,
+                          clan_tag,
+                          level,
+                          player_name,
+                          attacks,
+                          defenses,
+                          versus_attacks,
+                          exp_level,
+                          games_champion,
+                          well_seasoned
+                   FROM players
+                   WHERE players.season_id = $1
+        """
+        await self.bot.pool.execute(query, await self.bot.seasonconfig.get_season_id())
 
     @tasks.loop()
     async def next_event_starts(self):

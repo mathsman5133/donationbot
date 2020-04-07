@@ -1,31 +1,115 @@
-CREATE TABLE players (
-    id serial PRIMARY KEY,
+BEGIN;
 
-    player_tag TEXT,
-    donations INTEGER,
-    received INTEGER,
-    start_trophies integer,
-    trophies integer,
-    user_id BIGINT,
-    season_id integer,
-    start_update boolean default false,
-    final_update boolean default false,
-    start_friend_in_need integer default 0,
-    end_friend_in_need integer default 0,
-    start_sharing_is_caring integer default 0,
-    end_sharing_is_caring integer default 0,
-    start_attacks integer default 0,
-    end_attacks integer default 0,
-    start_defenses integer default 0,
-    end_defenses integer default 0,
-    start_best_trophies integer default 0,
-    end_best_trophies integer default 0,
-    last_updated timestamp default now()
-    );
-create index player_tag_idx on players (player_tag);
-create index user_id_idx on players (user_id);
-create index season_idx on players (season_id);
-alter table players add unique (player_tag, season_id);
+-- CREATE TABLE "players" --------------------------------------
+CREATE TABLE "public"."players" (
+	"player_tag" Text,
+	"donations" Integer,
+	"received" Integer,
+	"user_id" Bigint,
+	"id" Integer DEFAULT nextval('players_id_seq'::regclass) NOT NULL,
+	"season_id" Integer,
+	"start_friend_in_need" Integer,
+	"start_sharing_is_caring" Integer,
+	"trophies" Integer,
+	"start_update" Boolean DEFAULT false,
+	"final_update" Boolean DEFAULT false,
+	"end_sharing_is_caring" Integer DEFAULT 0,
+	"end_friend_in_need" Integer DEFAULT 0,
+	"start_attacks" Integer DEFAULT 0,
+	"end_attacks" Integer DEFAULT 0,
+	"start_defenses" Integer DEFAULT 0,
+	"end_defenses" Integer DEFAULT 0,
+	"start_best_trophies" Integer DEFAULT 0,
+	"end_best_trophies" Integer DEFAULT 0,
+	"start_trophies" Integer DEFAULT 0,
+	"last_updated" Timestamp Without Time Zone DEFAULT now(),
+	"name" Text DEFAULT ''::text,
+	"league_id" Integer DEFAULT 29000000,
+	"versus_trophies" Integer DEFAULT 0,
+	"clan_tag" Text DEFAULT ''::text,
+	"level" Integer DEFAULT 0,
+	"prev_donations" Integer DEFAULT 0,
+	"prev_received" Integer,
+	"player_name" Text,
+	"attacks" Integer DEFAULT 0,
+	"defenses" Integer DEFAULT 0,
+	"fresh_update" Boolean DEFAULT false,
+	"versus_attacks" Integer DEFAULT 0,
+	"ignore" Boolean DEFAULT false,
+	"exp_level" Integer,
+	"games_champion" INTEGER DEFAULT 0,
+	"well_seasoned" INTEGER DEFAULT 0,
+	PRIMARY KEY ( "id" ),
+	CONSTRAINT "players_season_id_player_tag_key" UNIQUE( "season_id", "player_tag" ) );
+ ;
+-- -------------------------------------------------------------
+
+-- CREATE INDEX "season_idx" -----------------------------------
+CREATE INDEX "season_idx" ON "public"."players" USING btree( "season_id" Asc NULLS Last );
+-- -------------------------------------------------------------
+
+-- CREATE INDEX "user_id_idx" ----------------------------------
+CREATE INDEX "user_id_idx" ON "public"."players" USING btree( "user_id" Asc NULLS Last );
+-- -------------------------------------------------------------
+
+-- CREATE INDEX "players_player_tag_idx" -----------------------
+CREATE INDEX "players_player_tag_idx" ON "public"."players" USING btree( "player_tag" Asc NULLS Last );
+-- -------------------------------------------------------------
+
+-- CREATE INDEX "players_clan_tag_idx" -------------------------
+CREATE INDEX "players_clan_tag_idx" ON "public"."players" USING btree( "clan_tag" Asc NULLS Last );
+-- -------------------------------------------------------------
+
+COMMIT;
+BEGIN;
+
+-- CREATE TABLE "players_history" ------------------------------
+CREATE TABLE "public"."players_history" (
+	"id" Integer DEFAULT nextval('players_history_id_seq'::regclass) NOT NULL,
+	"player_tag" Text,
+	"donations" Integer,
+	"received" Integer,
+	"trophies" Integer,
+	"user_id" Bigint,
+	"friend_in_need" Integer,
+	"sharing_is_caring" Integer,
+	"attacks" Integer DEFAULT 0,
+	"defenses" Integer DEFAULT 0,
+	"best_trophies" Integer DEFAULT 0,
+	"last_updated" Timestamp Without Time Zone DEFAULT now(),
+	"name" Text DEFAULT ''::text,
+	"league_id" Integer DEFAULT 29000000,
+	"versus_trophies" Integer DEFAULT 0,
+	"clan_tag" Text DEFAULT ''::text,
+	"level" Integer DEFAULT 0,
+	"player_name" Text,
+	"versus_attacks" Integer DEFAULT 0,
+	"exp_level" Integer,
+	"date_added" Timestamp Without Time Zone DEFAULT now(),
+	"games_champion" INTEGER DEFAULT 0,
+	"well_seasoned" INTEGER DEFAULT 0,
+	PRIMARY KEY ( "id" ),
+	CONSTRAINT "players_date_added_player_tag_key" UNIQUE( "date_added", "player_tag" ) );
+ ;
+-- -------------------------------------------------------------
+
+-- CREATE INDEX "players_history_clan_tag_idx" -----------------
+CREATE INDEX "players_history_clan_tag_idx" ON "public"."players_history" USING btree( "clan_tag" Asc NULLS Last );
+-- -------------------------------------------------------------
+
+-- CREATE INDEX "players_history_player_tag_idx" ---------------
+CREATE INDEX "players_history_player_tag_idx" ON "public"."players_history" USING btree( "player_tag" Asc NULLS Last );
+-- -------------------------------------------------------------
+
+-- CREATE INDEX "players_history_user_id_idx" ------------------
+CREATE INDEX "players_history_user_id_idx" ON "public"."players_history" USING btree( "user_id" Asc NULLS Last );
+-- -------------------------------------------------------------
+
+-- CREATE INDEX "players_history_date_added_idx" ---------------
+CREATE INDEX "players_history_date_added_idx" ON "public"."players_history" USING btree( "date_added" Asc NULLS Last );
+-- -------------------------------------------------------------
+
+COMMIT;
 
 CREATE TABLE eventplayers (
     id serial primary key,
