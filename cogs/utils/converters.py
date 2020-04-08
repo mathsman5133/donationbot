@@ -231,7 +231,7 @@ class ClanChannelComboConverter(commands.Converter):
             except commands.BadArgument:
                 try:
                     clan = await AddClanConverter().convert(ctx, n)
-                except commands.BadArgument:
+                except (commands.BadArgument, IndexError):
                     pass
 
         return channel, clan
