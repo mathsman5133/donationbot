@@ -111,7 +111,7 @@ class Activity(commands.Cog):
         if not (trophy_events or donation_events):
             return await ctx.send(f"Not enough history. Please try again later.")
 
-        events = {hour[0]: value[0] + donation_events[hour[0]] for hour, value in trophy_events.items()}
+        events = {hour: value + donation_events[hour] for hour, value in trophy_events.items()}
         f = time.perf_counter()
 
         existing_graphs = self.graphs.get((ctx.guild.id, ctx.author.id), [])
