@@ -130,7 +130,7 @@ class Activity(commands.Cog):
         for i, data in enumerate(existing_graph_data):
             width, offset = get_width_offset(i)
             graphs.append((
-                plt.bar([n + offset for n in y_pos], data[0], width), data[1]
+                plt.bar([n + offset for n in y_pos], data[0], width, align='edge'), data[1]
             ))
 
         plt.xticks(y_pos, list(int(n) for n in events.keys()))
