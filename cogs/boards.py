@@ -378,7 +378,7 @@ class DonationBoard(commands.Cog):
         if not message:
             try:
                 message = await config.channel.send("Placeholder.... do not delete me!")
-            except discord.Forbidden:
+            except (discord.Forbidden, discord.NotFound):
                 await self.bot.pool.execute("UPDATE boards SET toggle = FALSE WHERE channel_id = $1", config.channel_id)
                 return
 

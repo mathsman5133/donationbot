@@ -134,9 +134,9 @@ class Activity(commands.Cog):
             ))
 
         plt.xticks(y_pos, list(int(n) for n in events.keys()))
-        plt.xlabel("Time (hr)")
+        plt.xlabel("Time (hr) - in UTC.")
         plt.ylabel("Activity (events / 60min)")
-        plt.title(f"Activity Graph")
+        plt.title("Activity Graph")
         plt.legend(tuple(n[0] for n in graphs), tuple(n[1] for n in graphs))
 
         self.add_graph(ctx.guild.id, ctx.author.id, (list(events.values()), str(clan[0])))
