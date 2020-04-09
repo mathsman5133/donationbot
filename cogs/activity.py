@@ -100,7 +100,7 @@ class Activity(commands.Cog):
         query2 = """SELECT date_part('HOUR', "time") as "hour", COUNT(*) as "count" 
                     From donationevents 
                     WHERE clan_tag = $1
-                    GROUP BY clan_tag, "hour"
+                    GROUP BY "hour" 
                     ORDER BY "hour"
                  """
         trophy_events = {}
@@ -124,7 +124,7 @@ class Activity(commands.Cog):
         existing_graph_data.sort(key=lambda n: sum(n[0]), reverse=True)
         for i, data in enumerate(existing_graph_data):
             graphs.append((
-                plt.bar(y_pos, data[0], align='center', alpha=0.7 - i * 0.1), data[1]
+                plt.bar(y_pos, data[0], align='center', alpha=0.7 - i * 0.2), data[1]
             ))
 
         plt.xticks(y_pos, list(int(n) for n in events.keys()))
