@@ -107,7 +107,7 @@ class Activity(commands.Cog):
             return await ctx.send(f"Not enough history. Please try again later.")
 
         s2 = time.perf_counter()
-        y_pos = numpy.arrange(len(fetch))
+        y_pos = numpy.arange(len(fetch))
         plt.bar(y_pos, [n[0] for n in fetch], align='center', alpha=0.5)
         plt.xticks(y_pos, [str(n[1]) for n in fetch])
         plt.xlabel("Time (hr)")
