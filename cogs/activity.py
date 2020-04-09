@@ -124,13 +124,13 @@ class Activity(commands.Cog):
         s2 = time.perf_counter()
         y_pos = numpy.arange(len(events))
         graphs = [
-            (plt.bar(y_pos, list(events.values()), get_width_offset(0)[0], align='edge'), str(clan[0]), sum(events.values()))
+            (plt.bar(y_pos, list(events.values()), get_width_offset(0)[0], align='center', linewidth=0.05), str(clan[0]), sum(events.values()))
         ]
         existing_graph_data.sort(key=lambda n: sum(n[0]), reverse=True)
         for i, data in enumerate(existing_graph_data):
             width, offset = get_width_offset(i)
             graphs.append((
-                plt.bar([n + offset for n in y_pos], data[0], width, align='edge'), data[1]
+                plt.bar([n + offset for n in y_pos], data[0], width, align='center', linewidth=0.05), data[1]
             ))
 
         plt.xticks(y_pos, list(int(n) for n in events.keys()))
