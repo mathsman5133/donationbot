@@ -103,8 +103,8 @@ class Activity(commands.Cog):
                     GROUP BY "hour" 
                     ORDER BY "hour"
                  """
-        f = time.perf_counter()
         fetch = await ctx.db.fetch(query2, clan[0].tag)
+        f = time.perf_counter()
         trophy_events = {}
         #{n[0]: n[1] for n in await ctx.db.fetch(query, clan[0].tag)}
         donation_events = {n[0]: n[1] for n in fetch}
