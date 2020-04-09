@@ -6,8 +6,9 @@ import numpy
 import coc
 import discord
 
-from matplotlib import pyplot as plt
+from collections import Counter
 
+from matplotlib import pyplot as plt
 from discord.ext import commands
 
 from cogs.utils.converters import ClanConverter, PlayerConverter
@@ -18,6 +19,14 @@ from cogs.utils.paginator import LastOnlinePaginator
 class Activity(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.graphs = {}
+
+    def add_graph(self, guild_id, author_id, data):
+        key = (guild_id, author_id)
+        try:
+            self.graphs[key].append(data)
+        except (KeyError, AttributeError):  # not sure which one this raises yet
+            self.graphs[key] = [data]
 
     @commands.group()
     @commands.is_owner()
@@ -81,43 +90,48 @@ class Activity(commands.Cog):
             return await ctx.send("Please pass in a clan.")
 
         s = time.perf_counter()
-        query = """WITH cte AS (
-                        SELECT date_part('HOUR', "time") as "hour", COUNT(*) as "count", clan_tag 
-                        From trophyevents 
-                        WHERE clan_tag = $1
-                        AND league_id = 29000022
-                        AND trophy_change > 0
-                        GROUP BY clan_tag, "hour"
-                    ),
-                    cte2 AS (
-                        SELECT date_part('HOUR', "time") as "hour", COUNT(*) as "count", clan_tag 
-                        From donationevents 
-                        WHERE clan_tag = $1
-                        AND donations > 0
-                        GROUP BY clan_tag, "hour"
-                    )
-                    select cte.count + cte2.count as "count", cte."hour"
-                    FROM cte
-                    JOIN cte2 ON cte.hour = cte2.hour
-        """
-        fetch = await ctx.db.fetch(query, clan[0].tag)
-        f = time.perf_counter()
+        query = """SELECT date_part('HOUR', "time") as "hour", COUNT(*) as "count" 
+                   From trophyevents 
+                   WHERE clan_tag = $1
+                   AND league_id = 29000022
+                   AND trophy_change > 0
+                   GROUP BY clan_tag, "hour"
+                   ORDER BY "hour"
+                """
+        query2 = """SELECT date_part('HOUR', "time") as "hour", COUNT(*) as "count" 
+                    From donationevents 
+                    WHERE clan_tag = $1
+                    AND donations > 0
+                    GROUP BY clan_tag, "hour"
+                    ORDER BY "hour"
+                 """
+        trophy_events = {n[1]: n[0] for n in await ctx.db.fetch(query, clan[0].tag)}
+        donation_events = {n[1]: n[0] for n in await ctx.db.fetch(query2, clan[0].tag)}
 
-        if not fetch:
+        if not (trophy_events or donation_events):
             return await ctx.send(f"Not enough history. Please try again later.")
 
+        events = {hour[0]: value[0] + donation_events[hour[0]] for hour, value in trophy_events.items()}
+        f = time.perf_counter()
+
+        existing_graphs = self.graphs.get((ctx.guild.id, ctx.author.id), [])
+
         s2 = time.perf_counter()
-        y_pos = numpy.arange(len(fetch))
-        plt.bar(y_pos, [n[0] for n in fetch], align='center', alpha=0.5)
-        plt.xticks(y_pos, [str(n[1]) for n in fetch])
+        y_pos = numpy.arange(len(events))
+        graph = plt.bar(y_pos, list(events.values()), align='center', alpha=0.5)
+        plt.xticks(y_pos, list(events.keys()))
         plt.xlabel("Time (hr)")
-        plt.ylabel("Activity")
-        plt.title(f"Activity graph for {clan[0]}")
+        plt.ylabel("Activity (events / 60min)")
+        plt.title(f"Activity Graph")
+        plt.legend((graph, *[n[0] for n in existing_graphs]), (clan[0], *[n[1] for n in existing_graphs]))
+
+        self.add_graph(ctx.guild.id, ctx.author.id, (graph, str(clan[0])))
 
         b = io.BytesIO()
         plt.savefig(b, format='png')
         b.seek(0)
         await ctx.send(f"query: {(f - s)*1000}ms\nplt: {(time.perf_counter() - s2) * 1000}ms", file=discord.File(b, f'activitygraph.png'))
+        plt.close()
 
     @activity.command(name='player')
     async def activity_player(self, ctx, *, player: PlayerConverter):
