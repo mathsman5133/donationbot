@@ -30,7 +30,7 @@ class Activity(commands.Cog):
 
     @commands.group()
     @commands.is_owner()
-    async def activity(self, ctx, *, arg: typing.Union[discord.Member, ClanConverter, PlayerConverter] = None):
+    async def activity(self, ctx):
         """[Group] Get a graph showing the approximate activity/online times for a clan or member.
 
         **Parameters**
