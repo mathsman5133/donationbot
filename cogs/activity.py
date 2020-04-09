@@ -121,13 +121,13 @@ class Activity(commands.Cog):
         graphs = [
             (plt.bar(y_pos, list(events.values()), align='center', alpha=0.8), str(clan[0]), sum(events.values()))
         ]
-        for data in existing_graph_data:
+        existing_graph_data.sort(key=lambda n: sum(n[0]), reverse=True)
+        for i, data in enumerate(existing_graph_data):
             graphs.append((
-                plt.bar(y_pos, data[0], align='center', alpha=0.8), data[1], sum(data[0])
+                plt.bar(y_pos, data[0], align='center', alpha=0.7 - i * 0.1), data[1]
             ))
-        graphs.sort(key=lambda n: n[2], reverse=True)
 
-        plt.xticks(y_pos, list(events.keys()))
+        plt.xticks(y_pos, list(int(n) for n in events.keys()))
         plt.xlabel("Time (hr)")
         plt.ylabel("Activity (events / 60min)")
         plt.title(f"Activity Graph")
