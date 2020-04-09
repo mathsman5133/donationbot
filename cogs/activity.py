@@ -114,24 +114,31 @@ class Activity(commands.Cog):
         events = {hour: value + donation_events[hour] for hour, value in trophy_events.items()}
         f = time.perf_counter()
 
-        existing_graphs = self.graphs.get((ctx.guild.id, ctx.author.id), [])
+        existing_graph_data = self.graphs.get((ctx.guild.id, ctx.author.id), [])
 
         s2 = time.perf_counter()
         y_pos = numpy.arange(len(events))
-        graph = plt.bar(y_pos, list(events.values()), align='center', alpha=0.5)
+        graphs = [
+            (plt.bar(y_pos, list(events.values()), align='center', alpha=0.5), str(clan[0]))
+        ]
+        for data in existing_graph_data:
+            graphs.append((
+                plt.bar(y_pos, data[0], align='center', alpha=0.5), data[1]
+            ))
+
         plt.xticks(y_pos, list(events.keys()))
         plt.xlabel("Time (hr)")
         plt.ylabel("Activity (events / 60min)")
         plt.title(f"Activity Graph")
-        plt.legend((graph, *[n[0] for n in existing_graphs]), (clan[0], *[n[1] for n in existing_graphs]))
+        plt.legend(tuple(n[0] for n in graphs), tuple(n[1] for n in graphs))
 
-        self.add_graph(ctx.guild.id, ctx.author.id, (graph, str(clan[0])))
+        self.add_graph(ctx.guild.id, ctx.author.id, (list(events.values()), str(clan[0])))
 
         b = io.BytesIO()
         plt.savefig(b, format='png')
         b.seek(0)
         await ctx.send(f"query: {(f - s)*1000}ms\nplt: {(time.perf_counter() - s2) * 1000}ms", file=discord.File(b, f'activitygraph.png'))
-        plt.clf()
+        plt.cla()
 
     @activity.command(name='player')
     async def activity_player(self, ctx, *, player: PlayerConverter):
