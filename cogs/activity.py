@@ -116,15 +116,20 @@ class Activity(commands.Cog):
 
         existing_graph_data = self.graphs.get((ctx.guild.id, ctx.author.id), [])
 
+        def get_width_offset(index):
+            width = 0.8 / (len(existing_graph_data) + 1)
+            return width, width * index
+
         s2 = time.perf_counter()
         y_pos = numpy.arange(len(events))
         graphs = [
-            (plt.bar(y_pos, list(events.values()), align='center', alpha=0.8), str(clan[0]), sum(events.values()))
+            (plt.bar(y_pos, list(events.values()), align='edge'), str(clan[0]), sum(events.values()))
         ]
         existing_graph_data.sort(key=lambda n: sum(n[0]), reverse=True)
         for i, data in enumerate(existing_graph_data):
+            width, offset = get_width_offset(i)
             graphs.append((
-                plt.bar(y_pos, data[0], align='center', alpha=0.7 - i * 0.2), data[1]
+                plt.bar([n + offset for n in y_pos], data[0], width), data[1]
             ))
 
         plt.xticks(y_pos, list(int(n) for n in events.keys()))
