@@ -235,3 +235,89 @@ class ClanChannelComboConverter(commands.Converter):
                     pass
 
         return channel, clan
+
+
+class ActivityBarConverter(commands.Converter):
+    async def convert(self, ctx, argument):
+        guild = None  # channel
+        channel = None  # guild
+        clan = None  # (tag, name)
+        player = None  # (tag, name)
+
+        if argument == "all":
+            guild = ctx.guild
+
+        try:
+            channel = await commands.TextChannelConverter().convert(ctx, argument)
+        except commands.BadArgument:
+            query = "SELECT DISTINCT(player_tag), player_name FROM players WHERE player_tag LIKE $1 OR player_name LIKE $1"
+            fetch = await ctx.db.fetchrow(query, argument)
+            if fetch:
+                player = (fetch['player_tag'], fetch['player_name'])
+            else:
+                query = "SELECT DISTINCT(clan_tag), clan_name FROM clans WHERE clan_tag LIKE $1 OR clan_name LIKE $1"
+                fetch = await ctx.db.fetchrow(query, argument)
+                if fetch:
+                    clan = (fetch['clan_tag'], fetch['clan_name'])
+                else:
+                    raise commands.BadArgument("I tried to parse your argument as a channel, server, clan name, clan tag, player name or tag and couldn't find a match!")
+
+        if guild:
+            query = """SELECT AVG(x."count")
+                       FROM (
+                           SELECT DATE_PART('HOUR', "time") as "hour", 
+                                  COUNT(*) as "count" 
+                           FROM donationevents 
+                           INNER JOIN clans
+                           ON clans.clan_tag = donationevents.clan_tag
+                           WHERE clans.guild_id = $1 
+                           GROUP BY "hour", player_tag
+                       ) as x
+                       GROUP BY x."hour" 
+                       ORDER BY x."hour"
+                    """
+            return guild.name, await ctx.db.fetch(query, guild.id)
+
+        if channel:
+            query = """SELECT AVG(x."count")
+                       FROM (
+                           SELECT DATE_PART('HOUR', "time") as "hour", 
+                                  COUNT(*) as "count" 
+                           FROM donationevents 
+                           INNER JOIN clans
+                           ON clans.clan_tag = donationevents.clan_tag
+                           WHERE clans.channel_id = $1 
+                           GROUP BY "hour", player_tag
+                       ) as x
+                       GROUP BY x."hour" 
+                       ORDER BY x."hour"
+                    """
+            return "#" + channel.name, await ctx.db.fetch(query, channel.id)
+
+        if player:
+            query = """SELECT AVG(x."count")
+                        FROM (
+                            SELECT DATE_PART('HOUR', "time") as "hour", 
+                                   COUNT(*) as "count" 
+                            FROM donationevents 
+                            WHERE player_tag = $1 
+                            GROUP BY "hour"
+                        ) as x
+                        GROUP BY x."hour" 
+                        ORDER BY x."hour"
+                     """
+            return player[1], await ctx.db.fetch(query, player[0])
+        if clan:
+            query = """SELECT AVG(x."count")
+                        FROM (
+                            SELECT DATE_PART('HOUR', "time") as "hour", 
+                                   COUNT(*) as "count" 
+                            FROM donationevents 
+                            WHERE clan_tag = $1 
+                            GROUP BY "hour", player_tag
+                        ) as x
+                        GROUP BY x."hour" 
+                        ORDER BY x."hour"
+                     """
+            return clan[1], await ctx.db.fetch(query, clan[0])
+

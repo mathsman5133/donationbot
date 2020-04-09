@@ -11,7 +11,7 @@ from collections import Counter
 from matplotlib import pyplot as plt
 from discord.ext import commands
 
-from cogs.utils.converters import ClanConverter, PlayerConverter
+from cogs.utils.converters import ClanConverter, PlayerConverter, ActivityBarConverter
 from cogs.utils.formatters import readable_time
 from cogs.utils.paginator import LastOnlinePaginator
 
@@ -57,22 +57,22 @@ class Activity(commands.Cog):
         """
         if ctx.invoked_subcommand is not None:
             return
+        #
+        # if not arg:
+        #     arg = await ctx.get_clans()
+        #
+        # if not arg:
+        #     return await ctx.send('Please claim a clan.')
+        # # elif isinstance(arg, discord.Member):
+        # #     await ctx.invoke(self.last_online_user, user=arg)
+        # # elif isinstance(arg, coc.BasicPlayer):
+        # #     await ctx.invoke(self.last_online_player, player=arg)
+        # elif isinstance(arg, list):
+        #     if isinstance(arg[0], coc.BasicClan):
+        #         await ctx.invoke(self.activity_clan, clan=arg)
 
-        if not arg:
-            arg = await ctx.get_clans()
-
-        if not arg:
-            return await ctx.send('Please claim a clan.')
-        # elif isinstance(arg, discord.Member):
-        #     await ctx.invoke(self.last_online_user, user=arg)
-        # elif isinstance(arg, coc.BasicPlayer):
-        #     await ctx.invoke(self.last_online_player, player=arg)
-        elif isinstance(arg, list):
-            if isinstance(arg[0], coc.BasicClan):
-                await ctx.invoke(self.activity_clan, clan=arg)
-
-    @activity.command(name='clan')
-    async def activity_clan(self, ctx, *, clan: ClanConverter):
+    @activity.command(name='bar')
+    async def activity_bar(self, ctx, *, data: ActivityBarConverter):
         """Get a graph showing the approximate activity/online times for a clan."
 
         **Parameters**
@@ -86,25 +86,29 @@ class Activity(commands.Cog):
         :white_check_mark: `+activity clan #P0LYJC8C`
         :white_check_mark: `+activity clan Rock Throwers`
         """
-        if not clan:
-            return await ctx.send("Please pass in a clan.")
-
-        s = time.perf_counter()
-        # query = """SELECT date_part('HOUR', "time") as "hour", COUNT(*) as "count"
-        #            From trophyevents
-        #            WHERE clan_tag = $1
-        #            AND league_id = 29000022
-        #            AND trophy_change > 0
-        #            GROUP BY clan_tag, "hour"
-        #         """
-        query2 = """SELECT date_part('HOUR', "time") as "hour", COUNT(*) as "count" 
-                    From donationevents 
-                    WHERE clan_tag = $1
-                    GROUP BY "hour" 
-                    ORDER BY "hour"
-                 """
-        fetch = await ctx.db.fetch(query2, clan[0].tag)
-        f = time.perf_counter()
+        #
+        # s = time.perf_counter()
+        # # query = """SELECT date_part('HOUR', "time") as "hour", COUNT(*) as "count"
+        # #            From trophyevents
+        # #            WHERE clan_tag = $1
+        # #            AND league_id = 29000022
+        # #            AND trophy_change > 0
+        # #            GROUP BY clan_tag, "hour"
+        # #         """
+        # query2 = """SELECT AVG(x."count")
+        #             FROM (
+        #                 SELECT DATE_PART('HOUR', "time") as "hour",
+        #                        COUNT(*) as "count"
+        #                 FROM donationevents
+        #                 WHERE clan_tag = $1
+        #                 GROUP BY "hour", player_tag
+        #             ) as x
+        #             GROUP BY x."hour"
+        #             ORDER BY x."hour"
+        #          """
+        # fetch = await ctx.db.fetch(query2, clan[0].tag)
+        # f = time.perf_counter()
+        name, fetch = data
         trophy_events = {}
         #{n[0]: n[1] for n in await ctx.db.fetch(query, clan[0].tag)}
         donation_events = {n[0]: n[1] for n in fetch}
@@ -124,13 +128,13 @@ class Activity(commands.Cog):
         s2 = time.perf_counter()
         y_pos = numpy.arange(len(events))
         graphs = [
-            (plt.bar(y_pos, list(events.values()), get_width_offset(0)[0], align='center', linewidth=0.05), str(clan[0]), sum(events.values()))
+            (plt.bar(y_pos, list(events.values()), get_width_offset(0)[0], align='center', linewidth=0.1), name, sum(events.values()))
         ]
         existing_graph_data.sort(key=lambda n: sum(n[0]), reverse=True)
         for i, data in enumerate(existing_graph_data):
             width, offset = get_width_offset(i)
             graphs.append((
-                plt.bar([n + offset for n in y_pos], data[0], width, align='center', linewidth=0.05), data[1]
+                plt.bar([n + offset for n in y_pos], data[0], width, align='center'), data[1]
             ))
 
         plt.xticks(y_pos, list(int(n) for n in events.keys()))
@@ -139,12 +143,12 @@ class Activity(commands.Cog):
         plt.title("Activity Graph")
         plt.legend(tuple(n[0] for n in graphs), tuple(n[1] for n in graphs))
 
-        self.add_graph(ctx.guild.id, ctx.author.id, (list(events.values()), str(clan[0])))
+        self.add_graph(ctx.guild.id, ctx.author.id, (list(events.values()), name))
 
         b = io.BytesIO()
         plt.savefig(b, format='png')
         b.seek(0)
-        await ctx.send(f"query: {(f - s)*1000}ms\nplt: {(time.perf_counter() - s2) * 1000}ms", file=discord.File(b, f'activitygraph.png'))
+        await ctx.send(f"plt: {(time.perf_counter() - s2) * 1000}ms", file=discord.File(b, f'activitygraph.png'))
         plt.cla()
 
     @activity.command(name='player')
