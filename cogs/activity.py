@@ -1,5 +1,7 @@
 import io
+import time
 import typing
+import numpy
 
 import coc
 import discord
@@ -78,6 +80,7 @@ class Activity(commands.Cog):
         if not clan:
             return await ctx.send("Please pass in a clan.")
 
+        s = time.perf_counter()
         query = """WITH cte AS (
                         SELECT date_part('HOUR', "time") as "hour", COUNT(*) as "count", clan_tag 
                         From trophyevents 
@@ -98,11 +101,13 @@ class Activity(commands.Cog):
                     JOIN cte2 ON cte.hour = cte2.hour
         """
         fetch = await ctx.db.fetch(query, clan[0].tag)
+        f = time.perf_counter()
 
         if not fetch:
             return await ctx.send(f"Not enough history. Please try again later.")
 
-        y_pos = [i for i in range(len(fetch))]
+        s2 = time.perf_counter()
+        y_pos = numpy.arrange(len(fetch))
         plt.bar(y_pos, [n[0] for n in fetch], align='center', alpha=0.5)
         plt.xticks(y_pos, [str(n[1]) for n in fetch])
         plt.xlabel("Time (hr)")
@@ -112,7 +117,7 @@ class Activity(commands.Cog):
         b = io.BytesIO()
         plt.savefig(b, format='png')
         b.seek(0)
-        await ctx.send(file=discord.File(b, f'activitygraph.png'))
+        await ctx.send(f"query: {(f - s)*1000}ms\nplt: {(time.perf_counter() - s2) * 1000}ms", file=discord.File(b, f'activitygraph.png'))
 
     @activity.command(name='player')
     async def activity_player(self, ctx, *, player: PlayerConverter):
@@ -152,8 +157,6 @@ class Activity(commands.Cog):
 
         if not fetch:
             return await ctx.send("Not enough history. Please try again later.")
-
-        last_updated = fetch['since']
 
         y_pos = [i for i in range(len(fetch))]
         plt.bar(y_pos, [n[0] for n in fetch], align='center', alpha=0.5)
