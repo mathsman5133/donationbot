@@ -105,8 +105,8 @@ class Activity(commands.Cog):
                     GROUP BY clan_tag, "hour"
                     ORDER BY "hour"
                  """
-        trophy_events = {n[1]: n[0] for n in await ctx.db.fetch(query, clan[0].tag)}
-        donation_events = {n[1]: n[0] for n in await ctx.db.fetch(query2, clan[0].tag)}
+        trophy_events = {n[0]: n[1] for n in await ctx.db.fetch(query, clan[0].tag)}
+        donation_events = {n[0]: n[1] for n in await ctx.db.fetch(query2, clan[0].tag)}
 
         if not (trophy_events or donation_events):
             return await ctx.send(f"Not enough history. Please try again later.")
