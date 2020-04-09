@@ -103,27 +103,28 @@ class Activity(commands.Cog):
                     GROUP BY "hour" 
                     ORDER BY "hour"
                  """
+        f = time.perf_counter()
+        fetch = await ctx.db.fetch(query2, clan[0].tag)
         trophy_events = {}
         #{n[0]: n[1] for n in await ctx.db.fetch(query, clan[0].tag)}
-        donation_events = {n[0]: n[1] for n in await ctx.db.fetch(query2, clan[0].tag)}
+        donation_events = {n[0]: n[1] for n in fetch}
 
         if not (trophy_events or donation_events):
             return await ctx.send(f"Not enough history. Please try again later.")
 
         #events = {hour: value + donation_events[hour] for hour, value in trophy_events.items()}
         events = donation_events
-        f = time.perf_counter()
 
         existing_graph_data = self.graphs.get((ctx.guild.id, ctx.author.id), [])
 
         def get_width_offset(index):
             width = 0.8 / (len(existing_graph_data) + 1)
-            return width, width * index
+            return width, width * (index + 1)
 
         s2 = time.perf_counter()
         y_pos = numpy.arange(len(events))
         graphs = [
-            (plt.bar(y_pos, list(events.values()), align='edge'), str(clan[0]), sum(events.values()))
+            (plt.bar(y_pos, list(events.values()), get_width_offset(0)[0], align='edge'), str(clan[0]), sum(events.values()))
         ]
         existing_graph_data.sort(key=lambda n: sum(n[0]), reverse=True)
         for i, data in enumerate(existing_graph_data):
