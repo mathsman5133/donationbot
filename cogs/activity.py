@@ -103,7 +103,7 @@ class Activity(commands.Cog):
             return await ctx.send(f"Not enough history. Please try again later.")
 
         y_pos = [i for i in range(len(fetch))]
-        plt.bar(y_pos, [n[1] for n in fetch], align='centre', alpha=0.5)
+        plt.bar(y_pos, [n[1] for n in fetch], align='center', alpha=0.5)
         plt.xticks(y_pos, [str(n[0]) for n in fetch])
         plt.xlabel("Time (hr)")
         plt.title(f"Activity graph for {clan[0]}")
@@ -155,7 +155,7 @@ class Activity(commands.Cog):
         last_updated = fetch['since']
 
         y_pos = [i for i in range(len(fetch))]
-        plt.bar(y_pos, [n[1] for n in fetch], align='centre', alpha=0.5)
+        plt.bar(y_pos, [n[1] for n in fetch], align='center', alpha=0.5)
         plt.xticks(y_pos, [str(n[0]) for n in fetch])
         plt.xlabel("Time (hr)")
         plt.title(f"Activity graph for {player}")
