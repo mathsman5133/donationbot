@@ -101,6 +101,7 @@ class Activity(commands.Cog):
                     From donationevents 
                     WHERE clan_tag = $1
                     GROUP BY clan_tag, "hour"
+                    ORDER BY "hour"
                  """
         trophy_events = {}
         #{n[0]: n[1] for n in await ctx.db.fetch(query, clan[0].tag)}
