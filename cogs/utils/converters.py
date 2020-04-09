@@ -263,7 +263,7 @@ class ActivityBarConverter(commands.Converter):
                     raise commands.BadArgument("I tried to parse your argument as a channel, server, clan name, clan tag, player name or tag and couldn't find a match!")
 
         if guild:
-            query = """SELECT AVG(x."count")
+            query = """SELECT AVG(x."count"), x."hour"
                        FROM (
                            SELECT DATE_PART('HOUR', "time") as "hour", 
                                   COUNT(*) as "count" 
@@ -279,7 +279,7 @@ class ActivityBarConverter(commands.Converter):
             return guild.name, await ctx.db.fetch(query, guild.id)
 
         if channel:
-            query = """SELECT AVG(x."count")
+            query = """SELECT AVG(x."count"), x."hour"
                        FROM (
                            SELECT DATE_PART('HOUR', "time") as "hour", 
                                   COUNT(*) as "count" 
@@ -295,7 +295,7 @@ class ActivityBarConverter(commands.Converter):
             return "#" + channel.name, await ctx.db.fetch(query, channel.id)
 
         if player:
-            query = """SELECT AVG(x."count")
+            query = """SELECT AVG(x."count"), x."hour"
                         FROM (
                             SELECT DATE_PART('HOUR', "time") as "hour", 
                                    COUNT(*) as "count" 
@@ -308,7 +308,7 @@ class ActivityBarConverter(commands.Converter):
                      """
             return player[1], await ctx.db.fetch(query, player[0])
         if clan:
-            query = """SELECT AVG(x."count")
+            query = """SELECT AVG(x."count"), x."hour"
                         FROM (
                             SELECT DATE_PART('HOUR', "time") as "hour", 
                                    COUNT(*) as "count" 
