@@ -96,14 +96,11 @@ class Activity(commands.Cog):
                    AND league_id = 29000022
                    AND trophy_change > 0
                    GROUP BY clan_tag, "hour"
-                   ORDER BY "hour"
                 """
         query2 = """SELECT date_part('HOUR', "time") as "hour", COUNT(*) as "count" 
                     From donationevents 
                     WHERE clan_tag = $1
-                    AND donations > 0
                     GROUP BY clan_tag, "hour"
-                    ORDER BY "hour"
                  """
         trophy_events = {n[0]: n[1] for n in await ctx.db.fetch(query, clan[0].tag)}
         donation_events = {n[0]: n[1] for n in await ctx.db.fetch(query2, clan[0].tag)}
@@ -119,12 +116,13 @@ class Activity(commands.Cog):
         s2 = time.perf_counter()
         y_pos = numpy.arange(len(events))
         graphs = [
-            (plt.bar(y_pos, list(events.values()), align='center', alpha=0.5), str(clan[0]))
+            (plt.bar(y_pos, list(events.values()), align='center', alpha=0.8), str(clan[0]), sum(events.values()))
         ]
         for data in existing_graph_data:
             graphs.append((
-                plt.bar(y_pos, data[0], align='center', alpha=0.5), data[1]
+                plt.bar(y_pos, data[0], align='center', alpha=0.8), data[1], sum(data[1])
             ))
+        graphs.sort(key=lambda n: n[2], reverse=True)
 
         plt.xticks(y_pos, list(events.keys()))
         plt.xlabel("Time (hr)")
