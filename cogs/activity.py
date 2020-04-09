@@ -131,7 +131,7 @@ class Activity(commands.Cog):
         plt.savefig(b, format='png')
         b.seek(0)
         await ctx.send(f"query: {(f - s)*1000}ms\nplt: {(time.perf_counter() - s2) * 1000}ms", file=discord.File(b, f'activitygraph.png'))
-        plt.close()
+        plt.clf()
 
     @activity.command(name='player')
     async def activity_player(self, ctx, *, player: PlayerConverter):
