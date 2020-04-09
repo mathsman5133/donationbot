@@ -90,25 +90,27 @@ class Activity(commands.Cog):
             return await ctx.send("Please pass in a clan.")
 
         s = time.perf_counter()
-        query = """SELECT date_part('HOUR', "time") as "hour", COUNT(*) as "count" 
-                   From trophyevents 
-                   WHERE clan_tag = $1
-                   AND league_id = 29000022
-                   AND trophy_change > 0
-                   GROUP BY clan_tag, "hour"
-                """
+        # query = """SELECT date_part('HOUR', "time") as "hour", COUNT(*) as "count"
+        #            From trophyevents
+        #            WHERE clan_tag = $1
+        #            AND league_id = 29000022
+        #            AND trophy_change > 0
+        #            GROUP BY clan_tag, "hour"
+        #         """
         query2 = """SELECT date_part('HOUR', "time") as "hour", COUNT(*) as "count" 
                     From donationevents 
                     WHERE clan_tag = $1
                     GROUP BY clan_tag, "hour"
                  """
-        trophy_events = {n[0]: n[1] for n in await ctx.db.fetch(query, clan[0].tag)}
+        trophy_events = {}
+        #{n[0]: n[1] for n in await ctx.db.fetch(query, clan[0].tag)}
         donation_events = {n[0]: n[1] for n in await ctx.db.fetch(query2, clan[0].tag)}
 
         if not (trophy_events or donation_events):
             return await ctx.send(f"Not enough history. Please try again later.")
 
-        events = {hour: value + donation_events[hour] for hour, value in trophy_events.items()}
+        #events = {hour: value + donation_events[hour] for hour, value in trophy_events.items()}
+        events = donation_events
         f = time.perf_counter()
 
         existing_graph_data = self.graphs.get((ctx.guild.id, ctx.author.id), [])
@@ -120,7 +122,7 @@ class Activity(commands.Cog):
         ]
         for data in existing_graph_data:
             graphs.append((
-                plt.bar(y_pos, data[0], align='center', alpha=0.8), data[1], sum(data[1])
+                plt.bar(y_pos, data[0], align='center', alpha=0.8), data[1], sum(data[0])
             ))
         graphs.sort(key=lambda n: n[2], reverse=True)
 
