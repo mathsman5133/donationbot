@@ -262,7 +262,7 @@ class ActivityBarConverter(commands.Converter):
                 else:
                     raise commands.BadArgument("I tried to parse your argument as a channel, server, clan name, clan tag, player name or tag and couldn't find a match!")
 
-        query = "SELECT id FROM activity_query INNER JOIN clans ON clans.clan_tag = activity_query.clan_tag WHERE clans.guild_id = $1"
+        query = "SELECT clans.id FROM activity_query INNER JOIN clans ON clans.clan_tag = activity_query.clan_tag WHERE clans.guild_id = $1"
         fetch = await ctx.db.fetchrow(query, ctx.guild.id)
         if not fetch:
             await ctx.send("Loading clan activity values. This will take a minute. Please be patient.")
