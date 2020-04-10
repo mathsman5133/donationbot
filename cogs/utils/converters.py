@@ -262,61 +262,89 @@ class ActivityBarConverter(commands.Converter):
                 else:
                     raise commands.BadArgument("I tried to parse your argument as a channel, server, clan name, clan tag, player name or tag and couldn't find a match!")
 
-        if guild:
-            query = """SELECT AVG(x."count"), x."hour"
-                       FROM (
-                           SELECT DATE_PART('HOUR', "time") as "hour", 
-                                  COUNT(*) as "count" 
-                           FROM donationevents 
-                           INNER JOIN clans
-                           ON clans.clan_tag = donationevents.clan_tag
-                           WHERE clans.guild_id = $1 
-                           GROUP BY "hour", player_tag
-                       ) as x
-                       GROUP BY x."hour" 
-                       ORDER BY x."hour"
+        query = "SELECT id FROM activity_query INNER JOIN clans ON clans.clan_tag = activity_query.clan_tag WHERE clans.guild_id = $1"
+        fetch = await ctx.db.fetchrow(query, ctx.guild.id)
+        if not fetch:
+            await ctx.send("Loading clan activity values. This will take a minute. Please be patient.")
+            query = """
+                    WITH cte AS (
+                        SELECT player_tag, 
+                               donationevents.clan_tag, 
+                               date_trunc('HOUR', "time") AS "timer", 
+                               date_part('HOUR', "time") AS "hour", 
+                               COUNT(*) AS "counter"
+                        FROM donationevents 
+                        INNER JOIN clans ON clans.clan_tag = donationevents.clan_tag
+                        WHERE clans.guild_id = $1
+                        GROUP BY timer, player_tag, donationevents.clan_tag, hour
+                    ),  
+                    cte2 AS (
+                        SELECT player_tag, 
+                               trophyevents.clan_tag, 
+                               date_trunc('HOUR', "time") AS "timer", 
+                               date_part('HOUR', "time") AS "hour", 
+                               COUNT(*) AS "counter"
+                        FROM trophyevents 
+                        INNER JOIN clans ON clans.clan_tag = trophyevents.clan_tag
+                        WHERE clans.guild_id = $1
+                        AND trophyevents.league_id > 29000022
+                        AND trophyevents.trophy_change > 0
+                        GROUP BY timer, player_tag, trophyevents.clan_tag, "hour"                 
+                    )
+                    INSERT INTO activity_query (player_tag, clan_tag, hour_time, counter, hour_digit)
+                    SELECT cte.player_tag,
+                           cte.clan_tag,
+                           cte.timer,
+                           COALESCE(cte.counter, 0) + COALESCE(cte2.counter, 0),
+                           cte.hour
+                    FROM cte 
+                    FULL JOIN cte2 
+                    ON cte.player_tag = cte2.player_tag 
+                    AND cte.clan_tag = cte2.clan_tag 
+                    AND cte.timer = cte2.timer
                     """
-            return guild.name, await ctx.db.fetch(query, guild.id)
+            await ctx.db.execute(query, ctx.guild.id)
+
+        if guild:
+            query = """
+                    SELECT AVG(counter), hour_digit, clan_name
+                    FROM activity_query
+                    INNER JOIN clans 
+                    ON clans.clan_tag = activity_query.clan_tag
+                    WHERE clans.guild_id = $1
+                    GROUP BY hour_digit, clan_name 
+                    ORDER BY hour_digit
+                    """
+            return guild, await ctx.db.fetch(query, guild.id)
 
         if channel:
-            query = """SELECT AVG(x."count"), x."hour"
-                       FROM (
-                           SELECT DATE_PART('HOUR', "time") as "hour", 
-                                  COUNT(*) as "count" 
-                           FROM donationevents 
-                           INNER JOIN clans
-                           ON clans.clan_tag = donationevents.clan_tag
-                           WHERE clans.channel_id = $1 
-                           GROUP BY "hour", player_tag
-                       ) as x
-                       GROUP BY x."hour" 
-                       ORDER BY x."hour"
+            query = """
+                    SELECT AVG(counter), hour_digit, clan_name
+                    FROM activity_query
+                    INNER JOIN clans 
+                    ON clans.clan_tag = activity_query.clan_tag
+                    WHERE clans.channel_id = $1
+                    GROUP BY hour_digit, clan_name 
+                    ORDER BY hour_digit
                     """
-            return "#" + channel.name, await ctx.db.fetch(query, channel.id)
+            return channel, await ctx.db.fetch(query, channel.id)
 
         if player:
-            query = """SELECT AVG(x."count"), x."hour"
-                        FROM (
-                            SELECT date_part('hour',time) as "hour", date(time) as "date", 
-                                   COUNT(*) as "count" 
-                            FROM donationevents 
-                            WHERE player_tag = $1
-                            group by "hour", "date" 
-                        ) as x
-                        GROUP BY x."hour" 
-                        ORDER BY x."hour"
-                     """
+            query = """
+                    SELECT AVG(counter), hour_digit
+                    FROM activity_query
+                    WHERE player_tag = $1
+                    GROUP BY hour_digit 
+                    ORDER BY hour_digit
+                    """
             return player[1], await ctx.db.fetch(query, player[0])
         if clan:
-            query = """SELECT AVG(x."count"), x."hour"
-                        FROM (
-                            SELECT DATE_PART('HOUR', "time") as "hour", date("time") as "date", COUNT(*) as "count" 
-                            FROM donationevents 
-                            WHERE clan_tag = $1 
-                            GROUP BY "hour", "date", player_tag
-                        ) as x
-                        GROUP BY x."hour" 
-                        ORDER BY x."hour"
-                     """
+            query = """
+                    SELECT AVG(counter), hour_digit
+                    FROM activity_query
+                    WHERE clan_tag = $1
+                    GROUP BY hour_digit 
+                    ORDER BY hour_digit
+                    """
             return clan[1], await ctx.db.fetch(query, clan[0])
 
