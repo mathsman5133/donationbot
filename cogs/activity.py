@@ -114,7 +114,7 @@ class Activity(commands.Cog):
         initial = {n: 0 for n in range(23)}
         donation_events = {n[1]: n[0] for n in fetch}
 
-        events = {hour: donation_events.get(hour, 0) for hour in range(23)}
+        donation_events = {hour: donation_events.get(hour, 0) for hour in range(23)}
 
         if not (trophy_events or donation_events):
             return await ctx.send(f"Not enough history. Please try again later.")
