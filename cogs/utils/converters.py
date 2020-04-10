@@ -242,26 +242,26 @@ class ActivityBarConverter(commands.Converter):
     async def convert(self, ctx, argument):
         guild = None  # channel
         channel = None  # guild
-        clan = None  # (tag, name)
+        clan = ('#P0LYJC8C', "Aussie Warriors")  # (tag, name)
         player = None  # (tag, name)
 
-        if argument == "all":
-            guild = ctx.guild
-
-        try:
-            channel = await commands.TextChannelConverter().convert(ctx, argument)
-        except commands.BadArgument:
-            query = "SELECT DISTINCT(player_tag), player_name FROM players WHERE player_tag LIKE $1 OR player_name LIKE $1"
-            fetch = await ctx.db.fetchrow(query, argument)
-            if fetch:
-                player = (fetch['player_tag'], fetch['player_name'])
-            else:
-                query = "SELECT DISTINCT(clan_tag), clan_name FROM clans WHERE clan_tag LIKE $1 OR clan_name LIKE $1"
-                fetch = await ctx.db.fetchrow(query, argument)
-                if fetch:
-                    clan = (fetch['clan_tag'], fetch['clan_name'])
-                else:
-                    raise commands.BadArgument("I tried to parse your argument as a channel, server, clan name, clan tag, player name or tag and couldn't find a match!")
+        # if argument == "all":
+        #     guild = ctx.guild
+        #
+        # try:
+        #     channel = await commands.TextChannelConverter().convert(ctx, argument)
+        # except commands.BadArgument:
+        #     query = "SELECT DISTINCT(player_tag), player_name FROM players WHERE player_tag LIKE $1 OR player_name LIKE $1"
+        #     fetch = await ctx.db.fetchrow(query, argument)
+        #     if fetch:
+        #         player = (fetch['player_tag'], fetch['player_name'])
+        #     else:
+        #         query = "SELECT DISTINCT(clan_tag), clan_name FROM clans WHERE clan_tag LIKE $1 OR clan_name LIKE $1"
+        #         fetch = await ctx.db.fetchrow(query, argument)
+        #         if fetch:
+        #             clan = (fetch['clan_tag'], fetch['clan_name'])
+        #         else:
+        #             raise commands.BadArgument("I tried to parse your argument as a channel, server, clan name, clan tag, player name or tag and couldn't find a match!")
 
         # query = "SELECT clans.id FROM activity_query INNER JOIN clans ON clans.clan_tag = activity_query.clan_tag WHERE clans.guild_id = $1"
         # fetch = await ctx.db.fetchrow(query, ctx.guild.id)
