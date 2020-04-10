@@ -102,7 +102,7 @@ class Activity(commands.Cog):
             return await ctx.send(f"Not enough history. Please try again later.")
 
         def get_width_offset(index):
-            width = 0.8 / (len(data_to_add) + 1)
+            width = 0.8 / len(data_to_add)
             return width, width * index
 
         y_pos = numpy.arange(23)
