@@ -1,6 +1,7 @@
 import coc
 import discord
 import re
+import time
 
 from datetime import datetime
 from discord.ext import commands
@@ -339,6 +340,7 @@ class ActivityBarConverter(commands.Converter):
                     """
             return player[1], await ctx.db.fetch(query, player[0])
         if clan:
+            s = time.perf_counter()
             query = """
                     SELECT AVG(counter), hour_digit
                     FROM activity_query
@@ -346,5 +348,7 @@ class ActivityBarConverter(commands.Converter):
                     GROUP BY hour_digit 
                     ORDER BY hour_digit
                     """
-            return clan[1], await ctx.db.fetch(query, clan[0])
+            fetch = await ctx.db.fetch(query, clan[0])
+            await ctx.send(f"{(time.perf_counter() - s)*1000}ms")
+            return clan[1], fetch
 
