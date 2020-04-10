@@ -248,18 +248,20 @@ class ActivityBarConverter(commands.Converter):
         if argument == "all":
             guild = ctx.guild
 
+        argument_split = [n.strip() for n in argument.split(",")]
+
         try:
             channel = await commands.TextChannelConverter().convert(ctx, argument)
         except commands.BadArgument:
-            query = "SELECT DISTINCT(clan_tag), clan_name FROM clans WHERE clan_tag LIKE $1 OR clan_name LIKE $1"
-            fetch = await ctx.db.fetchrow(query, argument)
+            query = "SELECT DISTINCT(clan_tag), clan_name FROM clans WHERE clan_tag LIKE ANY($1::TEXT[]) OR clan_name LIKE ANY($1::TEXT[])"
+            fetch = await ctx.db.fetch(query, argument_split)
             if fetch:
-                clan = (fetch['clan_tag'], fetch['clan_name'])
+                clan = {row['clan_tag']: row['clan_name'] for row in fetch}
             else:
-                query = "SELECT DISTINCT(player_tag), player_name FROM players WHERE player_tag LIKE $1 OR player_name LIKE $1"
-                fetch = await ctx.db.fetchrow(query, argument)
+                query = "SELECT DISTINCT(player_tag), player_name FROM players WHERE player_tag LIKE ANY($1::TEXT[]) OR player_name LIKE ANY($1::TEXT[])"
+                fetch = await ctx.db.fetch(query, argument_split)
                 if fetch:
-                    player = (fetch['player_tag'], fetch['player_name'])
+                    player = {row['player_tag']: row['player_name'] for row in fetch}
                 else:
                     raise commands.BadArgument("I tried to parse your argument as a channel, server, clan name, clan tag, player name or tag and couldn't find a match!")
 
@@ -308,47 +310,49 @@ class ActivityBarConverter(commands.Converter):
 
         if guild:
             query = """
-                    SELECT AVG(counter), hour_digit, clan_name
+                    SELECT AVG(counter), hour_digit, MIN(hour_time)
                     FROM activity_query
                     INNER JOIN clans 
                     ON clans.clan_tag = activity_query.clan_tag
                     WHERE clans.guild_id = $1
-                    GROUP BY hour_digit, clan_name 
+                    GROUP BY hour_digit 
                     ORDER BY hour_digit
                     """
-            return guild, await ctx.db.fetch(query, guild.id)
+            return "Guild: " + guild.name, await ctx.db.fetch(query, guild.id)
 
         if channel:
             query = """
-                    SELECT AVG(counter), hour_digit, clan_name
+                    SELECT AVG(counter), hour_digit, MIN(hour_time)
                     FROM activity_query
                     INNER JOIN clans 
                     ON clans.clan_tag = activity_query.clan_tag
                     WHERE clans.channel_id = $1
-                    GROUP BY hour_digit, clan_name 
-                    ORDER BY clan_name, hour_digit
+                    GROUP BY hour_digit 
+                    ORDER BY hour_digit
                     """
-            return channel, await ctx.db.fetch(query, channel.id)
+            return "#" + channel.name, await ctx.db.fetch(query, channel.id)
 
         if player:
             query = """
-                    SELECT AVG(counter), hour_digit
+                    SELECT AVG(counter), hour_digit, MIN(hour_time), player_tag
                     FROM activity_query
-                    WHERE player_tag = $1
-                    GROUP BY hour_digit 
-                    ORDER BY hour_digit
+                    WHERE player_tag = ANY($1::TEXT[])
+                    GROUP BY hour_digit, player_tag
+                    ORDER BY player_tag, hour_digit
                     """
-            return player[1], await ctx.db.fetch(query, player[0])
+            return await ctx.db.fetch(query, list(player.keys()))
         if clan:
             s = time.perf_counter()
             query = """
-                    SELECT AVG(counter), hour_digit
+                    SELECT AVG(counter), hour_digit, MIN(hour_time), clans.clan_name
                     FROM activity_query
-                    WHERE clan_tag = $1
-                    GROUP BY hour_digit 
-                    ORDER BY hour_digit
+                    INNER JOIN clans
+                    ON clans.clan_tag = activity_query.clan_tag
+                    WHERE clans.clan_tag = ANY($1::TEXT[])
+                    GROUP BY hour_digit, clans.clan_name
+                    ORDER BY clans.clan_name, hour_digit
                     """
-            fetch = await ctx.db.fetch(query, clan[0])
+            fetch = await ctx.db.fetch(query, list(clan.keys()))
             await ctx.send(f"{(time.perf_counter() - s)*1000}ms")
-            return clan[1], fetch
+            return fetch
 

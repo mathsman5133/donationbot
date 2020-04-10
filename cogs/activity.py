@@ -1,3 +1,4 @@
+import datetime
 import io
 import time
 import typing
@@ -28,30 +29,7 @@ class Activity(commands.Cog):
 
     @commands.group()
     async def activity(self, ctx):
-        """[Group] Get a graph showing the approximate activity/online times for a clan or member.
-
-        **Parameters**
-        :key: Discord user **OR**
-        :key: Clash player tag or name **OR**
-        :key: Clash clan tag or name **OR**
-        :key: `all` for all clans claimed.
-
-        **Format**
-        :information_source: `+activity @MENTION`
-        :information_source: `+activity #PLAYER_TAG`
-        :information_source: `+activity Player Name`
-        :information_source: `+activity #CLAN_TAG`
-        :information_source: `+activity Clan Name`
-        :information_source: `+activity all`
-
-        **Example**
-        :white_check_mark: `+activity @mathsman`
-        :white_check_mark: `+activity #JJ6C8PY`
-        :white_check_mark: `+activity mathsman`
-        :white_check_mark: `+activity #P0LYJC8C`
-        :white_check_mark: `+activity Rock Throwers`
-        :white_check_mark: `+activity all`
-        """
+        """[Group] Get a graph showing the approximate activity/online times for a clan or member."""
         if ctx.invoked_subcommand is not None:
             return
         #
@@ -68,7 +46,7 @@ class Activity(commands.Cog):
         #     if isinstance(arg[0], coc.BasicClan):
         #         await ctx.invoke(self.activity_clan, clan=arg)
 
-    @activity.command(name='bar')
+    @activity.group(name='bar', invoke_without_command=True)
     async def activity_bar(self, ctx, *, data: ActivityBarConverter):
         """Get a graph showing the approximate activity/online times for a clan."
 
@@ -88,7 +66,7 @@ class Activity(commands.Cog):
         existing_graph_data = self.graphs.get((ctx.guild.id, ctx.author.id), {})
 
         data_to_add = {}  # name: {hour: events}
-        if isinstance(key, (discord.TextChannel, discord.Guild)):
+        if not isinstance(key, (discord.TextChannel, discord.Guild)):
             for clan_name, data in itertools.groupby(fetch, key=lambda x: x['clan_name']):
                 dict_ = {n[1]: n[0] for n in data}
                 data_to_add[clan_name] = {hour: dict_.get(hour, 0) for hour in range(23)}
@@ -116,8 +94,9 @@ class Activity(commands.Cog):
 
         plt.xticks(y_pos, list(range(23)))
         plt.xlabel("Time (hr) - in UTC.")
-        plt.ylabel("Activity (events / 60min)")
-        plt.title("Activity Graph")
+        plt.ylabel("Activity (average events / 60min)")
+        days = int((datetime.datetime.now() - fetch[2]).total_seconds() / (60 * 60 * 24))
+        plt.title(f"Activity Graph - Time Period: {days}d")
         plt.legend(tuple(n[0] for n in graphs), tuple(n[1] for n in graphs))
 
         self.add_bar_graph(ctx.guild.id, ctx.author.id, **data_to_add)
@@ -127,6 +106,10 @@ class Activity(commands.Cog):
         b.seek(0)
         await ctx.send(file=discord.File(b, f'activitygraph.png'))
         plt.cla()
+
+    @activity_bar.command(name='clear')
+    async def activity_bar_clear(self, ctx):
+        del self.graphs[(ctx.guild.id, ctx.author.id)]
 
     @activity.command(name='player')
     async def activity_player(self, ctx, *, player: PlayerConverter):
