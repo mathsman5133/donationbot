@@ -90,10 +90,10 @@ class Activity(commands.Cog):
         data_to_add = {}  # name: {hour: events}
         if isinstance(key, (discord.TextChannel, discord.Guild)):
             for clan_name, data in itertools.groupby(fetch, key=lambda x: x['clan_name']):
-                dict_ = {n[0]: n[1] for n in data}
+                dict_ = {n[1]: n[0] for n in data}
                 data_to_add[clan_name] = {hour: dict_.get(hour, 0) for hour in range(23)}
         else:
-            dict_ = {n[0]: n[1] for n in fetch}
+            dict_ = {n[1]: n[0] for n in fetch}
             data_to_add[key] = {hour: dict_.get(hour, 0) for hour in range(23)}
 
         data_to_add = {**data_to_add, **existing_graph_data}
@@ -102,16 +102,16 @@ class Activity(commands.Cog):
             return await ctx.send(f"Not enough history. Please try again later.")
 
         def get_width_offset(index):
-            width = 0.8 / (len(existing_graph_data) + 1)
-            return width, width * (index + 1)
+            width = 0.8 / (len(data_to_add) + 1)
+            return width, width * index
 
-        y_pos = numpy.arange(sum(len(n) for n in data_to_add.values()))
+        y_pos = numpy.arange(23)
         graphs = []
 
         for i, (name, data) in enumerate(data_to_add.items()):
             width, offset = get_width_offset(i)
             graphs.append((
-                plt.bar([n + offset for n in y_pos], data, width, align='center'), name
+                plt.bar([n + offset for n in y_pos], list(data.values()), width, align='center'), name
             ))
 
         plt.xticks(y_pos, list(range(23)))
