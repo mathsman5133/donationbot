@@ -66,11 +66,14 @@ class Activity(commands.Cog):
         existing_graph_data = self.graphs.get((ctx.guild.id, ctx.author.id), {})
 
         data_to_add = {}  # name: {hour: events}
-        if not isinstance(key, (discord.TextChannel, discord.Guild)):
-            for clan_name, data in itertools.groupby(fetch, key=lambda x: x['clan_name']):
+        if not isinstance(key, discord.TextChannel):
+            for clan_name, data in itertools.groupby(fetch, key=lambda x: x[3]):
                 dict_ = {n[1]: n[0] for n in data}
                 data_to_add[clan_name] = {hour: dict_.get(hour, 0) for hour in range(23)}
         else:
+            if isinstance(key, discord.TextChannel):
+                key = "#" + key.name
+
             dict_ = {n[1]: n[0] for n in fetch}
             data_to_add[key] = {hour: dict_.get(hour, 0) for hour in range(23)}
 

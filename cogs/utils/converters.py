@@ -244,26 +244,25 @@ class ActivityBarConverter(commands.Converter):
         channel = None  # guild
         clan = None  # (tag, name)
         player = None  # (tag, name)
+        argument_split = [n.strip() for n in argument.split(",")]
 
         if argument == "all":
             guild = ctx.guild
-
-        argument_split = [n.strip() for n in argument.split(",")]
-
-        try:
-            channel = await commands.TextChannelConverter().convert(ctx, argument)
-        except commands.BadArgument:
-            query = "SELECT DISTINCT(clan_tag), clan_name FROM clans WHERE clan_tag LIKE ANY($1::TEXT[]) OR clan_name LIKE ANY($1::TEXT[])"
-            fetch = await ctx.db.fetch(query, argument_split)
-            if fetch:
-                clan = {row['clan_tag']: row['clan_name'] for row in fetch}
-            else:
-                query = "SELECT DISTINCT(player_tag), player_name FROM players WHERE player_tag LIKE ANY($1::TEXT[]) OR player_name LIKE ANY($1::TEXT[])"
+        else:
+            try:
+                channel = await commands.TextChannelConverter().convert(ctx, argument)
+            except commands.BadArgument:
+                query = "SELECT DISTINCT(clan_tag), clan_name FROM clans WHERE clan_tag LIKE ANY($1::TEXT[]) OR clan_name LIKE ANY($1::TEXT[])"
                 fetch = await ctx.db.fetch(query, argument_split)
                 if fetch:
-                    player = {row['player_tag']: row['player_name'] for row in fetch}
+                    clan = {row['clan_tag']: row['clan_name'] for row in fetch}
                 else:
-                    raise commands.BadArgument("I tried to parse your argument as a channel, server, clan name, clan tag, player name or tag and couldn't find a match!")
+                    query = "SELECT DISTINCT(player_tag), player_name FROM players WHERE player_tag LIKE ANY($1::TEXT[]) OR player_name LIKE ANY($1::TEXT[])"
+                    fetch = await ctx.db.fetch(query, argument_split)
+                    if fetch:
+                        player = {row['player_tag']: row['player_name'] for row in fetch}
+                    else:
+                        raise commands.BadArgument("I tried to parse your argument as a channel, server, clan name, clan tag, player name or tag and couldn't find a match!")
 
         query = "SELECT clans.id FROM activity_query INNER JOIN clans ON clans.clan_tag = activity_query.clan_tag WHERE clans.guild_id = $1 LIMIT 1"
         fetch = await ctx.db.fetchrow(query, ctx.guild.id)
@@ -310,15 +309,15 @@ class ActivityBarConverter(commands.Converter):
 
         if guild:
             query = """
-                    SELECT AVG(counter), hour_digit, MIN(hour_time)
+                    SELECT AVG(counter), hour_digit, MIN(hour_time), clan_name
                     FROM activity_query
                     INNER JOIN clans 
                     ON clans.clan_tag = activity_query.clan_tag
                     WHERE clans.guild_id = $1
-                    GROUP BY hour_digit 
-                    ORDER BY hour_digit
+                    GROUP BY hour_digit, clan_name 
+                    ORDER BY clan_name, hour_digit
                     """
-            return "Guild: " + guild.name, await ctx.db.fetch(query, guild.id)
+            return None, await ctx.db.fetch(query, guild.id)
 
         if channel:
             query = """
@@ -330,7 +329,7 @@ class ActivityBarConverter(commands.Converter):
                     GROUP BY hour_digit 
                     ORDER BY hour_digit
                     """
-            return "#" + channel.name, await ctx.db.fetch(query, channel.id)
+            return channel, await ctx.db.fetch(query, channel.id)
 
         if player:
             query = """
