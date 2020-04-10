@@ -68,7 +68,7 @@ def events_time(delta_seconds):
     return f"{seconds}sec"
 
 
-def format_donation_log_message(player, clan_name):
+def format_donation_log_message(player):
     if player.donations:
         emoji = misc['donated']
         emoji2 = misc['online']
@@ -83,7 +83,7 @@ def format_donation_log_message(player, clan_name):
             number = number_emojis[player.received]
         else:
             number = str(player.received)
-    return f'{emoji2}{player.name} {emoji} {number} ({clan_name})'
+    return f'{emoji2}{player.name} {emoji} {number}'
 
 
 def format_donation_log_message_test(player):

@@ -140,13 +140,12 @@ async def get_detailed_log(bot, all_clan_events, raw_events: bool = False):
     return embeds
 
 
-async def get_basic_log(bot, guild_id, events):
+async def get_basic_log(events):
     all_events = [SlimDonationEvent(x['donations'], x['received'], x['player_name'], x['clan_tag']) for x in sorted(events, key=lambda x: x['clan_tag'])]
 
     messages = []
     for x in all_events:
-        clan_name = await bot.utils.get_clan_name(guild_id, x.clan_tag)
-        messages.append(format_donation_log_message(x, clan_name))
+        messages.append(format_donation_log_message(x))
 
     group_batch = []
     for i in range(math.ceil(len(messages) / 20)):
@@ -169,10 +168,6 @@ class DonationLogs(commands.Cog):
 
     def cog_unload(self):
         self.report_task.cancel()
-        self.bot.coc.remove_events(
-            self.on_clan_member_donation,
-            self.on_clan_member_received
-        )
         for k, v in self._tasks:
             v.cancel()
 
@@ -347,7 +342,7 @@ class DonationLogs(commands.Cog):
                     asyncio.ensure_future(self.bot.utils.safe_send(config.channel, embed=x))
 
             else:
-                messages = await get_basic_log(self.bot, config.guild_id, events)
+                messages = await get_basic_log(events)
                 if config.seconds > 0 and channel_id:
                     for n in messages:
                         await self.add_temp_events(channel_id, "\n".join(n))

@@ -257,8 +257,8 @@ class ActivityBarConverter(commands.Converter):
                 if fetch:
                     clan = {row['clan_tag']: row['clan_name'] for row in fetch}
                 else:
-                    query = "SELECT DISTINCT(player_tag), player_name FROM players WHERE player_tag LIKE ANY($1::TEXT[]) OR player_name LIKE ANY($1::TEXT[])"
-                    fetch = await ctx.db.fetch(query, argument_split)
+                    query = "SELECT DISTINCT(player_tag), player_name FROM players WHERE player_tag LIKE $1 OR player_name LIKE $1"
+                    fetch = await ctx.db.fetch(query, argument)
                     if fetch:
                         player = {row['player_tag']: row['player_name'] for row in fetch}
                     else:
