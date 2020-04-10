@@ -297,11 +297,11 @@ class ActivityBarConverter(commands.Converter):
         if player:
             query = """SELECT AVG(x."count"), x."hour"
                         FROM (
-                            SELECT DATE_PART('HOUR', "time") as "hour", 
+                            SELECT date_part('hour',time) as "hour", date(time) as "date", 
                                    COUNT(*) as "count" 
                             FROM donationevents 
-                            WHERE player_tag = $1 
-                            GROUP BY "hour"
+                            WHERE player_tag = $1
+                            group by "hour", "date" 
                         ) as x
                         GROUP BY x."hour" 
                         ORDER BY x."hour"
@@ -310,11 +310,10 @@ class ActivityBarConverter(commands.Converter):
         if clan:
             query = """SELECT AVG(x."count"), x."hour"
                         FROM (
-                            SELECT DATE_PART('HOUR', "time") as "hour", 
-                                   COUNT(*) as "count" 
+                            SELECT DATE_PART('HOUR', "time") as "hour", date("time") as "date", COUNT(*) as "count" 
                             FROM donationevents 
                             WHERE clan_tag = $1 
-                            GROUP BY "hour", player_tag
+                            GROUP BY "hour", "date", player_tag
                         ) as x
                         GROUP BY x."hour" 
                         ORDER BY x."hour"

@@ -111,7 +111,10 @@ class Activity(commands.Cog):
         name, fetch = data
         trophy_events = {}
         #{n[0]: n[1] for n in await ctx.db.fetch(query, clan[0].tag)}
+        initial = {n: 0 for n in range(23)}
         donation_events = {n[1]: n[0] for n in fetch}
+
+        events = {hour: donation_events.get(hour, 0) for hour in range(23)}
 
         if not (trophy_events or donation_events):
             return await ctx.send(f"Not enough history. Please try again later.")
