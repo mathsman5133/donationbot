@@ -95,7 +95,7 @@ class Activity(commands.Cog):
         plt.xticks(y_pos, list(range(23)))
         plt.xlabel("Time (hr) - in UTC.")
         plt.ylabel("Activity (average events / 60min)")
-        days = int((datetime.datetime.now() - fetch[2]).total_seconds() / (60 * 60 * 24))
+        days = int((datetime.datetime.now() - fetch[0][2]).total_seconds() / (60 * 60 * 24))
         plt.title(f"Activity Graph - Time Period: {days}d")
         plt.legend(tuple(n[0] for n in graphs), tuple(n[1] for n in graphs))
 
