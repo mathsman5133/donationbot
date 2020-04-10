@@ -69,13 +69,13 @@ class Activity(commands.Cog):
         if not isinstance(key, discord.TextChannel):
             for clan_name, data in itertools.groupby(fetch, key=lambda x: x[3]):
                 dict_ = {n[1]: n[0] for n in data}
-                data_to_add[clan_name] = {hour: dict_.get(hour, 0) for hour in range(23)}
+                data_to_add[clan_name] = {hour: dict_.get(hour, 0) for hour in range(24)}
         else:
             if isinstance(key, discord.TextChannel):
                 key = "#" + key.name
 
             dict_ = {n[1]: n[0] for n in fetch}
-            data_to_add[key] = {hour: dict_.get(hour, 0) for hour in range(23)}
+            data_to_add[key] = {hour: dict_.get(hour, 0) for hour in range(24)}
 
         data_to_add = {**data_to_add, **existing_graph_data}
 
@@ -86,7 +86,7 @@ class Activity(commands.Cog):
             width = 0.8 / len(data_to_add)
             return width, width * index
 
-        y_pos = numpy.arange(23)
+        y_pos = numpy.arange(24)
         graphs = []
 
         for i, (name, data) in enumerate(data_to_add.items()):
@@ -95,7 +95,7 @@ class Activity(commands.Cog):
                 plt.bar([n + offset for n in y_pos], list(data.values()), width, align='center'), name
             ))
 
-        plt.xticks(y_pos, list(range(23)))
+        plt.xticks(y_pos, list(range(24)))
         plt.xlabel("Time (hr) - in UTC.")
         plt.ylabel("Activity (average events / 60min)")
         days = int((datetime.datetime.now() - fetch[0][2]).total_seconds() / (60 * 60 * 24))
