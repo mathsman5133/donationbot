@@ -288,7 +288,7 @@ class ActivityBarConverter(commands.Converter):
                         FROM trophyevents
                         INNER JOIN clans ON clans.clan_tag = trophyevents.clan_tag
                         WHERE clans.guild_id = $1
-                        AND trophyevents.league_id > 29000022
+                        AND trophyevents.league_id = 29000022
                         AND trophyevents.trophy_change > 0
                         GROUP BY timer, player_tag, trophyevents.clan_tag, "hour"
                     )
@@ -326,7 +326,7 @@ class ActivityBarConverter(commands.Converter):
                     ON clans.clan_tag = activity_query.clan_tag
                     WHERE clans.channel_id = $1
                     GROUP BY hour_digit, clan_name 
-                    ORDER BY hour_digit
+                    ORDER BY clan_name, hour_digit
                     """
             return channel, await ctx.db.fetch(query, channel.id)
 

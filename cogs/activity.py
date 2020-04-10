@@ -2,6 +2,7 @@ import io
 import time
 import typing
 import numpy
+import itertools
 
 import coc
 import discord
@@ -21,15 +22,11 @@ class Activity(commands.Cog):
         self.bot = bot
         self.graphs = {}
 
-    def add_graph(self, guild_id, author_id, data):
+    def add_bar_graph(self, guild_id, author_id, **data):
         key = (guild_id, author_id)
-        try:
-            self.graphs[key].append(data)
-        except (KeyError, AttributeError):  # not sure which one this raises yet
-            self.graphs[key] = [data]
+        self.graphs[key] = data
 
     @commands.group()
-    @commands.is_owner()
     async def activity(self, ctx):
         """[Group] Get a graph showing the approximate activity/online times for a clan or member.
 
@@ -86,72 +83,49 @@ class Activity(commands.Cog):
         :white_check_mark: `+activity clan #P0LYJC8C`
         :white_check_mark: `+activity clan Rock Throwers`
         """
-        #
-        # s = time.perf_counter()
-        # # query = """SELECT date_part('HOUR', "time") as "hour", COUNT(*) as "count"
-        # #            From trophyevents
-        # #            WHERE clan_tag = $1
-        # #            AND league_id = 29000022
-        # #            AND trophy_change > 0
-        # #            GROUP BY clan_tag, "hour"
-        # #         """
-        # query2 = """SELECT AVG(x."count")
-        #             FROM (
-        #                 SELECT DATE_PART('HOUR', "time") as "hour",
-        #                        COUNT(*) as "count"
-        #                 FROM donationevents
-        #                 WHERE clan_tag = $1
-        #                 GROUP BY "hour", player_tag
-        #             ) as x
-        #             GROUP BY x."hour"
-        #             ORDER BY x."hour"
-        #          """
-        # fetch = await ctx.db.fetch(query2, clan[0].tag)
-        # f = time.perf_counter()
-        name, fetch = data
-        trophy_events = {}
-        #{n[0]: n[1] for n in await ctx.db.fetch(query, clan[0].tag)}
-        initial = {n: 0 for n in range(23)}
-        donation_events = {n[1]: n[0] for n in fetch}
+        key, fetch = data
 
-        donation_events = {hour: donation_events.get(hour, 0) for hour in range(23)}
+        existing_graph_data = self.graphs.get((ctx.guild.id, ctx.author.id), {})
 
-        if not (trophy_events or donation_events):
+        data_to_add = {}  # name: {hour: events}
+        if isinstance(key, (discord.TextChannel, discord.Guild)):
+            for clan_name, data in itertools.groupby(fetch, key=lambda x: x['clan_name']):
+                dict_ = {n[1]: n[0] for n in data}
+                data_to_add[clan_name] = {hour: dict_.get(hour, 0) for hour in range(23)}
+        else:
+            dict_ = {n[1]: n[0] for n in fetch}
+            data_to_add[key] = {hour: dict_.get(hour, 0) for hour in range(23)}
+
+        data_to_add = {**data_to_add, **existing_graph_data}
+
+        if not data_to_add:
             return await ctx.send(f"Not enough history. Please try again later.")
-
-        #events = {hour: value + donation_events[hour] for hour, value in trophy_events.items()}
-        events = donation_events
-
-        existing_graph_data = self.graphs.get((ctx.guild.id, ctx.author.id), [])
 
         def get_width_offset(index):
             width = 0.8 / (len(existing_graph_data) + 1)
             return width, width * (index + 1)
 
-        s2 = time.perf_counter()
-        y_pos = numpy.arange(len(events))
-        graphs = [
-            (plt.bar(y_pos, list(events.values()), get_width_offset(0)[0], align='center', linewidth=0.1), name, sum(events.values()))
-        ]
-        existing_graph_data.sort(key=lambda n: sum(n[0]), reverse=True)
-        for i, data in enumerate(existing_graph_data):
+        y_pos = numpy.arange(sum(len(n) for n in data_to_add.values()))
+        graphs = []
+
+        for i, (name, data) in enumerate(data_to_add.items()):
             width, offset = get_width_offset(i)
             graphs.append((
-                plt.bar([n + offset for n in y_pos], data[0], width, align='center'), data[1]
+                plt.bar([n + offset for n in y_pos], data, width, align='center'), name
             ))
 
-        plt.xticks(y_pos, list(int(n) for n in events.keys()))
+        plt.xticks(y_pos, list(range(23)))
         plt.xlabel("Time (hr) - in UTC.")
         plt.ylabel("Activity (events / 60min)")
         plt.title("Activity Graph")
         plt.legend(tuple(n[0] for n in graphs), tuple(n[1] for n in graphs))
 
-        self.add_graph(ctx.guild.id, ctx.author.id, (list(events.values()), name))
+        self.add_bar_graph(ctx.guild.id, ctx.author.id, **data_to_add)
 
         b = io.BytesIO()
         plt.savefig(b, format='png')
         b.seek(0)
-        await ctx.send(f"plt: {(time.perf_counter() - s2) * 1000}ms", file=discord.File(b, f'activitygraph.png'))
+        await ctx.send(file=discord.File(b, f'activitygraph.png'))
         plt.cla()
 
     @activity.command(name='player')
