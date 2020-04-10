@@ -16,6 +16,7 @@ from discord.ext import commands
 from cogs.utils.converters import ClanConverter, PlayerConverter, ActivityBarConverter
 from cogs.utils.formatters import readable_time
 from cogs.utils.paginator import LastOnlinePaginator
+from cogs.utils.checks import is_patron
 
 
 class Activity(commands.Cog):
@@ -28,6 +29,7 @@ class Activity(commands.Cog):
         self.graphs[key] = data
 
     @commands.group()
+    @is_patron()
     async def activity(self, ctx):
         """[Group] Get a graph showing the approximate activity/online times for a clan or member."""
         if ctx.invoked_subcommand is not None:
