@@ -61,7 +61,7 @@ class Activity(commands.Cog):
         :white_check_mark: `+activity bar Mathsman 30d`
         """
         fetch = await ctx.db.fetchrow("SELECT timezone_offset FROM guilds WHERE guild_id = $1", ctx.guild.id)
-        offset = int(fetch['timezone_offset'])
+        timezone_offset = int(fetch['timezone_offset'])
         key, fetch = data
 
         if not fetch:
@@ -73,11 +73,11 @@ class Activity(commands.Cog):
         data_to_add = {}  # name: {hour: events}
 
         def get_hour_plus_offset(hour):
-            if 0 <= hour + offset <= 23:
-                return hour + offset
-            if hour + offset > 23:
-                return hour + offset - 24
-            return hour + offset + 24
+            if 0 <= hour + timezone_offset <= 23:
+                return hour + timezone_offset
+            if hour + timezone_offset > 23:
+                return hour + timezone_offset - 24
+            return hour + timezone_offset + 24
 
         if isinstance(key, (discord.TextChannel, discord.Guild)):
             # if it's a guild or channel this supports multiple clans. eg `+activity bar all`
@@ -104,7 +104,7 @@ class Activity(commands.Cog):
             ))
 
         plt.xticks(y_pos, list(range(24)))
-        plt.xlabel(f"Time (hr) - UTC{'+' + offset if offset > 0 else offset}")
+        plt.xlabel(f"Time (hr) - UTC{'+' + str(timezone_offset) if timezone_offset > 0 else timezone_offset}")
         plt.ylabel("Activity (average events)")
         plt.title(f"Activity Graph - Time Period: {days + 1}d")
         plt.legend(tuple(n[0] for n in graphs), tuple(n[1] for n in graphs))
