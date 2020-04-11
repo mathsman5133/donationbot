@@ -75,9 +75,9 @@ class Activity(commands.Cog):
         def get_hour_plus_offset(hour):
             if 0 <= hour + offset <= 23:
                 return hour + offset
-            if hour + offset >= 23:
-                return 23 + offset - hour
-            return 23 + hour - offset
+            if hour + offset > 23:
+                return hour + offset - 24
+            return hour + offset + 24
 
         if isinstance(key, (discord.TextChannel, discord.Guild)):
             # if it's a guild or channel this supports multiple clans. eg `+activity bar all`
@@ -106,7 +106,7 @@ class Activity(commands.Cog):
         plt.xticks(y_pos, list(range(24)))
         plt.xlabel("Time (hr) - in UTC.")
         plt.ylabel("Activity (average events)")
-        plt.title(f"Activity Graph - Time Period: {days}d")
+        plt.title(f"Activity Graph - Time Period: {days + 1}d")
         plt.legend(tuple(n[0] for n in graphs), tuple(n[1] for n in graphs))
 
         self.add_bar_graph(ctx.guild.id, ctx.author.id, **data_to_add)
