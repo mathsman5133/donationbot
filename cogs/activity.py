@@ -104,7 +104,7 @@ class Activity(commands.Cog):
             ))
 
         plt.xticks(y_pos, list(range(24)))
-        plt.xlabel("Time (hr) - in UTC.")
+        plt.xlabel(f"Time (hr) - UTC{offset}.")
         plt.ylabel("Activity (average events)")
         plt.title(f"Activity Graph - Time Period: {days + 1}d")
         plt.legend(tuple(n[0] for n in graphs), tuple(n[1] for n in graphs))
