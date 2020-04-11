@@ -245,6 +245,7 @@ class ActivityBarConverter(commands.Converter):
         clan = None  # (tag, name)
         player = None  # (tag, name)
         time_ = argument.split(" ")[1]
+        argument = argument.split(" ")[0]
 
         if argument == "all":
             guild = ctx.guild
@@ -377,6 +378,7 @@ class ActivityBarConverter(commands.Converter):
                                DATE(activity_query.hour_time) as "date" 
                         FROM activity_query 
                         WHERE clan_tag = $1 
+                        AND activity_query.hour_time > now() - '$1 days'::interval
                         GROUP by date
                     ),
                     cte2 AS (
@@ -386,6 +388,7 @@ class ActivityBarConverter(commands.Converter):
                         JOIN cte1 
                         ON cte1.date = date(hour_time) 
                         WHERE clan_tag = $1 
+                        AND activity_query.hour_time > now() - '$1 days'::interval
                         GROUP BY hour_time
                     )
                     SELECT date_part('HOUR', hour_time) as "hour_digit", AVG(num_events), MIN(hour_time) 
@@ -393,7 +396,7 @@ class ActivityBarConverter(commands.Converter):
                     GROUP BY hour_digit
                     """
             s = time.perf_counter()
-            fetch = await ctx.db.fetch(query, clan['clan_tag'])
+            fetch = await ctx.db.fetch(query, clan['clan_tag'], time_ or 52)
             await ctx.send(f"{(time.perf_counter() - s)*1000}ms")
             return clan['clan_name'], fetch
 
