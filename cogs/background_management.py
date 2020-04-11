@@ -30,11 +30,13 @@ class BackgroundManagement(commands.Cog):
 
     async def bot_check(self, ctx):
         if ctx.guild.id in ctx.bot.locked_guilds:
-            return await ctx.send(
+            await ctx.send(
                 "Your server is locked. Please be patient while your activity data is synced. "
                 "If you believe this has been issued in error, "
                 "please join the support server: https://discord.gg/ePt8y4V"
             )
+            return False
+        return True
 
     @commands.command(hidden=True)
     @commands.is_owner()
