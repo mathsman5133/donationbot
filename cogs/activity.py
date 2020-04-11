@@ -61,7 +61,7 @@ class Activity(commands.Cog):
         :white_check_mark: `+activity bar Mathsman 30d`
         """
         fetch = await ctx.db.fetchrow("SELECT timezone_offset FROM guilds WHERE guild_id = $1", ctx.guild.id)
-        offset = fetch['timezone_offset']
+        offset = int(fetch['timezone_offset'])
         key, fetch = data
 
         if not fetch:
@@ -83,10 +83,10 @@ class Activity(commands.Cog):
             # if it's a guild or channel this supports multiple clans. eg `+activity bar all`
             for clan_name, data in itertools.groupby(fetch, key=lambda x: x[3]):
                 dict_ = {n[0]: n[1] for n in data}
-                data_to_add[clan_name + f" ({days}d)"] = {get_hour_plus_offset(hour): dict_.get(hour, 0) for hour in range(24)}
+                data_to_add[clan_name + f" ({days + 1}d)"] = {get_hour_plus_offset(hour): dict_.get(hour, 0) for hour in range(24)}
         else:
             dict_ = {n[0]: n[1] for n in fetch}
-            data_to_add[key + f" ({days}d)"] = {get_hour_plus_offset(hour): dict_.get(hour, 0) for hour in range(24)}
+            data_to_add[key + f" ({days + 1}d)"] = {get_hour_plus_offset(hour): dict_.get(hour, 0) for hour in range(24)}
 
         data_to_add = {**data_to_add, **existing_graph_data}
 
@@ -104,7 +104,7 @@ class Activity(commands.Cog):
             ))
 
         plt.xticks(y_pos, list(range(24)))
-        plt.xlabel(f"Time (hr) - UTC{offset}.")
+        plt.xlabel(f"Time (hr) - UTC{'+' + offset if offset > 0 else offset}")
         plt.ylabel("Activity (average events)")
         plt.title(f"Activity Graph - Time Period: {days + 1}d")
         plt.legend(tuple(n[0] for n in graphs), tuple(n[1] for n in graphs))
