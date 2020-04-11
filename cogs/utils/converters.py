@@ -378,10 +378,7 @@ class ActivityBarConverter(commands.Converter):
                     GROUP BY "hour"
                     ORDER BY "hour"
                     """
-            s = time.perf_counter()
-            fetch = await ctx.db.fetch(query, player['player_tag'], str(time_ or 365))
-            await ctx.send(f"{(time.perf_counter() - s)*1000}ms")
-            return player['player_name'], fetch
+            return player['player_name'], await ctx.db.fetch(query, player['player_tag'], str(time_ or 365))
 
         if clan:
             query = """
@@ -407,7 +404,4 @@ class ActivityBarConverter(commands.Converter):
                     FROM cte2 
                     GROUP BY hour_digit
                     """
-            s = time.perf_counter()
-            fetch = await ctx.db.fetch(query, clan['clan_tag'], str(time_ or 365))
-            await ctx.send(f"{(time.perf_counter() - s)*1000}ms")
-            return clan['clan_name'], fetch
+            return clan['clan_name'], await ctx.db.fetch(query, clan['clan_tag'], str(time_ or 365))

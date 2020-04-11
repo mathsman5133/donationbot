@@ -88,7 +88,7 @@ class Activity(commands.Cog):
             dict_ = {n[0]: n[1] for n in fetch}
             data_to_add[key + f" ({days + 1}d)"] = {get_hour_plus_offset(hour): dict_.get(hour, 0) for hour in range(24)}
 
-        data_to_add = {**data_to_add, **existing_graph_data}
+        data_to_add = {**existing_graph_data, **data_to_add}
 
         def get_width_offset(index):
             width = 0.8 / len(data_to_add)
