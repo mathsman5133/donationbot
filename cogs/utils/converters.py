@@ -344,7 +344,7 @@ class ActivityBarConverter(commands.Converter):
                         FROM activity_query
                         WHERE player_tag = $1
                     )
-                    SELECT AVG(subquery.counter), date_part('HOUR', subquery."time") as "hour", subquery.time FROM (
+                    SELECT AVG(subquery.counter), date_part('HOUR', subquery."time") as "hour", MIN(subquery.time) FROM (
                         SELECT "time", counter 
                         FROM valid_times
                         UNION
