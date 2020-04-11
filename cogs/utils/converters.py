@@ -244,6 +244,7 @@ class ActivityBarConverter(commands.Converter):
         channel = None  # guild
         clan = None  # (tag, name)
         player = None  # (tag, name)
+        time_ = argument.split(" ")[1]
 
         if argument == "all":
             guild = ctx.guild
@@ -349,12 +350,14 @@ class ActivityBarConverter(commands.Converter):
                         SELECT generate_series(min(hour_time), max(hour_time), '1 hour'::interval) as "time"
                         FROM activity_query 
                         WHERE player_tag = $1
+                        AND activity_query.hour_time > '$2 days'::interval
                     ),
                     
                     actual_times AS (
                         SELECT hour_time as "time", counter
                         FROM activity_query
                         WHERE player_tag = $1
+                        AND activity_query.hour_time > now() - '$2 days'::interval
                     )
                     SELECT date_part('HOUR', valid_times."time") AS "hour", AVG(COALESCE(actual_times.counter, 0)), min(valid_times."time")
                     FROM valid_times
@@ -363,7 +366,7 @@ class ActivityBarConverter(commands.Converter):
                     ORDER BY "hour"
                     """
             s = time.perf_counter()
-            fetch = await ctx.db.fetch(query, player['player_tag'])
+            fetch = await ctx.db.fetch(query, player['player_tag'], time_ or 52)
             await ctx.send(f"{(time.perf_counter() - s)*1000}ms")
             return player['player_name'], fetch
 
