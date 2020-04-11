@@ -333,7 +333,7 @@ class ActivityBarConverter(commands.Converter):
                         ON cte1.date = date(hour_time) 
                         GROUP BY hour_time, cte1.clan_name
                     )
-                    SELECT AVG(num_events), date_part('HOUR', hour_time) as "hour_digit", MIN(hour_time), cte2.clan_name 
+                    SELECT date_part('HOUR', hour_time) as "hour_digit", AVG(num_events),  MIN(hour_time), cte2.clan_name 
                     FROM cte2 
                     GROUP BY hour_digit, cte2.clan_name
                     ORDER BY cte2.clan_name, hour_digit
@@ -385,7 +385,7 @@ class ActivityBarConverter(commands.Converter):
                         WHERE clan_tag = $1 
                         GROUP BY hour_time
                     )
-                    SELECT AVG(num_events), date_part('HOUR', hour_time) as "hour_digit", MIN(hour_time) 
+                    SELECT date_part('HOUR', hour_time) as "hour_digit", AVG(num_events), MIN(hour_time) 
                     FROM cte2 
                     GROUP BY hour_digit
                     """
