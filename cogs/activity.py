@@ -98,6 +98,7 @@ class Activity(commands.Cog):
         graphs = []
 
         for i, (name, data) in enumerate(data_to_add.items()):
+            data = dict(sorted(data.items()))
             width, offset = get_width_offset(i)
             graphs.append((
                 plt.bar([n + offset for n in y_pos], list(data.values()), width, align='center'), name
