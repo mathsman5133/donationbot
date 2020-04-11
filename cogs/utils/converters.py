@@ -250,7 +250,7 @@ class ActivityBarConverter(commands.Converter):
         split = argument.split(" ")
         time_ = None
         for word in split:
-            m = re.search(r"\d*d", word)
+            m = re.search(r"^\d*d$", word)
             if m:
                 argument = argument.replace(m.group(0), "").strip()
                 time_ = int(m.group(0)[:-1])
