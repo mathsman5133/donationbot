@@ -60,7 +60,7 @@ class Activity(commands.Cog):
         :white_check_mark: `+activity bar #PL80J2YL`
         :white_check_mark: `+activity bar Mathsman 30d`
         """
-        fetch = ctx.db.fetchrow("SELECT timezone_offset FROM guilds WHERE guild_id = $1", ctx.guild.id)
+        fetch = await ctx.db.fetchrow("SELECT timezone_offset FROM guilds WHERE guild_id = $1", ctx.guild.id)
         offset = fetch['timezone_offset']
         key, fetch = data
 
