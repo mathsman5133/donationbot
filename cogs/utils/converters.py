@@ -351,7 +351,7 @@ class ActivityBarConverter(commands.Converter):
                         SELECT generate_series(min(hour_time), max(hour_time), '1 hour'::interval) as "time"
                         FROM activity_query 
                         WHERE player_tag = $1
-                        AND activity_query.hour_time > '$2 days'::interval
+                        AND activity_query.hour_time > now() - '$2 days'::interval
                     ),
                     
                     actual_times AS (
@@ -378,7 +378,7 @@ class ActivityBarConverter(commands.Converter):
                                DATE(activity_query.hour_time) as "date" 
                         FROM activity_query 
                         WHERE clan_tag = $1 
-                        AND activity_query.hour_time > now() - '$1 days'::interval
+                        AND activity_query.hour_time > (now() - '$2 days'::interval)
                         GROUP by date
                     ),
                     cte2 AS (
@@ -388,7 +388,7 @@ class ActivityBarConverter(commands.Converter):
                         JOIN cte1 
                         ON cte1.date = date(hour_time) 
                         WHERE clan_tag = $1 
-                        AND activity_query.hour_time > now() - '$1 days'::interval
+                        AND activity_query.hour_time > (now() - '$2 days'::interval)
                         GROUP BY hour_time
                     )
                     SELECT date_part('HOUR', hour_time) as "hour_digit", AVG(num_events), MIN(hour_time) 
