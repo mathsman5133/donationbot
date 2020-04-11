@@ -245,9 +245,10 @@ class ActivityBarConverter(commands.Converter):
         clan = None  # (tag, name)
         player = None  # (tag, name)
 
+        split = argument.split(" ")
         argument = ""
         time_ = 52
-        for n in argument.split(" "):
+        for n in split:
             if n.isdigit():
                 time_ = int(n)
                 break
