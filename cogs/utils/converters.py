@@ -244,8 +244,17 @@ class ActivityBarConverter(commands.Converter):
         channel = None  # guild
         clan = None  # (tag, name)
         player = None  # (tag, name)
-        time_ = argument.split(" ")[1]
-        argument = argument.split(" ")[0]
+
+        argument = ""
+        time_ = 52
+        for n in argument.split(" "):
+            if n.isdigit():
+                time_ = int(n)
+                break
+            else:
+                argument += n
+
+        time_ += 1
 
         if argument == "all":
             guild = ctx.guild
@@ -341,9 +350,9 @@ class ActivityBarConverter(commands.Converter):
                     ORDER BY cte2.clan_name, hour_digit
                     """
         if channel:
-            return channel, await ctx.db.fetch(query, channel.id)
+            return channel, time_, await ctx.db.fetch(query, channel.id)
         if guild:
-            return guild, await ctx.db.fetch(query, guild.id)
+            return guild, time_, await ctx.db.fetch(query, guild.id)
 
         if player:
             query = """
@@ -353,7 +362,6 @@ class ActivityBarConverter(commands.Converter):
                         WHERE player_tag = $1
                         AND activity_query.hour_time > now() - ($2 ||' days')::interval
                     ),
-                    
                     actual_times AS (
                         SELECT hour_time as "time", counter
                         FROM activity_query
@@ -369,7 +377,7 @@ class ActivityBarConverter(commands.Converter):
             s = time.perf_counter()
             fetch = await ctx.db.fetch(query, player['player_tag'], time_ or 52)
             await ctx.send(f"{(time.perf_counter() - s)*1000}ms")
-            return player['player_name'], fetch
+            return player['player_name'], time_, fetch
 
         if clan:
             query = """
@@ -398,5 +406,5 @@ class ActivityBarConverter(commands.Converter):
             s = time.perf_counter()
             fetch = await ctx.db.fetch(query, clan['clan_tag'], time_ or 52)
             await ctx.send(f"{(time.perf_counter() - s)*1000}ms")
-            return clan['clan_name'], fetch
+            return clan['clan_name'], time_, fetch
 

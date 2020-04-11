@@ -63,7 +63,7 @@ class Activity(commands.Cog):
         :white_check_mark: `+activity clan #P0LYJC8C`
         :white_check_mark: `+activity clan Rock Throwers`
         """
-        key, fetch = data
+        key, time_, fetch = data
 
         if not fetch:
             return await ctx.send(f"Not enough history. Please try again later.")
@@ -75,10 +75,10 @@ class Activity(commands.Cog):
             # if it's a guild or channel this supports multiple clans. eg `+activity bar all`
             for clan_name, data in itertools.groupby(fetch, key=lambda x: x[3]):
                 dict_ = {n[0]: n[1] for n in data}
-                data_to_add[clan_name] = {hour: dict_.get(hour, 0) for hour in range(24)}
+                data_to_add[clan_name + f" ({time_}d)"] = {hour: dict_.get(hour, 0) for hour in range(24)}
         else:
             dict_ = {n[0]: n[1] for n in fetch}
-            data_to_add[key] = {hour: dict_.get(hour, 0) for hour in range(24)}
+            data_to_add[key + f" ({time_}d)"] = {hour: dict_.get(hour, 0) for hour in range(24)}
 
         data_to_add = {**data_to_add, **existing_graph_data}
 
@@ -112,7 +112,11 @@ class Activity(commands.Cog):
 
     @activity_bar.command(name='clear')
     async def activity_bar_clear(self, ctx):
-        del self.graphs[(ctx.guild.id, ctx.author.id)]
+        try:
+            del self.graphs[(ctx.guild.id, ctx.author.id)]
+        except KeyError:
+            pass
+        await ctx.send(":ok_hand: Graph has been reset.")
 
     @activity.command(name='player')
     async def activity_player(self, ctx, *, player: PlayerConverter):
