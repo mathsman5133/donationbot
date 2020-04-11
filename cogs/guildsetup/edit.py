@@ -75,7 +75,7 @@ class Edit(commands.Cog):
         if not -12 <= offset <= 12:
             return await ctx.send("Your offset must be between -12 and 12 hours away from UTC.")
 
-        await ctx.db.execute("UPDATE guilds SET timezone_offset = $1 WHERE guild_id $2", offset, ctx.guild.id)
+        await ctx.db.execute("UPDATE guilds SET timezone_offset = $1 WHERE guild_id = $2", offset, ctx.guild.id)
         await ctx.send(":ok_hand: Updated server timezone offset.")
 
     @edit.group(name='donationboard')

@@ -252,7 +252,7 @@ class ActivityBarConverter(commands.Converter):
         for word in split:
             m = re.search(r"\d*d", word)
             if m:
-                argument = argument.replace(m.group(0), "")
+                argument = argument.replace(m.group(0), "").strip()
                 time_ = int(m.group(0)[:-1])
                 break
 
@@ -379,7 +379,7 @@ class ActivityBarConverter(commands.Converter):
                     ORDER BY "hour"
                     """
             s = time.perf_counter()
-            fetch = await ctx.db.fetch(query, player['player_tag'], str(time_ + 1 or 365))
+            fetch = await ctx.db.fetch(query, player['player_tag'], str((time_ or 365) + 1))
             await ctx.send(f"{(time.perf_counter() - s)*1000}ms")
             return player['player_name'], time_, fetch
 
@@ -408,6 +408,6 @@ class ActivityBarConverter(commands.Converter):
                     GROUP BY hour_digit
                     """
             s = time.perf_counter()
-            fetch = await ctx.db.fetch(query, clan['clan_tag'], str(time_ + 1 or 365))
+            fetch = await ctx.db.fetch(query, clan['clan_tag'], str((time_ or 365) + 1))
             await ctx.send(f"{(time.perf_counter() - s)*1000}ms")
             return clan['clan_name'], fetch
