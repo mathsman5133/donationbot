@@ -104,7 +104,7 @@ def format_donation_log_message_test(player):
     return f'{emoji2}{player.name} {emoji} {number}'
 
 
-def format_trophy_log_message(player, clan_name):
+def format_trophy_log_message(player):
     trophies = player.trophies
     abs_trophies = abs(trophies)
 
@@ -115,7 +115,7 @@ def format_trophy_log_message(player, clan_name):
 
     emoji = (misc['trophygreen'], misc['trophygain']) if trophies > 0 else (misc['trophyred'], misc['trophyloss'])
 
-    return f"{emoji[0]} {player.name} {emoji[1]} {number} {emojis[player.league_id]} ({clan_name})"
+    return f"{emoji[0]} {player.name} {emoji[1]} {number} {emojis[player.league_id]}"
 
 
 class TabularData:

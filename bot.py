@@ -91,6 +91,7 @@ class DonationBot(commands.AutoShardedBot):
         self.client_id = creds.client_id
         self.dbl_token = creds.dbl_token
         self.owner_ids = {230214242618441728, 251150854571163648}  # maths, tuba
+        self.locked_guilds = set()
         self.session = aiohttp.ClientSession(loop=self.loop)
 
         add_hooks(self)
