@@ -381,7 +381,7 @@ class ActivityBarConverter(commands.Converter):
             s = time.perf_counter()
             fetch = await ctx.db.fetch(query, player['player_tag'], str(time_ or 365))
             await ctx.send(f"{(time.perf_counter() - s)*1000}ms")
-            return player['player_name'], time_, fetch
+            return player['player_name'], fetch
 
         if clan:
             query = """

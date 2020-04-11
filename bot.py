@@ -28,7 +28,8 @@ initial_extensions = [
     'cogs.reset_season',
     'cogs.stats',
     'cogs.trophies',
-    'cogs.last_updated'
+    'cogs.last_updated',
+    'cogs.activity'
 ]
 if creds.live:
     initial_extensions.extend(
