@@ -251,7 +251,7 @@ class ActivityBarConverter(commands.Converter):
             try:
                 channel = await commands.TextChannelConverter().convert(ctx, argument)
             except commands.BadArgument:
-                query = "SELECT DISTINCT(clan_tag) FROM clans WHERE clan_tag LIKE $1 OR clan_name LIKE $1"
+                query = "SELECT DISTINCT(clan_tag), clan_name FROM clans WHERE clan_tag LIKE $1 OR clan_name LIKE $1"
                 fetch = await ctx.db.fetchrow(query, argument)
                 if fetch:
                     clan = fetch
@@ -355,9 +355,9 @@ class ActivityBarConverter(commands.Converter):
                     ORDER BY "hour"
                     """
             s = time.perf_counter()
-            fetch = await ctx.db.fetch(query, clan['player_tag'])
+            fetch = await ctx.db.fetch(query, player['player_tag'])
             await ctx.send(f"{(time.perf_counter() - s)*1000}ms")
-            return clan['player_name'], fetch
+            return player['player_name'], fetch
 
         if clan:
             query = """
