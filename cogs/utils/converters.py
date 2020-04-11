@@ -308,49 +308,57 @@ class ActivityBarConverter(commands.Converter):
             await ctx.db.execute(query, ctx.guild.id)
             await ctx.send(f"insert query - {(time.perf_counter() - s)*1000}ms")
 
-        if guild:
+        if channel or guild:
             query = """
-                    SELECT AVG(counter), hour_digit, MIN(hour_time), clan_name
-                    FROM activity_query
-                    INNER JOIN clans 
-                    ON clans.clan_tag = activity_query.clan_tag
-                    WHERE clans.guild_id = $1
-                    GROUP BY hour_digit, clan_name 
-                    ORDER BY clan_name, hour_digit
+                    WITH clan_tags AS (
+                        SELECT DISTINCT clan_tag, clan_name 
+                        FROM clans 
+                        WHERE channel_id = $1 OR guild_id = $1
+                    ),
+                    cte1 AS (
+                        SELECT COUNT(DISTINCT player_tag) as "num_players", 
+                               DATE(activity_query.hour_time) as "date", 
+                               clan_name
+                        FROM activity_query 
+                        INNER JOIN clan_tags
+                        ON clan_tags.clan_tag = activity_query.clan_tag
+                        GROUP by date, clan_name
+                    ),
+                    cte2 AS (
+                        SELECT cast(SUM(counter) as decimal) / MIN(num_players) AS num_events, 
+                               hour_time,
+                               cte1.clan_name 
+                        FROM activity_query 
+                        JOIN cte1 
+                        ON cte1.date = date(hour_time) 
+                        GROUP BY hour_time, cte1.clan_name
+                    )
+                    SELECT AVG(num_events), date_part('HOUR', hour_time) as "hour_digit", MIN(hour_time), cte2.clan_name 
+                    FROM cte2 
+                    GROUP BY hour_digit, cte2.clan_name
+                    ORDER BY cte2.clan_name, hour_digit
                     """
-            return None, await ctx.db.fetch(query, guild.id)
-
         if channel:
-            query = """
-                    SELECT AVG(counter), hour_digit, MIN(hour_time)
-                    FROM activity_query
-                    INNER JOIN clans 
-                    ON clans.clan_tag = activity_query.clan_tag
-                    WHERE clans.channel_id = $1
-                    GROUP BY hour_digit 
-                    ORDER BY hour_digit
-                    """
             return channel, await ctx.db.fetch(query, channel.id)
+        if guild:
+            return guild, await ctx.db.fetch(query, guild.id)
 
         if player:
             query = """
                     WITH valid_times AS (
-                        SELECT generate_series(min(hour_time), max(hour_time), '1 hour'::interval) as "time", 0 as "counter"
+                        SELECT generate_series(min(hour_time), max(hour_time), '1 hour'::interval) as "time"
                         FROM activity_query 
                         WHERE player_tag = $1
                     ),
+                    
                     actual_times AS (
                         SELECT hour_time as "time", counter
                         FROM activity_query
                         WHERE player_tag = $1
                     )
-                    SELECT AVG(subquery.counter), date_part('HOUR', subquery."time") as "hour", MIN(subquery.time) FROM (
-                        SELECT "time", counter 
-                        FROM valid_times
-                        UNION
-                        SELECT "time", counter
-                        FROM actual_times
-                    ) as subquery
+                    SELECT date_part('HOUR', valid_times."time") AS "hour", AVG(COALESCE(actual_times.counter, 0)), min(actual_times."time")
+                    FROM valid_times
+                    LEFT JOIN actual_times ON actual_times.time = valid_times.time
                     GROUP BY "hour"
                     ORDER BY "hour"
                     """

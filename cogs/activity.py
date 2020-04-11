@@ -68,20 +68,17 @@ class Activity(commands.Cog):
         if not fetch:
             return await ctx.send(f"Not enough history. Please try again later.")
 
-
         existing_graph_data = self.graphs.get((ctx.guild.id, ctx.author.id), {})
 
         data_to_add = {}  # name: {hour: events}
-        # if not isinstance(key, discord.TextChannel):
-        #     for clan_name, data in itertools.groupby(fetch, key=lambda x: x[3]):
-        #         dict_ = {n[1]: n[0] for n in data}
-        #         data_to_add[clan_name] = {hour: dict_.get(hour, 0) for hour in range(24)}
-        # else:
-        #     if isinstance(key, discord.TextChannel):
-        #         key = "#" + key.name
-
-        dict_ = {n[1]: n[0] for n in fetch}
-        data_to_add[key] = {hour: dict_.get(hour, 0) for hour in range(24)}
+        if isinstance(key, (discord.TextChannel, discord.Guild)):
+            # if it's a guild or channel this supports multiple clans. eg `+activity bar all`
+            for clan_name, data in itertools.groupby(fetch, key=lambda x: x[3]):
+                dict_ = {n[1]: n[0] for n in data}
+                data_to_add[clan_name] = {hour: dict_.get(hour, 0) for hour in range(24)}
+        else:
+            dict_ = {n[1]: n[0] for n in fetch}
+            data_to_add[key] = {hour: dict_.get(hour, 0) for hour in range(24)}
 
         data_to_add = {**data_to_add, **existing_graph_data}
 
@@ -100,7 +97,7 @@ class Activity(commands.Cog):
 
         plt.xticks(y_pos, list(range(24)))
         plt.xlabel("Time (hr) - in UTC.")
-        plt.ylabel("Activity (average events / 60min)")
+        plt.ylabel("Activity (average events)")
         days = int((datetime.datetime.now() - fetch[0][2]).total_seconds() / (60 * 60 * 24))
         plt.title(f"Activity Graph - Time Period: {days}d")
         plt.legend(tuple(n[0] for n in graphs), tuple(n[1] for n in graphs))
