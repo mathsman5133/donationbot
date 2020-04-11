@@ -256,6 +256,7 @@ class ActivityBarConverter(commands.Converter):
                 argument += n
 
         time_ += 1
+        time_ = str(time_)
 
         if argument == "all":
             guild = ctx.guild
