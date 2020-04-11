@@ -244,7 +244,6 @@ class ActivityBarConverter(commands.Converter):
         channel = None  # guild
         clan = None  # (tag, name)
         player = None  # (tag, name)
-        argument_split = [n.strip() for n in argument.split(",")]
 
         if argument == "all":
             guild = ctx.guild
@@ -252,15 +251,15 @@ class ActivityBarConverter(commands.Converter):
             try:
                 channel = await commands.TextChannelConverter().convert(ctx, argument)
             except commands.BadArgument:
-                query = "SELECT DISTINCT(clan_tag), clan_name FROM clans WHERE clan_tag LIKE ANY($1::TEXT[]) OR clan_name LIKE ANY($1::TEXT[])"
-                fetch = await ctx.db.fetch(query, argument_split)
+                query = "SELECT DISTINCT(clan_tag) FROM clans WHERE clan_tag LIKE $1 OR clan_name LIKE $1"
+                fetch = await ctx.db.fetchrow(query, argument)
                 if fetch:
-                    clan = {row['clan_tag']: row['clan_name'] for row in fetch}
+                    clan = fetch
                 else:
                     query = "SELECT DISTINCT(player_tag), player_name FROM players WHERE player_tag LIKE $1 OR player_name LIKE $1"
-                    fetch = await ctx.db.fetch(query, argument)
+                    fetch = await ctx.db.fetchrow(query, argument)
                     if fetch:
-                        player = {row['player_tag']: row['player_name'] for row in fetch}
+                        player = fetch
                     else:
                         raise commands.BadArgument("I tried to parse your argument as a channel, server, clan name, clan tag, player name or tag and couldn't find a match!")
 
@@ -269,43 +268,45 @@ class ActivityBarConverter(commands.Converter):
         if not fetch:
             await ctx.send("Loading clan activity values. This will take a minute. Please be patient.")
             query = """
-                    WITH cte AS (
+                    WITH g_clans AS (
+                        SELECT distinct clan_tag FROM clans WHERE guild_id = $1
+                    ),
+                    cte AS (
                         SELECT player_tag,
                                donationevents.clan_tag,
                                date_trunc('HOUR', "time") AS "timer",
-                               date_part('HOUR', "time") AS "hour",
                                COUNT(*) AS "counter"
                         FROM donationevents
-                        INNER JOIN clans ON clans.clan_tag = donationevents.clan_tag
-                        WHERE clans.guild_id = $1
-                        GROUP BY timer, player_tag, donationevents.clan_tag, hour
+                        INNER JOIN g_clans ON g_clans.clan_tag = donationevents.clan_tag
+                        GROUP BY timer, player_tag, donationevents.clan_tag
                     ),
                     cte2 AS (
                         SELECT player_tag,
                                trophyevents.clan_tag,
                                date_trunc('HOUR', "time") AS "timer",
-                               date_part('HOUR', "time") AS "hour",
                                COUNT(*) AS "counter"
                         FROM trophyevents
-                        INNER JOIN clans ON clans.clan_tag = trophyevents.clan_tag
-                        WHERE clans.guild_id = $1
-                        AND trophyevents.league_id = 29000022
+                        INNER JOIN g_clans ON g_clans.clan_tag = trophyevents.clan_tag
+                        WHERE trophyevents.league_id = 29000022
                         AND trophyevents.trophy_change > 0
-                        GROUP BY timer, player_tag, trophyevents.clan_tag, "hour"
+                        GROUP BY timer, player_tag, trophyevents.clan_tag
                     )
                     INSERT INTO activity_query (player_tag, clan_tag, hour_time, counter, hour_digit)
                     SELECT cte.player_tag,
                            cte.clan_tag,
                            cte.timer,
-                           COALESCE(cte.counter, 0) + COALESCE(cte2.counter, 0),
-                           cte.hour
+                           COALESCE(cte.counter, 0) + COALESCE(cte2.counter, 0) as "num_events",
+                           date_part('hour', cte.timer) as "hour"
                     FROM cte
                     FULL JOIN cte2
                     ON cte.player_tag = cte2.player_tag
                     AND cte.clan_tag = cte2.clan_tag
                     AND cte.timer = cte2.timer
+                    GROUP BY cte.player_tag, cte.clan_tag, cte.timer, "num_events", "hour"
                     """
+            s = time.perf_counter()
             await ctx.db.execute(query, ctx.guild.id)
+            await ctx.send(f"insert query - {(time.perf_counter() - s)*1000}ms")
 
         if guild:
             query = """
@@ -333,25 +334,55 @@ class ActivityBarConverter(commands.Converter):
 
         if player:
             query = """
-                    SELECT AVG(counter), hour_digit, MIN(hour_time), player_tag
-                    FROM activity_query
-                    WHERE player_tag = ANY($1::TEXT[])
-                    GROUP BY hour_digit, player_tag
-                    ORDER BY player_tag, hour_digit
+                    WITH valid_times AS (
+                        SELECT generate_series(min(hour_time), max(hour_time), '1 hour'::interval) as "time", 0 as "counter"
+                        FROM activity_query 
+                        WHERE player_tag = $1
+                    ),
+                    actual_times AS (
+                        SELECT hour_time as "time", counter
+                        FROM activity_query
+                        WHERE player_tag = $1
+                    )
+                    SELECT AVG(subquery.counter), date_part('HOUR', subquery."time") as "hour", subquery.time FROM (
+                        SELECT "time", counter 
+                        FROM valid_times
+                        UNION
+                        SELECT "time", counter
+                        FROM actual_times
+                    ) as subquery
+                    GROUP BY "hour"
+                    ORDER BY "hour"
                     """
-            return None, await ctx.db.fetch(query, list(player.keys()))
-        if clan:
             s = time.perf_counter()
-            query = """
-                    SELECT AVG(counter), hour_digit, MIN(hour_time), clans.clan_name
-                    FROM activity_query
-                    INNER JOIN clans
-                    ON clans.clan_tag = activity_query.clan_tag
-                    WHERE clans.clan_tag = ANY($1::TEXT[])
-                    GROUP BY hour_digit, clans.clan_name
-                    ORDER BY clans.clan_name, hour_digit
-                    """
-            fetch = await ctx.db.fetch(query, list(clan.keys()))
+            fetch = await ctx.db.fetch(query, clan['player_tag'])
             await ctx.send(f"{(time.perf_counter() - s)*1000}ms")
-            return None, fetch
+            return clan['player_name'], fetch
+
+        if clan:
+            query = """
+                    WITH cte1 AS (
+                        SELECT COUNT(DISTINCT player_tag) as "num_players", 
+                               DATE(activity_query.hour_time) as "date" 
+                        FROM activity_query 
+                        WHERE clan_tag = $1 
+                        GROUP by date
+                    ),
+                    cte2 AS (
+                        SELECT cast(SUM(counter) as decimal) / MIN(num_players) AS num_events, 
+                               hour_time 
+                        FROM activity_query 
+                        JOIN cte1 
+                        ON cte1.date = date(hour_time) 
+                        WHERE clan_tag = $1 
+                        GROUP BY hour_time
+                    )
+                    SELECT AVG(num_events), date_part('HOUR', hour_time) as "hour_digit", MIN(hour_time) 
+                    FROM cte2 
+                    GROUP BY hour_digit
+                    """
+            s = time.perf_counter()
+            fetch = await ctx.db.fetch(query, clan['clan_tag'])
+            await ctx.send(f"{(time.perf_counter() - s)*1000}ms")
+            return clan['clan_name'], fetch
 

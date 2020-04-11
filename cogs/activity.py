@@ -65,24 +65,25 @@ class Activity(commands.Cog):
         """
         key, fetch = data
 
+        if not fetch:
+            return await ctx.send(f"Not enough history. Please try again later.")
+
+
         existing_graph_data = self.graphs.get((ctx.guild.id, ctx.author.id), {})
 
         data_to_add = {}  # name: {hour: events}
-        if not isinstance(key, discord.TextChannel):
-            for clan_name, data in itertools.groupby(fetch, key=lambda x: x[3]):
-                dict_ = {n[1]: n[0] for n in data}
-                data_to_add[clan_name] = {hour: dict_.get(hour, 0) for hour in range(24)}
-        else:
-            if isinstance(key, discord.TextChannel):
-                key = "#" + key.name
+        # if not isinstance(key, discord.TextChannel):
+        #     for clan_name, data in itertools.groupby(fetch, key=lambda x: x[3]):
+        #         dict_ = {n[1]: n[0] for n in data}
+        #         data_to_add[clan_name] = {hour: dict_.get(hour, 0) for hour in range(24)}
+        # else:
+        #     if isinstance(key, discord.TextChannel):
+        #         key = "#" + key.name
 
-            dict_ = {n[1]: n[0] for n in fetch}
-            data_to_add[key] = {hour: dict_.get(hour, 0) for hour in range(24)}
+        dict_ = {n[1]: n[0] for n in fetch}
+        data_to_add[key] = {hour: dict_.get(hour, 0) for hour in range(24)}
 
         data_to_add = {**data_to_add, **existing_graph_data}
-
-        if not data_to_add:
-            return await ctx.send(f"Not enough history. Please try again later.")
 
         def get_width_offset(index):
             width = 0.8 / len(data_to_add)
