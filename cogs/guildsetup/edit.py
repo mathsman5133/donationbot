@@ -53,6 +53,31 @@ class Edit(commands.Cog):
         self.bot.prefixes[ctx.guild.id] = new_prefix
         await ctx.send(f"The prefix for the bot has been changed to `{new_prefix}`")
 
+    @edit.command(name='timezone', aliases=['tz'])
+    @checks.manage_guild()
+    async def edit_timezone(self, ctx, offset: int = 0):
+        """Edit the timezone in which the bot sees your server. This is useful for the `+activity` command.
+
+        Timezone offset should be the number of hours +/- UTC which you are, for example, if you want to
+        set your timezone to "US East Coast" (4 hours behind UTC), you would do use `+edit timezone -4`.
+
+        **Format**
+        :information_source: `+edit timezone OFFSET`
+
+        **Examples**
+        :white_check_mark: `+edit timezone -4` (for US East Coast)
+        :white_check_mark: `+edit timezone +5` (for India)
+        :white_check_mark: `+edit prefix +10` (for Australia)
+
+        **Required Permissions**
+        :warning: Manage Server
+        """
+        if not -12 <= offset <= 12:
+            return await ctx.send("Your offset must be between -12 and 12 hours away from UTC.")
+
+        await ctx.db.execute("UPDATE guilds SET timezone_offset = $1 WHERE guild_id $2", offset, ctx.guild.id)
+        await ctx.send(":ok_hand: Updated server timezone offset.")
+
     @edit.group(name='donationboard')
     @checks.manage_guild()
     async def edit_donationboard(self, ctx):

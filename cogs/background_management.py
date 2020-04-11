@@ -28,6 +28,14 @@ class BackgroundManagement(commands.Cog):
         self.daily_history_updater.cancel()
         # self.event_player_updater.cancel()
 
+    async def bot_check(self, ctx):
+        if ctx.guild.id in ctx.bot.locked_guilds:
+            return await ctx.send(
+                "Your server is locked. Please be patient while your activity data is synced. "
+                "If you believe this has been issued in error, "
+                "please join the support server: https://discord.gg/ePt8y4V"
+            )
+
     @commands.command(hidden=True)
     @commands.is_owner()
     async def forceguild(self, ctx, guild_id: int):

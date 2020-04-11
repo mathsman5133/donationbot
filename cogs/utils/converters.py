@@ -1,5 +1,6 @@
 import coc
 import discord
+import logging
 import re
 import time
 
@@ -10,6 +11,7 @@ from cogs.utils.checks import is_patron_pred
 
 
 tag_validator = re.compile("^#?[PYLQGRJCUV0289]+$")
+log = logging.getLogger(__name__)
 
 
 class PlayerConverter(commands.Converter):
@@ -246,17 +248,13 @@ class ActivityBarConverter(commands.Converter):
         player = None  # (tag, name)
 
         split = argument.split(" ")
-        argument = ""
-        time_ = 52
-        for n in split:
-            if n.isdigit():
-                time_ = int(n)
+        time_ = 0
+        for word in split:
+            m = re.search(r"\d*d", word)
+            if m:
+                argument = argument.replace(m.group(0), "")
+                time_ = int(m.group(0)[:-1])
                 break
-            else:
-                argument += n
-
-        time_ += 1
-        time_ = str(time_)
 
         if argument == "all":
             guild = ctx.guild
@@ -276,9 +274,8 @@ class ActivityBarConverter(commands.Converter):
                     else:
                         raise commands.BadArgument("I tried to parse your argument as a channel, server, clan name, clan tag, player name or tag and couldn't find a match!")
 
-        query = "SELECT clans.id FROM activity_query INNER JOIN clans ON clans.clan_tag = activity_query.clan_tag WHERE clans.guild_id = $1 LIMIT 1"
-        fetch = await ctx.db.fetchrow(query, ctx.guild.id)
-        if not fetch:
+        fetch = await ctx.db.fetchrow("SELECT activity_sync FROM guilds WHERE guild_id = $1", ctx.guild.id)
+        if not fetch['activity_sync']:
             await ctx.send("Loading clan activity values. This will take a minute. Please be patient.")
             query = """
                     WITH g_clans AS (
@@ -316,10 +313,15 @@ class ActivityBarConverter(commands.Converter):
                     AND cte.clan_tag = cte2.clan_tag
                     AND cte.timer = cte2.timer
                     GROUP BY cte.player_tag, cte.clan_tag, cte.timer, "num_events", "hour"
+                    ON CONFLICT DO NOTHING
                     """
             s = time.perf_counter()
-            await ctx.db.execute(query, ctx.guild.id)
-            await ctx.send(f"insert query - {(time.perf_counter() - s)*1000}ms")
+            guild_id = ctx.guild.id
+            ctx.bot.locked_guilds.add(guild_id)
+            await ctx.db.execute(query, guild_id)
+            ctx.bot.locked_guilds.remove(guild_id)
+            await ctx.db.execute("UPDATE guilds SET activity_sync = TRUE WHERE guild_id = $1", ctx.guild.id)
+            log.info(f"ACTIVITY INSERT QUERY for Guild ID {guild_id} took {(time.perf_counter() - s)*1000}ms")
 
         if channel or guild:
             query = """
@@ -352,9 +354,9 @@ class ActivityBarConverter(commands.Converter):
                     ORDER BY cte2.clan_name, hour_digit
                     """
         if channel:
-            return channel, time_, await ctx.db.fetch(query, channel.id)
+            return channel, await ctx.db.fetch(query, channel.id)
         if guild:
-            return guild, time_, await ctx.db.fetch(query, guild.id)
+            return guild, await ctx.db.fetch(query, guild.id)
 
         if player:
             query = """
@@ -377,7 +379,7 @@ class ActivityBarConverter(commands.Converter):
                     ORDER BY "hour"
                     """
             s = time.perf_counter()
-            fetch = await ctx.db.fetch(query, player['player_tag'], time_ or 52)
+            fetch = await ctx.db.fetch(query, player['player_tag'], str(time_ + 1 or 365))
             await ctx.send(f"{(time.perf_counter() - s)*1000}ms")
             return player['player_name'], time_, fetch
 
@@ -406,7 +408,7 @@ class ActivityBarConverter(commands.Converter):
                     GROUP BY hour_digit
                     """
             s = time.perf_counter()
-            fetch = await ctx.db.fetch(query, clan['clan_tag'], time_ or 52)
+            fetch = await ctx.db.fetch(query, clan['clan_tag'], str(time_ + 1 or 365))
             await ctx.send(f"{(time.perf_counter() - s)*1000}ms")
-            return clan['clan_name'], time_, fetch
+            return clan['clan_name'], fetch
 

@@ -29,56 +29,64 @@ class Activity(commands.Cog):
         self.graphs[key] = data
 
     @commands.group()
-    @is_patron()
     async def activity(self, ctx):
         """[Group] Get a graph showing the approximate activity/online times for a clan or member."""
         if ctx.invoked_subcommand is not None:
             return
-        #
-        # if not arg:
-        #     arg = await ctx.get_clans()
-        #
-        # if not arg:
-        #     return await ctx.send('Please claim a clan.')
-        # # elif isinstance(arg, discord.Member):
-        # #     await ctx.invoke(self.last_online_user, user=arg)
-        # # elif isinstance(arg, coc.BasicPlayer):
-        # #     await ctx.invoke(self.last_online_player, player=arg)
-        # elif isinstance(arg, list):
-        #     if isinstance(arg[0], coc.BasicClan):
-        #         await ctx.invoke(self.activity_clan, clan=arg)
 
     @activity.group(name='bar', invoke_without_command=True)
     async def activity_bar(self, ctx, *, data: ActivityBarConverter):
-        """Get a graph showing the approximate activity/online times for a clan."
+        """Get a graph showing the approximate activity/online times for a clan.
+
+        This command will return a graph that is generated from approximate activity readers
+        based on donations and trophy gains of legends players.
+
+        This command will remember your previous graph, and the next command you run will automatically compare
+        the previous graph(s) with this one. If you wish to reset the graph, use `+activity bar clear`.
 
         **Parameters**
-        :key: Clan name OR tag
+        :key: Clan name or tag, player name or tag. The player or clan you wish to find activity for.
+        :key: Data range - in days - how long you wish to find data for. By default, this will be as long as the bot has.
 
         **Format**
-        :information_source: `+activity clan #CLANTAG`
-        :information_source: `+activity clan Clan Name`
+        :information_source: `+activity bar #CLANTAG`
+        :information_source: `+activity bar Clan Name DAYSd`
+        :information_source: `+activity bar #PLAYERTAG DAYSd`
+        :information_source: `+activity bar Player Name`
 
         **Example**
-        :white_check_mark: `+activity clan #P0LYJC8C`
-        :white_check_mark: `+activity clan Rock Throwers`
+        :white_check_mark: `+activity bar #P0LYJC8C 13d`
+        :white_check_mark: `+activity bar Rock Throwers`
+        :white_check_mark: `+activity bar #PL80J2YL`
+        :white_check_mark: `+activity bar Mathsman 30d`
         """
-        key, time_, fetch = data
+        fetch = ctx.db.fetchrow("SELECT timezone_offset FROM guilds WHERE guild_id = $1", ctx.guild.id)
+        offset = fetch['timezone_offset']
+        key, fetch = data
 
         if not fetch:
             return await ctx.send(f"Not enough history. Please try again later.")
 
+        days = int((datetime.datetime.now() - fetch[0][2]).total_seconds() / (60 * 60 * 24))
         existing_graph_data = self.graphs.get((ctx.guild.id, ctx.author.id), {})
 
         data_to_add = {}  # name: {hour: events}
+
+        def get_hour_plus_offset(hour):
+            if 0 <= hour + offset <= 23:
+                return hour + offset
+            if hour + offset >= 23:
+                return 23 + offset - hour
+            return 23 + hour - offset
+
         if isinstance(key, (discord.TextChannel, discord.Guild)):
             # if it's a guild or channel this supports multiple clans. eg `+activity bar all`
             for clan_name, data in itertools.groupby(fetch, key=lambda x: x[3]):
                 dict_ = {n[0]: n[1] for n in data}
-                data_to_add[clan_name + f" ({time_}d)"] = {hour: dict_.get(hour, 0) for hour in range(24)}
+                data_to_add[clan_name + f" ({days}d)"] = {get_hour_plus_offset(hour): dict_.get(hour, 0) for hour in range(24)}
         else:
             dict_ = {n[0]: n[1] for n in fetch}
-            data_to_add[key + f" ({time_}d)"] = {hour: dict_.get(hour, 0) for hour in range(24)}
+            data_to_add[key + f" ({days}d)"] = {get_hour_plus_offset(hour): dict_.get(hour, 0) for hour in range(24)}
 
         data_to_add = {**data_to_add, **existing_graph_data}
 
@@ -98,7 +106,6 @@ class Activity(commands.Cog):
         plt.xticks(y_pos, list(range(24)))
         plt.xlabel("Time (hr) - in UTC.")
         plt.ylabel("Activity (average events)")
-        days = int((datetime.datetime.now() - fetch[0][2]).total_seconds() / (60 * 60 * 24))
         plt.title(f"Activity Graph - Time Period: {days}d")
         plt.legend(tuple(n[0] for n in graphs), tuple(n[1] for n in graphs))
 
@@ -112,6 +119,14 @@ class Activity(commands.Cog):
 
     @activity_bar.command(name='clear')
     async def activity_bar_clear(self, ctx):
+        """Clear your activity bar graph of previous results.
+
+        **Format**
+        :information_source: `+activity bar clear`
+
+        **Example**
+        :information_source: `+activity bar clear`
+        """
         try:
             del self.graphs[(ctx.guild.id, ctx.author.id)]
         except KeyError:
