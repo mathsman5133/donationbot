@@ -356,7 +356,7 @@ class ActivityBarConverter(commands.Converter):
                         FROM activity_query
                         WHERE player_tag = $1
                     )
-                    SELECT date_part('HOUR', valid_times."time") AS "hour", AVG(COALESCE(actual_times.counter, 0)), min(actual_times."time")
+                    SELECT date_part('HOUR', valid_times."time") AS "hour", AVG(COALESCE(actual_times.counter, 0)), min(valid_times."time")
                     FROM valid_times
                     LEFT JOIN actual_times ON actual_times.time = valid_times.time
                     GROUP BY "hour"
