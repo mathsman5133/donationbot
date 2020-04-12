@@ -61,6 +61,10 @@ class DonationBoard(commands.Cog):
         self.update_board_loops.cancel()
         #self.update_global_board.cancel()
 
+    @commands.Cog.listener()
+    async def on_ready(self):
+        self.webhooks = itertools.cycle(n for n in await self.bot.get_guild(691779140059267084).webhooks())
+
     @property
     def board_channels(self):
         if not self._board_channels:
@@ -69,6 +73,7 @@ class DonationBoard(commands.Cog):
 
     @tasks.loop(seconds=60.0)
     async def update_board_loops(self):
+        await self.bot.wait_until_ready()
         clan_tags = self.tags_to_update.copy()
         self.tags_to_update.clear()
 
@@ -471,7 +476,7 @@ class DonationBoard(commands.Cog):
         image.add_players(players)
         render = image.render()
 
-        logged_board_message = await next(self.board_channels).send(
+        logged_board_message = await next(self.webhooks).send(
             f"Perf: {(time.perf_counter() - start) * 1000}ms\n"
             f"Channel: {config.channel_id}\n"
             f"Guild: {config.guild_id}",
@@ -509,7 +514,7 @@ class DonationBoard(commands.Cog):
         im = DonationBoardImage(None)
         im.add_players(players)
         r = im.render()
-        m = await next(self.board_channels).send(f"{(time.perf_counter() - s) * 1000}ms", file=discord.File(r, 'test.jpg'))
+        m = await next(self.webhooks).send(f"{(time.perf_counter() - s) * 1000}ms", file=discord.File(r, 'test.jpg'))
         e = discord.Embed()
         e.set_image(url=m.attachments[0].url)
         e.set_footer(text=f"Page 1. Use the reactions to change pages.")
@@ -524,6 +529,7 @@ class DonationBoard(commands.Cog):
         await self.reaction_action(payload)
 
     async def reaction_action(self, payload):
+        await self.bot.wait_until_ready()
         if payload.user_id == self.bot.user.id:
             return
         if payload.emoji not in (REFRESH_EMOJI, LEFT_EMOJI, RIGHT_EMOJI, PERCENTAGE_EMOJI, GAIN_EMOJI, LAST_ONLINE_EMOJI, HISTORICAL_EMOJI):
