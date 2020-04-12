@@ -156,6 +156,7 @@ class Utils(commands.Cog):
         try:
             return await channel.send(content, embed=embed)
         except (discord.HTTPException, discord.Forbidden, AttributeError):
+            await self.bot.pool.execute("UPDATE logs SET toggle = FALSE WHERE channel_id = $1", channel.id)
             return
 
     async def channel_log(self, channel_id, log_type, message=None, embed_to_send=None, colour=None, embed=True):
