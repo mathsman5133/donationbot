@@ -128,7 +128,7 @@ class Activity(commands.Cog):
         plt.savefig(b, format='png')
         b.seek(0)
         await ctx.send(file=discord.File(b, f'activitygraph.png'))
-        plt.cla()
+        plt.close()
 
     @activity_bar.command(name='clear')
     async def activity_bar_clear(self, ctx):

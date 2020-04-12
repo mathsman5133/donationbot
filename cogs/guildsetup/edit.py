@@ -93,7 +93,12 @@ class Edit(commands.Cog):
         **Example**
         :white_check_mark: `+edit darkmode` (to turn on)
         """
-        query = "INSERT INTO user_config (user_id, dark_mode) VALUES ($1, TRUE) ON CONFLICT (user_id) DO UPDATE SET dark_mode = NOT dark_mode RETURNING dark_mode"
+        query = """INSERT INTO user_config (user_id, dark_mode) 
+                   VALUES ($1, TRUE) 
+                   ON CONFLICT (user_id) 
+                   DO UPDATE SET dark_mode = NOT user_config.dark_mode 
+                   RETURNING dark_mode
+                """
         fetch = await ctx.db.fetchrow(query, ctx.author.id)
         await ctx.send(f":ok_hand: Updated dark mode to: {'on' if fetch['dark_mode'] else 'off'}")
 
