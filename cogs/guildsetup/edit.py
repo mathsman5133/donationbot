@@ -54,12 +54,13 @@ class Edit(commands.Cog):
         await ctx.send(f"The prefix for the bot has been changed to `{new_prefix}`")
 
     @edit.command(name='timezone', aliases=['tz'])
-    @checks.manage_guild()
     async def edit_timezone(self, ctx, offset: int = 0):
-        """Edit the timezone in which the bot sees your server. This is useful for the `+activity` command.
+        """Edit the timezone in which the bot sees you. This is useful for the `+activity` command.
 
         Timezone offset should be the number of hours +/- UTC which you are, for example, if you want to
         set your timezone to "US East Coast" (4 hours behind UTC), you would do use `+edit timezone -4`.
+
+        This is a per-user command. Timezones will appear as the default unless you run this command.
 
         **Format**
         :information_source: `+edit timezone OFFSET`
@@ -67,16 +68,34 @@ class Edit(commands.Cog):
         **Examples**
         :white_check_mark: `+edit timezone -4` (for US East Coast)
         :white_check_mark: `+edit timezone +5` (for India)
-        :white_check_mark: `+edit prefix +10` (for Australia)
-
-        **Required Permissions**
-        :warning: Manage Server
+        :white_check_mark: `+edit timezone +10` (for Australia)
         """
         if not -12 <= offset <= 12:
             return await ctx.send("Your offset must be between -12 and 12 hours away from UTC.")
 
-        await ctx.db.execute("UPDATE guilds SET timezone_offset = $1 WHERE guild_id = $2", offset, ctx.guild.id)
+        query = "INSERT INTO user_config (user_id, timezone_offset) VALUES ($1, $2) ON CONFLICT DO UPDATE SET timezone_offset = $2"
+        await ctx.db.execute(query, ctx.author.id, offset)
         await ctx.send(":ok_hand: Updated server timezone offset.")
+
+    @edit.command(name='darkmode', aliases=['tz'])
+    async def edit_darkmode(self, ctx):
+        """Toggle your dark mode setting. This is useful for the `+activity` command.
+
+        If this is set to "on", all commands will return a dark-mode-friendly colour theme.
+
+        This defaults to "off".
+
+        This is a per-user command. Dark mode will appear as the default (off) unless you run this command.
+
+        **Format**
+        :information_source: `+edit darkmode`
+
+        **Example**
+        :white_check_mark: `+edit darkmode` (to turn on)
+        """
+        query = "INSERT INTO user_config (user_id, dark_mode) VALUES ($1, TRUE) ON CONFLICT DO UPDATE SET dark_mode = NOT dark_mode RETURNING dark_mode"
+        fetch = await ctx.db.fetchrow(query, ctx.author.id)
+        await ctx.send(f":ok_hand: Updated dark mode to: {'on' if fetch['dark_mode'] else 'off'}")
 
     @edit.group(name='donationboard')
     @checks.manage_guild()

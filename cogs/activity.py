@@ -1,22 +1,14 @@
 import datetime
 import io
-import time
-import typing
-import numpy
 import itertools
 
-import coc
 import discord
-
-from collections import Counter
+import numpy
 
 from matplotlib import pyplot as plt
 from discord.ext import commands
 
-from cogs.utils.converters import ClanConverter, PlayerConverter, ActivityBarConverter
-from cogs.utils.formatters import readable_time
-from cogs.utils.paginator import LastOnlinePaginator
-from cogs.utils.checks import is_patron
+from cogs.utils.converters import ActivityBarConverter
 
 
 class Activity(commands.Cog):
@@ -24,9 +16,24 @@ class Activity(commands.Cog):
         self.bot = bot
         self.graphs = {}
 
-    def add_bar_graph(self, guild_id, author_id, **data):
-        key = (guild_id, author_id)
-        self.graphs[key] = data
+    def add_bar_graph(self, channel_id, author_id, **data):
+        key = (channel_id, author_id)
+        self.graphs[key] = (data, datetime.datetime.now())
+
+    def get_bar_graph(self, channel_id, author_id):
+        try:
+            data = self.graphs[(channel_id, author_id)]
+            return data[0]
+        except KeyError:
+            return {}
+
+    async def clean_graph_cache(self):
+        to_clear = (k for k, v in self.graphs.items() if datetime.datetime.now() - v[1] > datetime.timedelta(hours=1))
+        for key in to_clear:
+            try:
+                del self.graphs[key]
+            except KeyError:
+                pass
 
     @commands.group()
     async def activity(self, ctx):
@@ -60,15 +67,20 @@ class Activity(commands.Cog):
         :white_check_mark: `+activity bar #PL80J2YL`
         :white_check_mark: `+activity bar Mathsman 30d`
         """
-        fetch = await ctx.db.fetchrow("SELECT timezone_offset FROM guilds WHERE guild_id = $1", ctx.guild.id)
+        query = """SELECT COALESCE((SELECT timezone_offset FROM user_config WHERE user_id = $1), 0) as timezone_offset,
+                          COALESCE((SELECT dark_mode FROM user_config WHERE user_id = $1), False) as dark_mode"""
+        fetch = await ctx.db.fetchrow(query, ctx.author.id)
         timezone_offset = int(fetch['timezone_offset'])
+        if fetch['dark_mode']:
+            plt.style.use('dark_background')
+
         key, fetch = data
 
         if not fetch:
             return await ctx.send(f"Not enough history. Please try again later.")
 
         days = int((datetime.datetime.now() - fetch[0][2]).total_seconds() / (60 * 60 * 24))
-        existing_graph_data = self.graphs.get((ctx.guild.id, ctx.author.id), {})
+        existing_graph_data = self.get_bar_graph(ctx.channel.id, ctx.author.id)
 
         data_to_add = {}  # name: {hour: events}
 
@@ -110,7 +122,7 @@ class Activity(commands.Cog):
         plt.title(f"Activity Graph - Time Period: {days + 1}d")
         plt.legend(tuple(n[0] for n in graphs), tuple(n[1] for n in graphs))
 
-        self.add_bar_graph(ctx.guild.id, ctx.author.id, **data_to_add)
+        self.add_bar_graph(ctx.channel.id, ctx.author.id, **data_to_add)
 
         b = io.BytesIO()
         plt.savefig(b, format='png')
@@ -133,91 +145,6 @@ class Activity(commands.Cog):
         except KeyError:
             pass
         await ctx.send(":ok_hand: Graph has been reset.")
-
-    @activity.command(name='player')
-    async def activity_player(self, ctx, *, player: PlayerConverter):
-        """Get an approximation for the last time a player was online.
-
-        **Parameters**
-        :key: Player name OR tag
-
-        **Format**
-        :information_source: `+lastonline player #PLAYER_TAG`
-        :information_source: `+lastonline player Player Name`
-
-        **Example**
-        :white_check_mark: `+lastonline player #P0LYJC8C`
-        :white_check_mark: `+lastonline player mathsman`
-        """
-        query = """WITH cte AS (
-                        SELECT date_part('HOUR', "time") as "hour", COUNT(*) as "count", clan_tag 
-                        From trophyevents 
-                        WHERE player_tag = $1
-                        AND league_id = 29000022
-                        AND trophy_change > 0
-                        GROUP BY clan_tag, "hour"
-                    ),
-                    cte2 AS (
-                        SELECT date_part('HOUR', "time") as "hour", COUNT(*) as "count", clan_tag 
-                        From donationevents 
-                        WHERE player_tag = $1
-                        AND donations > 0
-                        GROUP BY clan_tag, "hour"
-                    )
-                    select cte.count + cte2.count as "count", cte."hour"
-                    FROM cte
-                    JOIN cte2 ON cte.hour = cte2.hour
-                """
-        fetch = await ctx.db.fetchrow(query, player.tag)
-
-        if not fetch:
-            return await ctx.send("Not enough history. Please try again later.")
-
-        y_pos = [i for i in range(len(fetch))]
-        plt.bar(y_pos, [n[0] for n in fetch], align='center', alpha=0.5)
-        plt.xticks(y_pos, [str(n[1]) for n in fetch])
-        plt.xlabel("Time (hr)")
-        plt.ylabel("Activity")
-        plt.title(f"Activity graph for {player}")
-
-        b = io.BytesIO()
-        plt.savefig(b, format='png')
-        b.seek(0)
-        await ctx.send(file=discord.File(b, f'activitygraph.png'))
-    #
-    # @activity.command(name='user')
-    # async def last_online_user(self, ctx, *, user: discord.Member = None):
-    #     """Get an approximation for the last time a player was online.
-    #
-    #     **Parameters**
-    #     :key: Discord user (optional - defaults to yourself)
-    #
-    #     **Format**
-    #     :information_source: `+lastonline user @MENTION`
-    #     :information_source: `+lastonline user`
-    #
-    #     **Example**
-    #     :white_check_mark: `+lastonline user @mathsman`
-    #     :white_check_mark: `+lastonline user`
-    #     """
-    #     user = user or ctx.author
-    #     query = """SELECT player_tag,
-    #                           last_updated - now() AS "since"
-    #                    FROM players
-    #                    WHERE user_id = $1
-    #                    AND season_id = $2
-    #                    ORDER BY since DESC
-    #                 """
-    #     fetch = await ctx.db.fetch(query, user.id, await self.bot.seasonconfig.get_season_id())
-    #     if not fetch:
-    #         return await ctx.send(f"{user} doesn't have any claimed accounts.")
-    #
-    #     page_count = math.ceil(len(fetch) / 20)
-    #     title = f'Last Online Estimate for {user}'
-    #
-    #     p = LastOnlinePaginator(ctx, data=fetch, title=title, page_count=page_count)
-    #
-    #     await p.paginate()
 
 
 def setup(bot):
