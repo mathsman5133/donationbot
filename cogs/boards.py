@@ -480,7 +480,8 @@ class DonationBoard(commands.Cog):
             f"Perf: {(time.perf_counter() - start) * 1000}ms\n"
             f"Channel: {config.channel_id}\n"
             f"Guild: {config.guild_id}",
-            file=discord.File(render, f'{config.type}board.png')
+            file=discord.File(render, f'{config.type}board.png'),
+            wait=True
         )
 
         e = discord.Embed(colour=discord.Colour.blue() if donationboard else discord.Colour.green())
@@ -514,7 +515,7 @@ class DonationBoard(commands.Cog):
         im = DonationBoardImage(None)
         im.add_players(players)
         r = im.render()
-        m = await next(self.webhooks).send(f"{(time.perf_counter() - s) * 1000}ms", file=discord.File(r, 'test.jpg'))
+        m = await next(self.webhooks).send(f"{(time.perf_counter() - s) * 1000}ms", file=discord.File(r, 'test.jpg'), wait=True)
         e = discord.Embed()
         e.set_image(url=m.attachments[0].url)
         e.set_footer(text=f"Page 1. Use the reactions to change pages.")
