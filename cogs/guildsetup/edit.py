@@ -77,7 +77,7 @@ class Edit(commands.Cog):
         await ctx.db.execute(query, ctx.author.id, offset)
         await ctx.send(":ok_hand: Updated server timezone offset.")
 
-    @edit.command(name='darkmode', aliases=['tz'])
+    @edit.command(name='darkmode')
     async def edit_darkmode(self, ctx):
         """Toggle your dark mode setting. This is useful for the `+activity` command.
 
