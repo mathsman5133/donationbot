@@ -83,7 +83,7 @@ def format_donation_log_message(player):
             number = number_emojis[player.received]
         else:
             number = str(player.received)
-    return f'{emoji2}{player.name} {emoji} {number}'
+    return f'{emoji2} {number} {player.name}'
 
 
 def format_donation_log_message_test(player):
