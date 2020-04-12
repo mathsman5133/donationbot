@@ -190,7 +190,7 @@ class TrophyLogs(commands.Cog):
                 else:
                     log.debug(f'Dispatching a log to channel '
                               f'{config.channel} (ID {config.channel_id})')
-                    asyncio.ensure_future(self.bot.utils.safe_send(config.channel, '\n'.join(x)))
+                    await self.bot.utils.safe_send(config.channel, '\n'.join(x))
 
 
     async def on_clan_member_trophies_change(self, old_trophies, new_trophies, player, clan):

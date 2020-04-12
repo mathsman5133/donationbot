@@ -339,7 +339,7 @@ class DonationLogs(commands.Cog):
                 embeds = await get_detailed_log(self.bot, events)
                 for x in embeds:
                     log.debug(f'Dispatching a log to channel {config.channel} (ID {config.channel_id}), {x}')
-                    asyncio.ensure_future(self.bot.utils.safe_send(config.channel, embed=x))
+                    await self.bot.utils.safe_send(config.channel, embed=x)
 
             else:
                 messages = await get_basic_log(events)
@@ -350,7 +350,7 @@ class DonationLogs(commands.Cog):
 
                 for x in messages:
                     log.debug(f'Dispatching a detailed log to channel {config.channel} (ID {config.channel_id}), {x}')
-                    asyncio.ensure_future(self.bot.utils.safe_send(config.channel, '\n'.join(x)))
+                    await self.bot.utils.safe_send(config.channel, '\n'.join(x))
 
     async def add_temp_events(self, channel_id, fmt):
         query = """INSERT INTO tempevents (channel_id, fmt, type) VALUES ($1, $2, $3)"""
