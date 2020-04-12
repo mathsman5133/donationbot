@@ -73,6 +73,8 @@ class Activity(commands.Cog):
         timezone_offset = int(fetch['timezone_offset'])
         if fetch['dark_mode']:
             plt.style.use('dark_background')
+        else:
+            plt.style.use('default')
 
         key, fetch = data
 
