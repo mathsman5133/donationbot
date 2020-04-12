@@ -483,6 +483,7 @@ class DonationBoard(commands.Cog):
             file=discord.File(render, f'{config.type}board.png'),
             wait=True
         )
+        log.info(logged_board_message)
 
         e = discord.Embed(colour=discord.Colour.blue() if donationboard else discord.Colour.green())
         e.set_image(url=logged_board_message.attachments[0].url)
