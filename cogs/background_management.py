@@ -38,6 +38,11 @@ class BackgroundManagement(commands.Cog):
             return False
         return True
 
+    async def log_message_send(self, message_id, channel_id, guild_id, type_):
+        # type can be: command, donationboard, trophyboard, donationlog, trophylog
+        query = "INSERT INTO message_sends (message_id, channel_id, guild_id, type) VALUES ($1, $2, $3, $4)"
+        await self.bot.pool.execute(query, message_id, channel_id, guild_id, type_)
+
     @commands.command(hidden=True)
     @commands.is_owner()
     async def forceguild(self, ctx, guild_id: int):
@@ -463,6 +468,7 @@ class BackgroundManagement(commands.Cog):
 
     @commands.Cog.listener()
     async def on_command(self, ctx):
+        await self.log_message_send(ctx.message.id, ctx.channel.id, ctx.guild.id, 'command')
         command = ctx.command.qualified_name
         self.bot.command_stats[command] += 1
         message = ctx.message

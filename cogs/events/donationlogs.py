@@ -20,7 +20,6 @@ log = logging.getLogger(__name__)
 
 EVENTS_TABLE_TYPE = 'donation'
 SlimDonationEvent2 = namedtuple("SlimDonationEvent", "donations received name tag clan_tag")
-TEST_CHANNEL_IDS = [595598923993710592, 594280479881035776, 680216594307350652, 671799417136873504]
 
 
 def get_received_combos(clan_events):
@@ -140,12 +139,13 @@ async def get_detailed_log(bot, all_clan_events, raw_events: bool = False):
     return embeds
 
 
-async def get_basic_log(events):
+async def get_basic_log(bot, guild_id, events):
     all_events = [SlimDonationEvent(x['donations'], x['received'], x['player_name'], x['clan_tag']) for x in sorted(events, key=lambda x: x['clan_tag'])]
 
     messages = []
     for x in all_events:
-        messages.append(format_donation_log_message(x))
+        clan_name = await bot.utils.get_clan_name(guild_id, x.clan_tag)
+        messages.append(format_donation_log_message(x, clan_name))
 
     group_batch = []
     for i in range(math.ceil(len(messages) / 20)):
@@ -268,6 +268,9 @@ class DonationLogs(commands.Cog):
                             embeds.append(e)
 
                     for n in embeds:
+                        await self.bot.background.log_message_send(
+                            None, config.channel_id, config.guild_id, 'donationlog'
+                        )
                         asyncio.ensure_future(self.bot.utils.safe_send(config.channel, embed=n))
                         
                 else:
@@ -278,6 +281,9 @@ class DonationLogs(commands.Cog):
                     for n in fetch:
                         p.add_lines(n[0].split("\n"))
                     for page in p.pages:
+                        await self.bot.background.log_message_send(
+                            None, config.channel_id, config.guild_id, 'donationlog'
+                        )
                         asyncio.ensure_future(self.bot.utils.safe_send(config.channel, page))
 
         except asyncio.CancelledError:
@@ -339,10 +345,13 @@ class DonationLogs(commands.Cog):
                 embeds = await get_detailed_log(self.bot, events)
                 for x in embeds:
                     log.debug(f'Dispatching a log to channel {config.channel} (ID {config.channel_id}), {x}')
+                    await self.bot.background.log_message_send(
+                        None, config.channel_id, config.guild_id, 'donationlog'
+                    )
                     await self.bot.utils.safe_send(config.channel, embed=x)
 
             else:
-                messages = await get_basic_log(events)
+                messages = await get_basic_log(self.bot, config.guild_id, events)
                 if config.seconds > 0 and channel_id:
                     for n in messages:
                         await self.add_temp_events(channel_id, "\n".join(n))
@@ -350,6 +359,9 @@ class DonationLogs(commands.Cog):
 
                 for x in messages:
                     log.debug(f'Dispatching a detailed log to channel {config.channel} (ID {config.channel_id}), {x}')
+                    await self.bot.background.log_message_send(
+                        None, config.channel_id, config.guild_id, 'donationlog'
+                    )
                     await self.bot.utils.safe_send(config.channel, '\n'.join(x))
 
     async def add_temp_events(self, channel_id, fmt):

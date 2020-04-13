@@ -128,6 +128,10 @@ class TrophyLogs(commands.Cog):
                 fetch = await self.bot.pool.fetch(query, channel_id, EVENTS_TABLE_TYPE)
 
                 for n in fetch:
+                    await self.bot.background.log_message_send(
+                        None, config.channel_id, config.guild_id, 'trophylog'
+                    )
+
                     asyncio.ensure_future(self.bot.utils.channel_log(channel_id, EVENTS_TABLE_TYPE,
                                                                      n[0], embed=False))
 
@@ -178,7 +182,8 @@ class TrophyLogs(commands.Cog):
             messages = []
             for x in events:
                 slim_event = SlimTrophyEvent(x['trophy_change'], x['league_id'], x['player_name'], x['clan_tag'])
-                messages.append(format_trophy_log_message(slim_event))
+                clan_name = await self.bot.utils.get_clan_name(config.guild.id, x['clan_tag'])
+                messages.append(format_trophy_log_message(slim_event, clan_name))
 
             group_batch = []
             for i in range(math.ceil(len(messages) / 20)):
@@ -190,23 +195,11 @@ class TrophyLogs(commands.Cog):
                 else:
                     log.debug(f'Dispatching a log to channel '
                               f'{config.channel} (ID {config.channel_id})')
+                    await self.bot.background.log_message_send(
+                        None, config.channel_id, config.guild_id, 'trophylog'
+                    )
+
                     await self.bot.utils.safe_send(config.channel, '\n'.join(x))
-
-
-    async def on_clan_member_trophies_change(self, old_trophies, new_trophies, player, clan):
-        log.debug(f'Received on_clan_member_trophy_change event for player {player} of clan {clan}')
-        change = new_trophies - old_trophies
-
-        async with self._batch_lock:
-            self._batch_data.append({
-                'player_tag': player.tag,
-                'player_name': player.name,
-                'clan_tag': clan.tag,
-                'trophy_change': change,
-                'league_id': player.league.id,
-                'time': datetime.utcnow().isoformat(),
-                'season_id': await self.bot.seasonconfig.get_season_id()
-            })
 
 
 def setup(bot):
