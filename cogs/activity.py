@@ -6,7 +6,7 @@ import discord
 import numpy
 
 from matplotlib import pyplot as plt
-from discord.ext import commands
+from discord.ext import commands, tasks
 
 from cogs.utils.converters import ActivityBarConverter
 
@@ -27,6 +27,7 @@ class Activity(commands.Cog):
         except KeyError:
             return {}
 
+    @tasks.loop(minutes=1)
     async def clean_graph_cache(self):
         to_clear = (k for k, v in self.graphs.items() if datetime.datetime.now() - v[1] > datetime.timedelta(hours=1))
         for key in to_clear:
@@ -143,7 +144,7 @@ class Activity(commands.Cog):
         :information_source: `+activity bar clear`
         """
         try:
-            del self.graphs[(ctx.guild.id, ctx.author.id)]
+            del self.graphs[(ctx.channel.id, ctx.author.id)]
         except KeyError:
             pass
         await ctx.send(":ok_hand: Graph has been reset.")
