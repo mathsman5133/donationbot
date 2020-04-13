@@ -38,7 +38,7 @@ trophylog_batch_lock = asyncio.Lock(loop=loop)
 trophylog_batch_data = []
 
 last_updated_batch_lock = asyncio.Lock(loop=loop)
-last_updated_data = {}
+last_updated_tags = set()
 
 
 @tasks.loop(seconds=60.0)
@@ -341,32 +341,20 @@ async def last_updated_loop():
 
 async def update_db():
     query = """UPDATE players 
-               SET last_updated = x.last_updated
-               FROM(
-                   SELECT x.last_updated, x.player_tag
-                   FROM jsonb_to_recordset($1::jsonb)
-                   AS x(
-                       player_tag TEXT,
-                       last_updated TIMESTAMP
-                   )
-               )
-               AS x
-               WHERE players.player_tag = x.player_tag
+               SET last_updated = now()
+               WHERE player_tag = ANY($1::TEXT[])
                AND players.season_id = $2
             """
     async with last_updated_batch_lock:
         await pool.execute(
-            query, list(last_updated_data.values()), SEASON_ID
+            query, list(last_updated_tags), SEASON_ID
         )
-        last_updated_data.clear()
+        last_updated_tags.clear()
 
 
 async def update(player_tag):
     async with last_updated_batch_lock:
-        last_updated_data[player_tag] = {
-            'player_tag': player_tag,
-            'last_updated': datetime.datetime.utcnow().isoformat()
-        }
+        last_updated_tags.add(player_tag)
 #
 async def on_clan_member_name_change(_, __, player):
     await update(player.tag)
