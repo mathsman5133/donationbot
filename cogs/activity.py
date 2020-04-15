@@ -33,7 +33,8 @@ class Activity(commands.Cog):
 
     @tasks.loop(minutes=1)
     async def clean_graph_cache(self):
-        to_clear = (k for k, v in self.graphs.items() if datetime.datetime.now() - v[1] > datetime.timedelta(hours=1))
+        time = datetime.datetime.now()
+        to_clear = [k for (k, (v, t)) in self.graphs.items() if time > t + datetime.timedelta(hours=1)]
         for key in to_clear:
             try:
                 del self.graphs[key]
