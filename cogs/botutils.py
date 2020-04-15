@@ -1,11 +1,15 @@
 import datetime
 import discord
+import logging
 
 from discord.ext import commands
 from typing import Union, List
 
 from cogs.utils.cache import cache, Strategy
 from cogs.utils.db_objects import LogConfig, BoardConfig, SlimEventConfig
+
+
+log = logging.getLogger(__name__)
 
 
 class Utils(commands.Cog):
@@ -155,11 +159,13 @@ class Utils(commands.Cog):
     async def safe_send(self, channel, content=None, embed=None):
         try:
             return await channel.send(content, embed=embed)
-        except (discord.HTTPException, discord.Forbidden, AttributeError):
+        except (discord.Forbidden, AttributeError):
             await self.bot.pool.execute("UPDATE logs SET toggle = FALSE WHERE channel_id = $1", channel.id)
             self.log_config.invalidate(channel.id, 'donation')
             self.log_config.invalidate(channel.id, 'trophy')
             return
+        except:
+            log.exception(f"{channel} failed to send {content} {embed}")
 
     async def channel_log(self, channel_id, log_type, message=None, embed_to_send=None, colour=None, embed=True):
         config = await self.log_config(channel_id, log_type)
