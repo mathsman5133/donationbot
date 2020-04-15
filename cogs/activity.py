@@ -15,6 +15,10 @@ class Activity(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.graphs = {}
+        self.clean_graph_cache.start()
+
+    def cog_unload(self):
+        self.clean_graph_cache.cancel()
 
     def add_bar_graph(self, channel_id, author_id, **data):
         key = (channel_id, author_id)
