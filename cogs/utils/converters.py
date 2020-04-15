@@ -11,7 +11,7 @@ from cogs.utils.checks import is_patron_pred
 
 
 tag_validator = re.compile("^#?[PYLQGRJCUV0289]+$")
-activity_days_re = re.compile(r"^\d*d$")
+activity_days_re = re.compile(r"\b\d*d$")
 log = logging.getLogger(__name__)
 
 
@@ -250,12 +250,12 @@ class ActivityBarConverter(commands.Converter):
 
         time_ = None
 
-        match = activity_days_re.match(argument)
+        match = activity_days_re.search(argument)
         if match:
             argument = argument.replace(match.group(0), "").strip()
             time_ = int(match.group(0)[:-1])
 
-        if tag_validator.match(argument):
+        if tag_validator.match(argument) and argument.startswith("#"):
             argument = coc.utils.correct_tag(argument)
 
         if argument == "all":
