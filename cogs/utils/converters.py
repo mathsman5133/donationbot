@@ -11,6 +11,7 @@ from cogs.utils.checks import is_patron_pred
 
 
 tag_validator = re.compile("^#?[PYLQGRJCUV0289]+$")
+activity_days_re = re.compile(r"^\d*d$")
 log = logging.getLogger(__name__)
 
 
@@ -247,14 +248,15 @@ class ActivityBarConverter(commands.Converter):
         clan = None  # (tag, name)
         player = None  # (tag, name)
 
-        split = argument.split(" ")
         time_ = None
-        for word in split:
-            m = re.search(r"^\d*d$", word)
-            if m:
-                argument = argument.replace(m.group(0), "").strip()
-                time_ = int(m.group(0)[:-1])
-                break
+
+        match = activity_days_re.match(argument)
+        if match:
+            argument = argument.replace(match.group(0), "").strip()
+            time_ = int(match.group(0)[:-1])
+
+        if tag_validator.match(argument):
+            argument = coc.utils.correct_tag(argument)
 
         if argument == "all":
             guild = ctx.guild
@@ -262,8 +264,13 @@ class ActivityBarConverter(commands.Converter):
             try:
                 channel = await commands.TextChannelConverter().convert(ctx, argument)
             except commands.BadArgument:
-                query = "SELECT DISTINCT(clan_tag), clan_name FROM clans WHERE clan_tag LIKE $1 OR clan_name LIKE $1"
-                fetch = await ctx.db.fetchrow(query, argument)
+                if not await ctx.bot.is_owner(ctx.author):
+                    query = "SELECT DISTINCT(clan_tag), clan_name FROM clans WHERE clan_tag LIKE $1 OR clan_name LIKE $1 AND guild_id = $2"
+                    fetch = await ctx.db.fetchrow(query, argument, ctx.guild.id)
+                else:
+                    query = "SELECT DISTINCT(clan_tag), clan_name FROM clans WHERE clan_tag LIKE $1 OR clan_name LIKE $1"
+                    fetch = await ctx.db.fetchrow(query, argument)
+
                 if fetch:
                     clan = fetch
                 else:
@@ -272,7 +279,7 @@ class ActivityBarConverter(commands.Converter):
                     if fetch:
                         player = fetch
                     else:
-                        raise commands.BadArgument("I tried to parse your argument as a channel, server, clan name, clan tag, player name or tag and couldn't find a match!")
+                        raise commands.BadArgument("I tried to parse your argument as a channel, server, clan name, clan tag, player name or tag and couldn't find a match! Make sure the clan is claimed to this server, and try again.")
 
         fetch = await ctx.db.fetchrow("SELECT activity_sync FROM guilds WHERE guild_id = $1", ctx.guild.id)
         if not fetch['activity_sync']:
