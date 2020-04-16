@@ -69,6 +69,7 @@ class BackgroundManagement(commands.Cog):
                     ) 
                     SELECT player_tag, clan_tag, timer, num_events, hour 
                     FROM get_activity_to_sync()
+                    ON CONFLICT DO NOTHING
                 """
         await self.bot.pool.execute(query)
 
