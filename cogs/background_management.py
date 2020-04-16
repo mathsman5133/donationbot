@@ -16,16 +16,30 @@ from cogs.utils.emoji_lookup import misc
 log = logging.getLogger(__name__)
 
 
+def seconds_until_5am():
+    now = datetime.datetime.now(pytz.utc)
+
+    if now.hour < 4:
+        five_am = now.replace(hour=4, minute=0, second=0, microsecond=0)
+    else:
+        tomorrow = now + datetime.timedelta(days=1)
+        five_am = tomorrow.replace(hour=4, minute=0, second=0, microsecond=0)
+
+    return (five_am - now).total_seconds()
+
+
 class BackgroundManagement(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.next_event_starts.start()
         self.daily_history_updater.start()
+        self.sync_activity_stats.start()
         # self.event_player_updater.start()
 
     def cog_unload(self):
         self.next_event_starts.cancel()
         self.daily_history_updater.cancel()
+        self.sync_activity_stats.cancel()
         # self.event_player_updater.cancel()
 
     async def bot_check(self, ctx):
@@ -43,6 +57,21 @@ class BackgroundManagement(commands.Cog):
         query = "INSERT INTO message_sends (message_id, channel_id, guild_id, type) VALUES ($1, $2, $3, $4)"
         await self.bot.pool.execute(query, message_id, channel_id, guild_id, type_)
 
+    @tasks.loop()
+    async def sync_activity_stats(self):
+        await asyncio.sleep(seconds_until_5am())
+        query = """INSERT INTO activity_query (
+                       player_tag, 
+                       clan_tag, 
+                       hour_time, 
+                       counter, 
+                       hour_digit
+                    ) 
+                    SELECT player_tag, clan_tag, timer, num_events, hour 
+                    FROM get_activity_to_sync()
+                """
+        await self.bot.pool.execute(query)
+
     @commands.command(hidden=True)
     @commands.is_owner()
     async def forceguild(self, ctx, guild_id: int):
@@ -50,16 +79,7 @@ class BackgroundManagement(commands.Cog):
 
     @tasks.loop()
     async def daily_history_updater(self):
-        now = datetime.datetime.now(pytz.utc)
-
-        if now.hour < 4:
-            five_am = now.replace(hour=4, minute=0, second=0, microsecond=0)
-        else:
-            tomorrow = now + datetime.timedelta(days=1)
-            five_am = tomorrow.replace(hour=4, minute=0, second=0, microsecond=0)
-
-        await asyncio.sleep((five_am - now).total_seconds())
-
+        await asyncio.sleep(seconds_until_5am())
         query = """INSERT INTO players_history (
                                     player_tag, 
                                     donations, 

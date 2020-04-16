@@ -331,3 +331,74 @@ begin
 end;
 $function$
 ;
+
+CREATE OR REPLACE FUNCTION public.get_activity_to_sync()
+RETURNS TABLE (
+    player_tag TEXT,
+    clan_tag TEXT,
+    timer TIMESTAMP,
+    num_events INTEGER,
+    "hour" DOUBLE PRECISION
+)
+LANGUAGE plpgsql
+AS $function$
+begin
+    CREATE TABLE tempdonationstats (
+        player_tag TEXT,
+        clan_tag TEXT,
+        timer TIMESTAMP,
+        counter INTEGER
+    );
+
+    CREATE TABLE temptrophystats (
+        player_tag TEXT,
+        clan_tag TEXT,
+        timer TIMESTAMP,
+        counter INTEGER
+    );
+
+    CREATE TABLE g_clans (clan_tag TEXT);
+
+    INSERT INTO g_clans
+    SELECT distinct clans.clan_tag
+    FROM clans
+    INNER JOIN guilds
+    ON clans.guild_id = guilds.guild_id
+    WHERE guilds.activity_sync = TRUE;
+
+    INSERT INTO tempdonationstats
+    SELECT donationevents.player_tag,
+           donationevents.clan_tag,
+           date_trunc('HOUR', "time") AS "timer",
+           COUNT(*) AS "counter"
+    FROM donationevents
+    INNER JOIN g_clans ON g_clans.clan_tag = donationevents.clan_tag
+    GROUP BY timer, donationevents.player_tag, donationevents.clan_tag;
+
+    INSERT INTO temptrophystats
+    SELECT trophyevents.player_tag,
+           trophyevents.clan_tag,
+           date_trunc('HOUR', "time") AS "timer",
+           COUNT(*) AS "counter"
+    FROM trophyevents
+    INNER JOIN g_clans ON g_clans.clan_tag = trophyevents.clan_tag
+    WHERE trophyevents.league_id = 29000022
+    AND trophyevents.trophy_change > 0
+    GROUP BY timer, trophyevents.player_tag, trophyevents.clan_tag;
+
+    RETURN QUERY
+    SELECT tempdonationstats.player_tag,
+           tempdonationstats.clan_tag,
+           tempdonationstats.timer,
+           COALESCE(tempdonationstats.counter, 0) + COALESCE(temptrophystats.counter, 0) as "num_events",
+           date_part('hour', tempdonationstats.timer) as "hour"
+    FROM tempdonationstats
+    FULL JOIN temptrophystats
+    ON tempdonationstats.player_tag = temptrophystats.player_tag
+    AND tempdonationstats.clan_tag = temptrophystats.clan_tag
+    AND tempdonationstats.timer = temptrophystats.timer
+    GROUP BY tempdonationstats.player_tag, tempdonationstats.clan_tag, tempdonationstats.timer, "num_events", "hour";
+
+END;
+$function$
+;
