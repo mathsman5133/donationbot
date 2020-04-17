@@ -44,7 +44,7 @@ class Remove(commands.Cog):
 
         **Example**
         :white_check_mark: `+remove clan #P0LYJC8C`
-        :information_source: `+remove clan #donationlog #CLAN_TAG`
+        :white_check_mark: `+remove clan #donationlog #CLAN_TAG`
 
         **Required Permissions**
         :warning: Manage Server

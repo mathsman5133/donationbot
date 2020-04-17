@@ -11,6 +11,8 @@ from cogs.utils.checks import requires_config, manage_guild
 from cogs.utils.converters import PlayerConverter, DateConverter, TextChannel
 from cogs.utils import checks
 
+RCS_GUILD_ID = 295287647075827723
+
 log = logging.getLogger(__name__)
 
 url_validator = re.compile(r"^(?:http(s)?://)?[\w.-]+(?:.[\w.-]+)+[\w\-_~:/?#[\]@!$&'()*+,;=.]+"
@@ -145,7 +147,9 @@ class Add(commands.Cog):
             return await ctx.send(f'Clan not found with `{clan_tag}` tag.')
 
         check = clan.description.strip().endswith('dt') \
-                or await self.bot.is_owner(ctx.author) or clan_tag in (n.tag for n in current_clans)
+                or await self.bot.is_owner(ctx.author) \
+                or clan_tag in (n.tag for n in current_clans) \
+                or ctx.guild.id == RCS_GUILD_ID
 
         if not check:
             return await ctx.send('Please add the letters `dt` to the end of '
@@ -423,7 +427,8 @@ class Add(commands.Cog):
                 embed_links=True,
                 manage_messages=True
             ),
-            ctx.guild.default_role: discord.PermissionOverwrite(read_messages=True, send_messages=False, read_message_history=True)
+            ctx.guild.default_role: discord.PermissionOverwrite(read_messages=True, send_messages=False,
+                                                                read_message_history=True)
         }
         reason = f'{str(ctx.author)} created a boards channel.'
 
@@ -466,7 +471,8 @@ class Add(commands.Cog):
         if channel and not use_channel:
             fetch = await ctx.db.fetch("SELECT type FROM boards WHERE channel_id = $1", channel.id)
             if not fetch:
-                return await ctx.send("I cannot setup a board here, because the bot didn't create the channel! Try again with `+add boards`.")
+                return await ctx.send(
+                    "I cannot setup a board here, because the bot didn't create the channel! Try again with `+add boards`.")
             if any(n['type'] == 'trophy' for n in fetch):
                 return await ctx.send("A trophyboard is already setup here.")
 
@@ -611,7 +617,8 @@ class Add(commands.Cog):
     async def add_lastonlineboard(self, ctx, *, name='lastonlineboard'):
         """Last online boards are deprecated. Please use a donationboard or trophyboard instead - or even better, both!
         """
-        return await ctx.send("Last online boards are deprecated. Please use a donationboard or trophyboard instead - or even better, both!")
+        return await ctx.send(
+            "Last online boards are deprecated. Please use a donationboard or trophyboard instead - or even better, both!")
 
     @add.command(name='donationlog')
     @requires_config('donationlog', invalidate=True)
