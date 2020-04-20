@@ -393,9 +393,9 @@ class DonationBoard(commands.Cog):
             if donationboard:
                 await message.add_reaction(PERCENTAGE_EMOJI)
             else:
-                pass
-                # await message.add_reaction(gain emoji)
+                await message.add_reaction(GAIN_EMOJI)
 
+            await message.add_reaction(LAST_ONLINE_EMOJI)
             await message.add_reaction(HISTORICAL_EMOJI)
             await self.bot.pool.execute("UPDATE boards SET message_id = $1 WHERE channel_id = $2 AND type = $3", message.id, config.channel_id, config.type)
 
