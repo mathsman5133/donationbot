@@ -11,7 +11,7 @@ log = logging.getLogger(__name__)
 BACKGROUND = Image.open(f"assets/dark_backdrop.jpg").resize((4000, 4500))
 TROPHYBOARD_BACKGROUND = Image.open(f"assets/green_background.jpg").resize((4000, 4500))
 
-SUPERCELL_FONT_FP = "assets/DejaVuSans-Bold.ttf"
+SUPERCELL_FONT_FP = "assets/arial-unicode-ms.ttf"
 SUPERCELL_FONT_SIZE = 70
 SUPERCELL_FONT = ImageFont.truetype(SUPERCELL_FONT_FP, SUPERCELL_FONT_SIZE)
 
