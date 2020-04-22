@@ -167,21 +167,24 @@ class Remove(commands.Cog):
         await self.do_board_remove(ctx, channel or ctx.channel, "trophy")
 
     async def do_board_remove(self, ctx, channel, type_):
-        config = await self.bot.utils.board_config(channel.id)
+        config = await self.bot.utils.board_config_from_channel(channel.id, type_)
         if not config:
             return await ctx.send(f"I couldn't find a {type_}board in {channel.mention}.")
 
-        query = "DELETE FROM messages WHERE channel_id = $1"
-        await ctx.db.execute(query, channel.id)
+        query = "DELETE FROM boards WHERE channel_id = $1 AND type = $2"
+        await ctx.db.execute(query, channel.id, type_)
+
+        query = "SELECT * FROM boards WHERE channel_id = $1"
+        fetch = await ctx.db.fetchrow(query, channel.id)
+        if fetch is not None:
+            return await ctx.send(f"{type_}board successfully removed.")
 
         try:
             await channel.delete(reason=f'Command done by {ctx.author} ({ctx.author.id})')
-            msg = f"{type_}board sucessfully removed."
+            msg = f"{type_}board sucessfully removed and channel deleted."
         except (discord.Forbidden, discord.HTTPException):
             msg = "I don't have permissions to delete the channel. Please manually delete it."
 
-        query = """DELETE FROM boards WHERE channel_id = $1"""
-        await self.bot.pool.execute(query, channel.id)
         query = "DELETE FROM clans WHERE channel_id = $1"
         await self.bot.pool.execute(query, channel.id)
 
