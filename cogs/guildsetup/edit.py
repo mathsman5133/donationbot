@@ -337,7 +337,6 @@ class Edit(commands.Cog):
 
     @edit.group(name='donationlog')
     @manage_guild()
-    @requires_config('donationlog', invalidate=True)
     async def edit_donationlog(self, ctx):
         """[Group] Edit the donationlog settings."""
         if ctx.invoked_subcommand is None:
@@ -360,21 +359,25 @@ class Edit(commands.Cog):
         **Required Permissions**
         :warning: Manage Server
         """
-        if not ctx.config:
-            return await ctx.send('Oops! It doesn\'t look like a donationlog is setup here. '
-                                  'Try `+info` to find where the registered channels are!')
+        channel = channel or ctx.channel
 
         query = """UPDATE logs
                    SET interval = ($1 ||' minutes')::interval
                    WHERE channel_id=$2
                    AND type = $3
+                   RETURNING id;
                 """
-        await ctx.db.execute(query, str(minutes), ctx.config.channel_id, 'donation')
-        await ctx.send(f'Logs for {ctx.config.channel.mention} have been changed to {minutes} minutes. '
-                       f'Find which clans this affects with `+info {ctx.config.channel}`')
+        fetch = await ctx.db.fetchrow(query, str(minutes), channel.id, 'donation')
+        if not fetch:
+            return await ctx.send(
+                "Oops! It doesn't look like a donationlog is setup here. "
+                "Try `+info` to find where the registered channels are!"
+            )
+
+        await ctx.send(f'Logs for {channel.mention} have been changed to {minutes} minutes.')
 
     @edit_donationlog.command(name='toggle')
-    async def edit_donationlog_toggle(self, ctx):
+    async def edit_donationlog_toggle(self, ctx, channel: discord.TextChannel = None):
         """Toggle the donation log on and off.
 
         **Format**
@@ -386,9 +389,7 @@ class Edit(commands.Cog):
         **Required Permissions**
         :warning: Manage Server
         """
-        if not ctx.config:
-            return await ctx.send('Oops! It doesn\'t look like a donationlog is setup here. '
-                                  'Try `+info` to find where the registered channels are!')
+        channel = channel or ctx.channel
 
         query = """UPDATE logs
                    SET toggle = NOT toggle
@@ -396,15 +397,21 @@ class Edit(commands.Cog):
                    AND type = $2
                    RETURNING toggle
                 """
-        toggle = await ctx.db.fetchrow(query, ctx.config.channel_id, 'donation')
+        toggle = await ctx.db.fetchrow(query, channel.id, 'donation')
+        if not toggle:
+            return await ctx.send(
+                "Oops! It doesn't look like a donationlog is setup here. "
+                "Try `+info` to find where the registered channels are!"
+            )
+
         if toggle['toggle']:
             condition = 'on'
         else:
             condition = 'off'
-        await ctx.send(f'Logs for {ctx.config.channel.mention} have been turned {condition}.')
+        await ctx.send(f'Logs for {channel.mention} have been turned {condition}.')
 
     @edit_donationlog.command(name='style')
-    async def edit_donationlog_style(self, ctx):
+    async def edit_donationlog_style(self, ctx, channel: discord.TextChannel = None):
         """Toggle the donation style. This alternates between detailed and basic versions.
 
         **Format**
@@ -416,9 +423,7 @@ class Edit(commands.Cog):
         **Required Permissions**
         :warning: Manage Server
         """
-        if not ctx.config:
-            return await ctx.send('Oops! It doesn\'t look like a donationlog is setup here. '
-                                  'Try `+info` to find where the registered channels are!')
+        channel = channel or ctx.channel
 
         query = """UPDATE logs
                    SET detailed = NOT detailed
@@ -426,24 +431,29 @@ class Edit(commands.Cog):
                    AND type = $2
                    RETURNING detailed;
                 """
-        detailed = await ctx.db.fetchrow(query, ctx.config.channel_id, 'donation')
+        detailed = await ctx.db.fetchrow(query, channel.id, 'donation')
+        if not detailed:
+            return await ctx.send(
+                "Oops! It doesn't look like a donationlog is setup here. "
+                "Try `+info` to find where the registered channels are!"
+            )
+
         if detailed['detailed']:
             embed = discord.Embed(
                 description=f"Donationlog has been set to maximum detail. An example is below. Use `{ctx.prefix}edit donationlog style` to change to the basic version."
             )
             embed.set_image(url="https://cdn.discordapp.com/attachments/681438398455742536/681438506857398307/demo_detailed.JPG")
-            return await ctx.send(embed=embed)
 
         else:
             embed = discord.Embed(
                 description=f"Donationlog has been set to basic detail. An example is below. Use `{ctx.prefix}edit donationlog style` to change to maximum detail version."
             )
             embed.set_image(url="https://cdn.discordapp.com/attachments/681438398455742536/681438471805861926/demo_basic.JPG")
-            return await ctx.send(embed=embed)
+
+        return await ctx.send(embed=embed)
 
     @edit.group(name='trophylog')
     @manage_guild()
-    @requires_config('trophylog', invalidate=True)
     async def edit_trophylog(self, ctx):
         """[Group] Edit the trophylog settings."""
         if not ctx.invoked_subcommand:
@@ -466,21 +476,24 @@ class Edit(commands.Cog):
         **Required Permissions**
         :warning: Manage Server
         """
-        if not ctx.config:
-            return await ctx.send('Oops! It doesn\'t look like a trophylog is setup here. '
-                                  'Try `+info` to find where the registered channels are!')
-
+        channel = channel or ctx.channel
         query = """UPDATE logs
                    SET interval = ($1 ||' minutes')::interval
                    WHERE channel_id=$2
                    AND type = $3
+                   RETURNING id
                 """
-        await ctx.db.execute(query, str(minutes), ctx.config.channel_id, 'trophy')
-        await ctx.send(f'Logs for {ctx.config.channel.mention} have been changed to {minutes} minutes. '
-                       f'Find which clans this affects with `+info {ctx.config.channel}`')
+        fetch = await ctx.db.fetchrow(query, str(minutes), channel.id, 'trophy')
+        if not fetch:
+            return await ctx.send(
+                "Oops! It doesn't look like a trophylog is setup here. "
+                "Try `+info` to find where the registered channels are!"
+            )
+
+        await ctx.send(f'Logs for {channel.mention} have been changed to {minutes} minutes.')
 
     @edit_trophylog.command(name='toggle')
-    async def edit_trophylog_toggle(self, ctx):
+    async def edit_trophylog_toggle(self, ctx, channel: discord.TextChannel = None):
         """Toggle the trophy log on and off.
 
         **Format**
@@ -492,9 +505,7 @@ class Edit(commands.Cog):
         **Required Permissions**
         :warning: Manage Server
         """
-        if not ctx.config:
-            return await ctx.send('Oops! It doesn\'t look like a trophylog is setup here. '
-                                  'Try `+info` to find where the registered channels are!')
+        channel = channel or ctx.channel
 
         query = """UPDATE logs
                    SET toggle = NOT toggle
@@ -502,12 +513,19 @@ class Edit(commands.Cog):
                    AND type = $2
                    RETURNING toggle
                 """
-        toggle = await ctx.db.execute(query, ctx.config.channel_id, 'trophy')
-        if toggle:
+        toggle = await ctx.db.execute(query, channel.id, 'trophy')
+        if not toggle:
+            return await ctx.send(
+                "Oops! It doesn't look like a trophylog is setup here. "
+                "Try `+info` to find where the registered channels are!"
+            )
+
+        if toggle['toggle']:
             condition = 'on'
         else:
             condition = 'off'
-        await ctx.send(f'Logs for {ctx.config.channel.mention} have been turned {condition}.')
+
+        await ctx.send(f'Trophy logs for {channel.mention} have been turned {condition}.')
 
     @edit.command(name='event')
     @manage_guild()
