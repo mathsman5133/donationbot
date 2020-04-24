@@ -32,6 +32,8 @@ GAIN_EMOJI = discord.PartialEmoji(name="gain", id=696280508933472256, animated=F
 LAST_ONLINE_EMOJI = discord.PartialEmoji(name="lastonline", id=696292732599271434, animated=False)
 HISTORICAL_EMOJI = discord.PartialEmoji(name="historical", id=694812540290465832, animated=False)
 
+GLOBAL_BOARDS_CHANNEL_ID = 663683345108172830
+
 
 class DonationBoard(commands.Cog):
     """Contains all DonationBoard Configurations.
@@ -50,7 +52,7 @@ class DonationBoard(commands.Cog):
         self.update_board_loops.start()
 
         self.update_global_board.add_exception_type(asyncpg.PostgresConnectionError, coc.ClashOfClansException)
-        #self.update_global_board.start()
+        self.update_global_board.start()
 
         self.tags_to_update = set()
         self.last_updated_tags = {}
@@ -59,7 +61,7 @@ class DonationBoard(commands.Cog):
 
     def cog_unload(self):
         self.update_board_loops.cancel()
-        #self.update_global_board.cancel()
+        self.update_global_board.cancel()
 
     @commands.Cog.listener()
     async def on_ready(self):
@@ -96,36 +98,11 @@ class DonationBoard(commands.Cog):
 
     @tasks.loop(hours=1)
     async def update_global_board(self):
-        query = """SELECT player_tag, donations
-                   FROM players 
-                   WHERE season_id=$1
-                   ORDER BY donations DESC NULLS LAST
-                   LIMIT 100;
-                """
-        fetch_top_players = await self.bot.pool.fetch(query, await self.bot.seasonconfig.get_season_id())
-
-        players = await self.bot.coc.get_players((n[0] for n in fetch_top_players)).flatten()
-
-        top_players = {n.tag: n for n in players if n.tag in set(x['player_tag'] for x in fetch_top_players)}
-
-        messages = await self.get_board_messages(663683345108172830, number_of_msg=5)
-        if not messages:
-            return
-
-        for i, v in enumerate(messages):
-            player_data = fetch_top_players[i*20:(i+1)*20]
-            table = CLYTable()
-
-            for x, y in enumerate(player_data):
-                index = i*20 + x
-                table.add_row([index, y[1], top_players.get(y['player_tag'], mock).name])
-
-            fmt = table.donationboard_2()
-
-            e = discord.Embed(colour=self.bot.colour, description=fmt, timestamp=datetime.utcnow())
-            e.set_author(name="Global Donationboard", icon_url=self.bot.user.avatar_url)
-            e.set_footer(text='Last Updated')
-            await v.edit(embed=e, content=None)
+        query = "SELECT * FROM boards WHERE channel_id = $1"
+        fetch = await self.bot.pool.fetch(query, GLOBAL_BOARDS_CHANNEL_ID)
+        for row in fetch:
+            config = BoardConfig(bot=self.bot, record=row)
+            await self.new_donationboard_updater(config, 0, season_offset=0, reset=True)
 
     @commands.Cog.listener()
     async def on_guild_channel_delete(self, channel):
@@ -377,6 +354,9 @@ class DonationBoard(commands.Cog):
         return config_per_page
 
     async def new_donationboard_updater(self, config, add_pages=0, season_offset=0, reset=False):
+        if config.channel_id == GLOBAL_BOARDS_CHANNEL_ID and not (add_pages or season_offset or reset):
+            return
+
         donationboard = config.type == 'donation'
         start = time.perf_counter()
         message = await self.bot.utils.get_message(config.channel, config.message_id)
@@ -425,30 +405,54 @@ class DonationBoard(commands.Cog):
         if offset < 0:
             offset = 0
 
-        query = f"""SELECT DISTINCT player_name,
-                                    donations,
-                                    received,
-                                    trophies,
-                                    now() - last_updated AS "last_online",
-                                    donations / NULLIF(received, 0) AS "ratio",
-                                    trophies - start_trophies AS "gain"
-                   FROM players
-                   INNER JOIN clans
-                   ON clans.clan_tag = players.clan_tag
-                   WHERE clans.channel_id = $1
-                   AND season_id = $2
-                   ORDER BY {'donations' if config.sort_by == 'donation' else config.sort_by} DESC
-                   NULLS LAST
-                   LIMIT $3
-                   OFFSET $4
-                """
-        fetch = await self.bot.pool.fetch(
-            query,
-            config.channel_id,
-            season_id,
-            self.get_next_per_page(page + add_pages, config.per_page),
-            offset
-        )
+        if config.channel_id == GLOBAL_BOARDS_CHANNEL_ID:
+            query = f"""SELECT DISTINCT player_name,
+                                        donations,
+                                        received,
+                                        trophies,
+                                        now() - last_updated AS "last_online",
+                                        donations / NULLIF(received, 0) AS "ratio",
+                                        trophies - start_trophies AS "gain"
+                       FROM players
+                       INNER JOIN clans
+                       ON clans.clan_tag = players.clan_tag
+                       WHERE season_id = $1
+                       ORDER BY {'donations' if config.sort_by == 'donation' else config.sort_by} DESC
+                       NULLS LAST
+                       LIMIT $2
+                       OFFSET $3
+                    """
+            fetch = await self.bot.pool.fetch(
+                query,
+                season_id,
+                self.get_next_per_page(page + add_pages, config.per_page),
+                offset
+            )
+        else:
+            query = f"""SELECT DISTINCT player_name,
+                                        donations,
+                                        received,
+                                        trophies,
+                                        now() - last_updated AS "last_online",
+                                        donations / NULLIF(received, 0) AS "ratio",
+                                        trophies - start_trophies AS "gain"
+                       FROM players
+                       INNER JOIN clans
+                       ON clans.clan_tag = players.clan_tag
+                       WHERE clans.channel_id = $1
+                       AND season_id = $2
+                       ORDER BY {'donations' if config.sort_by == 'donation' else config.sort_by} DESC
+                       NULLS LAST
+                       LIMIT $3
+                       OFFSET $4
+                    """
+            fetch = await self.bot.pool.fetch(
+                query,
+                config.channel_id,
+                season_id,
+                self.get_next_per_page(page + add_pages, config.per_page),
+                offset
+            )
 
         players = [BoardPlayer(n[0], n[1], n[2], n[3], n[4], n[6], i + offset + 1) for i, n in enumerate(fetch)]
 
