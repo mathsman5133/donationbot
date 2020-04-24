@@ -102,7 +102,7 @@ class DonationBoard(commands.Cog):
         fetch = await self.bot.pool.fetch(query, GLOBAL_BOARDS_CHANNEL_ID)
         for row in fetch:
             config = BoardConfig(bot=self.bot, record=row)
-            await self.new_donationboard_updater(config, 0, season_offset=0, reset=True)
+            await self.new_donationboard_updater(config, 0, season_offset=0, reset=True, update_global_board=True)
 
     @commands.Cog.listener()
     async def on_guild_channel_delete(self, channel):
@@ -353,8 +353,8 @@ class DonationBoard(commands.Cog):
 
         return config_per_page
 
-    async def new_donationboard_updater(self, config, add_pages=0, season_offset=0, reset=False):
-        if config.channel_id == GLOBAL_BOARDS_CHANNEL_ID and not (add_pages or season_offset or reset):
+    async def new_donationboard_updater(self, config, add_pages=0, season_offset=0, reset=False, update_global_board=False):
+        if config.channel_id == GLOBAL_BOARDS_CHANNEL_ID and not update_global_board:
             return
 
         donationboard = config.type == 'donation'
@@ -555,36 +555,44 @@ class DonationBoard(commands.Cog):
         hard_reset = False
         offset = 0
         season_offset = 0
+        update_globalboards = False
 
         if payload.emoji == RIGHT_EMOJI:
             offset = 1
+            update_globalboards = True
 
         elif payload.emoji == LEFT_EMOJI:
             offset = -1
+            update_globalboards = True
 
         elif payload.emoji == REFRESH_EMOJI:
             original_sort = 'donations' if fetch['type'] == 'donation' else 'trophies'
             query = "UPDATE boards SET sort_by = $1 WHERE message_id = $2 RETURNING *"
             fetch = await self.bot.pool.fetchrow(query, original_sort, payload.message_id)
             hard_reset = True
+            update_globalboards = True
 
         elif payload.emoji == PERCENTAGE_EMOJI:
             query = "UPDATE boards SET sort_by = 'ratio' WHERE message_id = $1 RETURNING *"
             fetch = await self.bot.pool.fetchrow(query, payload.message_id)
+            update_globalboards = True
 
         elif payload.emoji == GAIN_EMOJI:
             query = "UPDATE boards SET sort_by = 'gain' WHERE message_id = $1 RETURNING *"
             fetch = await self.bot.pool.fetchrow(query, payload.message_id)
+            update_globalboards = True
 
         elif payload.emoji == LAST_ONLINE_EMOJI:
             query = "UPDATE boards SET sort_by = 'last_online ASC, player_name' WHERE message_id = $1 RETURNING *"
             fetch = await self.bot.pool.fetchrow(query, payload.message_id)
+            update_globalboards = True
 
         elif payload.emoji == HISTORICAL_EMOJI:
             season_offset = -1
+            update_globalboards = True
 
         config = BoardConfig(bot=self.bot, record=fetch)
-        await self.new_donationboard_updater(config, offset, season_offset=season_offset, reset=hard_reset)
+        await self.new_donationboard_updater(config, offset, season_offset=season_offset, reset=hard_reset, update_global_board=update_globalboards)
 
 
 def setup(bot):
