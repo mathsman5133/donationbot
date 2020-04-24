@@ -14,7 +14,7 @@ CJK_REGEX = re.compile(r"[\u4e00-\u9FFF\u3040-\u30ff\uac00-\ud7a3]")  # chinese,
 BACKGROUND = Image.open(f"assets/dark_backdrop.jpg").resize((4000, 4500))
 TROPHYBOARD_BACKGROUND = Image.open(f"assets/green_background.jpg").resize((4000, 4500))
 
-CJK_FRIENDLY_FONT_FP = "assets/SourceHanSans-Heavy.oft"
+CJK_FRIENDLY_FONT_FP = "assets/SourceHanSans-Heavy.otf"
 SUPERCELL_FONT_FP = "assets/DejaVuSans-Bold.ttf"
 SUPERCELL_FONT_SIZE = 70
 SUPERCELL_FONT = ImageFont.truetype(SUPERCELL_FONT_FP, SUPERCELL_FONT_SIZE)
@@ -84,7 +84,7 @@ class DonationBoardImage:
         if CJK_REGEX.search(text):
             font = ImageFont.truetype(CJK_FRIENDLY_FONT_FP, font_size)
         else:
-            font = ImageFont.truetype(font_fp)
+            font = ImageFont.truetype(font_fp, font_size)
 
         text_width, text_height = self.draw.textsize(text, font)
 
@@ -192,7 +192,11 @@ class TrophyBoardImage:
         self.draw = ImageDraw.Draw(self.image)
 
     def special_text(self, position, text, rgb, font_fp, font_size, max_width, centre_align=False, offset=0):
-        font = ImageFont.truetype(font_fp, font_size)
+        if CJK_REGEX.search(text):
+            font = ImageFont.truetype(CJK_FRIENDLY_FONT_FP, font_size)
+        else:
+            font = ImageFont.truetype(font_fp, font_size)
+
         text_width, text_height = self.draw.textsize(text, font)
 
         need_to_offset = False
