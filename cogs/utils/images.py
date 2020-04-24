@@ -193,9 +193,9 @@ class TrophyBoardImage:
 
     def special_text(self, position, text, rgb, font_fp, font_size, max_width, centre_align=False, offset=0):
         if CJK_REGEX.search(text):
-            font = ImageFont.truetype(CJK_FRIENDLY_FONT_FP, font_size)
-        else:
-            font = ImageFont.truetype(font_fp, font_size)
+            font_fp = CJK_FRIENDLY_FONT_FP
+
+        font = ImageFont.truetype(font_fp, font_size)
 
         text_width, text_height = self.draw.textsize(text, font)
 
