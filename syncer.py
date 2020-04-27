@@ -10,12 +10,12 @@ from discord.ext import tasks
 import creds
 
 from cogs.utils.db import Table
+from cogs.utils.season_reset import next_season_start
 
 logging.basicConfig(level=logging.INFO)
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
-SEASON_ID = 10
 
 
 class CustomCache(coc.Cache):
@@ -23,6 +23,7 @@ class CustomCache(coc.Cache):
     def clan_config(self):
         return coc.CacheConfig(2000, None)  # max_size, time to live
 
+SEASON_ID = 10
 
 loop = asyncio.get_event_loop()
 pool = loop.run_until_complete(Table.create_pool(creds.postgres))
@@ -39,6 +40,17 @@ trophylog_batch_data = []
 
 last_updated_batch_lock = asyncio.Lock(loop=loop)
 last_updated_tags = set()
+
+async def get_season_id():
+    query = "SELECT id FROM seasons WHERE start < CURRENT_TIMESTAMP ORDER BY start DESC;"
+    fetch = await pool.fetchrow(query)
+    return fetch['id']
+
+@tasks.loop()
+async def reset_season_id():
+    SEASON_ID = await get_season_id()
+    await asyncio.sleep((datetime.datetime.utcnow() - next_season_start()).total_seconds() + 5)
+    SEASON_ID = await get_season_id()
 
 
 @tasks.loop(seconds=60.0)
@@ -481,6 +493,8 @@ async def update_clan_tags():
 
 if __name__ == "__main__":
     print("STARTING")
+    reset_season_id.start()
+
     update_clan_tags.add_exception_type(Exception, BaseException)
     update_clan_tags.start()
 

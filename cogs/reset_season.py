@@ -1,41 +1,60 @@
-import datetime
+from datetime import datetime
 import logging
+import asyncio
 from dateutil import relativedelta
+import calendar
+import pytz
+import discord
+import time
+
+from cogs.utils.season_reset import next_season_start
 
 from discord.ext import commands, tasks
 
 log = logging.getLogger(__name__)
+
+REFRESH_EMOJI = discord.PartialEmoji(name="refresh", id=694395354841350254, animated=False)
+LEFT_EMOJI = discord.PartialEmoji(name="\N{BLACK LEFT-POINTING TRIANGLE}\ufe0f", id=None, animated=False)    # [:arrow_left:]
+RIGHT_EMOJI = discord.PartialEmoji(name="\N{BLACK RIGHT-POINTING TRIANGLE}\ufe0f", id=None, animated=False)   # [:arrow_right:]
+PERCENTAGE_EMOJI = discord.PartialEmoji(name="percent", id=694463772135260169, animated=False)
+GAIN_EMOJI = discord.PartialEmoji(name="gain", id=696280508933472256, animated=False)
+LAST_ONLINE_EMOJI = discord.PartialEmoji(name="lastonline", id=696292732599271434, animated=False)
+HISTORICAL_EMOJI = discord.PartialEmoji(name="historical", id=694812540290465832, animated=False)
 
 
 class SeasonConfig(commands.Cog, command_attrs=dict(hidden=True)):
     def __init__(self, bot):
         self.bot = bot
         self.season_id = 0
+        self.start_new_season.start()
 
-    @staticmethod
-    def next_last_monday():
-        now = datetime.datetime.utcnow()
-        day = now + relativedelta.relativedelta(month=now.month + 1,
-                                                weekday=relativedelta.MO(-1))
-        day.replace(hour=6, minute=0, second=0, microsecond=0)
-        return day
+    def cog_unload(self):
+        self.start_new_season.cancel()
 
-    # @tasks.loop(time=datetime.time(hour=6, tzinfo=datetime.timezone.utc))
-    # async def start_new_season(self):
-    #     log.debug('Starting season reset loop.')
-    #     now = datetime.datetime.utcnow()
-    #     next_monday = self.next_last_monday()
-    #
-    #     if now.day != next_monday.day:
-    #         return
-    #
-    #     log.critical('New season starting - via loop.')
-    #     await self.new_season()
-    #     await self.new_season_pull()
+    @tasks.loop()
+    async def start_new_season(self):
+        log.debug('Starting season reset loop.')
+        next_start = next_season_start()
+        await asyncio.sleep((next_start - datetime.utcnow()).total_seconds() + 1)
+
+        log.critical('New season starting - via loop.')
+        await self.new_season()
+
+        try:
+            log.critical("resetting boards")
+            await self.reset_boards()
+        except:
+            log.exception("boards reset loop failed")
+
+        try:
+            log.critical("resetting players")
+            await self.new_season_pull()
+        except:
+            log.exception("players reset loop failed")
 
     async def new_season(self):
         query = "INSERT INTO seasons (start, finish) VALUES ($1, $2)"
-        await self.bot.pool.execute(query, datetime.datetime.utcnow(), self.next_last_monday())
+        await self.bot.pool.execute(query, datetime.utcnow(), next_season_start())
 
         self.season_id = await self.get_season_id(refresh=True)
 
@@ -44,13 +63,15 @@ class SeasonConfig(commands.Cog, command_attrs=dict(hidden=True)):
                             donations,
                             received,
                             user_id,
-                            season_id
+                            season_id,
+                            player_name
                             )
                     SELECT player_tag,
                            0,
                            0,
                            user_id,
-                           season_id + 1
+                           season_id + 1,
+                           player_name
                     FROM players
                     WHERE season_id = $1
                 """
@@ -60,7 +81,7 @@ class SeasonConfig(commands.Cog, command_attrs=dict(hidden=True)):
         if self.season_id and not refresh:
             return self.season_id
 
-        query = "SELECT id FROM seasons WHERE start < CURRENT_TIMESTAMP ORDER BY start DESC;"
+        query = "SELECT id FROM seasons WHERE start < now() ORDER BY start DESC;"
         fetch = await self.bot.pool.fetchrow(query)
         if not fetch:
             return
@@ -68,18 +89,87 @@ class SeasonConfig(commands.Cog, command_attrs=dict(hidden=True)):
         self.season_id = fetch[0]
         return self.season_id
 
-    async def new_season_pull(self, number=1000):
-        query = "SELECT DISTINCT player_tag FROM players WHERE season_id = $1 AND start_update = False LIMIT $2;"
-        fetch = await self.bot.pool.fetch(query, await self.get_season_id(), number)
+    async def reset_boards(self):
+        s = time.perf_counter()
+        query = "SELECT DISTINCT message_id, boards.channel_id, type FROM boards INNER JOIN clans ON clans.channel_id = boards.channel_id WHERE boards.toggle=True"
+        query2 = "UPDATE boards SET message_id = $1 WHERE message_id = $2"
+        fetch = await self.bot.pool.fetch(query)
+        for row in fetch:
+            channel = self.bot.get_channel(row['channel_id'])
+            message_id = row['message_id']
+            type = row['type']
+            if not channel or not message_id:
+                continue
+            message = await self.bot.utils.get_message(channel, message_id)
 
+            if not message:
+                return
+
+            try:
+                await message.clear_reactions()
+            except (discord.Forbidden, discord.HTTPException):
+                pass
+
+            try:
+                new_msg = await channel.send("Placeholder for the next season's board. Please don't delete me!")
+            except (discord.Forbidden, discord.HTTPException):
+                continue
+
+            if type == "donation":
+                reactions = (
+                    REFRESH_EMOJI,
+                    LEFT_EMOJI,
+                    RIGHT_EMOJI,
+                    PERCENTAGE_EMOJI,
+                    LAST_ONLINE_EMOJI,
+                    HISTORICAL_EMOJI,
+                )
+            elif type == "trophy":
+                reactions = (
+                    REFRESH_EMOJI,
+                    LEFT_EMOJI,
+                    RIGHT_EMOJI,
+                    GAIN_EMOJI,
+                    LAST_ONLINE_EMOJI,
+                    HISTORICAL_EMOJI
+                )
+            else:
+                reactions = ()
+            try:
+                for r in reactions:
+                    await new_msg.add_reaction(r)
+            except (discord.Forbidden, discord.HTTPException):
+                pass
+
+            await self.bot.pool.execute(query2, new_msg.id, message_id)
+
+        log.critical(f"boards reset loop took {(time.perf_counter() - s)*1000}ms.")
+
+    async def new_season_pull(self):
+        s = time.perf_counter()
+        season_id = await self.get_season_id()
+        query = "SELECT DISTINCT player_tag FROM players WHERE season_id = $1 AND start_update = False;"
+        fetch = await self.bot.pool.fetch(query, season_id)
+
+        tasks_ = []
+        for i in range(int(len(fetch) / 100)):
+            task = asyncio.ensure_future(self.get_and_do_updates((n[0] for n in fetch[i:i+100]), season_id))
+            tasks_.append(task)
+
+        await asyncio.gather(*tasks_)
+        log.critical(f"new season pull done, took {(time.perf_counter() - s)*1000}ms")
+
+    async def get_and_do_updates(self, player_tags, season_id):
+        s = time.perf_counter()
         query = """UPDATE players SET start_friend_in_need = x.friend_in_need, 
                                       start_sharing_is_caring = x.sharing_is_caring,
                                       start_attacks = x.attacks,
                                       start_defenses = x.defenses,
                                       start_trophies = x.trophies,
                                       start_best_trophies = x.best_trophies,
-                                      start_update = True
-                                       
+                                      start_update = True,
+                                      ignore = TRUE
+
                     FROM(
                         SELECT x.player_tag, 
                                x.friend_in_need, 
@@ -88,7 +178,7 @@ class SeasonConfig(commands.Cog, command_attrs=dict(hidden=True)):
                                x.defenses,
                                x.trophies,
                                x.best_trophies
-                               
+
                         FROM jsonb_to_recordset($1::jsonb)
                         AS x(
                             player_tag TEXT, 
@@ -104,19 +194,40 @@ class SeasonConfig(commands.Cog, command_attrs=dict(hidden=True)):
                 WHERE players.player_tag = x.player_tag
                 AND players.season_id=$2
                 """
-        season_id = await self.get_season_id()
+        query2 = """UPDATE players SET end_friend_in_need = x.friend_in_need, 
+                                      end_sharing_is_caring = x.sharing_is_caring,
+                                      end_attacks = x.attacks,
+                                      end_defenses = x.defenses,
+                                      end_best_trophies = x.best_trophies,
+                                      final_update = True,
+                                      ignore = TRUE
 
-        counter = 0
+                    FROM(
+                        SELECT x.player_tag, 
+                               x.friend_in_need, 
+                               x.sharing_is_caring,
+                               x.attacks,
+                               x.defenses,
+                               x.trophies,
+                               x.best_trophies
+
+                        FROM jsonb_to_recordset($1::jsonb)
+                        AS x(
+                            player_tag TEXT, 
+                            friend_in_need INTEGER, 
+                            sharing_is_caring INTEGER,
+                            attacks INTEGER,
+                            defenses INTEGER,
+                            trophies INTEGER,
+                            best_trophies INTEGER
+                            )
+                        )
+                AS x
+                WHERE players.player_tag = x.player_tag
+                AND players.season_id=$2"""
+
         data = []
-        async for player in self.bot.coc.get_players((n[0] for n in fetch)):
-            if counter == 100:
-                # This is basically to ensure we don't have 10k records in memory at any one time.
-                # Safety net incase something fails, too.
-                await self.bot.pool.execute(query, data, season_id)
-                await self.insert_final(self.bot.pool, data, season_id)
-                data.clear()
-                counter = 0
-
+        async for player in self.bot.coc.get_players(player_tags, cache=False, update_cache=False):
             data.append({
                 'player_tag': player.tag,
                 'friend_in_need': player.achievements_dict['Friend in Need'].value,
@@ -126,40 +237,10 @@ class SeasonConfig(commands.Cog, command_attrs=dict(hidden=True)):
                 'trophies': player.trophies,
                 'best_trophies': player.best_trophies
             })
-            counter += 1
 
-    @staticmethod
-    async def insert_final(con, data, season_id):
-        query = """UPDATE players SET end_friend_in_need    = x.friend_in_need, 
-                                      end_sharing_is_caring = x.sharing_is_caring,
-                                      end_attacks           = x.attacks,
-                                      end_defenses          = x.defenses,
-                                      end_best_trophies     = x.best_trophies,
-                                      final_update          = True
-
-                    FROM(
-                        SELECT x.player_tag, 
-                               x.friend_in_need, 
-                               x.sharing_is_caring,
-                               x.attacks,
-                               x.defenses,
-                               x.best_trophies
-                               
-                        FROM jsonb_to_recordset($1::jsonb)
-                        AS x(
-                            player_tag TEXT, 
-                            friend_in_need INTEGER, 
-                            sharing_is_caring INTEGER,
-                            attacks INTEGER,
-                            defenses INTEGER,
-                            best_trophies INTEGER
-                            )
-                        )
-                AS x
-                WHERE players.player_tag = x.player_tag
-                AND players.season_id=$2
-                """
-        await con.execute(query, data, season_id - 1)
+        q = await self.bot.pool.execute(query, data, season_id)
+        q2 = await self.bot.pool.execute(query2, data, season_id - 1)
+        log.info(f"Done update players: {q}, {q2}, {(time.perf_counter() - s)*1000}ms")
 
     @commands.command()
     @commands.is_owner()

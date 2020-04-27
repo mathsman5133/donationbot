@@ -513,7 +513,7 @@ class Edit(commands.Cog):
                    AND type = $2
                    RETURNING toggle
                 """
-        toggle = await ctx.db.execute(query, channel.id, 'trophy')
+        toggle = await ctx.db.fetchrow(query, channel.id, 'trophy')
         if not toggle:
             return await ctx.send(
                 "Oops! It doesn't look like a trophylog is setup here. "

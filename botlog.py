@@ -54,7 +54,7 @@ def setup_logging(bot):
                 try:
                     asyncio.ensure_future(error_webhook.send(f'```\n{n}\n```'))
                 except:
-                    requests_hook.send(f'```\n{n}\n```')
+                    pass
 
         def emit(self, record):
             self.handle(record)
