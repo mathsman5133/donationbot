@@ -28,12 +28,9 @@ async def new_season_pull():
     query = "SELECT DISTINCT player_tag FROM players WHERE season_id = $1 AND start_update = False;"
     fetch = await pool.fetch(query, SEASON_ID)
 
-    tasks_ = []
-    for i in range(int(len(fetch) / 5000)):
-        task = asyncio.ensure_future(get_and_do_updates((n[0] for n in fetch[i:i+5000]), SEASON_ID))
-        tasks_.append(task)
+    for i in range(int(len(fetch) / 1000)):
+        await get_and_do_updates((n[0] for n in fetch[i:i+1000]), SEASON_ID)
 
-    await asyncio.gather(*tasks_)
     log.critical(f"new season pull done, took {(time.perf_counter() - s)*1000}ms")
 
 async def get_and_do_updates(player_tags, season_id):
