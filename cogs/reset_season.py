@@ -106,8 +106,6 @@ class SeasonConfig(commands.Cog, command_attrs=dict(hidden=True)):
         query2 = "UPDATE boards SET message_id = $1 WHERE message_id = $2"
         fetch = await self.bot.pool.fetch(query)
         for row in fetch:
-            config = BoardConfig(record=row, bot=self.bot)
-            await self.bot.donationboard.new_donationboard_updater(config, reset=True)
             channel = self.bot.get_channel(row['channel_id'])
             message_id = row['message_id']
             type = row['type']
@@ -117,6 +115,15 @@ class SeasonConfig(commands.Cog, command_attrs=dict(hidden=True)):
 
             if not message:
                 return
+
+            if 'Placeholder' in message.content:
+                continue
+
+            config = BoardConfig(record=row, bot=self.bot)
+            try:
+                await self.bot.donationboard.new_donationboard_updater(config, reset=True)
+            except discord.HTTPException:
+                pass
 
             try:
                 await message.clear_reactions()
