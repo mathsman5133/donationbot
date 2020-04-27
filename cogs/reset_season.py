@@ -64,8 +64,8 @@ class SeasonConfig(commands.Cog, command_attrs=dict(hidden=True)):
             log.exception("players reset loop failed")
 
     async def new_season(self):
-        query = "INSERT INTO seasons (start, finish) VALUES ($1, $2)"
-        await self.bot.pool.execute(query, datetime.utcnow(), self.next_last_monday())
+        query = "INSERT INTO seasons (start, finish) VALUES (now(), $2)"
+        await self.bot.pool.execute(query, self.next_last_monday())
 
         self.season_id = await self.get_season_id(refresh=True)
 
