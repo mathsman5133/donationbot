@@ -29,8 +29,8 @@ async def new_season_pull():
     fetch = await pool.fetch(query, SEASON_ID)
 
     tasks_ = []
-    for i in range(int(len(fetch) / 100)):
-        task = asyncio.ensure_future(get_and_do_updates((n[0] for n in fetch[i:i+100]), SEASON_ID))
+    for i in range(int(len(fetch) / 5000)):
+        task = asyncio.ensure_future(get_and_do_updates((n[0] for n in fetch[i:i+5000]), SEASON_ID))
         tasks_.append(task)
 
     await asyncio.gather(*tasks_)
