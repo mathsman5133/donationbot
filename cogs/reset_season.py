@@ -105,7 +105,9 @@ class SeasonConfig(commands.Cog, command_attrs=dict(hidden=True)):
         query = "SELECT * FROM boards WHERE boards.toggle=True"
         query2 = "UPDATE boards SET message_id = $1 WHERE message_id = $2"
         fetch = await self.bot.pool.fetch(query)
+        counter = 0
         for row in fetch:
+            counter += 1
             channel = self.bot.get_channel(row['channel_id'])
             message_id = row['message_id']
             type = row['type']
@@ -162,6 +164,8 @@ class SeasonConfig(commands.Cog, command_attrs=dict(hidden=True)):
                 pass
 
             await self.bot.pool.execute(query2, new_msg.id, message_id)
+            if counter == 50:
+                log.info(f'counter:{counter}')
 
         log.critical(f"boards reset loop took {(time.perf_counter() - s)*1000}ms.")
 
