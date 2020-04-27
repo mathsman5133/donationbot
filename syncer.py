@@ -24,7 +24,7 @@ class CustomCache(coc.Cache):
     def clan_config(self):
         return coc.CacheConfig(2000, None)  # max_size, time to live
 
-SEASON_ID = 10
+SEASON_ID = 11
 
 loop = asyncio.get_event_loop()
 pool = loop.run_until_complete(Table.create_pool(creds.postgres))
