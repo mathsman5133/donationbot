@@ -28,8 +28,8 @@ async def new_season_pull():
     query = "SELECT DISTINCT player_tag FROM players WHERE season_id = $1 AND start_update = False;"
     fetch = await pool.fetch(query, SEASON_ID)
 
-    for i in range(int(len(fetch) / 1000)):
-        await get_and_do_updates((n[0] for n in fetch[i:i+1000]), SEASON_ID)
+    for i in range(int(len(fetch) / 2000)):
+        await get_and_do_updates((n[0] for n in fetch[i:i+2000]), SEASON_ID)
 
     log.critical(f"new season pull done, took {(time.perf_counter() - s)*1000}ms")
 
