@@ -27,7 +27,7 @@ class SeasonConfig(commands.Cog, command_attrs=dict(hidden=True)):
     def __init__(self, bot):
         self.bot = bot
         self.season_id = 0
-        self.start_new_season.start()
+        #self.start_new_season.start()
 
     def cog_unload(self):
         self.start_new_season.cancel()
