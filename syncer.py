@@ -50,7 +50,7 @@ async def get_season_id():
 @tasks.loop()
 async def reset_season_id():
     SEASON_ID = await get_season_id()
-    await asyncio.sleep((datetime.datetime.now(tz=pytz.utc) - next_season_start()).total_seconds() + 5)
+    await asyncio.sleep((next_season_start() - datetime.datetime.now(tz=pytz.utc)).total_seconds() + 5)
     SEASON_ID = await get_season_id()
 
 
