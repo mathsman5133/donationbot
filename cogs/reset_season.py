@@ -35,7 +35,7 @@ class SeasonConfig(commands.Cog, command_attrs=dict(hidden=True)):
     async def start_new_season(self):
         log.debug('Starting season reset loop.')
         next_start = next_season_start()
-        await asyncio.sleep((next_start - datetime.utcnow()).total_seconds() + 1)
+        await asyncio.sleep((next_start - datetime.now(tz=pytz.utc)).total_seconds() + 1)
 
         log.critical('New season starting - via loop.')
         await self.new_season()
