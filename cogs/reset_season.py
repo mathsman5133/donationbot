@@ -8,6 +8,7 @@ import discord
 import time
 
 from cogs.utils.season_reset import next_season_start
+from cogs.utils.db_objects import BoardConfig
 
 from discord.ext import commands, tasks
 
@@ -91,10 +92,12 @@ class SeasonConfig(commands.Cog, command_attrs=dict(hidden=True)):
 
     async def reset_boards(self):
         s = time.perf_counter()
-        query = "SELECT DISTINCT message_id, boards.channel_id, type FROM boards INNER JOIN clans ON clans.channel_id = boards.channel_id WHERE boards.toggle=True"
+        query = "SELECT * FROM boards WHERE boards.toggle=True"
         query2 = "UPDATE boards SET message_id = $1 WHERE message_id = $2"
         fetch = await self.bot.pool.fetch(query)
         for row in fetch:
+            config = BoardConfig(record=row, bot=self.bot)
+            await self.bot.donationboard.new_donationboard_updater(config, reset=True)
             channel = self.bot.get_channel(row['channel_id'])
             message_id = row['message_id']
             type = row['type']
