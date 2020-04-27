@@ -32,6 +32,14 @@ class SeasonConfig(commands.Cog, command_attrs=dict(hidden=True)):
     def cog_unload(self):
         self.start_new_season.cancel()
 
+    @staticmethod
+    def next_last_monday():
+        now = datetime.utcnow()
+        day = now + relativedelta.relativedelta(month=now.month + 1,
+                                                weekday=relativedelta.MO(-1))
+        day.replace(hour=6, minute=0, second=0, microsecond=0)
+        return day
+
     @tasks.loop()
     async def start_new_season(self):
         log.debug('Starting season reset loop.')
@@ -57,7 +65,7 @@ class SeasonConfig(commands.Cog, command_attrs=dict(hidden=True)):
 
     async def new_season(self):
         query = "INSERT INTO seasons (start, finish) VALUES ($1, $2)"
-        await self.bot.pool.execute(query, datetime.now(tz=pytz.utc), next_season_start())
+        await self.bot.pool.execute(query, datetime.utcnow(), self.next_last_monday())
 
         self.season_id = await self.get_season_id(refresh=True)
 
