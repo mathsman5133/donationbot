@@ -55,7 +55,7 @@ class SeasonConfig(commands.Cog, command_attrs=dict(hidden=True)):
 
     async def new_season(self):
         query = "INSERT INTO seasons (start, finish) VALUES ($1, $2)"
-        await self.bot.pool.execute(query, datetime.utcnow(), next_season_start())
+        await self.bot.pool.execute(query, datetime.now(tz=pytz.utc), next_season_start())
 
         self.season_id = await self.get_season_id(refresh=True)
 
