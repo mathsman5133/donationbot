@@ -119,7 +119,7 @@ async def send_donationlog_events():
             clan_tag_to_channel_data.get(n['clan_tag'])
         ) for n in donationlog_batch_data if clan_tag_to_channel_data.get(n['clan_tag'])
     ]
-    events.sort(key=lambda n: n.channel_id)
+    events.sort(key=lambda n: n.log_config.channel_id)
 
     for config, events in itertools.groupby(events, key=lambda n: n.log_config):
         events = list(events)
