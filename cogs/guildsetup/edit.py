@@ -764,7 +764,7 @@ class Edit(commands.Cog):
     @commands.command()
     @checks.manage_guild()
     @requires_config('event')
-    @commands.cooldown(1, 43200, commands.BucketType.guild)
+    @commands.cooldown(1, 60 * 60, commands.BucketType.guild)
     async def refresh(self, ctx, *, clans: ClanConverter = None):
         """Manually refresh all players in the database with current donations and received.
 
@@ -787,20 +787,19 @@ class Edit(commands.Cog):
         :warning: Manage Server
 
         **Cooldowns**
-        :hourglass: You can only call this command once every **12 hours**
+        :hourglass: You can only call this command once every **1 hour**
         """
-        query = """UPDATE players SET donations   = x.fin + x.sic - players.start_friend_in_need - players.start_sharing_is_caring,
+        query = """UPDATE players SET donations   = public.get_don_rec_max(x.donations, x.donations, players.donations),
                                       received    = public.get_don_rec_max(x.received, x.received, players.received),
                                       trophies    = x.trophies,
                                       player_name = x.player_name,
                                       clan_tag    = x.clan_tag
                    FROM (
-                      SELECT x.player_tag, x.fin, x.sic, x.received, x.trophies, x.player_name, x.clan_tag
+                      SELECT x.player_tag, x.donations, x.received, x.trophies, x.player_name, x.clan_tag
                       FROM jsonb_to_recordset($1::jsonb)
                       AS x(
                          player_tag TEXT,
-                         fin INTEGER,
-                         sic INTEGER,
+                         donations INTEGER,
                          received INTEGER,
                          trophies INTEGER,
                          player_name TEXT,
@@ -825,18 +824,17 @@ class Edit(commands.Cog):
             season_id = await self.bot.seasonconfig.get_season_id()
             player_tags = []
             for clan in clans:
-                player_tags.extend((n.tag for n in clan.members))
+                for player in clan.players:
+                    players.append({
+                        "player_tag": player.tag,
+                        "donations": player.donations,
+                        "received": player.received,
+                        "trophies": player.trophies,
+                        "player_name": player.name,
+                        "clan_tag": player.clan and player.clan.tag
+                    })
+                    player_tags.append(player.tag)
 
-            async for player in self.bot.coc.get_players(player_tags):
-                players.append({
-                    "player_tag": player.tag,
-                    "fin": player.achievements_dict['Friend in Need'].value,
-                    "sic": player.achievements_dict['Sharing is caring'].value,
-                    "received": player.received,
-                    "trophies": player.trophies,
-                    "player_name": player.name,
-                    "clan_tag": player.clan and player.clan.tag
-                })
             await ctx.db.execute(query3, [n.tag for n in clans], player_tags)
 
             await ctx.db.execute(query, players, season_id)
