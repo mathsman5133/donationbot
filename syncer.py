@@ -18,10 +18,7 @@ from cogs.utils.db import Table
 from cogs.utils.donationtrophylogs import SlimDonationEvent2, SlimTrophyEvent, get_basic_log, get_detailed_log, format_trophy_log_message
 from cogs.utils.db_objects import LogConfig
 
-logging.basicConfig(level=logging.INFO)
-
 log = logging.getLogger(__name__)
-log.setLevel(logging.INFO)
 
 class CustomCache(coc.Cache):
     @property
