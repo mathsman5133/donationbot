@@ -3,15 +3,18 @@ import datetime
 import discord
 import logging
 import textwrap
+import itertools
 import time
 
+import coc
 import pytz
 
 from discord.ext import commands, tasks
 
 from cogs.utils.db_objects import SlimEventConfig
-from cogs.utils.formatters import readable_time
+from cogs.utils.formatters import readable_time, LineWrapper
 from cogs.utils.emoji_lookup import misc
+from cogs.utils.donationtrophylogs import get_events_fmt
 
 log = logging.getLogger(__name__)
 
@@ -34,6 +37,7 @@ class BackgroundManagement(commands.Cog):
         self.next_event_starts.start()
         self.daily_history_updater.start()
         self.sync_activity_stats.start()
+        self._log_tasks = {}
         # self.event_player_updater.start()
 
     def cog_unload(self):
@@ -592,6 +596,114 @@ class BackgroundManagement(commands.Cog):
             e.set_footer(text='Bot Added').timestamp = guild.me.joined_at
 
         await self.bot.join_log_webhook.send(embed=e)
+
+    async def sync_temp_event_tasks(self):
+        query = """SELECT channel_id, type 
+                   FROM logs 
+                   WHERE toggle = True 
+                   AND "interval" > make_interval()
+                """
+        fetch = await self.bot.pool.fetch(query)
+        for n in fetch:
+            channel_id, type_ = n[0], n[1]
+            key = (channel_id, type_)
+            log.debug(f'Syncing task for Channel ID {key}')
+            task = self._log_tasks.get(key)
+            if not task:
+                log.debug(f'Task has not been created. Creating it. Channel ID: {key}')
+                self._log_tasks[key] = self.bot.loop.create_task(self.create_temp_event_task(channel_id, type_))
+                continue
+            elif task.done():
+                log.info(task.get_stack())
+                log.info(f'Task has already been completed, recreating it. Channel ID: {key}')
+                self._log_tasks[key] = self.bot.loop.create_task(self.create_temp_event_task(channel_id, type_))
+                continue
+            else:
+                log.debug(f'Task has already been sucessfully registered for Channel ID {channel_id}')
+
+        to_cancel = [n for n in self._log_tasks.keys() if n not in set((n[0], n[1]) for n in fetch)]
+        for n in to_cancel:
+            log.debug(f'Channel events have been removed from DB. Destroying task. Channel ID: {n}')
+            task = self._log_tasks.pop(n)
+            task.cancel()
+
+        log.info(f'Successfully synced {len(fetch)} channel tasks.')
+
+    async def create_temp_event_task(self, channel_id, type_):
+        try:
+            while not self.bot.is_closed():
+                config = await self.bot.utils.log_config(channel_id, type_)
+                if not config:
+                    log.critical(
+                        f'Requested a task creation for channel id {channel_id} type={type_} but config was not found.'
+                    )
+                    return
+
+                await asyncio.sleep(config.seconds)
+                config = await self.bot.utils.log_config(channel_id, type_)
+
+                if type_ == "donation" and config.detailed:
+                    query = "DELETE FROM detailedtempevents WHERE channel_id = $1 RETURNING clan_tag, exact, combo, unknown"
+                    fetch = await self.bot.pool.fetch(query, channel_id)
+
+                    if not fetch:
+                        continue
+
+                    embeds = []
+
+                    for clan_tag, events in itertools.groupby(sorted(fetch, key=lambda x: x['clan_tag']),
+                                                              key=lambda x: x['clan_tag']):
+                        events = list(events)
+
+                        events_fmt = {
+                            "exact": [],
+                            "combo": [],
+                            "unknown": []
+                        }
+                        for n in events:
+                            events_fmt["exact"].extend(n['exact'].split('\n'))
+                            events_fmt["combo"].extend(n['combo'].split('\n'))
+                            events_fmt["unknown"].extend(n['unknown'].split('\n'))
+
+                        p = LineWrapper()
+                        p.add_lines(get_events_fmt(events_fmt))
+
+                        try:
+                            clan = await self.bot.coc.get_clan(clan_tag, cache=True)
+                        except coc.NotFound:
+                            log.exception(f'{clan_tag} not found')
+                            continue
+
+                        hex_ = bytes.hex(str.encode(clan.tag))[:20]
+
+                        for page in p.pages:
+                            e = discord.Embed(
+                                colour=int(int(''.join(filter(lambda x: x.isdigit(), hex_))) ** 0.3),
+                                description=page
+                            )
+                            e.set_author(name=f"{clan.name} ({clan.tag})", icon_url=clan.badge.url)
+                            e.set_footer(text="Reported").timestamp = datetime.datetime.utcnow()
+                            embeds.append(e)
+
+                    for n in embeds:
+                        asyncio.ensure_future(self.bot.utils.safe_send(config.channel_id, embed=n))
+
+                else:
+                    query = "DELETE FROM tempevents WHERE channel_id = $1 AND type = $2 RETURNING fmt"
+                    fetch = await self.bot.pool.fetch(query, channel_id, type_)
+                    p = LineWrapper()
+
+                    for n in fetch:
+                        p.add_lines(n[0].split("\n"))
+                    for page in p.pages:
+                        asyncio.ensure_future(self.bot.utils.safe_send(config.channel_id, page))
+
+        except asyncio.CancelledError:
+            raise
+        except:
+            log.exception(f'Exception encountered while running task for {channel_id} {type_}')
+            self._log_tasks[(channel_id, type_)].cancel()
+            self._log_tasks[(channel_id, type_)] = self.bot.loop.create_task(self.create_temp_event_task(channel_id, type_))
 
 
 def setup(bot):
