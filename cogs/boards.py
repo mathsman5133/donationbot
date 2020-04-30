@@ -76,18 +76,9 @@ class DonationBoard(commands.Cog):
     @tasks.loop(seconds=60.0)
     async def update_board_loops(self):
         await self.bot.wait_until_ready()
-        clan_tags = self.tags_to_update.copy()
-        self.tags_to_update.clear()
 
-        self.last_updated_tags.update(**{n: datetime.utcnow() for n in clan_tags})
-
-        query = """SELECT DISTINCT boards.channel_id, boards.type
-                    FROM boards
-                    INNER JOIN clans
-                    ON clans.channel_id = boards.channel_id
-                    WHERE clans.clan_tag = ANY($1::TEXT[])
-                """
-        fetch = await self.bot.pool.fetch(query, clan_tags)
+        query = """SELECT channel_id, type FROM boards WHERE need_to_update = TRUE"""
+        fetch = await self.bot.pool.fetch(query)
 
         for n in fetch:
             try:

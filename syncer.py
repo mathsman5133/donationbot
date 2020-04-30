@@ -204,11 +204,23 @@ async def bulk_board_insert():
                 WHERE eventplayers.player_tag = x.player_tag
                 AND eventplayers.live = true                    
             """
+    query3 = """UPDATE boards 
+                SET need_to_update = TRUE 
+                FROM(
+                    SELECT channel_id 
+                    FROM clans 
+                    WHERE clan_tag = ANY($1::TEXT[])
+                ) 
+                AS x 
+                WHERE boards.channel_id = x.channel_id
+            """
     if board_batch_data:
         response = await pool.execute(query, list(board_batch_data.values()), SEASON_ID)
         log.info(f'Registered donations/received to the database. Status Code {response}.')
         response = await pool.execute(query2, list(board_batch_data.values()))
         log.info(f'Registered donations/received to the events database. Status Code {response}.')
+        response = await pool.execute(query3, list(set(x['clan_tag'] for x in board_batch_data.values())))
+        log.info(f"updating boards for {response} channels")
         board_batch_data.clear()
 
 
