@@ -153,7 +153,7 @@ def get_events_fmt(events):
 
 async def get_detailed_log(coc_client, all_clan_events, raw_events: bool = False):
     embeds = []
-    for (tag, clan_events) in itertools.groupby(all_clan_events, key=lambda x: x['clan_tag']):
+    for (tag, clan_events) in itertools.groupby(all_clan_events, key=lambda x: x.clan_tag):
         events = await get_matches_for_detailed_log(list(clan_events))
         if raw_events:
             embeds.append((tag, events))
