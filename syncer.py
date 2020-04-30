@@ -52,7 +52,10 @@ last_updated_tags = set()
 async def batch_insert_loop():
     log.info('Starting batch insert loop for donationlogs.')
     async with donationlog_batch_lock:
-        await send_donationlog_events()
+        try:
+            await send_donationlog_events()
+        except:
+            log.exception("donationlogs failed")
 
 
 async def add_temp_events(log_type, channel_id, fmt):
@@ -101,7 +104,7 @@ async def send_donationlog_events():
                AND logs.type = 'donation'
             """
     clan_tags = list(set(n['clan_tag'] for n in donationlog_batch_data))
-    log.debug(f"clan tags {clan_tags}")
+    log.info(f"clan tags {clan_tags}")
     fetch = await pool.fetch(query, clan_tags)
 
     clan_tag_to_channel_data = {r['clan_tag']: LogConfig(bot=None, record=r) for r in fetch}
@@ -287,7 +290,10 @@ async def on_clan_member_received(old_received, new_received, player):
 async def trophylog_batch_insert_loop():
     log.info('Starting batch insert loop.')
     async with trophylog_batch_lock:
-        await trophylog_bulk_insert()
+        try:
+            await trophylog_bulk_insert()
+        except:
+            log.exception("trophylogs failed")
 
 
 async def trophylog_bulk_insert():
