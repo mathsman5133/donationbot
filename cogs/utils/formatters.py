@@ -68,55 +68,6 @@ def events_time(delta_seconds):
     return f"{seconds}sec"
 
 
-def format_donation_log_message(player, clan_name):
-    if player.donations:
-        emoji = misc['donated']
-        emoji2 = misc['online']
-        if player.donations <= 100:
-            number = number_emojis[player.donations]
-        else:
-            number = str(player.donations)
-    else:
-        emoji = misc['received']
-        emoji2 = misc['offline']
-        if 0 < player.received <= 100:
-            number = number_emojis[player.received]
-        else:
-            number = str(player.received)
-    return f'{emoji2} {number} {player.name} ({clan_name})'
-
-
-def format_donation_log_message_test(player):
-    if player.donations:
-        emoji = misc['donated']
-        emoji2 = misc['online']
-        if player.donations <= 100:
-            number = number_emojis[player.donations]
-        else:
-            number = str(player.donations)
-    else:
-        emoji = misc['received']
-        emoji2 = misc['offline']
-        if 0 < player.received <= 100:
-            number = number_emojis[player.received]
-        else:
-            number = str(player.received)
-    return f'{emoji2} {number} {player.name}'
-
-
-def format_trophy_log_message(player, clan_name):
-    trophies = player.trophies
-    abs_trophies = abs(trophies)
-
-    if 0 < abs_trophies <= 100:
-        number = number_emojis[abs_trophies]
-    else:
-        number = abs_trophies
-
-    emoji = (misc['trophygreen'], misc['trophygain']) if trophies > 0 else (misc['trophyred'], misc['trophyloss'])
-
-    return f"{emoji[0]} {number} {emojis[player.league_id]} {player.name} ({clan_name})"
-
 
 class TabularData:
     def __init__(self):

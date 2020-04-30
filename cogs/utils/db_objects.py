@@ -32,6 +32,9 @@ class DatabasePlayer:
 class LogConfig:
     __slots__ = ('bot', 'guild_id', 'channel_id', 'interval', 'toggle', 'type', 'detailed')
 
+    def __eq__(self, other):
+        return isinstance(self, other) and self.channel_id == other.channel_id and self.type == other.type
+
     def __init__(self, *, bot, record):
         self.bot = bot
 
