@@ -159,7 +159,7 @@ class Utils(commands.Cog):
     async def safe_send(self, channel, content=None, embed=None):
         try:
             return await channel.send(content, embed=embed)
-        except (discord.Forbidden, AttributeError, discord.NotFound):
+        except (discord.Forbidden, discord.NotFound):
             await self.bot.pool.execute("UPDATE logs SET toggle = FALSE WHERE channel_id = $1", channel.id)
             self.log_config.invalidate(channel.id, 'donation')
             self.log_config.invalidate(channel.id, 'trophy')
