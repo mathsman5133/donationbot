@@ -150,7 +150,7 @@ async def send_donationlog_events():
                 continue
 
             for x in messages:
-                log.debug(f'Dispatching a detailed log to channel {config.channel} (ID {config.channel_id}), {x}')
+                log.debug(f'Dispatching a detailed log to channel (ID {config.channel_id}), {x}')
                 await safe_send(channel_id, '\n'.join(x))
 
     donationlog_batch_data.clear()
