@@ -2,33 +2,41 @@ import asyncio
 import datetime
 import logging
 import time
-import pytz
+import itertools
+import math
 
+import aiohttp
 import coc
+import discord
 
-from discord.ext import tasks
+from discord.ext import commands, tasks
 
 import creds
 
+from botlog import setup_logging
 from cogs.utils.db import Table
-from cogs.utils.season_reset import next_season_start
+from cogs.utils.donationtrophylogs import SlimDonationEvent2, SlimTrophyEvent, get_basic_log, get_detailed_log, format_trophy_log_message
+from cogs.utils.db_objects import LogConfig
 
 logging.basicConfig(level=logging.INFO)
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
-
 class CustomCache(coc.Cache):
     @property
     def clan_config(self):
         return coc.CacheConfig(2000, None)  # max_size, time to live
+
 
 SEASON_ID = 11
 
 loop = asyncio.get_event_loop()
 pool = loop.run_until_complete(Table.create_pool(creds.postgres))
 coc_client = coc.login(creds.email, creds.password, client=coc.EventsClient, key_names="test", throttle_limit=30, key_count=3, cache=CustomCache)
+bot = commands.Bot(command_prefix="+", loop=loop)
+bot.session = aiohttp.ClientSession()
+setup_logging(bot)
 
 board_batch_lock = asyncio.Lock(loop=loop)
 board_batch_data = {}
@@ -42,49 +50,116 @@ trophylog_batch_data = []
 last_updated_batch_lock = asyncio.Lock(loop=loop)
 last_updated_tags = set()
 
-async def get_season_id():
-    query = "SELECT id FROM seasons WHERE start < CURRENT_TIMESTAMP ORDER BY start DESC;"
-    fetch = await pool.fetchrow(query)
-    return fetch['id']
-
-@tasks.loop()
-async def reset_season_id():
-    SEASON_ID = await get_season_id()
-    await asyncio.sleep((next_season_start() - datetime.datetime.now(tz=pytz.utc)).total_seconds() + 5)
-    SEASON_ID = await get_season_id()
-
 
 @tasks.loop(seconds=60.0)
 async def batch_insert_loop():
     log.info('Starting batch insert loop for donationlogs.')
     async with donationlog_batch_lock:
-        await bulk_insert()
+        await send_donationlog_events()
 
 
-async def bulk_insert():
-    query = """INSERT INTO donationevents (player_tag, player_name, clan_tag, 
-                                             donations, received, time, season_id)
-                    SELECT x.player_tag, x.player_name, x.clan_tag, 
-                           x.donations, x.received, x.time, x.season_id
-                       FROM jsonb_to_recordset($1::jsonb) 
-                    AS x(player_tag TEXT, player_name TEXT, clan_tag TEXT, 
-                         donations INTEGER, received INTEGER, time TIMESTAMP, season_id INTEGER
-                         )
+async def add_temp_events(log_type, channel_id, fmt):
+    query = """INSERT INTO tempevents (channel_id, fmt, type) VALUES ($1, $2, $3)"""
+    await pool.execute(query, channel_id, fmt, log_type)
+    log.debug(f'Added a message for channel id {channel_id} to tempevents db')
+
+
+async def add_detailed_temp_events(channel_id, clan_tag, events):
+    query = "INSERT INTO detailedtempevents (channel_id, clan_tag, exact, combo, unknown) VALUES ($1, $2, $3, $4, $5)"
+    await pool.execute(
+        query,
+        channel_id,
+        clan_tag,
+        "\n".join(events["exact"]),
+        "\n".join(events["combo"]),
+        "\n".join(events["unknown"])
+    )
+    log.debug(f'Added detailed temp events for channel id {channel_id} clan tag {clan_tag} to detailedtempevents db\n{events}')
+
+
+async def safe_send(channel_id, content=None, embed=None):
+    try:
+        return await bot.http.send_message(channel_id, content, embed=embed.to_dict())
+    except (discord.Forbidden, AttributeError, discord.NotFound):
+        await pool.execute("UPDATE logs SET toggle = FALSE WHERE channel_id = $1", channel_id)
+        return
+    except:
+        log.exception(f"{channel_id} failed to send {content} {embed}")
+
+
+async def send_donationlog_events():
+    query = """SELECT logs.channel_id, 
+                      clans.clan_tag,
+                      logs.guild_id, 
+                      "interval", 
+                      toggle,
+                      type,
+                      detailed 
+               FROM logs 
+               INNER JOIN clans 
+               ON logs.channel_id = clans.channel_id 
+               WHERE clan_tag = ANY($1::TEXT[]) 
+               AND logs.toggle = TRUE
+               AND logs.type = 'donation'
             """
+    clan_tags = list(set(n['clan_tag'] for n in donationlog_batch_data))
+    fetch = await pool.fetch(query, clan_tags)
 
-    if donationlog_batch_data:
-        await pool.execute(query, donationlog_batch_data)
-        total = len(donationlog_batch_data)
-        if total > 1:
-            log.info('Registered %s donation events to the database.', total)
-        donationlog_batch_data.clear()
+    clan_tag_to_channel_data = {r['clan_tag']: LogConfig(bot=None, record=r) for r in fetch}
+    events = [
+        SlimDonationEvent2(
+            n['donations'],
+            n['received'],
+            n['player_name'],
+            n['player_tag'],
+            n['clan_tag'],
+            n['clan_name'],
+            clan_tag_to_channel_data.get(n['clan_tag'])
+        ) for n in donationlog_batch_data if clan_tag_to_channel_data.get(n['clan_tag'])
+    ]
+    events.sort(key=lambda n: n.channel_id)
+
+    for config, events in itertools.groupby(events, key=lambda n: n.log_config):
+        events = list(events)
+        channel_id = config.channel_id
+        log.debug(f"running {channel_id}")
+
+        if config.detailed:
+            if config.seconds > 0:
+                responses = await get_detailed_log(coc_client, events, raw_events=True)
+                # in this case, responses will be in
+                # [(clan_tag, {"exact": [str], "combo": [str], "unknown": [str]})] form.
+
+                for clan_tag, items in responses:
+                    await add_detailed_temp_events(channel_id, clan_tag, items)
+                continue
+
+            embeds = await get_detailed_log(coc_client, events)
+            for x in embeds:
+                log.debug(f'Dispatching a log to channel (ID {channel_id}), {x}')
+
+                await safe_send(channel_id, embed=x)
+
+        else:
+            messages = await get_basic_log(events)
+            if config.seconds > 0 and channel_id:
+                for n in messages:
+                    await add_temp_events('donation', channel_id, "\n".join(n))
+                continue
+
+            for x in messages:
+                log.debug(f'Dispatching a detailed log to channel {config.channel} (ID {config.channel_id}), {x}')
+                await safe_send(channel_id, '\n'.join(x))
+
+    donationlog_batch_data.clear()
 
         
 @tasks.loop(seconds=60.0)
 async def board_insert_loop():
     async with board_batch_lock:
         await bulk_board_insert()
-        
+
+
 async def bulk_board_insert():
     query = """UPDATE players SET donations = public.get_don_rec_max(x.old_dons, x.new_dons, COALESCE(players.donations, 0)), 
                                   received  = public.get_don_rec_max(x.old_rec, x.new_rec, COALESCE(players.received, 0)), 
@@ -136,7 +211,7 @@ async def bulk_board_insert():
 
 
 async def on_clan_member_donation(old_donations, new_donations, player):
-    log.info(f'Received on_clan_member_donation event for player {player} of clan {player.clan}')
+    log.debug(f'Received on_clan_member_donation event for player {player} of clan {player.clan}')
     if old_donations > new_donations:
         donations = new_donations
     else:
@@ -172,7 +247,7 @@ async def on_clan_member_donation(old_donations, new_donations, player):
 
 
 async def on_clan_member_received(old_received, new_received, player):
-    log.info(f'Received on_clan_member_received event for player {player} of clan {player.clan}')
+    log.debug(f'Received on_clan_member_received event for player {player} of clan {player.clan}')
     await update(player.tag)
     if old_received > new_received:
         received = new_received
@@ -213,6 +288,7 @@ async def trophylog_batch_insert_loop():
     async with trophylog_batch_lock:
         await trophylog_bulk_insert()
 
+
 async def trophylog_bulk_insert():
     query = """INSERT INTO trophyevents (player_tag, player_name, clan_tag, 
                                              trophy_change, league_id, time, season_id)
@@ -231,9 +307,60 @@ async def trophylog_bulk_insert():
             log.info('Registered %s trophy events to the database.', total)
         trophylog_batch_data.clear()
 
+async def send_trophylog_events():
+    query = """SELECT logs.channel_id, 
+                      clans.clan_tag,
+                      logs.guild_id, 
+                      "interval", 
+                      toggle,
+                      type,
+                      detailed 
+               FROM logs 
+               INNER JOIN clans 
+               ON logs.channel_id = clans.channel_id 
+               WHERE clan_tag = ANY($1::TEXT[]) 
+               AND logs.toggle = TRUE
+               AND logs.type = 'trophy'
+            """
+    clan_tags = list(set(n['clan_tag'] for n in trophylog_batch_data))
+    fetch = await pool.fetch(query, clan_tags)
+
+    clan_tag_to_channel_data = {r['clan_tag']: LogConfig(bot=None, record=r) for r in fetch}
+    events = [
+        SlimTrophyEvent(
+            n['trophy_change'],
+            n['league_id'],
+            n['player_name'],
+            n['clan_tag'],
+            n['clan_name'],
+            clan_tag_to_channel_data.get(n['clan_tag'])
+        ) for n in trophylog_batch_data if clan_tag_to_channel_data.get(n['clan_tag'])
+    ]
+    events.sort(key=lambda n: n.channel_id)
+
+    for config, events in itertools.groupby(events, key=lambda n: n.log_config):
+        log.debug(f"running {config.channel_id}")
+        events = list(events)
+        messages = [format_trophy_log_message(x) for x in events]
+
+        group_batch = []
+        for i in range(math.ceil(len(messages) / 20)):
+            group_batch.append(messages[i * 20:(i + 1) * 20])
+
+        for x in group_batch:
+            if config.seconds > 0:
+                await add_temp_events('trophy', config.channel_id, '\n'.join(x))
+            else:
+                log.debug(f'Dispatching a log to channel '
+                          f'{config.channel} (ID {config.channel_id})')
+
+                await safe_send(config.channel, '\n'.join(x))
+
+    trophylog_batch_data.clear()
+
 
 async def on_clan_member_trophies_change(old_trophies, new_trophies, player):
-    log.info(f'Received on_clan_member_trophy_change event for player {player} of clan {player.clan}')
+    log.debug(f'Received on_clan_member_trophy_change event for player {player} of clan {player.clan}')
     change = new_trophies - old_trophies
 
     async with trophylog_batch_lock:
@@ -264,6 +391,7 @@ async def on_clan_member_trophies_change(old_trophies, new_trophies, player):
 
     if player.league and player.league.id == 29000022 and new_trophies > old_trophies:
         await update(player.tag)
+
 
 @tasks.loop(hours=1)
 async def event_player_updater():
@@ -493,9 +621,8 @@ async def update_clan_tags():
     coc_client._clan_updates = [n[0] for n in fetch]
 
 if __name__ == "__main__":
+    loop.run_until_complete(bot.login(creds.bot_token))
     print("STARTING")
-    reset_season_id.start()
-
     update_clan_tags.add_exception_type(Exception, BaseException)
     update_clan_tags.start()
 
