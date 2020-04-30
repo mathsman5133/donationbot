@@ -101,6 +101,7 @@ async def send_donationlog_events():
                AND logs.type = 'donation'
             """
     clan_tags = list(set(n['clan_tag'] for n in donationlog_batch_data))
+    log.debug(f"clan tags {clan_tags}")
     fetch = await pool.fetch(query, clan_tags)
 
     clan_tag_to_channel_data = {r['clan_tag']: LogConfig(bot=None, record=r) for r in fetch}
@@ -220,6 +221,7 @@ async def on_clan_member_donation(old_donations, new_donations, player):
             'player_tag': player.tag,
             'player_name': player.name,
             'clan_tag': player.clan and player.clan.tag,
+            'clan_name': player.clan and player.clan.name,
             'donations': donations,
             'received': 0,
             'time': datetime.datetime.utcnow().isoformat(),
@@ -239,7 +241,7 @@ async def on_clan_member_donation(old_donations, new_donations, player):
                 'new_rec': player.received,
                 'trophies': player.trophies,
                 'clan_tag': player.clan and player.clan.tag,
-                'player_name': player.name
+                'player_name': player.name,
             }
     await update(player.tag)
 
@@ -257,6 +259,7 @@ async def on_clan_member_received(old_received, new_received, player):
             'player_tag': player.tag,
             'player_name': player.name,
             'clan_tag': player.clan and player.clan.tag,
+            'clan_name': player.clan and player.clan.name,
             'donations': 0,
             'received': received,
             'time': datetime.datetime.utcnow().isoformat(),
@@ -369,7 +372,8 @@ async def on_clan_member_trophies_change(old_trophies, new_trophies, player):
             'trophy_change': change,
             'league_id': player.league.id,
             'time': datetime.datetime.utcnow().isoformat(),
-            'season_id': SEASON_ID
+            'season_id': SEASON_ID,
+            'clan_name': player.clan and player.clan.name
         })
 
     async with board_batch_lock:
