@@ -361,7 +361,8 @@ class Info(commands.Cog, name='\u200bInfo'):
 
     @commands.command(hidden=True)
     async def ping(self, ctx):
-        await ctx.send(f'Pong! {self.bot.latency*1000:.2f}ms')
+        fmt = "\n".join(f'Shard ID: {i}, Latency: {n*1000:.2f}ms' for i, n in self.bot.latencies)
+        await ctx.send(f'Pong!\n{fmt}\nAverage Latency: {self.bot.latency*1000:.2f}ms')
 
     @commands.command(hidden=True)
     @commands.is_owner()

@@ -77,7 +77,7 @@ class DonationBot(commands.AutoShardedBot):
     def __init__(self):
         super().__init__(command_prefix=get_pref, case_insensitive=True,
                          description=description, pm_help=None, help_attrs=dict(hidden=True),
-                         fetch_offline_members=True, shard_count=3)
+                         fetch_offline_members=True)
 
         self.categories = {}
 
