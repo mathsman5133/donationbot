@@ -10,7 +10,7 @@ from cogs.utils.emoji_lookup import misc, number_emojis, emojis
 from cogs.utils.formatters import get_line_chunks
 
 SlimDonationEvent = namedtuple('SlimDonationEvent', 'donations received name clan_tag log_config')
-SlimDonationEvent2 = namedtuple("SlimDonationEvent", "donations received name tag clan_tag log_config")
+SlimDonationEvent2 = namedtuple("SlimDonationEvent", "donations received name tag clan_tag clan_name log_config")
 SlimTrophyEvent = namedtuple('SlimTrophyEvent', 'trophies league_id name clan_tag clan_name log_config')
 
 
