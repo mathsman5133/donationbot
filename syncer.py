@@ -82,8 +82,8 @@ async def add_detailed_temp_events(channel_id, clan_tag, events):
 async def safe_send(channel_id, content=None, embed=None):
     try:
         log.debug(f'sending message to {channel_id}')
-        return await bot.http.send_message(channel_id, content, embed=embed.to_dict())
-    except (discord.Forbidden, AttributeError, discord.NotFound):
+        return await bot.http.send_message(channel_id, content, embed=embed and embed.to_dict())
+    except (discord.Forbidden, discord.NotFound):
         await pool.execute("UPDATE logs SET toggle = FALSE WHERE channel_id = $1", channel_id)
         return
     except:
