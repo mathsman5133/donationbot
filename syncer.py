@@ -10,6 +10,7 @@ import coc
 import discord
 
 from discord.ext import commands, tasks
+from collections import Counter
 
 import creds
 
@@ -46,6 +47,7 @@ trophylog_batch_data = []
 
 last_updated_batch_lock = asyncio.Lock(loop=loop)
 last_updated_tags = set()
+last_updated_counter = Counter()
 
 
 @tasks.loop(seconds=60.0)
@@ -258,12 +260,12 @@ async def on_clan_member_donation(old_donations, new_donations, player):
                 'clan_tag': player.clan and player.clan.tag,
                 'player_name': player.name,
             }
-    await update(player.tag)
+    await update(player.tag, player.clan and player.clan.tag)
 
 
 async def on_clan_member_received(old_received, new_received, player):
     log.debug(f'Received on_clan_member_received event for player {player} of clan {player.clan}')
-    await update(player.tag)
+    await update(player.tag, player.clan and player.clan.tag)
     if old_received > new_received:
         received = new_received
     else:
@@ -297,13 +299,15 @@ async def on_clan_member_received(old_received, new_received, player):
                 'player_name': player.name
             }
 
+    await update(player.tag, player.clan and player.clan.tag)
+
 
 @tasks.loop(seconds=60.0)
 async def trophylog_batch_insert_loop():
     log.info('Starting batch insert loop.')
     async with trophylog_batch_lock:
         try:
-            await trophylog_bulk_insert()
+            await send_trophylog_events()
         except:
             log.exception("trophylogs failed")
 
@@ -410,7 +414,7 @@ async def on_clan_member_trophies_change(old_trophies, new_trophies, player):
             }
 
     if player.league and player.league.id == 29000022 and new_trophies > old_trophies:
-        await update(player.tag)
+        await update(player.tag, player.clan and player.clan.tag)
 
 
 @tasks.loop(hours=1)
@@ -506,28 +510,47 @@ async def update_db():
                WHERE player_tag = ANY($1::TEXT[])
                AND players.season_id = $2
             """
+    query2 = """
+             WITH cte AS (
+                SELECT DISTINCT clan_tag, activity_sync FROM clans INNER JOIN guilds ON clans.guild_id = guilds.guild_id
+             )
+             INSERT INTO activity_query (player_tag, clan_tag, counter, hour_digit)
+             SELECT x.player_tag, x.clan_tag, 1, date_part('HOUR', now())
+             FROM jsonb_to_recordset($1::jsonb)
+             AS x(player_tag TEXT, clan_tag TEXT)
+             INNER JOIN cte ON cte.clan_tag = x.clan_tag
+             WHERE cte.activity_sync = TRUE
+             ON CONFLICT (player_tag, clan_tag, hour_time)
+             DO UPDATE SET counter = counter + 1
+             """
     async with last_updated_batch_lock:
         await pool.execute(
             query, list(last_updated_tags), SEASON_ID
         )
+        nice = [{"player_tag": player_tag, "clan_tag": clan_tag} for (player_tag, clan_tag) in last_updated_counter.elements()]
+        await pool.execute(query2, nice)
         last_updated_tags.clear()
+        last_updated_counter.clear()
 
 
-async def update(player_tag):
+async def update(player_tag, clan_tag):
     async with last_updated_batch_lock:
+        if clan_tag:
+            last_updated_counter[(player_tag, clan_tag)] += 1
         last_updated_tags.add(player_tag)
-#
+
+
 async def on_clan_member_name_change(_, __, player):
-    await update(player.tag)
+    await update(player.tag, player.clan and player.clan.tag)
 #
 # async def on_clan_member_donation(self, _, __, player, ___):
 #     await self.update(player.tag)
 
 async def on_clan_member_versus_trophies_change(_, __, player):
-    await update(player.tag)
+    await update(player.tag, player.clan and player.clan.tag)
 
 async def on_clan_member_level_change(_, __, player):
-    await update(player.tag)
+    await update(player.tag, player.clan and player.clan.tag)
 #
 # async def on_clan_member_trophies_change(self, _, __, player, ___):
 #     pass  # could be a defense - doesn't mean online
