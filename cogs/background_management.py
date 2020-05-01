@@ -36,14 +36,17 @@ class BackgroundManagement(commands.Cog):
         self.bot = bot
         self.next_event_starts.start()
         self.daily_history_updater.start()
-        self.sync_activity_stats.start()
+        asyncio.ensure_future(self.sync_temp_event_tasks())
+        #self.sync_activity_stats.start()
         self._log_tasks = {}
         # self.event_player_updater.start()
 
     def cog_unload(self):
         self.next_event_starts.cancel()
         self.daily_history_updater.cancel()
-        self.sync_activity_stats.cancel()
+        for k, v in self._log_tasks:
+            v.cancel()
+        #self.sync_activity_stats.cancel()
         # self.event_player_updater.cancel()
 
     async def bot_check(self, ctx):
@@ -530,16 +533,14 @@ class BackgroundManagement(commands.Cog):
         e = discord.Embed(colour=discord.Colour.blue(), title='Clan Claimed')
         await self.send_claim_clan_stats(e, clan, ctx.guild)
         await self.bot.utils.update_clan_tags()
-        await self.bot.donationlogs.sync_temp_event_tasks()
-        await self.bot.trophylogs.sync_temp_event_tasks()
+        await self.bot.background.sync_temp_event_tasks()
 
     @commands.Cog.listener()
     async def on_clan_unclaim(self, ctx, clan):
         e = discord.Embed(colour=discord.Colour.dark_blue(), title='Clan Unclaimed')
         await self.send_claim_clan_stats(e, clan, ctx.guild)
         await self.bot.utils.update_clan_tags()
-        await self.bot.donationlogs.sync_temp_event_tasks()
-        await self.bot.trophylogs.sync_temp_event_tasks()
+        await self.bot.background.sync_temp_event_tasks()
 
     async def send_guild_stats(self, e, guild):
         e.add_field(name='Name', value=guild.name)

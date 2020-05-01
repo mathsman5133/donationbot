@@ -111,14 +111,6 @@ class DonationBot(commands.AutoShardedBot):
         return self.get_cog('DonationBoard')
 
     @property
-    def donationlogs(self):
-        return self.get_cog('DonationLogs')
-
-    @property
-    def trophylogs(self):
-        return self.get_cog('TrophyLogs')
-
-    @property
     def seasonconfig(self):
         return self.get_cog('SeasonConfig')
 
