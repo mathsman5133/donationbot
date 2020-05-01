@@ -357,9 +357,9 @@ async def send_trophylog_events():
                 await add_temp_events('trophy', config.channel_id, '\n'.join(x))
             else:
                 log.debug(f'Dispatching a log to channel '
-                          f'{config.channel} (ID {config.channel_id})')
+                          f'(ID {config.channel_id} type={config.type})')
 
-                await safe_send(config.channel, '\n'.join(x))
+                await safe_send(config.channel_id, '\n'.join(x))
 
     trophylog_batch_data.clear()
 
