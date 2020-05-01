@@ -156,13 +156,14 @@ class Utils(commands.Cog):
         fetch = await self.bot.pool.fetch(query)
         self.bot.coc._clan_updates = [n[0] for n in fetch]
 
-    async def safe_send(self, channel, content=None, embed=None):
+    async def safe_send(self, channel_id, content=None, embed=None):
+        channel = self.bot.get_channel(channel_id)
         try:
             return await channel.send(content, embed=embed)
-        except (discord.Forbidden, discord.NotFound):
-            await self.bot.pool.execute("UPDATE logs SET toggle = FALSE WHERE channel_id = $1", channel.id)
-            self.log_config.invalidate(channel.id, 'donation')
-            self.log_config.invalidate(channel.id, 'trophy')
+        except (discord.Forbidden, discord.NotFound, AttributeError):
+            await self.bot.pool.execute("UPDATE logs SET toggle = FALSE WHERE channel_id = $1", channel_id)
+            self.log_config.invalidate(channel_id, 'donation')
+            self.log_config.invalidate(channel_id, 'trophy')
             return
         except:
             log.exception(f"{channel} failed to send {content} {embed}")
