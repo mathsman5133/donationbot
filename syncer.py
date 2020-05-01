@@ -312,24 +312,6 @@ async def trophylog_batch_insert_loop():
             log.exception("trophylogs failed")
 
 
-async def trophylog_bulk_insert():
-    query = """INSERT INTO trophyevents (player_tag, player_name, clan_tag, 
-                                             trophy_change, league_id, time, season_id)
-                    SELECT x.player_tag, x.player_name, x.clan_tag, 
-                           x.trophy_change, x.league_id, x.time, x.season_id
-                       FROM jsonb_to_recordset($1::jsonb) 
-                    AS x(player_tag TEXT, player_name TEXT, clan_tag TEXT, 
-                         trophy_change INTEGER, league_id INTEGER, time TIMESTAMP, season_id INTEGER
-                         )
-            """
-
-    if trophylog_batch_data:
-        await pool.execute(query, trophylog_batch_data)
-        total = len(trophylog_batch_data)
-        if total > 1:
-            log.info('Registered %s trophy events to the database.', total)
-        trophylog_batch_data.clear()
-
 async def send_trophylog_events():
     query = """SELECT logs.channel_id, 
                       clans.clan_tag,
@@ -359,7 +341,7 @@ async def send_trophylog_events():
             clan_tag_to_channel_data.get(n['clan_tag'])
         ) for n in trophylog_batch_data if clan_tag_to_channel_data.get(n['clan_tag'])
     ]
-    events.sort(key=lambda n: n.channel_id)
+    events.sort(key=lambda n: n.log_config.channel_id)
 
     for config, events in itertools.groupby(events, key=lambda n: n.log_config):
         log.debug(f"running {config.channel_id}")
