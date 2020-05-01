@@ -824,7 +824,7 @@ class Edit(commands.Cog):
             season_id = await self.bot.seasonconfig.get_season_id()
             player_tags = []
             for clan in clans:
-                for player in clan.players:
+                for player in clan.members:
                     players.append({
                         "player_tag": player.tag,
                         "donations": player.donations,
