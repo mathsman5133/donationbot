@@ -171,7 +171,7 @@ class Aliases(commands.Cog, name='\u200bAliases'):
         if not (channel.permissions_for(ctx.me).send_messages or channel.permissions_for(ctx.me).read_messages):
             return await ctx.send('I need permission to send and read messages here!')
 
-        in_event = ctx.config and ctx.config.start_time < datetime.datetime.utcnow()
+        in_event = ctx.config and ctx.config.start < datetime.datetime.utcnow()
 
         query = """INSERT INTO clans (
                        clan_tag, 
