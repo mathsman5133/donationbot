@@ -506,7 +506,7 @@ async def update_db():
              INNER JOIN cte ON cte.clan_tag = x.clan_tag
              WHERE cte.activity_sync = TRUE
              ON CONFLICT (player_tag, clan_tag, hour_time)
-             DO UPDATE SET counter = counter + 1
+             DO UPDATE SET counter = activity_query.counter + 1
              """
     async with last_updated_batch_lock:
         await pool.execute(
