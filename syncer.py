@@ -483,7 +483,10 @@ async def event_player_updater():
 
 @tasks.loop(minutes=1.0)
 async def last_updated_loop():
-    await update_db()
+    try:
+        await update_db()
+    except:
+        log.exception("last updated loop")
 
 
 async def update_db():
