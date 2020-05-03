@@ -278,8 +278,8 @@ class ActivityBarConverter(commands.Converter):
                     query = """
                             WITH cte AS (
                                 SELECT DISTINCT player_tag, player_name FROM players WHERE user_id = $1 OR $2 = True
-                            )
-                            WITH cte2 AS (
+                            ),
+                            cte2 AS (
                                 SELECT DISTINCT player_tag, player_name FROM players INNER JOIN clans ON clans.clan_tag = players.clan_tag WHERE clans.guild_id = $3
                             )
                             SELECT *
