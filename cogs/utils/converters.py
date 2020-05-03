@@ -275,13 +275,27 @@ class ActivityBarConverter(commands.Converter):
                 if fetch:
                     clan = fetch
                 else:
-                    query = """SELECT DISTINCT(player_tag), 
-                                      player_name 
-                               FROM players 
-                               WHERE player_tag = $1 
-                               OR player_name LIKE $2
+                    query = """
+                            WITH cte AS (
+                                SELECT DISTINCT player_tag, player_name FROM players WHERE user_id = $1 OR $2 = True
+                            )
+                            WITH cte2 AS (
+                                SELECT DISTINCT player_tag, player_name FROM players INNER JOIN clans ON clans.clan_tag = players.clan_tag WHERE clans.guild_id = $3
+                            )
+                            SELECT *
+                            FROM cte
+                            FULL JOIN cte2 ON cte.player_tag = cte2.player_tag 
+                            WHERE cte.player_tag = $4 
+                            OR cte.player_name LIKE $5
                             """
-                    fetch = await ctx.db.fetchrow(query, correct_tag(argument), argument)
+                    fetch = await ctx.db.fetchrow(
+                        query,
+                        ctx.author.id,
+                        await ctx.bot.is_owner(ctx.author),
+                        ctx.guild.id,
+                        correct_tag(argument),
+                        argument
+                    )
                     if fetch:
                         player = fetch
                     else:
