@@ -6,6 +6,7 @@ import time
 
 from datetime import datetime
 from discord.ext import commands
+from coc.utils import correct_tag
 
 from cogs.utils.checks import is_patron_pred
 
@@ -265,21 +266,32 @@ class ActivityBarConverter(commands.Converter):
                 channel = await commands.TextChannelConverter().convert(ctx, argument)
             except commands.BadArgument:
                 if not await ctx.bot.is_owner(ctx.author):
-                    query = "SELECT DISTINCT(clan_tag), clan_name FROM clans WHERE clan_tag LIKE $1 OR clan_name LIKE $1 AND guild_id = $2"
-                    fetch = await ctx.db.fetchrow(query, argument, ctx.guild.id)
+                    query = "SELECT DISTINCT(clan_tag), clan_name FROM clans WHERE clan_tag = $1 OR clan_name LIKE $2 AND guild_id = $3"
+                    fetch = await ctx.db.fetchrow(query, correct_tag(argument), argument, ctx.guild.id)
                 else:
-                    query = "SELECT DISTINCT(clan_tag), clan_name FROM clans WHERE clan_tag LIKE $1 OR clan_name LIKE $1"
-                    fetch = await ctx.db.fetchrow(query, argument)
+                    query = "SELECT DISTINCT(clan_tag), clan_name FROM clans WHERE clan_tag = $1 OR clan_name LIKE $2"
+                    fetch = await ctx.db.fetchrow(query, correct_tag(argument), argument)
 
                 if fetch:
                     clan = fetch
                 else:
-                    query = "SELECT DISTINCT(player_tag), player_name FROM players WHERE player_tag LIKE $1 OR player_name LIKE $1"
-                    fetch = await ctx.db.fetchrow(query, argument)
+                    query = """SELECT DISTINCT(player_tag), 
+                                      player_name 
+                               FROM players 
+                               WHERE player_tag = $1 
+                               OR player_name LIKE $2
+                            """
+                    fetch = await ctx.db.fetchrow(query, correct_tag(argument), argument)
                     if fetch:
                         player = fetch
                     else:
-                        raise commands.BadArgument("I tried to parse your argument as a channel, server, clan name, clan tag, player name or tag and couldn't find a match! Make sure the clan is claimed to this server, and try again.")
+                        raise commands.BadArgument(
+                            "I tried to parse your argument as a channel, server, clan name, clan tag, player name "
+                            "or tag and couldn't find a match! \n\n"
+                            "A couple of security features to note: \n"
+                            "1. Clan stats can only be found when the clan has been claimed to this server.\n"
+                            "2. Player stats can only be found when the player's current clan is claimed to this server, "
+                            "or you have claimed the player.\n\nPlease try again.")
 
         fetch = await ctx.db.fetchrow("SELECT activity_sync FROM guilds WHERE guild_id = $1", ctx.guild.id)
         if not fetch['activity_sync']:
@@ -344,7 +356,7 @@ class ActivityBarConverter(commands.Converter):
                         FROM activity_query 
                         INNER JOIN clan_tags
                         ON clan_tags.clan_tag = activity_query.clan_tag
-                        GROUP by date, clan_name
+                        GROUP BY date, clan_name
                     ),
                     cte2 AS (
                         SELECT cast(SUM(counter) as decimal) / MIN(num_players) AS num_events, 
