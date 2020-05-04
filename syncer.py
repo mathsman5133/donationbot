@@ -109,18 +109,28 @@ async def send_donationlog_events():
     log.info(f"clan tags {clan_tags}")
     fetch = await pool.fetch(query, clan_tags)
 
-    clan_tag_to_channel_data = {r['clan_tag']: LogConfig(bot=None, record=r) for r in fetch}
-    events = [
-        SlimDonationEvent2(
-            n['donations'],
-            n['received'],
-            n['player_name'],
-            n['player_tag'],
-            n['clan_tag'],
-            n['clan_name'],
-            clan_tag_to_channel_data.get(n['clan_tag'])
-        ) for n in donationlog_batch_data if clan_tag_to_channel_data.get(n['clan_tag'])
-    ]
+    clan_tag_to_channel_data = {}
+    for row in fetch:
+        try:
+            clan_tag_to_channel_data[row['clan_tag']].append(LogConfig(bot=None, record=row))
+        except KeyError:
+            clan_tag_to_channel_data[row['clan_tag']] = [LogConfig(bot=None, record=row)]
+
+    events = []
+    for event in donationlog_batch_data:
+        for log_config in clan_tag_to_channel_data.get(event['clan_tag']):
+            events.append(
+                SlimDonationEvent2(
+                    event['donations'],
+                    event['received'],
+                    event['player_name'],
+                    event['player_tag'],
+                    event['clan_tag'],
+                    event['clan_name'],
+                    log_config
+                )
+            )
+
     events.sort(key=lambda n: n.log_config.channel_id)
 
     for config, events in itertools.groupby(events, key=lambda n: n.log_config):
