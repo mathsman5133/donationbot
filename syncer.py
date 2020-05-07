@@ -118,7 +118,7 @@ async def send_donationlog_events():
 
     events = []
     for event in donationlog_batch_data:
-        for log_config in clan_tag_to_channel_data.get(event['clan_tag']):
+        for log_config in clan_tag_to_channel_data.get(event['clan_tag'], []):
             events.append(
                 SlimDonationEvent2(
                     event['donations'],
