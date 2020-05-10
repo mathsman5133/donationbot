@@ -1,6 +1,7 @@
 import datetime
 import io
 import itertools
+import typing
 
 import discord
 import numpy
@@ -82,12 +83,12 @@ class Activity(commands.Cog):
         else:
             plt.style.use('default')
 
-        key, fetch = data
+        data: typing.List[typing.Tuple[str, typing.List]] = data
 
-        if not fetch:
+        if not data:
             return await ctx.send(f"Not enough history. Please try again later.")
 
-        days = int((datetime.datetime.now() - fetch[0][2]).total_seconds() / (60 * 60 * 24))
+        days = int((datetime.datetime.now() - data[0][1][2]).total_seconds() / (60 * 60 * 24))
         existing_graph_data = self.get_bar_graph(ctx.channel.id, ctx.author.id)
 
         data_to_add = {}  # name: {hour: events}
@@ -99,14 +100,11 @@ class Activity(commands.Cog):
                 return hour + timezone_offset - 24
             return hour + timezone_offset + 24
 
-        if isinstance(key, (discord.TextChannel, discord.Guild)):
-            # if it's a guild or channel this supports multiple clans. eg `+activity bar all`
-            for clan_name, data in itertools.groupby(fetch, key=lambda x: x[3]):
-                dict_ = {n[0]: n[1] for n in data}
-                data_to_add[clan_name + f" ({days + 1}d)"] = {get_hour_plus_offset(hour): dict_.get(hour, 0) for hour in range(24)}
-        else:
+        for key, fetch in data:
             dict_ = {n[0]: n[1] for n in fetch}
-            data_to_add[key + f" ({days + 1}d)"] = {get_hour_plus_offset(hour): dict_.get(hour, 0) for hour in range(24)}
+            data_to_add[key + f" ({days + 1}d)"] = {
+                get_hour_plus_offset(hour): dict_.get(hour, 0) for hour in range(24)
+            }
 
         data_to_add = {**existing_graph_data, **data_to_add}
 

@@ -2,6 +2,7 @@ import coc
 import discord
 import logging
 import re
+import itertools
 import time
 
 from datetime import datetime
@@ -244,8 +245,9 @@ class ClanChannelComboConverter(commands.Converter):
 
 class ActivityBarConverter(commands.Converter):
     async def convert(self, ctx, argument):
-        guild = None  # channel
-        channel = None  # guild
+        guild = None  # discord.Guild
+        channel = None  # discord.TextChannel
+        user = None  # discord.Member
         clan = None  # (tag, name)
         player = None  # (tag, name)
 
@@ -259,109 +261,82 @@ class ActivityBarConverter(commands.Converter):
         if tag_validator.match(argument) and argument.startswith("#"):
             argument = coc.utils.correct_tag(argument)
 
-        if argument == "all":
-            guild = ctx.guild
-        else:
+        while not (guild or channel or user or player or clan):
+            if argument == "all":
+                guild = ctx.guild
+                break
             try:
                 channel = await commands.TextChannelConverter().convert(ctx, argument)
+                break
             except commands.BadArgument:
-                if not await ctx.bot.is_owner(ctx.author):
-                    query = "SELECT DISTINCT(clan_tag), clan_name FROM clans WHERE clan_tag = $1 OR clan_name LIKE $2 AND guild_id = $3"
-                    fetch = await ctx.db.fetchrow(query, correct_tag(argument), argument, ctx.guild.id)
-                else:
-                    query = "SELECT DISTINCT(clan_tag), clan_name FROM clans WHERE clan_tag = $1 OR clan_name LIKE $2"
-                    fetch = await ctx.db.fetchrow(query, correct_tag(argument), argument)
+                pass
 
-                if fetch:
-                    clan = fetch
-                else:
-                    query = """
-                            WITH cte AS (
-                                SELECT DISTINCT player_tag, player_name FROM players WHERE user_id = $1 OR $2 = True
-                            ),
-                            cte2 AS (
-                                SELECT DISTINCT player_tag, 
-                                                player_name 
-                                FROM players 
-                                INNER JOIN clans 
-                                ON clans.clan_tag = players.clan_tag 
-                                WHERE clans.guild_id = $3
-                            )
-                            SELECT player_tag, player_name FROM cte
-                            WHERE player_tag = $4 
-                            OR player_name LIKE $5
-                            UNION 
-                            SELECT player_tag, player_name FROM cte2
-                            WHERE player_tag = $4 
-                            OR player_name LIKE $5
-                            """
-                    fetch = await ctx.db.fetchrow(
-                        query,
-                        ctx.author.id,
-                        await ctx.bot.is_owner(ctx.author),
-                        ctx.guild.id,
-                        correct_tag(argument),
-                        argument
+            try:
+                user = await commands.TextChannelConverter().convert(ctx, argument)
+                break
+            except commands.BadArgument:
+                pass
+
+            if not await ctx.bot.is_owner(ctx.author):
+                query = "SELECT DISTINCT(clan_tag), clan_name FROM clans WHERE clan_tag = $1 OR clan_name LIKE $2 AND guild_id = $3"
+                fetch = await ctx.db.fetchrow(query, correct_tag(argument), argument, ctx.guild.id)
+            else:
+                query = "SELECT DISTINCT(clan_tag), clan_name FROM clans WHERE clan_tag = $1 OR clan_name LIKE $2"
+                fetch = await ctx.db.fetchrow(query, correct_tag(argument), argument)
+
+            if fetch:
+                clan = fetch
+                break
+
+            query = """
+                    WITH cte AS (
+                        SELECT DISTINCT player_tag, player_name FROM players WHERE user_id = $1 OR $2 = True
+                    ),
+                    cte2 AS (
+                        SELECT DISTINCT player_tag, 
+                                        player_name 
+                        FROM players 
+                        INNER JOIN clans 
+                        ON clans.clan_tag = players.clan_tag 
+                        WHERE clans.guild_id = $3
                     )
-                    if fetch:
-                        player = fetch
-                    else:
-                        raise commands.BadArgument(
-                            "I tried to parse your argument as a channel, server, clan name, clan tag, player name "
-                            "or tag and couldn't find a match! \n\n"
-                            "A couple of security features to note: \n"
-                            "1. Clan stats can only be found when the clan has been claimed to this server.\n"
-                            "2. Player stats can only be found when the player's current clan is claimed to this server, "
-                            "or you have claimed the player.\n\nPlease try again.")
+                    SELECT player_tag, player_name FROM cte
+                    WHERE player_tag = $4 
+                    OR player_name LIKE $5
+                    UNION 
+                    SELECT player_tag, player_name FROM cte2
+                    WHERE player_tag = $4 
+                    OR player_name LIKE $5
+                    """
+            fetch = await ctx.db.fetchrow(
+                query,
+                ctx.author.id,
+                await ctx.bot.is_owner(ctx.author),
+                ctx.guild.id,
+                correct_tag(argument),
+                argument
+            )
+            if fetch:
+                player = fetch
+                break
+
+            raise commands.BadArgument(
+                "I tried to parse your argument as a channel, server, clan name, clan tag, player name "
+                "or tag and couldn't find a match! \n\n"
+                "A couple of security features to note: \n"
+                "1. Clan stats can only be found when the clan has been claimed to this server.\n"
+                "2. Player stats can only be found when the player's current clan is claimed to this server, "
+                "or you have claimed the player.\n\nPlease try again."
+            )
 
         fetch = await ctx.db.fetchrow("SELECT activity_sync FROM guilds WHERE guild_id = $1", ctx.guild.id)
         if not fetch['activity_sync']:
-            await ctx.send("Loading clan activity values. This will take a minute. Please be patient.")
-            query = """
-                    WITH g_clans AS (
-                        SELECT distinct clan_tag FROM clans WHERE guild_id = $1
-                    ),
-                    cte AS (
-                        SELECT player_tag,
-                               donationevents.clan_tag,
-                               date_trunc('HOUR', "time") AS "timer",
-                               COUNT(*) AS "counter"
-                        FROM donationevents
-                        INNER JOIN g_clans ON g_clans.clan_tag = donationevents.clan_tag
-                        GROUP BY timer, player_tag, donationevents.clan_tag
-                    ),
-                    cte2 AS (
-                        SELECT player_tag,
-                               trophyevents.clan_tag,
-                               date_trunc('HOUR', "time") AS "timer",
-                               COUNT(*) AS "counter"
-                        FROM trophyevents
-                        INNER JOIN g_clans ON g_clans.clan_tag = trophyevents.clan_tag
-                        WHERE trophyevents.league_id = 29000022
-                        AND trophyevents.trophy_change > 0
-                        GROUP BY timer, player_tag, trophyevents.clan_tag
-                    )
-                    INSERT INTO activity_query (player_tag, clan_tag, hour_time, counter, hour_digit)
-                    SELECT cte.player_tag,
-                           cte.clan_tag,
-                           cte.timer,
-                           COALESCE(cte.counter, 0) + COALESCE(cte2.counter, 0) as "num_events",
-                           date_part('hour', cte.timer) as "hour"
-                    FROM cte
-                    FULL JOIN cte2
-                    ON cte.player_tag = cte2.player_tag
-                    AND cte.clan_tag = cte2.clan_tag
-                    AND cte.timer = cte2.timer
-                    GROUP BY cte.player_tag, cte.clan_tag, cte.timer, "num_events", "hour"
-                    ON CONFLICT DO NOTHING
-                    """
-            s = time.perf_counter()
-            guild_id = ctx.guild.id
-            ctx.bot.locked_guilds.add(guild_id)
-            await ctx.db.execute(query, guild_id)
-            ctx.bot.locked_guilds.remove(guild_id)
-            await ctx.db.execute("UPDATE guilds SET activity_sync = TRUE WHERE guild_id = $1", ctx.guild.id)
-            log.info(f"ACTIVITY INSERT QUERY for Guild ID {guild_id} took {(time.perf_counter() - s)*1000}ms")
+            await ctx.send(
+                "This is the first time this command has been run in this server. "
+                "I will only start recording your activity from now. "
+                "Please wait a few days for me to gather reliable data."
+            )
+            return None, None
 
         if channel or guild:
             query = """
@@ -370,33 +345,75 @@ class ActivityBarConverter(commands.Converter):
                         FROM clans 
                         WHERE channel_id = $1 OR guild_id = $1
                     ),
+
                     cte1 AS (
                         SELECT COUNT(DISTINCT player_tag) as "num_players", 
-                               DATE(activity_query.hour_time) as "date", 
-                               clan_name
+                               DATE(activity_query.hour_time) as "date",
+                               clan_tags.clan_name
                         FROM activity_query 
-                        INNER JOIN clan_tags
-                        ON clan_tags.clan_tag = activity_query.clan_tag
-                        GROUP BY date, clan_name
+                        INNER JOIN clan_tags ON activity_query.clan_tag = clan_tags.clan_tag
+                        WHERE activity_query.hour_time > now() - ($2 ||' days')::interval
+                        GROUP by clan_tags.clan_name, date
                     ),
                     cte2 AS (
                         SELECT cast(SUM(counter) as decimal) / MIN(num_players) AS num_events, 
                                hour_time,
-                               cte1.clan_name 
+                               clan_tags.clan_name
                         FROM activity_query 
                         JOIN cte1 
                         ON cte1.date = date(hour_time) 
-                        GROUP BY hour_time, cte1.clan_name
+                        INNER JOIN clan_tags ON clan_tags.clan_tag = activity_query.clan_tag
+                        AND activity_query.hour_time > now() - ($2 ||' days')::interval
+                        GROUP by clan_tags.clan_name, hour_time
                     )
-                    SELECT date_part('HOUR', hour_time) as "hour_digit", AVG(num_events),  MIN(hour_time), cte2.clan_name 
+                    SELECT date_part('HOUR', hour_time) as "hour_digit", AVG(num_events), MIN(hour_time), clan_name
                     FROM cte2 
-                    GROUP BY hour_digit, cte2.clan_name
-                    ORDER BY cte2.clan_name, hour_digit
+                    GROUP BY clan_name, hour_digit
+                    ORDER BY clan_name, hour_digit
                     """
-        if channel:
-            return channel, await ctx.db.fetch(query, channel.id)
-        if guild:
-            return guild, await ctx.db.fetch(query, guild.id)
+
+            fetch = await ctx.db.fetch(query, channel and channel.id or guild.id, str(time_ or 365))
+
+            to_return = []
+            for clan_name, records in itertools.groupby(fetch, key=lambda r: r['clan_name']):
+                to_return.append((clan_name, list(records)))
+
+            return to_return
+
+        if user:
+            query = """
+                    WITH player_tags AS (
+                        SELECT DISTINCT player_tag, player_name FROM players WHERE user_id = $1
+                    ),
+                    valid_times AS (
+                        SELECT generate_series(min(hour_time), max(hour_time), '1 hour'::interval) as "time", player_tags.player_name
+                        FROM activity_query 
+                        INNER JOIN player_tags 
+                        ON activity_query.player_tag = player_tags.player_tag
+                        WHERE activity_query.hour_time > now() - ('10 ' ||' days')::interval
+                        group by activity_query.player_tag
+                    ),
+                    actual_times AS (
+                        SELECT hour_time as "time", counter, player_tags.player_name
+                        FROM activity_query 
+                        INNER JOIN player_tags 
+                        ON activity_query.player_tag = player_tags.player_tag
+                        AND activity_query.hour_time > now() - ('10 ' ||' days')::interval
+                        group by activity_query.player_tag, time, counter
+                    )
+                    SELECT date_part('HOUR', valid_times."time") AS "hour", AVG(COALESCE(actual_times.counter, 0)), min(valid_times."time"), valid_times.player_name
+                    FROM valid_times
+                    LEFT JOIN actual_times ON actual_times.time = valid_times.time
+                    GROUP BY player_tags.player_name, "hour"
+                    ORDER BY player_tags.player_name, "hour"
+                    """
+            fetch = await ctx.db.fetch(query, user.id, str(time_ or 365))
+
+            to_return = []
+            for player_tag, records in itertools.groupby(fetch, key=lambda r: r['player_name']):
+                to_return.append((player_tag, list(records)))
+
+            return to_return
 
         if player:
             query = """
@@ -418,7 +435,7 @@ class ActivityBarConverter(commands.Converter):
                     GROUP BY "hour"
                     ORDER BY "hour"
                     """
-            return player['player_name'], await ctx.db.fetch(query, player['player_tag'], str(time_ or 365))
+            return [(player['player_name'], await ctx.db.fetch(query, player['player_tag'], str(time_ or 365)))]
 
         if clan:
             query = """
@@ -444,4 +461,4 @@ class ActivityBarConverter(commands.Converter):
                     FROM cte2 
                     GROUP BY hour_digit
                     """
-            return clan['clan_name'], await ctx.db.fetch(query, clan['clan_tag'], str(time_ or 365))
+            return [(clan['clan_name'], await ctx.db.fetch(query, clan['clan_tag'], str(time_ or 365)))]
