@@ -510,7 +510,7 @@ async def update_db():
                 SELECT DISTINCT clan_tag, activity_sync FROM clans INNER JOIN guilds ON clans.guild_id = guilds.guild_id
              )
              INSERT INTO activity_query (player_tag, clan_tag, counter, hour_digit, hour_time)
-             SELECT x.player_tag, x.clan_tag, x.counter, date_part('HOUR', now()), now()
+             SELECT x.player_tag, x.clan_tag, x.counter, date_part('HOUR', now()), date_trunc('HOUR', now())
              FROM jsonb_to_recordset($1::jsonb)
              AS x(player_tag TEXT, clan_tag TEXT, counter INTEGER)
              INNER JOIN cte ON cte.clan_tag = x.clan_tag
