@@ -762,7 +762,6 @@ class Edit(commands.Cog):
         await ctx.tick()
 
     @commands.command()
-    @checks.manage_guild()
     @requires_config('event')
     @commands.cooldown(1, 60 * 60, commands.BucketType.guild)
     async def refresh(self, ctx, *, clans: ClanConverter = None):
@@ -782,9 +781,6 @@ class Edit(commands.Cog):
         :white_check_mark: `+refresh #P0LYJC8C`
         :white_check_mark: `+refresh Rock Throwers`
         :white_check_mark: `+refresh all`
-
-        **Required Permissions**
-        :warning: Manage Server
 
         **Cooldowns**
         :hourglass: You can only call this command once every **1 hour**
