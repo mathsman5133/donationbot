@@ -336,7 +336,7 @@ class ActivityBarConverter(commands.Converter):
                 "I will only start recording your activity from now. "
                 "Please wait a few days for me to gather reliable data."
             )
-            return None, None
+            return None
 
         if channel or guild:
             query = """
@@ -373,6 +373,8 @@ class ActivityBarConverter(commands.Converter):
                     """
 
             fetch = await ctx.db.fetch(query, channel and channel.id or guild.id, str(time_ or 365))
+            if not fetch:
+                return None
 
             to_return = []
             for clan_name, records in itertools.groupby(fetch, key=lambda r: r['clan_name']):
@@ -408,6 +410,8 @@ class ActivityBarConverter(commands.Converter):
                     ORDER BY valid_times.player_name, "hour"
                     """
             fetch = await ctx.db.fetch(query, user.id, str(time_ or 365))
+            if not fetch:
+                return None
 
             to_return = []
             for player_tag, records in itertools.groupby(fetch, key=lambda r: r['player_name']):
@@ -435,7 +439,11 @@ class ActivityBarConverter(commands.Converter):
                     GROUP BY "hour"
                     ORDER BY "hour"
                     """
-            return [(player['player_name'], await ctx.db.fetch(query, player['player_tag'], str(time_ or 365)))]
+            fetch = await ctx.db.fetch(query, player['player_tag'], str(time_ or 365))
+            if not fetch:
+                return None
+
+            return [(player['player_name'], fetch)]
 
         if clan:
             query = """
@@ -461,4 +469,8 @@ class ActivityBarConverter(commands.Converter):
                     FROM cte2 
                     GROUP BY hour_digit
                     """
-            return [(clan['clan_name'], await ctx.db.fetch(query, clan['clan_tag'], str(time_ or 365)))]
+            fetch = await ctx.db.fetch(query, clan['clan_tag'], str(time_ or 365))
+            if not fetch:
+                return None
+
+            return [(clan['clan_name'], fetch)]
