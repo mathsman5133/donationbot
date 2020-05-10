@@ -85,10 +85,10 @@ class Activity(commands.Cog):
         else:
             plt.style.use('default')
 
-        data: typing.List[typing.Tuple[str, typing.List]] = data
-
         if not data:
             return await ctx.send(f"Not enough history. Please try again later.")
+
+        data: typing.List[typing.Tuple[str, typing.List]] = data
 
         existing_graph_data = self.get_bar_graph(ctx.channel.id, ctx.author.id)
 

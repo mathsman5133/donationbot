@@ -275,7 +275,6 @@ async def on_clan_member_donation(old_donations, new_donations, player):
 
 async def on_clan_member_received(old_received, new_received, player):
     log.debug(f'Received on_clan_member_received event for player {player} of clan {player.clan}')
-    await update(player.tag, player.clan and player.clan.tag)
     if old_received > new_received:
         received = new_received
     else:

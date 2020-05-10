@@ -290,7 +290,7 @@ class ActivityBarConverter(commands.Converter):
 
             query = """
                     WITH cte AS (
-                        SELECT DISTINCT player_tag, player_name FROM players WHERE user_id = $1 OR $2 = True AND player_name IS NOT NULL
+                        SELECT DISTINCT player_tag, player_name FROM players WHERE $2 = True OR user_id = $1  AND player_name is not null
                     ),
                     cte2 AS (
                         SELECT DISTINCT player_tag, 
