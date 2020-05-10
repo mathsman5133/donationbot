@@ -345,7 +345,6 @@ class ActivityBarConverter(commands.Converter):
                         FROM clans 
                         WHERE channel_id = $1 OR guild_id = $1
                     ),
-
                     cte1 AS (
                         SELECT COUNT(DISTINCT player_tag) as "num_players", 
                                DATE(activity_query.hour_time) as "date",
@@ -385,14 +384,6 @@ class ActivityBarConverter(commands.Converter):
                     WITH player_tags AS (
                         SELECT DISTINCT player_tag, player_name FROM players WHERE user_id = $1
                     ),
-                    valid_times AS (
-                        SELECT generate_series(min(hour_time), max(hour_time), '1 hour'::interval) as "time", player_tags.player_name
-                        FROM activity_query 
-                        INNER JOIN player_tags 
-                        ON activity_query.player_tag = player_tags.player_tag
-                        WHERE activity_query.hour_time > now() - ($2 ||' days')::interval
-                        GROUP BY player_tags.player_name
-                    ),
                     actual_times AS (
                         SELECT hour_time as "time", counter, player_tags.player_name
                         FROM activity_query 
@@ -401,11 +392,10 @@ class ActivityBarConverter(commands.Converter):
                         AND activity_query.hour_time > now() - ($2 ||' days')::interval
                         GROUP BY player_tags.player_name, time, counter
                     )
-                    SELECT date_part('HOUR', valid_times."time") AS "hour", AVG(COALESCE(actual_times.counter, 0)), min(valid_times."time"), valid_times.player_name
-                    FROM valid_times
-                    LEFT JOIN actual_times ON actual_times.time = valid_times.time
-                    GROUP BY valid_times.player_name, "hour"
-                    ORDER BY valid_times.player_name, "hour"
+                    SELECT date_part('HOUR', actual_times."time") AS "hour", AVG(COALESCE(actual_times.counter, 0)), min(actual_times."time"), actual_times.player_name
+                    FROM actual_times
+                    GROUP BY actual_times.player_name, "hour"
+                    ORDER BY actual_times.player_name, "hour"
                     """
             fetch = await ctx.db.fetch(query, user.id, str(time_ or 365))
 
