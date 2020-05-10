@@ -391,7 +391,7 @@ class ActivityBarConverter(commands.Converter):
                         INNER JOIN player_tags 
                         ON activity_query.player_tag = player_tags.player_tag
                         WHERE activity_query.hour_time > now() - ('10 ' ||' days')::interval
-                        group by activity_query.player_tag
+                        GROUP BY player_tags.player_name
                     ),
                     actual_times AS (
                         SELECT hour_time as "time", counter, player_tags.player_name
@@ -399,7 +399,7 @@ class ActivityBarConverter(commands.Converter):
                         INNER JOIN player_tags 
                         ON activity_query.player_tag = player_tags.player_tag
                         AND activity_query.hour_time > now() - ('10 ' ||' days')::interval
-                        group by activity_query.player_tag, time, counter
+                        GROUP BY player_tags.player_name, time, counter
                     )
                     SELECT date_part('HOUR', valid_times."time") AS "hour", AVG(COALESCE(actual_times.counter, 0)), min(valid_times."time"), valid_times.player_name
                     FROM valid_times
