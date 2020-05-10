@@ -390,7 +390,7 @@ class ActivityBarConverter(commands.Converter):
                         FROM activity_query 
                         INNER JOIN player_tags 
                         ON activity_query.player_tag = player_tags.player_tag
-                        WHERE activity_query.hour_time > now() - ('10 ' ||' days')::interval
+                        WHERE activity_query.hour_time > now() - ($2 ||' days')::interval
                         GROUP BY player_tags.player_name
                     ),
                     actual_times AS (
@@ -398,14 +398,14 @@ class ActivityBarConverter(commands.Converter):
                         FROM activity_query 
                         INNER JOIN player_tags 
                         ON activity_query.player_tag = player_tags.player_tag
-                        AND activity_query.hour_time > now() - ('10 ' ||' days')::interval
+                        AND activity_query.hour_time > now() - ($2 ||' days')::interval
                         GROUP BY player_tags.player_name, time, counter
                     )
                     SELECT date_part('HOUR', valid_times."time") AS "hour", AVG(COALESCE(actual_times.counter, 0)), min(valid_times."time"), valid_times.player_name
                     FROM valid_times
                     LEFT JOIN actual_times ON actual_times.time = valid_times.time
-                    GROUP BY player_tags.player_name, "hour"
-                    ORDER BY player_tags.player_name, "hour"
+                    GROUP BY valid_times.player_name, "hour"
+                    ORDER BY valid_times.player_name, "hour"
                     """
             fetch = await ctx.db.fetch(query, user.id, str(time_ or 365))
 

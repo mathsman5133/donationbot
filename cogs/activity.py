@@ -48,6 +48,8 @@ class Activity(commands.Cog):
         if ctx.invoked_subcommand is not None:
             return
 
+        await ctx.send_help(ctx.command)
+
     @activity.group(name='bar', invoke_without_command=True)
     async def activity_bar(self, ctx, *, data: ActivityBarConverter):
         """Get a graph showing the approximate activity/online times for a clan.
@@ -151,6 +153,10 @@ class Activity(commands.Cog):
         except KeyError:
             pass
         await ctx.send(":ok_hand: Graph has been reset.")
+
+    @activity_bar.before_invoke
+    async def before_activity_bar(self, ctx):
+        await ctx.trigger_typing()
 
 
 def setup(bot):
