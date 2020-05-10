@@ -272,7 +272,7 @@ class ActivityBarConverter(commands.Converter):
                 pass
 
             try:
-                user = await commands.TextChannelConverter().convert(ctx, argument)
+                user = await commands.MemberConverter().convert(ctx, argument)
                 break
             except commands.BadArgument:
                 pass
