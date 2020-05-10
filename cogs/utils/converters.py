@@ -281,7 +281,7 @@ class ActivityBarConverter(commands.Converter):
                 query = "SELECT DISTINCT(clan_tag), clan_name FROM clans WHERE clan_tag = $1 OR clan_name LIKE $2 AND guild_id = $3"
                 fetch = await ctx.db.fetchrow(query, correct_tag(argument), argument, ctx.guild.id)
             else:
-                query = "SELECT DISTINCT(clan_tag), clan_name FROM clans WHERE clan_tag = $1 OR clan_name LIKE $2"
+                query = "SELECT DISTINCT(clan_tag), clan_name FROM clans WHERE clan_tag = $1 OR clan_name LIKE $2 AND clan_name"
                 fetch = await ctx.db.fetchrow(query, correct_tag(argument), argument)
 
             if fetch:
@@ -290,7 +290,7 @@ class ActivityBarConverter(commands.Converter):
 
             query = """
                     WITH cte AS (
-                        SELECT DISTINCT player_tag, player_name FROM players WHERE user_id = $1 OR $2 = True
+                        SELECT DISTINCT player_tag, player_name FROM players WHERE user_id = $1 OR $2 = True AND player_name IS NOT NULL
                     ),
                     cte2 AS (
                         SELECT DISTINCT player_tag, 
