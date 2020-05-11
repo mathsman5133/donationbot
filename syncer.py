@@ -404,7 +404,7 @@ async def on_clan_member_trophies_change(old_trophies, new_trophies, player):
                 'player_name': player.name
             }
 
-    if player.league and player.league.id == 29000022 and new_trophies > old_trophies:
+    if new_trophies > old_trophies:
         await update(player.tag, player.clan and player.clan.tag)
 
 
