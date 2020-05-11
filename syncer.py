@@ -646,7 +646,7 @@ async def on_clan_member_join(member, clan):
 
 
 async def on_clan_member_leave(member, clan):
-    query = "UPDATE players SET clan_tag = NULL where player_tag = $1 AND season_id = $2"
+    query = "UPDATE players SET clan_tag = null where player_tag = $1 AND season_id = $2"
     await pool.execute(query, member.tag, SEASON_ID)
 
 
@@ -682,6 +682,7 @@ if __name__ == "__main__":
         on_clan_member_received,
         on_clan_member_trophies_change,
         on_clan_member_join,
+        on_clan_member_leave,
         on_clan_member_level_change,
         on_clan_member_name_change,
         on_clan_member_versus_trophies_change
