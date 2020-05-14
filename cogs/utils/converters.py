@@ -385,7 +385,7 @@ class ActivityBarConverter(commands.Converter):
         if user:
             query = """
                     WITH player_tags AS (
-                        SELECT DISTINCT player_tag, player_name FROM players WHERE user_id = $1
+                        SELECT DISTINCT player_tag, player_name FROM players WHERE user_id = $1 AND player_name IS NOT null
                     ),
                     valid_times AS (
                         SELECT generate_series(min(hour_time), max(hour_time), '1 hour'::interval) as "time", player_tags.player_name
