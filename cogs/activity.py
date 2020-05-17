@@ -102,7 +102,7 @@ class Activity(commands.Cog):
             return hour + timezone_offset + 24
 
         for key, fetch in data:
-            days = int((datetime.datetime.now() - min(*[n['min'] for n in fetch])).total_seconds() / (60 * 60 * 24))
+            days = int((datetime.datetime.now() - min([n['min'] for n in fetch])).total_seconds() / (60 * 60 * 24))
             dict_ = {n[0]: n[1] for n in fetch}
             data_to_add[key + f" ({days + 1}d)"] = {
                 get_hour_plus_offset(hour): dict_.get(hour, 0) for hour in range(24)
