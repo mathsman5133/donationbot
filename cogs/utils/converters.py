@@ -336,6 +336,7 @@ class ActivityBarConverter(commands.Converter):
                 "I will only start recording your activity from now. "
                 "Please wait a few days for me to gather reliable data."
             )
+            await ctx.db.execute("UPDATE guilds SET activity_sync = TRUE WHERE guild_id = $1", ctx.guild.id)
             return None
 
         if channel or guild:
