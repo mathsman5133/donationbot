@@ -7,7 +7,7 @@ import coc
 import logging
 
 from discord.ext import commands
-from cogs.utils.checks import requires_config, manage_guild
+from cogs.utils.checks import requires_config, manage_guild, helper_check
 from cogs.utils.converters import PlayerConverter, DateConverter, TextChannel
 from cogs.utils import checks
 
@@ -149,7 +149,8 @@ class Add(commands.Cog):
         check = clan.description.strip().endswith('dt') \
                 or await self.bot.is_owner(ctx.author) \
                 or clan_tag in (n.tag for n in current_clans) \
-                or ctx.guild.id == RCS_GUILD_ID
+                or ctx.guild.id == RCS_GUILD_ID \
+                or helper_check(self.bot, ctx.author) is True
 
         if not check:
             return await ctx.send('Please add the letters `dt` to the end of '

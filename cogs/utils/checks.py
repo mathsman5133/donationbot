@@ -3,8 +3,16 @@ from discord.ext import commands
 PATRON_PERK_ROLES = [605349824472154134, 683559116731318423]
 HELPER_ROLE = 705550299699478609
 
+
 class NoConfigFailure(commands.CheckFailure):
     pass
+
+
+def helper_check(bot, user):
+    support_member = bot.get_guild(594276321937326091).get_member(user.id)
+    if support_member and any(r.id == HELPER_ROLE for r in support_member.roles):
+        return True
+    return False
 
 
 async def check_guild_permissions(ctx, perms, check=all):
@@ -19,9 +27,7 @@ async def check_guild_permissions(ctx, perms, check=all):
     if ctx.guild.id == 594276321937326091:
         # custom message for the support server
         raise commands.CheckFailure("You should run this command in your server! Get the invite link with `+invite`.")
-
-    support_member = ctx.bot.get_guild(594276321937326091).get_member(ctx.author.id)
-    if support_member and any(r.id == HELPER_ROLE for r in support_member.roles):
+    if helper_check(ctx.bot, ctx.author):
         return True
 
     resolved = ctx.author.guild_permissions
