@@ -243,6 +243,25 @@ class ClanChannelComboConverter(commands.Converter):
         return channel, clan
 
 
+class CustomActivityMemberConverter(commands.IDConverter):
+    async def convert(self, ctx, argument):
+        match = self._get_id_match(argument) or re.match(r'<@!?([0-9]+)>$', argument)
+        guild = ctx.guild
+        result = None
+        if match is None:
+            # not a mention...
+            potential_discriminator = argument[-4:]
+            result = discord.utils.get(guild.members, name=argument[:-5], discriminator=potential_discriminator)
+        else:
+            user_id = int(match.group(1))
+            result = guild.get_member(user_id) or discord.utils.get(ctx.message.mentions, id=user_id)
+
+        if result is None:
+            raise commands.BadArgument('Member "{}" not found'.format(argument))
+
+        return result
+
+
 class ActivityBarConverter(commands.Converter):
     async def convert(self, ctx, argument):
         guild = None  # discord.Guild
@@ -258,9 +277,6 @@ class ActivityBarConverter(commands.Converter):
             argument = argument.replace(match.group(0), "").strip()
             time_ = int(match.group(0)[:-1])
 
-        if tag_validator.match(argument) and argument.startswith("#"):
-            argument = coc.utils.correct_tag(argument)
-
         while not (guild or channel or user or player or clan):
             if argument == "all":
                 guild = ctx.guild
@@ -272,7 +288,7 @@ class ActivityBarConverter(commands.Converter):
                 pass
 
             try:
-                user = await commands.MemberConverter().convert(ctx, argument)
+                user = await CustomActivityMemberConverter().convert(ctx, argument)
                 break
             except commands.BadArgument:
                 pass
