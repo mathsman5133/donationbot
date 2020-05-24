@@ -14,10 +14,8 @@ CJK_REGEX = re.compile(r"[\u4e00-\u9FFF\u3040-\u30ff\uac00-\ud7a3]")  # chinese,
 BACKGROUND = Image.open(f"assets/dark_backdrop.jpg").resize((4000, 4500))
 TROPHYBOARD_BACKGROUND = Image.open(f"assets/green_background.jpg").resize((4000, 4500))
 
-# CJK_FRIENDLY_FONT_FP = "assets/NotoSansCJK-Bold.ttc"
-# SUPERCELL_FONT_FP = "assets/DejaVuSans-Bold.ttf"
-CJK_FRIENDLY_FONT_FP = "assets/Microsoft_Sans_Serif.ttf"
-SUPERCELL_FONT_FP = "assets/Microsoft_Sans_Serif.ttf"
+CJK_FRIENDLY_FONT_FP = "assets/NotoSansCJK-Bold.ttc"
+SUPERCELL_FONT_FP = "assets/DejaVuSans-Bold.ttf"
 SUPERCELL_FONT_SIZE = 70
 SUPERCELL_FONT = ImageFont.truetype(SUPERCELL_FONT_FP, SUPERCELL_FONT_SIZE)
 
