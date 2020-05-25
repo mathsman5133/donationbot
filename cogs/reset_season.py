@@ -51,20 +51,8 @@ class SeasonConfig(commands.Cog, command_attrs=dict(hidden=True)):
         log.critical('New season starting - via loop.')
         await self.new_season()
 
-        try:
-            log.critical("resetting boards")
-            await self.reset_boards()
-        except:
-            log.exception("boards reset loop failed")
-
-        try:
-            log.critical("resetting players")
-            await self.new_season_pull()
-        except:
-            log.exception("players reset loop failed")
-
     async def new_season(self):
-        query = "INSERT INTO seasons (start, finish) VALUES (now(), $2)"
+        query = "INSERT INTO seasons (start, finish) VALUES (now(), $1)"
         await self.bot.pool.execute(query, self.next_last_monday())
 
         self.season_id = await self.get_season_id(refresh=True)
