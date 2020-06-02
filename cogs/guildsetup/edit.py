@@ -378,7 +378,7 @@ class Edit(commands.Cog):
 
     @edit_donationlog.command(name='toggle')
     async def edit_donationlog_toggle(self, ctx, channel: discord.TextChannel = None):
-        """Toggle the donation log on and off.
+        """Toggle the donation log on.
 
         **Format**
         :information_source: `+edit donationlog toggle`
@@ -392,7 +392,7 @@ class Edit(commands.Cog):
         channel = channel or ctx.channel
 
         query = """UPDATE logs
-                   SET toggle = NOT toggle
+                   SET toggle = TRUE
                    WHERE channel_id=$1
                    AND type = $2
                    RETURNING toggle
@@ -404,11 +404,7 @@ class Edit(commands.Cog):
                 "Try `+info` to find where the registered channels are!"
             )
 
-        if toggle['toggle']:
-            condition = 'on'
-        else:
-            condition = 'off'
-        await ctx.send(f'Logs for {channel.mention} have been turned {condition}.')
+        await ctx.send(f'Logs for {channel.mention} have been turned on.')
 
     @edit_donationlog.command(name='style')
     async def edit_donationlog_style(self, ctx, channel: discord.TextChannel = None):
@@ -508,7 +504,7 @@ class Edit(commands.Cog):
         channel = channel or ctx.channel
 
         query = """UPDATE logs
-                   SET toggle = NOT toggle
+                   SET toggle = TRUE
                    WHERE channel_id=$1
                    AND type = $2
                    RETURNING toggle
@@ -520,12 +516,7 @@ class Edit(commands.Cog):
                 "Try `+info` to find where the registered channels are!"
             )
 
-        if toggle['toggle']:
-            condition = 'on'
-        else:
-            condition = 'off'
-
-        await ctx.send(f'Trophy logs for {channel.mention} have been turned {condition}.')
+        await ctx.send(f'Trophy logs for {channel.mention} have been turned on.')
 
     @edit.command(name='event')
     @manage_guild()
@@ -720,7 +711,7 @@ class Edit(commands.Cog):
             await ctx.send(embed=e)
             self.bot.dispatch('event_register')
 
-    @commands.command()
+    @commands.command(hidden=True)
     @commands.is_owner()
     async def globalrefresh(self, ctx):
         query = "SELECT DISTINCT(clan_tag) FROM clans"

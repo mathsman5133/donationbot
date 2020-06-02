@@ -207,7 +207,7 @@ class Aliases(commands.Cog, name='\u200bAliases'):
 
         return await ctx.send(f'{channel.mention} has been added as a {type_}log channel for {clan} ({clan.tag})')
 
-    @commands.command(aliases=["trophyevents"])
+    @commands.command(aliases=["trophyevents"], hidden=True)
     async def donationevents(self, ctx):
         await ctx.send(
             f"These commands have been removed as this data is no longer saved. "

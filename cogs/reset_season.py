@@ -63,18 +63,22 @@ class SeasonConfig(commands.Cog, command_attrs=dict(hidden=True)):
                             received,
                             user_id,
                             season_id,
-                            player_name
+                            player_name,
+                            start_trophies
                             )
                     SELECT player_tag,
                            0,
                            0,
                            user_id,
                            season_id + 1,
-                           player_name
+                           player_name,
+                           trophies
                     FROM players
                     WHERE season_id = $1
                 """
         await self.bot.pool.execute(query, self.season_id - 1)
+        query = "UPDATE players SET start_trophies = 5000 WHERE start_trophies > 5000 AND season_id = $1"
+        await self.bot.pool.execute(query, self.season_id)
 
     async def get_season_id(self, refresh: bool = False):
         if self.season_id and not refresh:
