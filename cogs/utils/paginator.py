@@ -502,6 +502,7 @@ class StatsAttacksPaginator(TablePaginator):
             ctx, data, title=title, page_count=page_count, rows_per_table=rows_per_table
         )
         self.key = key
+        self.player_data = []
 
     def create_row(self, index, player):
         self.table.add_row([index, player.attacks, player.name])
@@ -529,6 +530,7 @@ class StatsDefensesPaginator(TablePaginator):
             ctx, data, title=title, page_count=page_count, rows_per_table=rows_per_table
         )
         self.key = key
+        self.player_data = []
 
     def create_row(self, index, player):
         self.table.add_row([index, player.defenses, player.name])
