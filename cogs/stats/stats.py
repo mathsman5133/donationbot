@@ -69,7 +69,7 @@ class Stats(commands.Cog):
         :white_check_mark: `+stats attacks #JY9J2Y99`
         :white_check_mark: `+stats attacks Reddit`
         """
-        fetch = await self.get_players(ctx, clan_tag_or_name)
+        fetch = [p['player_tag'] for p in await self.get_players(ctx, clan_tag_or_name)]
         title = f"Attack Wins"
         key = f"**Key:**\n{misc['attack']} - Attacks"
 
@@ -93,7 +93,7 @@ class Stats(commands.Cog):
         :white_check_mark: `+stats defenses #JY9J2Y99`
         :white_check_mark: `+stats defenses Reddit`
         """
-        fetch = await self.get_players(ctx, clan_tag_or_name)
+        fetch = [p['player_tag'] for p in await self.get_players(ctx, clan_tag_or_name)]
         title = f"Defense Wins"
         key = f"**Key:**\n{misc['defense']} - Defenses"
 
@@ -118,10 +118,11 @@ class Stats(commands.Cog):
         :white_check_mark: `+stats defenses Reddit`
         """
         fetch = await self.get_players(ctx, clan_tag_or_name, extra_columns=['trophies - start_trophies AS "gain"'])
+        data = [(p[0], p[1]) for p in fetch]
         title = f"Top Trophy Gains"
         key = f"**Key:**\n{misc['trophygreen']} - Trophy Gain\n{misc['trophygold']} - Total Trophies"
 
-        p = StatsGainsPaginator(ctx, fetch, title, key=key, page_count=math.ceil(len(fetch) / 20))
+        p = StatsGainsPaginator(ctx, data, title, key=key, page_count=math.ceil(len(fetch) / 20))
         await p.paginate()
 
     @stats.command(name='donations', aliases=['donates', 'donation', 'donors'])
@@ -142,9 +143,10 @@ class Stats(commands.Cog):
         :white_check_mark: `+stats donations Reddit`
         """
         fetch = await self.get_players(ctx, clan_tag_or_name, extra_columns=["donations"], order_by="donations")
+        data = [(p[0], p[1]) for p in fetch]
         title = "Top Donations"
 
-        p = StatsDonorsPaginator(ctx, fetch, title, page_count=math.ceil(len(fetch) / 20))
+        p = StatsDonorsPaginator(ctx, data, title, page_count=math.ceil(len(fetch) / 20))
         await p.paginate()
 
 
