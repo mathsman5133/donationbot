@@ -366,7 +366,9 @@ class TablePaginator(Pages):
 
     async def get_page(self, page):
         try:
-            return self.entries[page - 1]
+            entry = self.entries[page - 1]
+            if entry:
+                return entry
         except IndexError:
             pass
 
