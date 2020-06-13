@@ -503,6 +503,7 @@ class StatsAttacksPaginator(TablePaginator):
         )
         self.key = key
         self.player_data = []
+        self.data = data
 
     def create_row(self, index, player):
         self.table.add_row([index, player.attacks, player.name])
@@ -510,11 +511,12 @@ class StatsAttacksPaginator(TablePaginator):
     async def prepare_entry(self, page):
         self.table.clear_rows()
         if not self.player_data:
-            self.player_data = sorted(
+            print(self.data)
+            self.player_data = list(sorted(
                 await self.bot.coc.get_players(self.data).flatten(),
                 key=lambda p: p.attacks,
                 reverse=True
-            )
+            ))
             await self.ctx.send(str(len(self.player_data)) + str(self.player_data[0]))
 
         base = (page - 1) * self.rows_per_table
@@ -532,6 +534,7 @@ class StatsDefensesPaginator(TablePaginator):
         )
         self.key = key
         self.player_data = []
+        self.data = data
 
     def create_row(self, index, player):
         self.table.add_row([index, player.defenses, player.name])
