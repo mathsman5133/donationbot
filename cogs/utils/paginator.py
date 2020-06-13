@@ -519,7 +519,7 @@ class StatsAttacksPaginator(TablePaginator):
 
         base = (page - 1) * self.rows_per_table
         data = self.player_data[base:base + self.rows_per_table]
-        for index, player in enumerate(data):
+        for index, player in enumerate(data, start=base):
             self.create_row(index + 1, player)
 
         return self.table.trophyboard_attacks() + self.key
@@ -546,8 +546,8 @@ class StatsDefensesPaginator(TablePaginator):
 
         base = (page - 1) * self.rows_per_table
         data = self.player_data[base:base + self.rows_per_table]
-        for index, player in enumerate(data):
-            self.create_row(index + 1, player)
+        for index, player in enumerate(data, start=base):
+            self.create_row(index, player)
 
         return self.table.trophyboard_defenses() + self.key
 
