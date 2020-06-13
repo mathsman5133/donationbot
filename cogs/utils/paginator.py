@@ -515,6 +515,7 @@ class StatsAttacksPaginator(TablePaginator):
                 key=lambda p: p.attacks,
                 reverse=True
             )
+            await self.ctx.send(str(len(self.player_data)) + str(self.player_data[0]))
 
         base = (page - 1) * self.rows_per_table
         data = self.player_data[base:base + self.rows_per_table]
