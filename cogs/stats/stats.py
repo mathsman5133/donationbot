@@ -70,6 +70,9 @@ class Stats(commands.Cog):
         :white_check_mark: `+stats attacks Reddit`
         """
         fetch = [p['player_tag'] for p in await self.get_players(ctx, clan_tag_or_name)]
+        if not fetch:
+            return await ctx.send("No data found.")
+
         title = f"Attack Wins"
         key = f"**Key:**\n{misc['attack']} - Attacks"
 
@@ -94,6 +97,9 @@ class Stats(commands.Cog):
         :white_check_mark: `+stats defenses Reddit`
         """
         fetch = [p['player_tag'] for p in await self.get_players(ctx, clan_tag_or_name)]
+        if not fetch:
+            return await ctx.send("No data found.")
+
         title = f"Defense Wins"
         key = f"**Key:**\n{misc['defense']} - Defenses"
 
@@ -118,6 +124,9 @@ class Stats(commands.Cog):
         :white_check_mark: `+stats defenses Reddit`
         """
         fetch = await self.get_players(ctx, clan_tag_or_name, extra_columns=['trophies - start_trophies AS "gain"'])
+        if not fetch:
+            return await ctx.send("No data found.")
+
         data = [(p[0], p[1]) for p in fetch]
         title = f"Top Trophy Gains"
         key = f"**Key:**\n{misc['trophygreen']} - Trophy Gain\n{misc['trophygold']} - Total Trophies"
@@ -143,6 +152,9 @@ class Stats(commands.Cog):
         :white_check_mark: `+stats donations Reddit`
         """
         fetch = await self.get_players(ctx, clan_tag_or_name, extra_columns=["donations"], order_by="donations")
+        if not fetch:
+            return await ctx.send("No data found.")
+
         data = [(p[0], p[1]) for p in fetch]
         title = "Top Donations"
 

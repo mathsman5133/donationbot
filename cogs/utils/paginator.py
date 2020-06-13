@@ -365,9 +365,10 @@ class TablePaginator(Pages):
             self.icon_url = ctx.guild.icon_url
 
     async def get_page(self, page):
-        entry = self.entries[page - 1]
-        if entry:
-            return entry
+        try:
+            return self.entries[page - 1]
+        except IndexError:
+            pass
 
         if not self.message:
             self.message = await self.channel.send('Loading...')
