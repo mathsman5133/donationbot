@@ -412,8 +412,10 @@ class TablePaginator(Pages):
         entries = await self.get_page(page)
         embed = await self.get_embed(entries, page, first=first)
 
+        if not self.message:
+            self.message = await self.ctx.send("Loading...")
+
         if not self.paginating:
-            print('not paginating')
             return await self.message.edit(content=None, embed=embed)
 
         await self.message.edit(content=None, embed=embed)
