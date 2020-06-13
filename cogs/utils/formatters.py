@@ -185,7 +185,7 @@ class CLYTable:
         for v in self._rows:
             index = int(v[0]) + 1
             index = number_emojis[index] if index <= 100 else misc['idle']
-            fmt += f"{index}`⠀{str(v[1]):\u00A0>4.4}⠀` `⠀{str(v[3]):\u00A0<15.15}⠀`\n"
+            fmt += f"{index}`⠀{str(v[1]):\u00A0>4.4}⠀` `⠀{str(v[2]):\u00A0<15.15}⠀`\n"
         return fmt
 
     def trophyboard_defenses(self):
@@ -193,7 +193,7 @@ class CLYTable:
         for v in self._rows:
             index = int(v[0]) + 1
             index = number_emojis[index] if index <= 100 else misc['idle']
-            fmt += f"{index}`⠀{str(v[1]):\u00A0>4.4}⠀` `⠀{str(v[3]):\u00A0<15.15}⠀`\n"
+            fmt += f"{index}`⠀{str(v[1]):\u00A0>4.4}⠀` `⠀{str(v[2]):\u00A0<15.15}⠀`\n"
         return fmt
 
     def trophyboard_gain(self):
@@ -201,7 +201,7 @@ class CLYTable:
         for v in self._rows:
             index = int(v[0]) + 1
             index = number_emojis[index] if index <= 100 else misc['idle']
-            fmt += f"{index}`⠀{str(v[1]):\u00A0>4.4}⠀` `⠀{str(v[3]):\u00A0<15.15}⠀`\n"
+            fmt += f"{index}`⠀{str(v[1]):\u00A0>4.4}⠀` `⠀{str(v[2]):\u00A0<15.15}⠀`\n"
         return fmt
 
     def events_list(self):

@@ -511,13 +511,11 @@ class StatsAttacksPaginator(TablePaginator):
     async def prepare_entry(self, page):
         self.table.clear_rows()
         if not self.player_data:
-            print(self.data)
             self.player_data = list(sorted(
                 await self.bot.coc.get_players(self.data).flatten(),
                 key=lambda p: p.attack_wins,
                 reverse=True
             ))
-            await self.ctx.send(str(len(self.player_data)) + str(self.player_data[0]))
 
         base = (page - 1) * self.rows_per_table
         data = self.player_data[base:base + self.rows_per_table]
