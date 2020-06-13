@@ -22,7 +22,7 @@ class EventStats(commands.Cog):
         else:
             return None
 
-    @commands.group(name='eventstats', invoke_without_command=True)
+    @commands.group(name='eventstats', invoke_without_command=True, hidden=True)
     async def eventstats(self, ctx):
         """[Group] Provide statistics for the current (or most recent) event for this server.
 

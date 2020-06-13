@@ -82,7 +82,7 @@ class SeasonStats(commands.Cog):
 
         return embeds
 
-    @commands.group(invoke_without_subcommand=True)
+    @commands.group(invoke_without_subcommand=True, hidden=True)
     async def seasonstats(self, ctx):
         """[Group] command to manage historical stats for seasons past."""
         if ctx.invoked_subcommand is None:

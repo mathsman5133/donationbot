@@ -183,7 +183,7 @@ class CLYTable:
     def trophyboard_attacks(self):
         fmt = f"{misc['number']}⠀⠀{misc['attack']}⠀ `⠀{'Name':\u00A0<15.15}⠀`\n"
         for v in self._rows:
-            index = int(v[0]) + 1
+            index = int(v[0])
             index = number_emojis[index] if index <= 100 else misc['idle']
             fmt += f"{index}`⠀{str(v[1]):\u00A0>4.4}⠀` `⠀{str(v[2]):\u00A0<15.15}⠀`\n"
         return fmt
@@ -191,7 +191,7 @@ class CLYTable:
     def trophyboard_defenses(self):
         fmt = f"{misc['number']} ⠀⠀{misc['defense']} ⠀`⠀{'Name':\u00A0<15.15}⠀`\n"
         for v in self._rows:
-            index = int(v[0]) + 1
+            index = int(v[0])
             index = number_emojis[index] if index <= 100 else misc['idle']
             fmt += f"{index}`⠀{str(v[1]):\u00A0>4.4}⠀` `⠀{str(v[2]):\u00A0<15.15}⠀`\n"
         return fmt
