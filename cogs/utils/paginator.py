@@ -496,44 +496,6 @@ class TrophyPaginator(TablePaginator):
         return render()
 
 
-class LogsPaginator(TablePaginator):
-    def __init__(self, ctx, data, title, page_count=1, rows_per_table=20):
-        super().__init__(ctx, data, title=title, page_count=page_count,
-                         rows_per_table=rows_per_table)
-
-    async def prepare_entry(self, page):
-        self.table.clear_rows()
-        base = (page - 1) * self.rows_per_table
-        data = self.data[base:base + self.rows_per_table]
-        for player_data in data:
-            if self.ctx.config.type == 'donation':
-                player_data = player_data[1]
-                time = events_time((datetime.utcnow() - player_data[3]).total_seconds())
-                row = [
-                    misc['donated'] if player_data[1] else misc['received'],
-                    player_data[1] if player_data[1] else player_data[2],
-                    player_data[4],
-                    time
-                    ]
-            else:
-                player_data = player_data[1]
-                time = events_time((datetime.utcnow() - player_data[3]).total_seconds())
-                row = [
-                    misc['trophygreen'] if player_data[1] > 0 else misc['trophyred'],
-                    player_data[1],
-                    player_data[4],
-                    time
-                ]
-            self.table.add_row(row)
-
-        if self.ctx.config.type == 'donation':
-            return f"{self.table.donation_log_command()}\nKey: {misc['donated']} - Donated," \
-                   f" {misc['received']} - Received"
-        else:
-            return f"{self.table.trophy_log_command()}\nKey: {misc['trophygreen']} - Trophies Gained," \
-                   f" {misc['trophyred']} - Trophies Lost"
-
-
 class StatsAttacksPaginator(TablePaginator):
     def __init__(self, ctx, data, title, page_count=1, rows_per_table=20, key=''):
         super().__init__(
@@ -541,19 +503,22 @@ class StatsAttacksPaginator(TablePaginator):
         )
         self.key = key
 
-    def create_row(self, player, data):
-        player_data = data[player.tag]
-        self.table.add_row([player_data[0], player_data[1]['attacks'], player_data[1]['trophies'], player.name])
+    def create_row(self, index, player):
+        self.table.add_row([index, player.attacks, player.name])
 
     async def prepare_entry(self, page):
         self.table.clear_rows()
-        base = (page - 1) * self.rows_per_table
-        data = self.data[base:base + self.rows_per_table]
-        data_by_tag = {n[1]['player_tag']: n for n in data}
+        if not self.player_data:
+            self.player_data = sorted(
+                await self.bot.coc.get_players(self.data).flatten(),
+                key=lambda p: p.attacks,
+                reverse=True
+            )
 
-        tags = [n[1]['player_tag'] for n in data]
-        async for player in self.bot.coc.get_players(tags):
-            self.create_row(player, data_by_tag)
+        base = (page - 1) * self.rows_per_table
+        data = self.player_data[base:base + self.rows_per_table]
+        for index, player in enumerate(data):
+            self.create_row(index + 1, player)
 
         return self.table.trophyboard_attacks() + self.key
 
@@ -565,19 +530,20 @@ class StatsDefensesPaginator(TablePaginator):
         )
         self.key = key
 
-    def create_row(self, player, data):
-        player_data = data[player.tag]
-        self.table.add_row([player_data[0], player_data[1]['defenses'], player_data[1]['trophies'], player.name])
+    def create_row(self, index, player):
+        self.table.add_row([index, player.defenses, player.name])
 
     async def prepare_entry(self, page):
         self.table.clear_rows()
-        base = (page - 1) * self.rows_per_table
-        data = self.data[base:base + self.rows_per_table]
-        data_by_tag = {n[1]['player_tag']: n for n in data}
+        if not self.player_data:
+            self.player_data = sorted(
+                await self.bot.coc.get_players(self.data).flatten(), key=lambda p: p.defenses, reverse=True
+            )
 
-        tags = [n[1]['player_tag'] for n in data]
-        async for player in self.bot.coc.get_players(tags):
-            self.create_row(player, data_by_tag)
+        base = (page - 1) * self.rows_per_table
+        data = self.player_data[base:base + self.rows_per_table]
+        for index, player in enumerate(data):
+            self.create_row(index + 1, player)
 
         return self.table.trophyboard_defenses() + self.key
 
@@ -591,7 +557,7 @@ class StatsGainsPaginator(TablePaginator):
 
     def create_row(self, player, data):
         player_data = data[player.tag]
-        self.table.add_row([player_data[0], player_data[1]['gain'], player_data[1]['trophies'], player.name])
+        self.table.add_row([player_data[0], player_data[1]['gain'], player.name])
 
     async def prepare_entry(self, page):
         self.table.clear_rows()

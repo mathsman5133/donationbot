@@ -402,3 +402,5 @@ begin
 END;
 $function$
 ;
+
+CREATE OR REPLACE FUNCTION "public".get_donationlog_channels()
