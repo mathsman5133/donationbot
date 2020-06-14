@@ -4,6 +4,7 @@ import logging
 import re
 import math
 import time
+import creds
 
 from PIL import ImageFont, Image, ImageDraw, UnidentifiedImageError
 
@@ -11,15 +12,19 @@ log = logging.getLogger(__name__)
 
 CJK_REGEX = re.compile(r"[\u4e00-\u9FFF\u3040-\u30ff\uac00-\ud7a3]")  # chinese, japanese, korean unicode ranges
 
-BACKGROUND = Image.open(f"assets/dark_backdrop.jpg").resize((4000, 4500))
-TROPHYBOARD_BACKGROUND = Image.open(f"assets/green_background.jpg").resize((4000, 4500))
+if creds.live:
+    absolute_path = "/home/mathsman/donationbot/"
+else:
+    absolute_path = ""
+BACKGROUND = Image.open(f"{absolute_path}assets/dark_backdrop.jpg").resize((4000, 4500))
+TROPHYBOARD_BACKGROUND = Image.open(f"{absolute_path}assets/green_background.jpg").resize((4000, 4500))
 
-CJK_FRIENDLY_FONT_FP = "assets/NotoSansCJK-Bold.ttc"
-SUPERCELL_FONT_FP = "assets/DejaVuSans-Bold.ttf"
+CJK_FRIENDLY_FONT_FP = absolute_path + "assets/NotoSansCJK-Bold.ttc"
+SUPERCELL_FONT_FP = absolute_path + "assets/DejaVuSans-Bold.ttf"
 SUPERCELL_FONT_SIZE = 70
 SUPERCELL_FONT = ImageFont.truetype(SUPERCELL_FONT_FP, SUPERCELL_FONT_SIZE)
 
-REGULAR_FONT_FP = "assets/Roboto-Black.ttf"
+REGULAR_FONT_FP = absolute_path + "assets/Roboto-Black.ttf"
 REGULAR_FONT_SIZE = 140
 REGULAR_FONT = ImageFont.truetype(REGULAR_FONT_FP, REGULAR_FONT_SIZE)
 
