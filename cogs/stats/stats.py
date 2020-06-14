@@ -24,7 +24,7 @@ class Stats(commands.Cog):
                 WHERE clan_tag = $1
                 OR clan_name LIKE $2
             )
-            SELECT DISTINCT player_tag {' '.join(f'{n}, ' for n in extra_columns)}
+            SELECT DISTINCT player_tag {''.join(f'{n}, ' for n in extra_columns)} 
             FROM players 
             INNER JOIN cte
             ON cte.clan_tag = players.clan_tag
@@ -33,7 +33,7 @@ class Stats(commands.Cog):
             """
             return await ctx.db.fetch(query, correct_tag(clan_tag_or_name), clan_tag_or_name)
         else:
-            query = f"""SELECT DISTINCT player_tag {', '.join(extra_columns)} 
+            query = f"""SELECT DISTINCT player_tag {''.join(f'{n}, ' for n in extra_columns)} 
                         FROM players 
                         INNER JOIN clans 
                         ON clans.clan_tag = players.clan_tag 
