@@ -195,7 +195,7 @@ class Stats(commands.Cog):
 
         title = "Top Donations"
 
-        p = StatsDonorsPaginator(ctx, data, title, page_count=math.ceil(len(fetch) / 20))
+        p = StatsDonorsPaginator(ctx, fetch, title, page_count=math.ceil(len(fetch) / 20))
         await p.paginate()
 
 
