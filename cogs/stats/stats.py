@@ -24,11 +24,11 @@ class Stats(commands.Cog):
                 WHERE clan_tag = $1
                 OR clan_name LIKE $2
             )
-            SELECT DISTINCT player_tag {', '.join(extra_columns)}
+            SELECT DISTINCT player_tag {' '.join(f'{n}, ' for n in extra_columns)}
             FROM players 
             INNER JOIN cte
             ON cte.clan_tag = players.clan_tag
-            ORDER BY {order_by or 'player_tag'} 
+            ORDER BY {order_by or 'player_tag'}
             NULLS LAST
             """
             return await ctx.db.fetch(query, correct_tag(clan_tag_or_name), clan_tag_or_name)
@@ -151,7 +151,7 @@ class Stats(commands.Cog):
         :white_check_mark: `+stats donations #JY9J2Y99`
         :white_check_mark: `+stats donations Reddit`
         """
-        fetch = await self.get_players(ctx, clan_tag_or_name, extra_columns=["donations"], order_by="donations")
+        fetch = await self.get_players(ctx, clan_tag_or_name, extra_columns=["donations"], order_by="donations DESC")
         if not fetch:
             return await ctx.send("No data found.")
 
