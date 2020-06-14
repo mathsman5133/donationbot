@@ -157,9 +157,9 @@ class CLYTable:
         return fmt
 
     def donationboard_2(self):
-        fmt = f"{misc['number']}`⠀{'Dons':\u00A0>6.6}⠀` `⠀{'Name':\u00A0<16.16}⠀`\n"
+        fmt = f"{misc['number']}`⠀⠀{'Dons':\u00A0>6.6}⠀` `⠀{'Name':\u00A0<16.16}⠀`\n"
         for v in self._rows:
-            index = int(v[0]) + 1
+            index = int(v[0])
             index = number_emojis[index] if index <= 100 else misc['idle']
             fmt += f"{index}`⠀{str(v[1]):\u00A0>6.6}⠀` `⠀{str(v[2]):\u00A0<16.16}⠀`\n"
         return fmt
@@ -175,7 +175,7 @@ class CLYTable:
     def trophyboard_2(self):
         fmt = f"{misc['number']}` {'Gain':\u00A0>5.5}⠀` ` {'Name':\u00A0<18.18}⠀`\n"
         for v in self._rows:
-            index = int(v[0]) + 1
+            index = int(v[0])
             index = number_emojis[index] if index <= 100 else misc['idle']
             fmt += f"{index}`⠀{str(v[1]):\u00A0>5.5}⠀` ` {str(v[2]):\u00A0<18.18}⠀`\n"
         return fmt
@@ -197,9 +197,9 @@ class CLYTable:
         return fmt
 
     def trophyboard_gain(self):
-        fmt = f"{misc['number']}    {misc['trophygreen']} `⠀{'Name':\u00A0<15.15}⠀`\n"
+        fmt = f"{misc['number']}⠀⠀⠀{misc['trophygreen']} `⠀{'Name':\u00A0<15.15}⠀`\n"
         for v in self._rows:
-            index = int(v[0]) + 1
+            index = int(v[0])
             index = number_emojis[index] if index <= 100 else misc['idle']
             fmt += f"{index}`⠀{str(v[1]):\u00A0>4.4}⠀` `⠀{str(v[2]):\u00A0<15.15}⠀`\n"
         return fmt

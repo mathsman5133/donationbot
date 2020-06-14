@@ -126,6 +126,7 @@ class Stats(commands.Cog):
                        INNER JOIN cte
                        ON cte.clan_tag = players.clan_tag
                        ORDER BY gain DESC
+                       NULLS LAST
                     """
             fetch = await ctx.db.fetch(query, correct_tag(clan_tag_or_name), clan_tag_or_name)
         else:
@@ -136,6 +137,7 @@ class Stats(commands.Cog):
             ON clans.clan_tag = players.clan_tag
             WHERE clans.channel_id = $1
             ORDER BY gain DESC
+            NULLS LAST
             """
             fetch = await ctx.db.fetch(query, ctx.channel.id)
 
