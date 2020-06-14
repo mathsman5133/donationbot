@@ -14,8 +14,7 @@ class Stats(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    async def get_players(self, ctx, clan_tag_or_name, extra_columns=None, order_by=None):
-        extra_columns = extra_columns or []
+    async def get_players(self, ctx, clan_tag_or_name):
         if clan_tag_or_name:
             query = f"""
             WITH cte AS (
@@ -24,22 +23,18 @@ class Stats(commands.Cog):
                 WHERE clan_tag = $1
                 OR clan_name LIKE $2
             )
-            SELECT DISTINCT player_tag {''.join(f', {n}' for n in extra_columns)} 
+            SELECT DISTINCT player_tag
             FROM players 
             INNER JOIN cte
             ON cte.clan_tag = players.clan_tag
-            ORDER BY {order_by or 'player_tag'}
-            NULLS LAST
             """
             return await ctx.db.fetch(query, correct_tag(clan_tag_or_name), clan_tag_or_name)
         else:
-            query = f"""SELECT DISTINCT player_tag {''.join(f', {n}' for n in extra_columns)} 
+            query = f"""SELECT DISTINCT player_tag 
                         FROM players 
                         INNER JOIN clans 
                         ON clans.clan_tag = players.clan_tag 
                         WHERE clans.channel_id = $1
-                        ORDER BY {order_by or 'player_tag'}
-                        NULLS LAST
                     """
             return await ctx.db.fetch(query, ctx.channel.id)
 
@@ -123,7 +118,27 @@ class Stats(commands.Cog):
         :white_check_mark: `+stats defenses #JY9J2Y99`
         :white_check_mark: `+stats defenses Reddit`
         """
-        fetch = await self.get_players(ctx, clan_tag_or_name, extra_columns=['trophies - start_trophies AS "gain"'])
+        if clan_tag_or_name:
+            query = """
+                       WITH cte AS (SELECT DISTINCT clan_tag FROM clans WHERE clan_tag = $1 OR clan_name LIKE $2)
+                       SELECT player_tag, trophies - start_trophies AS "gain"
+                       FROM players
+                       INNER JOIN cte
+                       ON cte.clan_tag = players.clan_tag
+                       ORDER BY gain DESC
+                    """
+            fetch = await ctx.db.fetch(query, correct_tag(clan_tag_or_name), clan_tag_or_name)
+        else:
+            query = """
+            SELECT player_tag, trophies - start_trophies AS "gain"
+            FROM players
+            INNER JOIN clans 
+            ON clans.clan_tag = players.clan_tag
+            WHERE clans.channel_id = $1
+            ORDER BY gain DESC
+            """
+            fetch = await ctx.db.fetch(query, ctx.channel.id)
+
         if not fetch:
             return await ctx.send("No data found.")
 
@@ -151,7 +166,29 @@ class Stats(commands.Cog):
         :white_check_mark: `+stats donations #JY9J2Y99`
         :white_check_mark: `+stats donations Reddit`
         """
-        fetch = await self.get_players(ctx, clan_tag_or_name, extra_columns=["donations"], order_by="donations DESC")
+        if clan_tag_or_name:
+            query = """
+                       WITH cte AS (SELECT DISTINCT clan_tag FROM clans WHERE clan_tag = $1 OR clan_name LIKE $2)
+                       SELECT player_tag, donations
+                       FROM players
+                       INNER JOIN cte
+                       ON cte.clan_tag = players.clan_tag
+                       ORDER BY donations DESC
+                       NULLS LAST
+                    """
+            fetch = await ctx.db.fetch(query, correct_tag(clan_tag_or_name), clan_tag_or_name)
+        else:
+            query = """
+            SELECT player_tag, donations
+            FROM players
+            INNER JOIN clans 
+            ON clans.clan_tag = players.clan_tag
+            WHERE clans.channel_id = $1
+            ORDER BY donations DESC
+            NULLS LAST
+            """
+            fetch = await ctx.db.fetch(query, ctx.channel.id)
+
         if not fetch:
             return await ctx.send("No data found.")
 
