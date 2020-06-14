@@ -564,19 +564,17 @@ class StatsGainsPaginator(TablePaginator):
         )
         self.key = key
 
-    def create_row(self, player, data):
-        player_data = data[player.tag]
-        self.table.add_row([player_data[0], player_data[1]['gain'], player.name])
+    def create_row(self, i, data):
+        self.table.add_row([i, data['gain'], data['player_name']])
 
     async def prepare_entry(self, page):
         self.table.clear_rows()
         base = (page - 1) * self.rows_per_table
         data = self.data[base:base + self.rows_per_table]
-        data_by_tag = {n[1]['player_tag']: n for n in data}
+        data = [n[1] for n in data]
 
-        tags = [n[1]['player_tag'] for n in data]
-        async for player in self.bot.coc.get_players(tags):
-            self.create_row(player, data_by_tag)
+        for i, row in enumerate(data, start=base):
+            self.create_row(i + 1, row)
 
         return self.table.trophyboard_gain() + self.key
 
@@ -588,19 +586,17 @@ class StatsDonorsPaginator(TablePaginator):
         )
         self.key = key
 
-    def create_row(self, player, data):
-        player_data = data[player.tag]
-        self.table.add_row([player_data[0], player_data[1]['donations'], player.name])
+    def create_row(self, i, data):
+        self.table.add_row([i, data['donations'], data['player_name']])
 
     async def prepare_entry(self, page):
         self.table.clear_rows()
         base = (page - 1) * self.rows_per_table
         data = self.data[base:base + self.rows_per_table]
-        data_by_tag = {n[1]['player_tag']: n for n in data}
+        data = [n[1] for n in data]
 
-        tags = [n[1]['player_tag'] for n in data]
-        async for player in self.bot.coc.get_players(tags):
-            self.create_row(player, data_by_tag)
+        for i, row in enumerate(data, start=base):
+            self.create_row(i + 1, row)
 
         return self.table.donationboard_2() + self.key
 

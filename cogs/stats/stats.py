@@ -121,7 +121,7 @@ class Stats(commands.Cog):
         if clan_tag_or_name:
             query = """
                        WITH cte AS (SELECT DISTINCT clan_tag FROM clans WHERE clan_tag = $1 OR clan_name LIKE $2)
-                       SELECT player_tag, trophies - start_trophies AS "gain"
+                       SELECT player_tag, player_name, trophies - start_trophies AS "gain"
                        FROM players
                        INNER JOIN cte
                        ON cte.clan_tag = players.clan_tag
@@ -130,7 +130,7 @@ class Stats(commands.Cog):
             fetch = await ctx.db.fetch(query, correct_tag(clan_tag_or_name), clan_tag_or_name)
         else:
             query = """
-            SELECT player_tag, trophies - start_trophies AS "gain"
+            SELECT player_tag, player_name, trophies - start_trophies AS "gain"
             FROM players
             INNER JOIN clans 
             ON clans.clan_tag = players.clan_tag
@@ -142,11 +142,10 @@ class Stats(commands.Cog):
         if not fetch:
             return await ctx.send("No data found.")
 
-        data = [(p[0], p[1]) for p in fetch]
         title = f"Top Trophy Gains"
         key = f"**Key:**\n{misc['trophygreen']} - Trophy Gain\n{misc['trophygold']} - Total Trophies"
 
-        p = StatsGainsPaginator(ctx, data, title, key=key, page_count=math.ceil(len(fetch) / 20))
+        p = StatsGainsPaginator(ctx, fetch, title, key=key, page_count=math.ceil(len(fetch) / 20))
         await p.paginate()
 
     @stats.command(name='donations', aliases=['donates', 'donation', 'donors'])
@@ -169,7 +168,7 @@ class Stats(commands.Cog):
         if clan_tag_or_name:
             query = """
                        WITH cte AS (SELECT DISTINCT clan_tag FROM clans WHERE clan_tag = $1 OR clan_name LIKE $2)
-                       SELECT player_tag, donations
+                       SELECT player_tag, player_name, donations
                        FROM players
                        INNER JOIN cte
                        ON cte.clan_tag = players.clan_tag
@@ -179,7 +178,7 @@ class Stats(commands.Cog):
             fetch = await ctx.db.fetch(query, correct_tag(clan_tag_or_name), clan_tag_or_name)
         else:
             query = """
-            SELECT player_tag, donations
+            SELECT player_tag, player_name, donations
             FROM players
             INNER JOIN clans 
             ON clans.clan_tag = players.clan_tag
@@ -192,7 +191,6 @@ class Stats(commands.Cog):
         if not fetch:
             return await ctx.send("No data found.")
 
-        data = [(p[0], p[1]) for p in fetch]
         title = "Top Donations"
 
         p = StatsDonorsPaginator(ctx, data, title, page_count=math.ceil(len(fetch) / 20))
