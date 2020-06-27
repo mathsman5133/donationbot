@@ -1,6 +1,6 @@
 # Donation Tracker
 
-Donation. Tracker is the ultimate tool for managing donations and activity across your Clash of Clans clan or family.
+Donation Tracker is the ultimate tool for managing donations and activity across your Clash of Clans clan or family.
 
 As this is an educational repo, throughout this README I will attempt to explain *how* things work, as well as issues
 I may have faced, *why* I do something how I do it, referring to applicable sections of the code where relevant.
