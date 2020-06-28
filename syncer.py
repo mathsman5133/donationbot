@@ -252,7 +252,7 @@ async def bulk_board_insert():
 @coc_client.event
 @coc.ClanEvents.member_donations()
 async def on_clan_member_donation(old_player: CustomClanMember, player: CustomClanMember):
-    log.info(f'Received on_clan_member_donation event for player {player} of clan {player.clan}')
+    log.debug(f'Received on_clan_member_donation event for player {player} of clan {player.clan}')
     if old_player.donations > player.donations:
         donations = player.donations
     else:
@@ -398,7 +398,7 @@ async def send_trophylog_events():
 async def on_clan_member_trophies_change(old_player, player):
     old_trophies = old_player.trophies
     new_trophies = player.trophies
-    log.info(f'Received on_clan_member_trophy_change event for player {player} of clan {player.clan}')
+    log.debug(f'Received on_clan_member_trophy_change event for player {player} of clan {player.clan}')
     change = player.trophies - old_player.trophies
 
     async with trophylog_batch_lock:
@@ -479,8 +479,8 @@ async def event_player_updater():
             {
                 'player_tag': player.tag,
                 'trophies': player.trophies,
-                'end_fin': player.achievements_dict['Friend in Need'].value,
-                'end_sic': player.achievements_dict['Sharing is caring'].value,
+                'end_fin': player.get_achievement('Friend in Need').value,
+                'end_sic': player.get_achievement('Sharing is caring').value,
                 'end_attacks': player.attack_wins,
                 'end_defenses': player.defense_wins,
                 'end_best_trophies': player.best_trophies
@@ -572,6 +572,7 @@ async def on_member_update(old_player, player):
 @coc_client.event
 @coc.ClanEvents.member_join()
 async def on_clan_member_join(member, clan):
+    return
     player = await coc_client.get_player(member.tag)
     player_query = """INSERT INTO players (
                                     player_tag, 
@@ -601,8 +602,8 @@ async def on_clan_member_join(member, clan):
         player.received,
         player.trophies,
         SEASON_ID,
-        player.achievements_dict['Friend in Need'].value,
-        player.achievements_dict['Sharing is caring'].value,
+        player.get_achievement('Friend in Need').value,
+        player.get_achievement('Sharing is caring').value,
         player.attack_wins,
         player.defense_wins,
         player.best_trophies,
@@ -666,6 +667,7 @@ async def on_clan_member_join(member, clan):
 @coc_client.event
 @coc.ClanEvents.member_leave()
 async def on_clan_member_leave(member, clan):
+    return
     query = "UPDATE players SET clan_tag = null where player_tag = $1 AND season_id = $2"
     await pool.execute(query, member.tag, SEASON_ID)
 
