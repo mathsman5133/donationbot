@@ -20,7 +20,7 @@ from cogs.utils.donationtrophylogs import SlimDonationEvent2, SlimTrophyEvent, g
 from cogs.utils.db_objects import LogConfig
 
 log = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 
 class CustomClanMember(coc.ClanMember):
     def _setup(self, data):
@@ -30,12 +30,14 @@ class CustomClanMember(coc.ClanMember):
         self.versus_trophies = data_get("versusTrophies")
         self.donations = data_get("donations")
         self.received = data_get("donationsReceived")
+        print("custom member")
 
 
 class CustomClan(coc.Clan):
     def _setup(self, data):
         client = self._client
         self._members = {m['tag']: CustomClanMember(data=m, client=client) for m in data.get("members", [])}
+        print("custom clan")
 
 
 SEASON_ID = 12
@@ -252,7 +254,7 @@ async def bulk_board_insert():
 @coc_client.event
 @coc.ClanEvents.member_donations()
 async def on_clan_member_donation(old_player: CustomClanMember, player: CustomClanMember):
-    log.debug(f'Received on_clan_member_donation event for player {player} of clan {player.clan}')
+    # log.debug(f'Received on_clan_member_donation event for player {player} of clan {player.clan}')
     if old_player.donations > player.donations:
         donations = player.donations
     else:
@@ -398,7 +400,7 @@ async def send_trophylog_events():
 async def on_clan_member_trophies_change(old_player, player):
     old_trophies = old_player.trophies
     new_trophies = player.trophies
-    log.debug(f'Received on_clan_member_trophy_change event for player {player} of clan {player.clan}')
+    # log.debug(f'Received on_clan_member_trophy_change event for player {player} of clan {player.clan}')
     change = player.trophies - old_player.trophies
 
     async with trophylog_batch_lock:
