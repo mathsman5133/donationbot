@@ -21,17 +21,28 @@ from cogs.utils.db_objects import LogConfig
 
 log = logging.getLogger(__name__)
 
-class CustomCache(coc.Cache):
-    @property
-    def clan_config(self):
-        return coc.CacheConfig(2000, None)  # max_size, time to live
+
+class CustomClanMember(coc.ClanMember):
+    def _setup(self, data):
+        data_get = data.get
+        self.exp_level = data_get("expLevel")
+        self.trophies = data_get("trophies")
+        self.versus_trophies = data_get("versusTrophies")
+        self.donations = data_get("donations")
+        self.received = data_get("donationsReceived")
+
+
+class CustomClan(coc.Clan):
+    def _setup(self, data):
+        client = self._client
+        self._members = {m['tag']: CustomClanMember(data=m, client=client) for m in data.get("members", [])}
 
 
 SEASON_ID = 12
 
 loop = asyncio.get_event_loop()
 pool = loop.run_until_complete(Table.create_pool(creds.postgres))
-coc_client = coc.login(creds.email, creds.password, client=coc.EventsClient, key_names="test", throttle_limit=30, key_count=3, cache=CustomCache)
+coc_client = coc.login(creds.email, creds.password, client=coc.EventsClient, key_names="test", throttle_limit=30, key_count=3)
 bot = commands.Bot(command_prefix="+", loop=loop)
 bot.session = aiohttp.ClientSession()
 setup_logging(bot)
@@ -236,12 +247,14 @@ async def bulk_board_insert():
         board_batch_data.clear()
 
 
-async def on_clan_member_donation(old_donations, new_donations, player):
+@coc_client.event
+@coc.ClanEvents.member_donations()
+async def on_clan_member_donation(old_player: CustomClanMember, player: CustomClanMember):
     log.debug(f'Received on_clan_member_donation event for player {player} of clan {player.clan}')
-    if old_donations > new_donations:
-        donations = new_donations
+    if old_player.donations > player.donations:
+        donations = player.donations
     else:
-        donations = new_donations - old_donations
+        donations = player.donations - old_player.donations
 
     async with donationlog_batch_lock:
         donationlog_batch_data.append({
@@ -257,13 +270,13 @@ async def on_clan_member_donation(old_donations, new_donations, player):
 
     async with board_batch_lock:
         try:
-            board_batch_data[player.tag]['old_dons'] = old_donations
-            board_batch_data[player.tag]['new_dons'] = new_donations
+            board_batch_data[player.tag]['old_dons'] = old_player.donations
+            board_batch_data[player.tag]['new_dons'] = player.donations
         except KeyError:
             board_batch_data[player.tag] = {
                 'player_tag': player.tag,
-                'old_dons': old_donations,
-                'new_dons': new_donations,
+                'old_dons': old_player.donations,
+                'new_dons': player.donations,
                 'old_rec': player.received,
                 'new_rec': player.received,
                 'trophies': player.trophies,
@@ -273,7 +286,12 @@ async def on_clan_member_donation(old_donations, new_donations, player):
     await update(player.tag, player.clan and player.clan.tag)
 
 
-async def on_clan_member_received(old_received, new_received, player):
+@coc_client.event
+@coc.ClanEvents.member_received()
+async def on_clan_member_received(old_player, player):
+    old_received = old_player.received
+    new_received = player.received
+
     log.debug(f'Received on_clan_member_received event for player {player} of clan {player.clan}')
     if old_received > new_received:
         received = new_received
@@ -373,9 +391,11 @@ async def send_trophylog_events():
     trophylog_batch_data.clear()
 
 
-async def on_clan_member_trophies_change(old_trophies, new_trophies, player):
+async def on_clan_member_trophies_change(old_player, player):
+    old_trophies = old_player.trophies
+    new_trophies = player.trophies
     log.debug(f'Received on_clan_member_trophy_change event for player {player} of clan {player.clan}')
-    change = new_trophies - old_trophies
+    change = player.trophies - old_player.trophies
 
     async with trophylog_batch_lock:
         trophylog_batch_data.append({
@@ -533,26 +553,20 @@ async def update(player_tag, clan_tag):
             last_updated_counter[(player_tag, clan_tag)] += 1
         last_updated_tags.add(player_tag)
 
-
-async def on_clan_member_name_change(_, __, player):
+@coc_client.event
+@coc.ClanEvents.member_name()
+@coc.ClanEvents.member_donations()
+@coc.ClanEvents.member_versus_trophies()
+@coc.ClanEvents.member_exp_level()
+@coc.ClanEvents.member_trophies()
+@coc.ClanEvents.member_donations()
+@coc.ClanEvents.member_received()
+async def on_member_update(old_player, player):
     await update(player.tag, player.clan and player.clan.tag)
-#
-# async def on_clan_member_donation(self, _, __, player, ___):
-#     await self.update(player.tag)
-
-async def on_clan_member_versus_trophies_change(_, __, player):
-    await update(player.tag, player.clan and player.clan.tag)
-
-async def on_clan_member_level_change(_, __, player):
-    await update(player.tag, player.clan and player.clan.tag)
-#
-# async def on_clan_member_trophies_change(self, _, __, player, ___):
-#     pass  # could be a defense - doesn't mean online
-#
-# async def on_clan_member_received(self, _, __, player, ___):
-#     await update(player.tag)  # don't have to be online to receive donations
 
 
+@coc_client.event
+@coc.ClanEvents.member_join()
 async def on_clan_member_join(member, clan):
     player = await coc_client.get_player(member.tag)
     player_query = """INSERT INTO players (
@@ -645,6 +659,8 @@ async def on_clan_member_join(member, clan):
                   f'Performed a query to insert them into eventplayers. Status Code: {response}')
 
 
+@coc_client.event
+@coc.ClanEvents.member_leave()
 async def on_clan_member_leave(member, clan):
     query = "UPDATE players SET clan_tag = null where player_tag = $1 AND season_id = $2"
     await pool.execute(query, member.tag, SEASON_ID)
@@ -663,30 +679,18 @@ if __name__ == "__main__":
     update_clan_tags.add_exception_type(Exception, BaseException)
     update_clan_tags.start()
 
-    batch_insert_loop.add_exception_type(Exception, BaseException)
-    batch_insert_loop.start()
+    # batch_insert_loop.add_exception_type(Exception, BaseException)
+    # batch_insert_loop.start()
+    #
+    # trophylog_batch_insert_loop.add_exception_type(Exception, BaseException)
+    # trophylog_batch_insert_loop.start()
+    #
+    # event_player_updater.add_exception_type(coc.HTTPException)
+    # event_player_updater.start()
+    #
+    # last_updated_loop.add_exception_type(Exception, BaseException)
+    # last_updated_loop.start()
+    # board_insert_loop.add_exception_type(Exception, BaseException)
+    # board_insert_loop.start()
 
-    trophylog_batch_insert_loop.add_exception_type(Exception, BaseException)
-    trophylog_batch_insert_loop.start()
-
-    event_player_updater.add_exception_type(coc.HTTPException)
-    event_player_updater.start()
-
-    last_updated_loop.add_exception_type(Exception, BaseException)
-    last_updated_loop.start()
-    board_insert_loop.add_exception_type(Exception, BaseException)
-    board_insert_loop.start()
-
-    coc_client.add_events(
-        on_clan_member_donation,
-        on_clan_member_received,
-        on_clan_member_trophies_change,
-        on_clan_member_join,
-        on_clan_member_leave,
-        on_clan_member_level_change,
-        on_clan_member_name_change,
-        on_clan_member_versus_trophies_change
-    )
-    coc_client._clan_retry_interval = 60
-    coc_client.start_updates('clan')
     coc_client.run_forever()
