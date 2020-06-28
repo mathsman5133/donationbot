@@ -20,7 +20,7 @@ from cogs.utils.donationtrophylogs import SlimDonationEvent2, SlimTrophyEvent, g
 from cogs.utils.db_objects import LogConfig
 
 log = logging.getLogger(__name__)
-
+logging.basicConfig(level=logging.DEBUG)
 
 class CustomClanMember(coc.ClanMember):
     def _setup(self, data):
@@ -45,7 +45,7 @@ pool = loop.run_until_complete(Table.create_pool(creds.postgres))
 coc_client = coc.login(creds.email, creds.password, client=coc.EventsClient, key_names="test2", throttle_limit=30, key_count=3)
 bot = commands.Bot(command_prefix="+", loop=loop)
 bot.session = aiohttp.ClientSession()
-setup_logging(bot)
+#setup_logging(bot)
 
 board_batch_lock = asyncio.Lock(loop=loop)
 board_batch_data = {}
