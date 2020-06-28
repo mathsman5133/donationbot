@@ -250,7 +250,7 @@ async def bulk_board_insert():
 @coc_client.event
 @coc.ClanEvents.member_donations()
 async def on_clan_member_donation(old_player: CustomClanMember, player: CustomClanMember):
-    log.debug(f'Received on_clan_member_donation event for player {player} of clan {player.clan}')
+    log.info(f'Received on_clan_member_donation event for player {player} of clan {player.clan}')
     if old_player.donations > player.donations:
         donations = player.donations
     else:
@@ -292,7 +292,7 @@ async def on_clan_member_received(old_player, player):
     old_received = old_player.received
     new_received = player.received
 
-    log.debug(f'Received on_clan_member_received event for player {player} of clan {player.clan}')
+    log.info(f'Received on_clan_member_received event for player {player} of clan {player.clan}')
     if old_received > new_received:
         received = new_received
     else:
@@ -391,10 +391,12 @@ async def send_trophylog_events():
     trophylog_batch_data.clear()
 
 
+@coc_client.event
+@coc.ClanEvents.member_trophies()
 async def on_clan_member_trophies_change(old_player, player):
     old_trophies = old_player.trophies
     new_trophies = player.trophies
-    log.debug(f'Received on_clan_member_trophy_change event for player {player} of clan {player.clan}')
+    log.info(f'Received on_clan_member_trophy_change event for player {player} of clan {player.clan}')
     change = player.trophies - old_player.trophies
 
     async with trophylog_batch_lock:
@@ -647,8 +649,8 @@ async def on_clan_member_join(member, clan):
             player.tag,
             player.trophies,
             n['id'],
-            player.achievements_dict['Friend in Need'].value,
-            player.achievements_dict['Sharing is caring'].value,
+            player.get_achievement('Friend in Need').value,
+            player.get_achievement('Sharing is caring').value,
             player.attack_wins,
             player.defense_wins,
             player.trophies,
