@@ -20,7 +20,8 @@ from cogs.utils.donationtrophylogs import SlimDonationEvent2, SlimTrophyEvent, g
 from cogs.utils.db_objects import LogConfig
 
 log = logging.getLogger(__name__)
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
+log.setLevel(logging.DEBUG)
 
 class CustomClanMember(coc.ClanMember):
     def _setup(self, data):
