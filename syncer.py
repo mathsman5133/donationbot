@@ -568,6 +568,7 @@ async def update(player_tag, clan_tag):
 @coc.ClanEvents.member_donations()
 @coc.ClanEvents.member_received()
 async def on_member_update(old_player, player):
+    return
     log.debug("received update for clan members.")
     await update(player.tag, player.clan and player.clan.tag)
 
@@ -688,16 +689,16 @@ if __name__ == "__main__":
 
     batch_insert_loop.add_exception_type(Exception, BaseException)
     batch_insert_loop.start()
-
+    #
     trophylog_batch_insert_loop.add_exception_type(Exception, BaseException)
     trophylog_batch_insert_loop.start()
-
-    event_player_updater.add_exception_type(coc.HTTPException)
-    event_player_updater.start()
-
-    last_updated_loop.add_exception_type(Exception, BaseException)
-    last_updated_loop.start()
-    board_insert_loop.add_exception_type(Exception, BaseException)
-    board_insert_loop.start()
+    #
+    # event_player_updater.add_exception_type(coc.HTTPException)
+    # event_player_updater.start()
+    #
+    # last_updated_loop.add_exception_type(Exception, BaseException)
+    # last_updated_loop.start()
+    # board_insert_loop.add_exception_type(Exception, BaseException)
+    # board_insert_loop.start()
 
     coc_client.run_forever()
