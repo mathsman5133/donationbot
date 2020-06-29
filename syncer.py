@@ -96,12 +96,6 @@ async def add_detailed_temp_events(channel_id, clan_tag, events):
 
 
 async def safe_send(channel_id, content=None, embed=None):
-    if channel_id != 595598923993710592:
-        return
-    if not content:
-        content = "new coc.py using cache control"
-    else:
-        content += "\nnew coc.py using cache control"
     try:
         log.debug(f'sending message to {channel_id}')
         return await bot.http.send_message(channel_id, content, embed=embed and embed.to_dict())
@@ -574,7 +568,6 @@ async def update(player_tag, clan_tag):
 @coc.ClanEvents.member_donations()
 @coc.ClanEvents.member_received()
 async def on_member_update(old_player, player):
-    return
     log.debug("received update for clan members.")
     await update(player.tag, player.clan and player.clan.tag)
 
@@ -698,13 +691,13 @@ if __name__ == "__main__":
     #
     trophylog_batch_insert_loop.add_exception_type(Exception, BaseException)
     trophylog_batch_insert_loop.start()
-    #
-    # event_player_updater.add_exception_type(coc.HTTPException)
-    # event_player_updater.start()
-    #
-    # last_updated_loop.add_exception_type(Exception, BaseException)
-    # last_updated_loop.start()
-    # board_insert_loop.add_exception_type(Exception, BaseException)
-    # board_insert_loop.start()
+
+    event_player_updater.add_exception_type(coc.HTTPException)
+    event_player_updater.start()
+
+    last_updated_loop.add_exception_type(Exception, BaseException)
+    last_updated_loop.start()
+    board_insert_loop.add_exception_type(Exception, BaseException)
+    board_insert_loop.start()
 
     coc_client.run_forever()
