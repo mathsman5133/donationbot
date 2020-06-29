@@ -96,6 +96,12 @@ async def add_detailed_temp_events(channel_id, clan_tag, events):
 
 
 async def safe_send(channel_id, content=None, embed=None):
+    if channel_id != 595598923993710592:
+        return
+    if not content:
+        content = "new coc.py using cache control"
+    else:
+        content += "\nnew coc.py using cache control"
     try:
         log.debug(f'sending message to {channel_id}')
         return await bot.http.send_message(channel_id, content, embed=embed and embed.to_dict())
