@@ -40,7 +40,7 @@ class CustomClan(coc.Clan):
         print("custom clan")
 
 
-SEASON_ID = 12
+SEASON_ID = 13
 
 loop = asyncio.get_event_loop()
 pool = loop.run_until_complete(Table.create_pool(creds.postgres))
@@ -49,7 +49,7 @@ coc_client.clan_cls = CustomClan
 
 bot = commands.Bot(command_prefix="+", loop=loop)
 bot.session = aiohttp.ClientSession()
-#setup_logging(bot)
+setup_logging(bot)
 
 board_batch_lock = asyncio.Lock(loop=loop)
 board_batch_data = {}
@@ -254,7 +254,7 @@ async def bulk_board_insert():
 @coc_client.event
 @coc.ClanEvents.member_donations()
 async def on_clan_member_donation(old_player: CustomClanMember, player: CustomClanMember):
-    # log.debug(f'Received on_clan_member_donation event for player {player} of clan {player.clan}')
+    log.debug(f'Received on_clan_member_donation event for player {player} of clan {player.clan}')
     if old_player.donations > player.donations:
         donations = player.donations
     else:
@@ -287,7 +287,7 @@ async def on_clan_member_donation(old_player: CustomClanMember, player: CustomCl
                 'clan_tag': player.clan and player.clan.tag,
                 'player_name': player.name,
             }
-    await update(player.tag, player.clan and player.clan.tag)
+    # await update(player.tag, player.clan and player.clan.tag)
 
 
 @coc_client.event
@@ -296,7 +296,7 @@ async def on_clan_member_received(old_player, player):
     old_received = old_player.received
     new_received = player.received
 
-    log.info(f'Received on_clan_member_received event for player {player} of clan {player.clan}')
+    log.debug(f'Received on_clan_member_received event for player {player} of clan {player.clan}')
     if old_received > new_received:
         received = new_received
     else:
@@ -330,7 +330,7 @@ async def on_clan_member_received(old_player, player):
                 'player_name': player.name
             }
 
-    await update(player.tag, player.clan and player.clan.tag)
+    # await update(player.tag, player.clan and player.clan.tag)
 
 
 @tasks.loop(seconds=60.0)
@@ -400,7 +400,7 @@ async def send_trophylog_events():
 async def on_clan_member_trophies_change(old_player, player):
     old_trophies = old_player.trophies
     new_trophies = player.trophies
-    # log.debug(f'Received on_clan_member_trophy_change event for player {player} of clan {player.clan}')
+    log.debug(f'Received on_clan_member_trophy_change event for player {player} of clan {player.clan}')
     change = player.trophies - old_player.trophies
 
     async with trophylog_batch_lock:
@@ -564,17 +564,16 @@ async def update(player_tag, clan_tag):
 @coc.ClanEvents.member_donations()
 @coc.ClanEvents.member_versus_trophies()
 @coc.ClanEvents.member_exp_level()
-@coc.ClanEvents.member_trophies()
 @coc.ClanEvents.member_donations()
 @coc.ClanEvents.member_received()
 async def on_member_update(old_player, player):
+    log.debug("received update for clan members.")
     await update(player.tag, player.clan and player.clan.tag)
 
 
 @coc_client.event
 @coc.ClanEvents.member_join()
 async def on_clan_member_join(member, clan):
-    return
     player = await coc_client.get_player(member.tag)
     player_query = """INSERT INTO players (
                                     player_tag, 
@@ -669,7 +668,6 @@ async def on_clan_member_join(member, clan):
 @coc_client.event
 @coc.ClanEvents.member_leave()
 async def on_clan_member_leave(member, clan):
-    return
     query = "UPDATE players SET clan_tag = null where player_tag = $1 AND season_id = $2"
     await pool.execute(query, member.tag, SEASON_ID)
 
@@ -687,18 +685,18 @@ if __name__ == "__main__":
     update_clan_tags.add_exception_type(Exception, BaseException)
     update_clan_tags.start()
 
-    # batch_insert_loop.add_exception_type(Exception, BaseException)
-    # batch_insert_loop.start()
-    #
-    # trophylog_batch_insert_loop.add_exception_type(Exception, BaseException)
-    # trophylog_batch_insert_loop.start()
-    #
-    # event_player_updater.add_exception_type(coc.HTTPException)
-    # event_player_updater.start()
-    #
-    # last_updated_loop.add_exception_type(Exception, BaseException)
-    # last_updated_loop.start()
-    # board_insert_loop.add_exception_type(Exception, BaseException)
-    # board_insert_loop.start()
+    batch_insert_loop.add_exception_type(Exception, BaseException)
+    batch_insert_loop.start()
+
+    trophylog_batch_insert_loop.add_exception_type(Exception, BaseException)
+    trophylog_batch_insert_loop.start()
+
+    event_player_updater.add_exception_type(coc.HTTPException)
+    event_player_updater.start()
+
+    last_updated_loop.add_exception_type(Exception, BaseException)
+    last_updated_loop.start()
+    board_insert_loop.add_exception_type(Exception, BaseException)
+    board_insert_loop.start()
 
     coc_client.run_forever()
