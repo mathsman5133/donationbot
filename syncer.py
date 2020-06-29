@@ -708,6 +708,8 @@ async def update_clan_tags():
     fetch = await pool.fetch(query)
     log.info(f"Setting {len(fetch)} tags to update")
     coc_client._clan_updates = [n[0] for n in fetch]
+    log.info(str(coc_client._locks))
+    log.info(str(coc_client._clan_updater.get_stack()))
 
 if __name__ == "__main__":
     loop.run_until_complete(bot.login(creds.bot_token))
