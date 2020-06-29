@@ -61,9 +61,9 @@ def setup_logging(bot):
         def emit(self, record):
             self.handle(record)
 
-    discord_hndlr = DiscordHandler()
-    discord_hndlr.setLevel(logging.DEBUG)
-    log.addHandler(discord_hndlr)
+    # discord_hndlr = DiscordHandler()
+    # discord_hndlr.setLevel(logging.DEBUG)
+    # log.addHandler(discord_hndlr)
 
 
 def add_hooks(bot):

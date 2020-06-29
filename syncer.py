@@ -51,7 +51,7 @@ coc_client.clan_cls = CustomClan
 
 bot = commands.Bot(command_prefix="+", loop=loop)
 bot.session = aiohttp.ClientSession()
-#setup_logging(bot)
+setup_logging(bot)
 
 board_batch_lock = asyncio.Lock(loop=loop)
 board_batch_data = {}
