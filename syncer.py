@@ -693,8 +693,8 @@ if __name__ == "__main__":
     trophylog_batch_insert_loop.add_exception_type(Exception, BaseException)
     trophylog_batch_insert_loop.start()
 
-    event_player_updater.add_exception_type(coc.HTTPException)
-    event_player_updater.start()
+    # event_player_updater.add_exception_type(coc.HTTPException)
+    # event_player_updater.start()
 
     last_updated_loop.add_exception_type(Exception, BaseException)
     last_updated_loop.start()
