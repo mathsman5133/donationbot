@@ -575,6 +575,34 @@ async def on_member_update(old_player, player):
 @coc_client.event
 @coc.ClanEvents.member_join()
 async def on_clan_member_join(member, clan):
+    player_query = """INSERT INTO players (
+                                        player_tag, 
+                                        donations, 
+                                        received, 
+                                        trophies, 
+                                        start_trophies, 
+                                        season_id,
+                                        start_update,
+                                        clan_tag,
+                                        player_name
+                                        ) 
+                    VALUES ($1,$2,$3,$4,$4,$5,$6,True, $7, $8) 
+                    ON CONFLICT (player_tag, season_id) 
+                    DO UPDATE SET clan_tag = $11
+                """
+
+    response = await pool.execute(
+        player_query,
+        member.tag,
+        member.donations,
+        member.received,
+        member.trophies,
+        SEASON_ID,
+        clan.tag,
+        member.name
+    )
+    log.debug(f"ran player joined for player {player} of clan {clan}")
+    return
     player = await coc_client.get_player(member.tag)
     player_query = """INSERT INTO players (
                                     player_tag, 
