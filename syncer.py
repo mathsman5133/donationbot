@@ -22,6 +22,7 @@ from cogs.utils.db_objects import LogConfig
 log = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 log.setLevel(logging.DEBUG)
+P_COUNTER = 0
 
 class CustomClanMember(coc.ClanMember):
     def _setup(self, data):
@@ -571,7 +572,6 @@ async def on_member_update(old_player, player):
     log.debug("received update for clan members.")
     await update(player.tag, player.clan and player.clan.tag)
 
-
 @coc_client.event
 @coc.ClanEvents.member_join()
 async def on_clan_member_join(member, clan):
@@ -614,6 +614,7 @@ async def on_clan_member_join(member, clan):
     )
     log.debug(f'New member {member} joined clan {clan}. Performed a query to insert them into players. '
               f'Status Code: {response}')
+    return
 
     query = """SELECT events.id 
                FROM events 
