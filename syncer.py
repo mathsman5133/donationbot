@@ -705,12 +705,16 @@ async def on_clan_member_leave(member, clan):
 
 @tasks.loop(seconds=60.0)
 async def update_clan_tags():
-    query = "SELECT DISTINCT(clan_tag) FROM clans"
-    fetch = await pool.fetch(query)
-    log.info(f"Setting {len(fetch)} tags to update")
-    coc_client._clan_updates = [n[0] for n in fetch]
-    for listener in coc_client._listeners["clan"]:
-        log.info(f"{listener}{listener.runner}{listener.type_}{listener.callback}{listener.tags}")
+    try:
+        query = "SELECT DISTINCT(clan_tag) FROM clans"
+        fetch = await pool.fetch(query)
+        log.info(f"Setting {len(fetch)} tags to update")
+        coc_client._clan_updates = [n[0] for n in fetch]
+        for listener in coc_client._listeners["clan"]:
+            log.info(f"{listener}{listener.runner}{listener.type_}{listener.callback}{listener.tags}")
+    except:
+        log.exception("task failed?")
+        pass
 
 if __name__ == "__main__":
     loop.run_until_complete(bot.login(creds.bot_token))
