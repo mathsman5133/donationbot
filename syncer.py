@@ -32,14 +32,14 @@ class CustomClanMember(coc.ClanMember):
         self.versus_trophies = data_get("versusTrophies")
         self.donations = data_get("donations")
         self.received = data_get("donationsReceived")
-        print("custom member")
+        log.info("custom member")
 
 
 class CustomClan(coc.Clan):
     def _setup(self, data):
         client = self._client
         self._members = {m['tag']: CustomClanMember(data=m, client=client) for m in data.get("members", [])}
-        print("custom clan")
+        log.info("custom clan")
 
 
 SEASON_ID = 13
@@ -575,6 +575,7 @@ async def on_member_update(old_player, player):
 @coc_client.event
 @coc.ClanEvents.member_join()
 async def on_clan_member_join(member, clan):
+    return
     player_query = """INSERT INTO players (
                                         player_tag, 
                                         donations, 
@@ -716,19 +717,19 @@ if __name__ == "__main__":
     print("STARTING")
     update_clan_tags.add_exception_type(Exception, BaseException)
     update_clan_tags.start()
-
-    batch_insert_loop.add_exception_type(Exception, BaseException)
-    batch_insert_loop.start()
     #
-    trophylog_batch_insert_loop.add_exception_type(Exception, BaseException)
-    trophylog_batch_insert_loop.start()
+    # batch_insert_loop.add_exception_type(Exception, BaseException)
+    # batch_insert_loop.start()
+    # #
+    # trophylog_batch_insert_loop.add_exception_type(Exception, BaseException)
+    # trophylog_batch_insert_loop.start()
 
     # event_player_updater.add_exception_type(coc.HTTPException)
     # event_player_updater.start()
-
-    last_updated_loop.add_exception_type(Exception, BaseException)
-    last_updated_loop.start()
-    board_insert_loop.add_exception_type(Exception, BaseException)
-    board_insert_loop.start()
+    #
+    # last_updated_loop.add_exception_type(Exception, BaseException)
+    # last_updated_loop.start()
+    # board_insert_loop.add_exception_type(Exception, BaseException)
+    # board_insert_loop.start()
 
     coc_client.run_forever()
