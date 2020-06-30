@@ -710,8 +710,6 @@ async def update_clan_tags():
         fetch = await pool.fetch(query)
         log.info(f"Setting {len(fetch)} tags to update")
         coc_client._clan_updates = [n[0] for n in fetch]
-        for listener in coc_client._listeners["clan"]:
-            log.info(f"{listener}{listener.runner}{listener.type}{listener.callback}{listener.tags}")
     except:
         log.exception("task failed?")
         pass

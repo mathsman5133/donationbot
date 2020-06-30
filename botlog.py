@@ -39,6 +39,13 @@ def setup_logging(bot):
         adapter=discord.RequestsWebhookAdapter()
     )
 
+    class x(logging.NullHandler):
+        def handle(self, record) -> None:
+            send = fmt.format(record)
+            if "Request throttled. Sleeping for" not in send:
+                return
+            print(send)
+
     class DiscordHandler(logging.NullHandler):
         def handle(self, record):
             if not creds.live:
@@ -61,6 +68,9 @@ def setup_logging(bot):
         def emit(self, record):
             self.handle(record)
 
+    xy = x()
+    xy.setLevel(logging.DEBUG)
+    log.addHandler(xy)
     # discord_hndlr = DiscordHandler()
     # discord_hndlr.setLevel(logging.DEBUG)
     # log.addHandler(discord_hndlr)
