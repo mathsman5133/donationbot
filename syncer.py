@@ -710,7 +710,7 @@ async def update_clan_tags():
     log.info(f"Setting {len(fetch)} tags to update")
     coc_client._clan_updates = [n[0] for n in fetch]
     for listener in coc_client._listeners["clan"]:
-        print(listener, listener.runner, listener.type_, listener.callback, listener.tags)
+        log.info(f"{listener}{listener.runner}{listener.type_}{listener.callback}{listener.tags}")
 
 if __name__ == "__main__":
     loop.run_until_complete(bot.login(creds.bot_token))
