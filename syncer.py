@@ -32,6 +32,7 @@ class CustomClanMember(coc.ClanMember):
         self.versus_trophies = data_get("versusTrophies")
         self.donations = data_get("donations")
         self.received = data_get("donationsReceived")
+        self.league_id = data_get("league", {}).get("id", None)
 
 
 class CustomClan(coc.Clan):
@@ -409,7 +410,7 @@ async def on_clan_member_trophies_change(old_player, player):
             'player_name': player.name,
             'clan_tag': player.clan and player.clan.tag,
             'trophy_change': change,
-            'league_id': player.league.id,
+            'league_id': player.league_id,
             'time': datetime.datetime.utcnow().isoformat(),
             'season_id': SEASON_ID,
             'clan_name': player.clan and player.clan.name
