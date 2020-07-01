@@ -25,7 +25,7 @@ log.setLevel(logging.DEBUG)
 P_COUNTER = 0
 
 class CustomClanMember(coc.ClanMember):
-    def _setup(self, data):
+    def _from_data(self, data: dict) -> None:
         data_get = data.get
         self.exp_level = data_get("expLevel")
         self.trophies = data_get("trophies")
@@ -36,7 +36,7 @@ class CustomClanMember(coc.ClanMember):
 
 
 class CustomClan(coc.Clan):
-    def _setup(self, data):
+    def _from_data(self, data: dict) -> None:
         client = self._client
         self._members = {m['tag']: CustomClanMember(data=m, client=client) for m in data.get("members", [])}
         log.info("custom clan")
