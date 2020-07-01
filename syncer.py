@@ -32,14 +32,12 @@ class CustomClanMember(coc.ClanMember):
         self.versus_trophies = data_get("versusTrophies")
         self.donations = data_get("donations")
         self.received = data_get("donationsReceived")
-        log.info("custom member")
 
 
 class CustomClan(coc.Clan):
     def _from_data(self, data: dict) -> None:
         client = self._client
         self._members = {m['tag']: CustomClanMember(data=m, client=client) for m in data.get("memberList", [])}
-        log.info("custom clan")
 
 
 SEASON_ID = 13
