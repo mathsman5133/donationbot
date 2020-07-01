@@ -575,6 +575,7 @@ async def on_member_update(old_player, player):
 @coc_client.event
 @coc.ClanEvents.member_join()
 async def on_clan_member_join(member, clan):
+    log.info("received update for clan member join")
     return
     player_query = """INSERT INTO players (
                                         player_tag, 
