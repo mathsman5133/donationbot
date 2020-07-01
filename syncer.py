@@ -38,7 +38,7 @@ class CustomClanMember(coc.ClanMember):
 class CustomClan(coc.Clan):
     def _from_data(self, data: dict) -> None:
         client = self._client
-        self._members = {m['tag']: CustomClanMember(data=m, client=client) for m in data.get("members", [])}
+        self._members = {m['tag']: CustomClanMember(data=m, client=client) for m in data.get("memberList", [])}
         log.info("custom clan")
 
 
