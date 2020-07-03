@@ -3,9 +3,14 @@ import creds
 import discord
 import logging
 import math
+import sqlite3
 
 
 def setup_logging(bot):
+    db = sqlite3.connect("errors.sqlite")
+    db.execute("create table if not exists errors (script text, level integer, message text);")
+    db.commit()
+
     logging.getLogger('discord').setLevel(logging.INFO)
     logging.getLogger('discord.http').setLevel(logging.WARNING)
     logging.getLogger('discord.state').setLevel(logging.WARNING)
@@ -45,6 +50,15 @@ def setup_logging(bot):
             if "Request throttled. Sleeping for" not in send:
                 return
             print(send)
+
+    class SQLWriter(logging.NullHandler):
+        def handle(self, record):
+            db.execute("insert into errors (script, level, message) values (%s, %s, %s)", ("syncer", record.levelno, record.message, ))
+            db.commit()
+
+    sql_handler = SQLWriter()
+    sql_handler.setLevel(logging.DEBUG)
+    log.addHandler(sql_handler)
 
     class DiscordHandler(logging.NullHandler):
         def handle(self, record):
