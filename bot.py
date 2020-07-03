@@ -6,6 +6,7 @@ import discord
 import aiohttp
 import traceback
 import creds
+import sqlite3
 
 from discord.ext import commands
 
@@ -99,6 +100,8 @@ class DonationBot(commands.AutoShardedBot):
         self.after_invoke(self.after_command_invoke)
 
         self.uptime = datetime.datetime.utcnow()
+
+        self.sqlite = sqlite3.connect("errors.sqlite")
 
         for e in initial_extensions:
             try:

@@ -416,6 +416,36 @@ class Admin(commands.Cog):
         return await self.safe_send(ctx, fmt)
 
     @commands.command(hidden=True)
+    async def sqlite(self, ctx, *, query: str):
+        """Run some SQLite."""
+        # the imports are here because I imagine some people would want to use
+        # this cog as a base for their other cog, and since this one is kinda
+        # odd and unnecessary for most people, I will make it easy to remove
+        # for those people.
+        query = self.cleanup_code(query)
+
+        try:
+            start = time.perf_counter()
+            cursor = self.bot.sqlite.execute(query)
+            results = cursor.fetchall()
+            dt = (time.perf_counter() - start) * 1000.0
+        except Exception:
+            return await ctx.send(f'```py\n{traceback.format_exc()}\n```')
+
+        rows = len(results)
+        if rows == 0:
+            return await ctx.send(f'`{dt:.2f}ms: {results}`')
+
+        headers = [f"header {i}" for i in range(len(results[0]))]
+        table = TabularData()
+        table.set_columns(headers)
+        table.add_rows(list(r) for r in results)
+        render = table.render()
+
+        fmt = f'```\n{render}\n```\n*Returned {rows} rows in {dt:.2f}ms*'
+        return await self.safe_send(ctx, fmt)
+
+    @commands.command(hidden=True)
     async def sql_table(self, ctx, *, table_name: str):
         """Runs a query describing the table schema."""
         query = """SELECT column_name, data_type, column_default, is_nullable
