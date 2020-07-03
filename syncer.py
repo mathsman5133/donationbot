@@ -67,6 +67,11 @@ last_updated_batch_lock = asyncio.Lock(loop=loop)
 last_updated_tags = set()
 last_updated_counter = Counter()
 
+@coc_client.event
+@coc.ClientEvents.event_error()
+async def on_event_error(exception):
+    log.exception("event failed", exc_info=exception)
+
 
 @tasks.loop(seconds=60.0)
 async def batch_insert_loop():
