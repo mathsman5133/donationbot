@@ -8,6 +8,7 @@ import math
 import aiohttp
 import coc
 import discord
+import sentry_sdk
 
 from discord.ext import commands, tasks
 from collections import Counter
@@ -23,6 +24,8 @@ log = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 log.setLevel(logging.DEBUG)
 P_COUNTER = 0
+sentry_sdk.init(creds.SENTRY_KEY)
+
 
 class CustomClanMember(coc.ClanMember):
     def _from_data(self, data: dict) -> None:
