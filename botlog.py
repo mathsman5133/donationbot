@@ -8,7 +8,7 @@ import sqlite3
 
 def setup_logging(bot):
     db = sqlite3.connect("errors.sqlite")
-    db.execute("create table if not exists errors (script text, level integer, message text);")
+    db.execute("create table if not exists errors (script text, level integer, message text, time timestamp);")
     db.commit()
 
     logging.getLogger('discord').setLevel(logging.INFO)
@@ -53,7 +53,7 @@ def setup_logging(bot):
 
     class SQLWriter(logging.NullHandler):
         def handle(self, record):
-            db.execute("insert into errors (script, level, message) values (%s, %s, %s)", ("syncer", record.levelno, record.message, ))
+            db.execute("insert into errors (script, level, message, time) values (?, ?, ?, current_time)", ("syncer", record.levelno, record.message, ))
             db.commit()
 
     sql_handler = SQLWriter()
