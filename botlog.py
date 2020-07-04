@@ -8,15 +8,15 @@ import sqlite3
 
 def setup_logging(bot):
     db = sqlite3.connect("errors.sqlite")
-    db.execute("create table if not exists errors (script text, level integer, message text, time timestamp);")
+    db.execute("create table if not exists errors (script text, level integer, message text, time timestamp, module text);")
     db.commit()
 
-    logging.getLogger('discord').setLevel(logging.INFO)
-    logging.getLogger('discord.http').setLevel(logging.WARNING)
-    logging.getLogger('discord.state').setLevel(logging.WARNING)
-    logging.getLogger('websockets.protocol').setLevel(logging.WARNING)
-    logging.getLogger('coc').setLevel(logging.INFO)
-    logging.getLogger('coc.http').setLevel(logging.WARNING)
+    # logging.getLogger('discord').setLevel(logging.INFO)
+    # logging.getLogger('discord.http').setLevel(logging.WARNING)
+    # logging.getLogger('discord.state').setLevel(logging.WARNING)
+    # logging.getLogger('websockets.protocol').setLevel(logging.WARNING)
+    # logging.getLogger('coc').setLevel(logging.INFO)
+    # logging.getLogger('coc.http').setLevel(logging.WARNING)
 
     log = logging.getLogger()
     log.setLevel(logging.DEBUG)
@@ -53,7 +53,7 @@ def setup_logging(bot):
 
     class SQLWriter(logging.NullHandler):
         def handle(self, record):
-            db.execute("insert into errors (script, level, message, time) values (?, ?, ?, current_time)", ("syncer", record.levelno, record.message, ))
+            db.execute("insert into errors (script, level, message, time, module) values (?, ?, ?, current_time, ?)", (record.processName, record.levelno, record.message, record.module))
             db.commit()
 
     sql_handler = SQLWriter()
