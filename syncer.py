@@ -22,7 +22,6 @@ from cogs.utils.db_objects import LogConfig
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
-P_COUNTER = 0
 sentry_sdk.init(creds.SENTRY_KEY)
 
 
@@ -52,7 +51,7 @@ coc_client.clan_cls = CustomClan
 
 bot = commands.Bot(command_prefix="+", loop=loop)
 bot.session = aiohttp.ClientSession()
-setup_logging(bot)
+setup_logging(bot, test_syncer=True)
 
 board_batch_lock = asyncio.Lock(loop=loop)
 board_batch_data = {}

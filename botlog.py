@@ -6,10 +6,11 @@ import math
 import sqlite3
 
 
-def setup_logging(bot):
-    db = sqlite3.connect("errors.sqlite")
-    db.execute("create table if not exists errors (script text, level integer, message text, time timestamp, module text);")
-    db.commit()
+def setup_logging(bot, test_syncer=False):
+    if test_syncer:
+        db = sqlite3.connect("errors.sqlite")
+        db.execute("create table if not exists errors (script text, level integer, message text, time timestamp, module text);")
+        db.commit()
 
     logging.getLogger('discord').setLevel(logging.INFO)
     logging.getLogger('discord.http').setLevel(logging.WARNING)
@@ -56,9 +57,10 @@ def setup_logging(bot):
             db.execute("insert into errors (script, level, message, time, module) values (?, ?, ?, current_time, ?)", (record.processName, record.levelno, record.message, record.module))
             db.commit()
 
-    sql_handler = SQLWriter()
-    sql_handler.setLevel(logging.DEBUG)
-    log.addHandler(sql_handler)
+    if test_syncer:
+        sql_handler = SQLWriter()
+        sql_handler.setLevel(logging.DEBUG)
+        log.addHandler(sql_handler)
 
     class DiscordHandler(logging.NullHandler):
         def handle(self, record):
