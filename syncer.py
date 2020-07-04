@@ -303,7 +303,7 @@ async def on_clan_member_received(old_player, player):
     old_received = old_player.received
     new_received = player.received
 
-    log.debug(f'Received on_clan_member_received event for player {player} of clan {player.clan}')
+    log.info(f'Received on_clan_member_received event for player {player} of clan {player.clan}')
     if old_received > new_received:
         received = new_received
     else:
