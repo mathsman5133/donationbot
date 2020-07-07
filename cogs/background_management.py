@@ -242,8 +242,8 @@ class BackgroundManagement(commands.Cog):
                 {
                     'player_tag': player.tag,
                     'trophies': player.trophies,
-                    'end_fin': player.achievements_dict['Friend in Need'].value,
-                    'end_sic': player.achievements_dict['Sharing is caring'].value,
+                    'end_fin': player.get_achievement('Friend in Need').value,
+                    'end_sic': player.get_achievement('Sharing is caring').value,
                     'end_attacks': player.attack_wins,
                     'end_defenses': player.defense_wins,
                     'end_best_trophies': player.best_trophies
@@ -281,8 +281,8 @@ class BackgroundManagement(commands.Cog):
                           player.tag,
                           player.trophies,
                           event_id,
-                          player.achievements_dict['Friend in Need'].value,
-                          player.achievements_dict['Sharing is caring'].value,
+                          player.get_achievement('Friend in Need').value,
+                          player.get_achievement('Sharing is caring').value,
                           player.attack_wins,
                           player.defense_wins,
                           player.trophies,
@@ -303,8 +303,8 @@ class BackgroundManagement(commands.Cog):
                    AND event_id = $7
                 """
         await con.execute(query,
-                          player.achievements_dict['Friend in Need'].value,
-                          player.achievements_dict['Sharing is caring'].value,
+                          player.get_achievement('Friend in Need').value,
+                          player.get_achievement('Sharing is caring').value,
                           player.attack_wins,
                           player.defense_wins,
                           player.best_trophies,

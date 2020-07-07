@@ -51,8 +51,8 @@ class Add(commands.Cog):
                                  player.received,
                                  player.trophies,
                                  season_id,
-                                 player.achievements_dict['Friend in Need'].value,
-                                 player.achievements_dict['Sharing is caring'].value,
+                                 player.get_achievement('Friend in Need').value,
+                                 player.get_achievement('Sharing is caring').value,
                                  player.attack_wins,
                                  player.defense_wins,
                                  player.best_trophies
@@ -82,8 +82,8 @@ class Add(commands.Cog):
                                      player.received,
                                      player.trophies,
                                      event_id,
-                                     player.achievements_dict['Friend in Need'].value,
-                                     player.achievements_dict['Sharing is caring'].value,
+                                     player.get_achievement('Friend in Need').value,
+                                     player.get_achievement('Sharing is caring').value,
                                      player.attack_wins,
                                      player.defense_wins,
                                      player.best_trophies

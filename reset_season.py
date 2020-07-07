@@ -104,8 +104,8 @@ async def new_season_pull(number=5000):
 
         data.append({
             'player_tag': player.tag,
-            'friend_in_need': player.achievements_dict['Friend in Need'].value,
-            'sharing_is_caring': player.achievements_dict['Sharing is caring'].value,
+            'friend_in_need': player.get_achievement('Friend in Need').value,
+            'sharing_is_caring': player.get_achievement('Sharing is caring').value,
             'attacks': player.attack_wins,
             'defenses': player.defense_wins,
             'trophies': player.trophies,
