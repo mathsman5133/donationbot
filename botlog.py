@@ -45,23 +45,6 @@ def setup_logging(bot, test_syncer=False):
         adapter=discord.RequestsWebhookAdapter()
     )
 
-    class x(logging.NullHandler):
-        def handle(self, record) -> None:
-            send = fmt.format(record)
-            if "Request throttled. Sleeping for" not in send:
-                return
-            print(send)
-
-    class SQLWriter(logging.NullHandler):
-        def handle(self, record):
-            db.execute("insert into errors (script, level, message, time, module) values (?, ?, ?, current_time, ?)", (record.processName, record.levelno, record.message, record.module))
-            db.commit()
-
-    if test_syncer:
-        sql_handler = SQLWriter()
-        sql_handler.setLevel(logging.DEBUG)
-        log.addHandler(sql_handler)
-
     class DiscordHandler(logging.NullHandler):
         def handle(self, record):
             if not creds.live:
@@ -84,12 +67,9 @@ def setup_logging(bot, test_syncer=False):
         def emit(self, record):
             self.handle(record)
 
-    xy = x()
-    xy.setLevel(logging.DEBUG)
-    log.addHandler(xy)
-    # discord_hndlr = DiscordHandler()
-    # discord_hndlr.setLevel(logging.DEBUG)
-    # log.addHandler(discord_hndlr)
+    discord_hndlr = DiscordHandler()
+    discord_hndlr.setLevel(logging.DEBUG)
+    log.addHandler(discord_hndlr)
 
 
 def add_hooks(bot):
