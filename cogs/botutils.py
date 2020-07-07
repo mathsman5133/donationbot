@@ -5,7 +5,7 @@ import logging
 from discord.ext import commands
 from typing import Union, List
 
-from cogs.utils.cache import cache, Strategy
+from cogs.utils.cache import cache
 from cogs.utils.db_objects import LogConfig, BoardConfig, SlimEventConfig
 
 
