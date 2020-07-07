@@ -76,6 +76,8 @@ class DonationBoard(commands.Cog):
     @tasks.loop(seconds=60.0)
     async def update_board_loops(self):
         await self.bot.wait_until_ready()
+        if not hasattr(self, "webhooks"):
+            await asyncio.sleep(10)
 
         query = """SELECT channel_id, type FROM boards WHERE need_to_update = TRUE"""
         fetch = await self.bot.pool.fetch(query)
