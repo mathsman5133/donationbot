@@ -303,7 +303,7 @@ async def on_clan_member_received(old_player, player):
     old_received = old_player.received
     new_received = player.received
 
-    log.info(f'Received on_clan_member_received event for player {player} of clan {player.clan}')
+    log.debug(f'Received on_clan_member_received event for player {player} of clan {player.clan}')
     if old_received > new_received:
         received = new_received
     else:
@@ -580,8 +580,6 @@ async def on_member_update(old_player, player):
 @coc_client.event
 @coc.ClanEvents.member_join()
 async def on_clan_member_join(member, clan):
-    log.info("received update for clan member join")
-    return
     player_query = """INSERT INTO players (
                                         player_tag, 
                                         donations, 
@@ -726,19 +724,19 @@ if __name__ == "__main__":
     print("STARTING")
     update_clan_tags.add_exception_type(Exception, BaseException)
     update_clan_tags.start()
+
+    batch_insert_loop.add_exception_type(Exception, BaseException)
+    batch_insert_loop.start()
     #
-    # batch_insert_loop.add_exception_type(Exception, BaseException)
-    # batch_insert_loop.start()
-    # #
-    # trophylog_batch_insert_loop.add_exception_type(Exception, BaseException)
-    # trophylog_batch_insert_loop.start()
+    trophylog_batch_insert_loop.add_exception_type(Exception, BaseException)
+    trophylog_batch_insert_loop.start()
 
     # event_player_updater.add_exception_type(coc.HTTPException)
     # event_player_updater.start()
-    #
-    # last_updated_loop.add_exception_type(Exception, BaseException)
-    # last_updated_loop.start()
-    # board_insert_loop.add_exception_type(Exception, BaseException)
-    # board_insert_loop.start()
+
+    last_updated_loop.add_exception_type(Exception, BaseException)
+    last_updated_loop.start()
+    board_insert_loop.add_exception_type(Exception, BaseException)
+    board_insert_loop.start()
 
     coc_client.run_forever()
