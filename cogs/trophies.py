@@ -59,10 +59,10 @@ class Trophies(commands.Cog):
             return await ctx.send('Please claim a clan.')
         elif isinstance(arg, discord.Member):
             await ctx.invoke(self.trophies_user, user=arg)
-        elif isinstance(arg, coc.BasicPlayer):
+        elif isinstance(arg, coc.Player):
             await ctx.invoke(self.trophies_player, player=arg)
         elif isinstance(arg, list):
-            if isinstance(arg[0], coc.BasicClan):
+            if isinstance(arg[0], coc.Clan):
                 await ctx.invoke(self.trophies_clan, clans=arg)
                 
     @trophies.command(name='user')

@@ -137,7 +137,7 @@ class Add(commands.Cog):
             return await ctx.send('This clan has already been linked to the channel.')
 
         try:
-            clan = await ctx.bot.coc.get_clan(clan_tag, cache=False, update_cache=False)
+            clan = await ctx.bot.coc.get_clan(clan_tag)
         except coc.NotFound:
             return await ctx.send(f'Clan not found with `{clan_tag}` tag.')
 
@@ -185,7 +185,7 @@ class Add(commands.Cog):
         :white_check_mark: `+add player #P0LYJC8C`
         :white_check_mark: `+add player mathsman`
         """
-        if not isinstance(player, coc.SearchPlayer):
+        if not isinstance(player, coc.Player):
             player = await self.bot.coc.get_player(player.tag)
         if ctx.config:
             prompt = await ctx.prompt(f'Do you wish to add {player} to the current event?')
@@ -218,7 +218,7 @@ class Add(commands.Cog):
         """
         if not user:
             user = ctx.author
-        if not isinstance(player, coc.SearchPlayer):
+        if not isinstance(player, coc.Player):
             player = await self.bot.coc.get_player(player.tag)
 
         season_id = await self.bot.seasonconfig.get_season_id()

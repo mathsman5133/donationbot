@@ -19,7 +19,7 @@ log = logging.getLogger(__name__)
 
 class PlayerConverter(commands.Converter):
     async def convert(self, ctx, argument):
-        if isinstance(argument, coc.BasicPlayer):
+        if isinstance(argument, coc.Player):
             return argument
 
         tag = coc.utils.correct_tag(argument)
@@ -59,7 +59,7 @@ class ClanConverter(commands.Converter):
     async def convert(self, ctx, argument):
         if argument in ['all', 'guild', 'server'] or not argument:
             return await ctx.get_clans()
-        if isinstance(argument, coc.BasicClan):
+        if isinstance(argument, coc.Clan):
             return [argument]
 
         tag = coc.utils.correct_tag(argument)

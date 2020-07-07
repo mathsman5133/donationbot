@@ -1,18 +1,17 @@
 import logging
-import dbl
 import psutil
 import os
 import asyncio
 import discord
 import itertools
 
-from discord.ext import commands, tasks
+from discord.ext import commands
 from cogs.utils.paginator import Pages, EmbedPages
 from cogs.utils.formatters import CLYTable, readable_time, TabularData
 from cogs.utils.emoji_lookup import misc
 from cogs.utils.checks import requires_config
 from cogs.utils.converters import GlobalChannel
-from datetime import datetime, time
+from datetime import datetime
 from collections import Counter
 
 log = logging.getLogger(__name__)
@@ -252,23 +251,7 @@ class Info(commands.Cog, name='\u200bInfo'):
         bot.support_invite = self.support_invite
         bot.front_help_page_false = []
 
-        self.dbl_client = dbl.DBLClient(self.bot, self.bot.dbl_token)
-        self.dbl_task.start()
-
         self.process = psutil.Process()
-
-    def cog_unload(self):
-        self.dbl_task.cancel()
-
-    @tasks.loop()
-    async def dbl_task(self):
-        await asyncio.sleep(60 * 60 * 12)
-        log.info('Attempting to post server count')
-        try:
-            await self.dbl_client.post_guild_count()
-            log.info('Posted server count ({})'.format(self.dbl_client.guild_count()))
-        except Exception as e:
-            log.exception('Failed to post server count\n{}: {}'.format(type(e).__name__, e))
 
     async def bot_check(self, ctx):
         if ctx.guild is None:

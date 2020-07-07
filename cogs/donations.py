@@ -54,10 +54,10 @@ class Donations(commands.Cog):
             return await ctx.send('Please claim a clan.')
         elif isinstance(arg, discord.Member):
             await ctx.invoke(self.donations_user, user=arg)
-        elif isinstance(arg, coc.BasicPlayer):
+        elif isinstance(arg, coc.Player):
             await ctx.invoke(self.donations_player, player=arg)
         elif isinstance(arg, list):
-            if isinstance(arg[0], coc.BasicClan):
+            if isinstance(arg[0], coc.Clan):
                 await ctx.invoke(self.donations_clan, clans=arg)
 
     @donations.command(name='user')

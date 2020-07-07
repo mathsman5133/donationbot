@@ -110,10 +110,10 @@ class LastUpdated(commands.Cog):
             return await ctx.send('Please claim a clan.')
         elif isinstance(arg, discord.Member):
             await ctx.invoke(self.last_online_user, user=arg)
-        elif isinstance(arg, coc.BasicPlayer):
+        elif isinstance(arg, coc.Player):
             await ctx.invoke(self.last_online_player, player=arg)
         elif isinstance(arg, list):
-            if isinstance(arg[0], coc.BasicClan):
+            if isinstance(arg[0], coc.Clan):
                 await ctx.invoke(self.last_online_clan, clan=arg)
 
     @last_online.command(name='clan')
