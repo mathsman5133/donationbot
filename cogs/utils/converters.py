@@ -40,7 +40,7 @@ class PlayerConverter(commands.Converter):
                 raise commands.BadArgument(f'You appear to be passing '
                                            f'the clan tag/name for `{str(g)}`')
 
-            clan_members = {n.name.lower(): n for n in g.itermembers}
+            clan_members = {n.name.lower(): n for n in g.members}
             try:
                 member = clan_members[name.lower()]
                 return member

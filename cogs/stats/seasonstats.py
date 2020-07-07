@@ -33,7 +33,7 @@ class SeasonStats(commands.Cog):
 
         players = []
         for n in clans:
-            players.extend(p for p in n.itermembers)
+            players.extend(p for p in n.members)
 
         top_players = await self.bot.donationboard.get_top_players(
             players, board_type, board_config.sort_by, False, season_id=season_id
@@ -144,7 +144,7 @@ class SeasonStats(commands.Cog):
 
         players = []
         for clan in clans:
-            players.extend((n.tag for n in clan.itermembers))
+            players.extend((n.tag for n in clan.members))
 
         fetch = await ctx.db.fetch(query, players, season)
         if not fetch:
@@ -179,7 +179,7 @@ class SeasonStats(commands.Cog):
 
         players = []
         for clan in clans:
-            players.extend((n.tag for n in clan.itermembers))
+            players.extend((n.tag for n in clan.members))
 
         fetch = await ctx.db.fetch(query, players, season)
         if not fetch:
@@ -215,7 +215,7 @@ class SeasonStats(commands.Cog):
 
         players = []
         for clan in clans:
-            players.extend((n.tag for n in clan.itermembers))
+            players.extend((n.tag for n in clan.members))
 
         fetch = await ctx.db.fetch(query, players, season)
         if not fetch:
@@ -251,7 +251,7 @@ class SeasonStats(commands.Cog):
 
         players = []
         for clan in clans:
-            players.extend((n.tag for n in clan.itermembers))
+            players.extend((n.tag for n in clan.members))
 
         fetch = await ctx.db.fetch(query, players, season)
         if not fetch:

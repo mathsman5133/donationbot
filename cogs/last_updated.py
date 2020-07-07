@@ -141,7 +141,7 @@ class LastUpdated(commands.Cog):
 
         tags = []
         for n in clan:
-            tags.extend(x.tag for x in n.itermembers)
+            tags.extend(x.tag for x in n.members)
 
         fetch = await ctx.db.fetch(query, tags, await self.bot.seasonconfig.get_season_id())
 
