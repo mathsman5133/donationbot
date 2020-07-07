@@ -14,7 +14,7 @@ from discord.ext import commands
 from botlog import setup_logging, add_hooks
 from cogs.utils import context, category
 from cogs.utils.db import Table
-from cogs.utils.error_handler import error_handler, discord_event_error, clash_event_error
+from cogs.utils.error_handler import error_handler, discord_event_error
 
 sentry_sdk.init(creds.SENTRY_KEY)
 initial_extensions = [
