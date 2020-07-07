@@ -186,6 +186,9 @@ class DonationBoard(commands.Cog):
         await m.delete()
 
     async def update_board(self, channel_id=None, board_type=None, message_id=None):
+        if not self.bot.utils:
+            return
+
         if message_id:
             config = await self.bot.utils.board_config(message_id)
         else:
