@@ -1,4 +1,3 @@
-import aioredis
 import asyncio
 import datetime
 import coc
