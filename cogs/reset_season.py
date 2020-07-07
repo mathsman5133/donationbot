@@ -243,7 +243,7 @@ class SeasonConfig(commands.Cog, command_attrs=dict(hidden=True)):
                 AND players.season_id=$2"""
 
         data = []
-        async for player in self.bot.coc.get_players(player_tags, cache=False, update_cache=False):
+        async for player in self.bot.coc.get_players(player_tags):
             data.append({
                 'player_tag': player.tag,
                 'friend_in_need': player.achievements_dict['Friend in Need'].value,

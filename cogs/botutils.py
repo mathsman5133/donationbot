@@ -151,11 +151,6 @@ class Utils(commands.Cog):
         except Exception:
             return None
 
-    async def update_clan_tags(self):
-        query = "SELECT DISTINCT clan_tag FROM clans"
-        fetch = await self.bot.pool.fetch(query)
-        self.bot.coc._clan_updates = [n[0] for n in fetch]
-
     async def safe_send(self, channel_id, content=None, embed=None):
         channel = self.bot.get_channel(channel_id)
         try:

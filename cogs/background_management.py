@@ -237,7 +237,7 @@ class BackgroundManagement(commands.Cog):
 
         log.info(f'Starting loop for event updates. {len(fetch)} players to update!')
         start = time.perf_counter()
-        async for player in self.bot.coc.get_players((n[0] for n in fetch), update_cache=False):
+        async for player in self.bot.coc.get_players((n[0] for n in fetch)):
             to_insert.append(
                 {
                     'player_tag': player.tag,
@@ -670,7 +670,7 @@ class BackgroundManagement(commands.Cog):
                         p.add_lines(get_events_fmt(events_fmt))
 
                         try:
-                            clan = await self.bot.coc.get_clan(clan_tag, cache=True)
+                            clan = await self.bot.coc.get_clan(clan_tag)
                         except coc.NotFound:
                             log.exception(f'{clan_tag} not found')
                             continue

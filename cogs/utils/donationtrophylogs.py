@@ -159,7 +159,7 @@ async def get_detailed_log(coc_client, all_clan_events, raw_events: bool = False
             embeds.append((tag, events))
             continue
 
-        clan = await coc_client.get_clan(tag, update_cache=True, cache=True)
+        clan = await coc_client.get_clan(tag)
         messages = get_events_fmt(events)
 
         hex_ = bytes.hex(str.encode(clan.tag))[:20]

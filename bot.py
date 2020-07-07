@@ -45,19 +45,13 @@ else:
     key_names = 'windows'
 
 
-class COCClient(coc.Client):
-    async def on_event_error(self, event_name, exception, *args, **kwargs):
-        await clash_event_error(self.bot, event_name, exception, *args, **kwargs)
-
-
 coc_client = coc.login(
     creds.email,
     creds.password,
-    client=COCClient,
+    client=coc.EventsClient,
     key_names=key_names,
     throttle_limit=30,
     key_count=3,
-    cache=None
 )
 
 
@@ -86,7 +80,6 @@ class DonationBot(commands.AutoShardedBot):
 
         self.colour = discord.Colour.blurple()
 
-        coc_client.bot = self
         self.coc = coc_client
 
         self.client_id = creds.client_id
