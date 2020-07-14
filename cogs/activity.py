@@ -181,7 +181,7 @@ class Activity(commands.Cog):
         for item in data:
             means.append(item['counter'])
             stdev.append(item['stdev'])
-            dates.append(item['date'].strftime("%b-%d"))
+            dates.append(item['date'].strftime("%m-%d"))
 
         fig, ax = plt.subplots()
         meanst = np.array(means, dtype=np.float64)
@@ -192,7 +192,7 @@ class Activity(commands.Cog):
         ax.xaxis.set_major_formatter(mdates.DateFormatter("%b-%d"))
         ax.set_xlim(dates[0], dates[-1])
         ax.grid(True)
-        ax.format_xdata = mdates.DateFormatter('%b-%d')
+        ax.format_xdata = mdates.DateFormatter('%m-%d')
         fig.autofmt_xdate()
         ax.set_xlabel("Time")
         ax.set_ylabel("Activity")
