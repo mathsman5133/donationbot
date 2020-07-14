@@ -196,7 +196,7 @@ class Activity(commands.Cog):
         fig.autofmt_xdate()
         ax.set_xlabel("Time")
         ax.set_ylabel("Activity")
-        ax.set_title(f"Activity Change Over Time - {clan['clan_name']}")
+        ax.set_title(f"Activity Change Over Time - {clan}")
         # for i in range(5):
         #     meanst = np.array(means.ix[i].values[3:-1], dtype=np.float64)
         #     sdt = np.array(stds.ix[i].values[3:-1], dtype=np.float64)
