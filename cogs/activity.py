@@ -175,7 +175,7 @@ class Activity(commands.Cog):
 
         y_pos = numpy.arange(len(data[1]))
         bar = plt.bar(y_pos, [n[1] for n in data[1]])
-        plt.xticks(y_pos, [n['DATE'].strftime("%d/%m") for n in data[1]])
+        plt.xticks(y_pos, [n['DATE'] for n in data[1]])
         plt.xlabel("Time")
         plt.ylabel("Activity (average events)")
         plt.title(f"Activity over Time")
