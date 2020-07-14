@@ -9,7 +9,7 @@ import numpy
 from matplotlib import pyplot as plt
 from discord.ext import commands, tasks
 
-from cogs.utils.converters import ActivityBarConverter
+from cogs.utils.converters import ActivityBarConverter, ActivityLineConverter
 
 
 class Activity(commands.Cog):
@@ -158,6 +158,39 @@ class Activity(commands.Cog):
     async def before_activity_bar(self, ctx):
         await ctx.trigger_typing()
 
+    @activity.command()
+    @commands.is_owner()
+    async def line(self, ctx, *, data: ActivityLineConverter):
+        query = """SELECT COALESCE((SELECT dark_mode FROM user_config WHERE user_id = $1), False) as dark_mode"""
+        fetch = await ctx.db.fetchrow(query, ctx.author.id)
+        if fetch['dark_mode']:
+            plt.style.use('dark_background')
+        else:
+            plt.style.use('default')
+
+        if not data:
+            return await ctx.send(f"Not enough history. Please try again later.")
+
+        data: typing.Tuple[str, list] = data
+
+        y_pos = numpy.arrange(len(data[1]))
+        bar = plt.bar(y_pos, [n[1] for n in data[1]])
+        plt.xticks(y_pos, [n['date'].strftime("%d/%m") for n in data[1]])
+        plt.xlabel("Time")
+        plt.ylabel("Activity (average events)")
+        plt.title(f"Activity over Time")
+        plt.legend((bar, ), (data[0], ))
+        # plt.legend(tuple(n[0] for n in graphs), tuple(n[1] for n in graphs))
+
+        # self.add_bar_graph(ctx.channel.id, ctx.author.id, **data_to_add)
+
+        b = io.BytesIO()
+        plt.savefig(b, format='png')
+        b.seek(0)
+        await ctx.send(file=discord.File(b, f'activitygraph.png'))
+        plt.close()
+
+        ...
 
 def setup(bot):
     bot.add_cog(Activity(bot))

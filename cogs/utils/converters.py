@@ -3,6 +3,7 @@ import discord
 import logging
 import re
 import itertools
+import typing
 import time
 
 from datetime import datetime
@@ -16,8 +17,9 @@ tag_validator = re.compile("^#?[PYLQGRJCUV0289]+$")
 activity_days_re = re.compile(r"\b\d*d$")
 log = logging.getLogger(__name__)
 
+TypedPlayer = typing.NewType("Player", coc.Player)
 
-class PlayerConverter(commands.Converter):
+class PlayerConverter(commands.Converter, TypedPlayer):
     async def convert(self, ctx, argument):
         if isinstance(argument, coc.Player):
             return argument
@@ -261,8 +263,7 @@ class CustomActivityMemberConverter(commands.IDConverter):
 
         return result
 
-
-class ActivityBarConverter(commands.Converter):
+class ActivityArgumentConverter(commands.Converter):
     async def convert(self, ctx, argument):
         guild = None  # discord.Guild
         channel = None  # discord.TextChannel
@@ -305,25 +306,25 @@ class ActivityBarConverter(commands.Converter):
                 break
 
             query = """
-                    WITH cte AS (
-                        SELECT DISTINCT player_tag, player_name FROM players WHERE $2 = True OR user_id = $1  AND player_name is not null
-                    ),
-                    cte2 AS (
-                        SELECT DISTINCT player_tag, 
-                                        player_name 
-                        FROM players 
-                        INNER JOIN clans 
-                        ON clans.clan_tag = players.clan_tag 
-                        WHERE clans.guild_id = $3
-                    )
-                    SELECT player_tag, player_name FROM cte
-                    WHERE player_tag = $4 
-                    OR player_name LIKE $5
-                    UNION 
-                    SELECT player_tag, player_name FROM cte2
-                    WHERE player_tag = $4 
-                    OR player_name LIKE $5
-                    """
+                            WITH cte AS (
+                                SELECT DISTINCT player_tag, player_name FROM players WHERE $2 = True OR user_id = $1  AND player_name is not null
+                            ),
+                            cte2 AS (
+                                SELECT DISTINCT player_tag, 
+                                                player_name 
+                                FROM players 
+                                INNER JOIN clans 
+                                ON clans.clan_tag = players.clan_tag 
+                                WHERE clans.guild_id = $3
+                            )
+                            SELECT player_tag, player_name FROM cte
+                            WHERE player_tag = $4 
+                            OR player_name LIKE $5
+                            UNION 
+                            SELECT player_tag, player_name FROM cte2
+                            WHERE player_tag = $4 
+                            OR player_name LIKE $5
+                            """
             fetch = await ctx.db.fetchrow(
                 query,
                 ctx.author.id,
@@ -353,8 +354,14 @@ class ActivityBarConverter(commands.Converter):
                 "Please wait a few days for me to gather reliable data."
             )
             await ctx.db.execute("UPDATE guilds SET activity_sync = TRUE WHERE guild_id = $1", ctx.guild.id)
-            return None
+            return None, None
 
+        return guild, channel, user, clan, player, time_
+
+
+class ActivityBarConverter(commands.Converter):
+    async def convert(self, ctx, argument):
+        guild, channel, user, clan, player, time_ = await ActivityArgumentConverter().convert(ctx, argument)
         if channel or guild:
             query = """
                     WITH clan_tags AS (
@@ -491,3 +498,22 @@ class ActivityBarConverter(commands.Converter):
                 return None
 
             return [(clan['clan_name'], fetch)]
+
+
+class ActivityLineConverter(commands.Converter):
+    async def convert(self, ctx, argument):
+        guild, channel, user, clan, player, time_ = ActivityArgumentConverter().convert(ctx, argument)
+
+        if clan:
+            query = """SELECT COUNT(*), 
+                              date_trunc('DAY', hour_time) AS "DATE" 
+                       FROM activity_query 
+                       WHERE clan_tag = $1 
+                       AND activity_query.hour_time > now() - ($2 || 'days')::INTERVAL 
+                       GROUP BY "DATE" 
+                       ORDER BY "DATE"
+                    """
+            fetch = await ctx.db.fetch(query, clan['clan_tag'], str(time_ or 365))
+            if not fetch:
+                return None
+            return (clan['clan_name'], fetch)
