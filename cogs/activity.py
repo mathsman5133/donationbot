@@ -190,7 +190,7 @@ class Activity(commands.Cog):
         ax.fill_between(dates, meanst - sdt, meanst + sdt, alpha=0.3, facecolor='m')
         ax.xaxis.set_major_locator(mdates.MonthLocator())
         ax.xaxis.set_major_formatter(mdates.DateFormatter("%m"))
-        ax.set_xlim(dates[0], dates[1])
+        ax.set_xlim(dates[0].split("-")[0], dates[1].split("-")[0])
         ax.grid(True)
         ax.format_xdata = mdates.DateFormatter('%Y-%m-%d')
         fig.autofmt_xdate()
