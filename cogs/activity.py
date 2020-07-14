@@ -181,7 +181,7 @@ class Activity(commands.Cog):
         for item in data:
             means.append(item['counter'])
             stdev.append(item['stdev'])
-            dates.append(item['date'])
+            dates.append(matplotlib.dates.date2num(item['date']))
 
         fig, ax = plt.subplots()
         clrs = sns.color_palette("husl", 5)
