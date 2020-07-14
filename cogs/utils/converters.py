@@ -500,7 +500,7 @@ class ActivityBarConverter(commands.Converter):
 
 class ActivityLineConverter(commands.Converter):
     async def convert(self, ctx, argument):
-        guild, channel, user, clan, player, time_ = ActivityArgumentConverter().convert(ctx, argument)
+        guild, channel, user, clan, player, time_ = await ActivityArgumentConverter().convert(ctx, argument)
 
         if clan:
             query = """SELECT COUNT(*), 
