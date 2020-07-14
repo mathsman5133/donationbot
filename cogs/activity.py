@@ -6,9 +6,9 @@ import typing
 import discord
 import numpy as np
 import matplotlib
-import seaborn as sns
 
 from matplotlib import pyplot as plt
+from matplotlib import dates as mdates
 from discord.ext import commands, tasks
 
 from cogs.utils.converters import ActivityBarConverter, ActivityLineConverter
@@ -184,11 +184,16 @@ class Activity(commands.Cog):
             dates.append(item['date'].strftime("%m-%d"))
 
         fig, ax = plt.subplots()
-        clrs = sns.color_palette("husl", 5)
         meanst = np.array(means, dtype=np.float64)
         sdt = np.array(stdev, dtype=np.float64)
         ax.plot(dates, means, label="test", color='m')
         ax.fill_between(dates, meanst - sdt, meanst + sdt, alpha=0.3, facecolor='m')
+        ax.xaxis.set_major_locator(mdates.MonthLocator())
+        ax.xaxis.set_major_formatter(mdates.DateFormatter("%m"))
+        ax.set_xlim(dates[0], dates[1])
+        ax.grid(True)
+        ax.format_xdata = mdates.DateFormatter('%Y-%m-%d')
+        fig.autofmt_xdate()
         # for i in range(5):
         #     meanst = np.array(means.ix[i].values[3:-1], dtype=np.float64)
         #     sdt = np.array(stds.ix[i].values[3:-1], dtype=np.float64)
