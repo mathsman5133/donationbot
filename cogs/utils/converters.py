@@ -503,7 +503,7 @@ class ActivityLineConverter(commands.Converter):
         guild, channel, user, clan, player, time_ = await ActivityArgumentConverter().convert(ctx, argument)
 
         if clan:
-            query = """SELECT COUNT(*), 
+            query = """SELECT SUM(counter), 
                               date_trunc('DAY', hour_time) AS "DATE" 
                        FROM activity_query 
                        WHERE clan_tag = $1 

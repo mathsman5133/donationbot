@@ -5,6 +5,7 @@ import typing
 
 import discord
 import numpy
+import matplotlib
 
 from matplotlib import pyplot as plt
 from discord.ext import commands, tasks
@@ -173,13 +174,16 @@ class Activity(commands.Cog):
 
         data: typing.Tuple[str, list] = data
 
-        y_pos = numpy.arange(len(data[1]))
-        bar = plt.bar([n + 1 for n in y_pos], [n[1] for n in data[1]])
-        plt.xticks(y_pos, [n['DATE'] for n in data[1]])
+        # y_pos = numpy.arange(len(data[1]))
+        dates = matplotlib.dates.date2num([n['DATE'] for n in data[1]])
+        plt.plot_date(dates, [n[1] for n in data[1]], xdate=True)
+
+        # bar = plt.bar([n + 1 for n in y_pos], [n[1] for n in data[1]])
+        # plt.xticks(y_pos, [n['DATE'] for n in data[1]])
         plt.xlabel("Time")
         plt.ylabel("Activity (average events)")
         plt.title(f"Activity over Time")
-        plt.legend((bar, ), (data[0], ))
+        # plt.legend((bar, ), (data[0], ))
         # plt.legend(tuple(n[0] for n in graphs), tuple(n[1] for n in graphs))
 
         # self.add_bar_graph(ctx.channel.id, ctx.author.id, **data_to_add)
