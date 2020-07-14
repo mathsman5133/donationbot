@@ -181,7 +181,7 @@ class Activity(commands.Cog):
         for item in data:
             means.append(item['counter'])
             stdev.append(item['stdev'])
-            dates.append(item['date'].strftime("%m-%d"))
+            dates.append(item['date'].strftime("%b-%d"))
 
         fig, ax = plt.subplots()
         meanst = np.array(means, dtype=np.float64)
@@ -192,8 +192,11 @@ class Activity(commands.Cog):
         ax.xaxis.set_major_formatter(mdates.DateFormatter("%b"))
         ax.set_xlim(dates[0], dates[-1])
         ax.grid(True)
-        ax.format_xdata = mdates.DateFormatter('%Y-%m-%d')
+        ax.format_xdata = mdates.DateFormatter('%Y-%b-%d')
         fig.autofmt_xdate()
+        ax.set_xlabel("Time")
+        ax.set_ylabel("Activity")
+        ax.set_title(f"Activity Change Over Time - {clan['clan_name']}")
         # for i in range(5):
         #     meanst = np.array(means.ix[i].values[3:-1], dtype=np.float64)
         #     sdt = np.array(stds.ix[i].values[3:-1], dtype=np.float64)
