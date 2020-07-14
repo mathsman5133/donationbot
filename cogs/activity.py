@@ -174,7 +174,7 @@ class Activity(commands.Cog):
         data: typing.Tuple[str, list] = data
 
         y_pos = numpy.arange(len(data[1]))
-        bar = plt.bar(y_pos, [n[1] for n in data[1]])
+        bar = plt.bar([n + 1 for n in y_pos], [n[1] for n in data[1]])
         plt.xticks(y_pos, [n['DATE'] for n in data[1]])
         plt.xlabel("Time")
         plt.ylabel("Activity (average events)")
