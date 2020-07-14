@@ -2,7 +2,7 @@ import datetime
 import discord
 import textwrap
 import traceback
-
+import io
 
 from cogs.utils import formatters, paginator, checks
 
@@ -44,7 +44,14 @@ async def error_handler(ctx, error):
 
     exc = ''.join(
         traceback.format_exception(type(error), error, error.__traceback__, chain=False))
+
+    if len(exc) > 2000:
+        fp = io.BytesIO(exc.encode('utf-8'))
+        e.description = "Traceback was too long."
+        return await ctx.send(embed=e, file=discord.File(fp, 'traceback.txt'))
+
     e.description = f'```py\n{exc}\n```'
+
     e.timestamp = datetime.datetime.utcnow()
     await ctx.bot.error_webhook.send(embed=e)
     try:
