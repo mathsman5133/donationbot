@@ -6,6 +6,7 @@ import aiohttp
 import traceback
 import creds
 import sqlite3
+import sys
 
 import sentry_sdk
 
@@ -32,7 +33,9 @@ initial_extensions = [
     'cogs.last_updated',
     'cogs.activity'
 ]
-if creds.live:
+beta = "beta" in sys.argv
+
+if creds.live and not beta:
     initial_extensions.extend(
         (
             'cogs.background_management',
@@ -41,6 +44,10 @@ if creds.live:
     )
     command_prefix = '+'
     key_names = 'test'
+elif beta:
+    command_prefix = '+'
+    key_names = 'test'
+    creds.bot_token = creds.beta_bot_token
 else:
     command_prefix = '//'
     key_names = 'windows'
