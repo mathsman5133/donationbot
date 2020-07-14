@@ -201,7 +201,6 @@ class Activity(commands.Cog):
         ax.grid(True)
         # ax.format_xdata = mdates.DateFormatter('%Y-%m-%d')
         ax.legend()
-        ax.set_xlabel("Time")
         ax.set_ylabel("Activity")
         ax.set_title(f"Activity Change Over Time")
         #fig.autofmt_xdate()
