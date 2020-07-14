@@ -176,13 +176,13 @@ class Activity(commands.Cog):
 
         # y_pos = numpy.arange(len(data[1]))
         dates = matplotlib.dates.date2num([n['DATE'] for n in data[1]])
-        plt.plot_date(dates, [n['counter'] for n in data[1]], xdate=True)
+        plt.plot_date(dates, [n['counter'] for n in data[1]], linestyle="solid")
 
         # bar = plt.bar([n + 1 for n in y_pos], [n[1] for n in data[1]])
         # plt.xticks(y_pos, [n['DATE'] for n in data[1]])
         plt.xlabel("Time")
         plt.ylabel("Activity (average events)")
-        plt.title(f"Activity over Time")
+        plt.title("Activity over Time")
         # plt.legend((bar, ), (data[0], ))
         # plt.legend(tuple(n[0] for n in graphs), tuple(n[1] for n in graphs))
 
