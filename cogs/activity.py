@@ -188,7 +188,7 @@ class Activity(commands.Cog):
         meanst = np.array(means, dtype=np.float64)
         sdt = np.array(stdev, dtype=np.float64)
         ax.plot(dates, means, label="test", color='m')
-        ax.fill_between(means, meanst - sdt, meanst + sdt, alpha=0.3, facecolor='m')
+        ax.fill_between(dates, meanst - sdt, meanst + sdt, alpha=0.3, facecolor='m')
         # for i in range(5):
         #     meanst = np.array(means.ix[i].values[3:-1], dtype=np.float64)
         #     sdt = np.array(stds.ix[i].values[3:-1], dtype=np.float64)
