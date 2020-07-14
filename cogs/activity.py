@@ -181,13 +181,14 @@ class Activity(commands.Cog):
         for item in data:
             means.append(item['counter'])
             stdev.append(item['stdev'])
-            dates.append(item['date'].strftime("%m-%d"))
+            dates.append(item['date'])
 
         fig, ax = plt.subplots()
         meanst = np.array(means, dtype=np.float64)
         sdt = np.array(stdev, dtype=np.float64)
         ax.plot(dates, means, label=clan, color='m')
         ax.fill_between(dates, meanst - sdt, meanst + sdt, alpha=0.3, facecolor='m')
+
         locator = mdates.AutoDateLocator(minticks=3, maxticks=10)
         formatter = mdates.ConciseDateFormatter(locator)
         ax.xaxis.set_major_locator(locator)
@@ -202,7 +203,7 @@ class Activity(commands.Cog):
         ax.legend()
         ax.set_xlabel("Time")
         ax.set_ylabel("Activity")
-        ax.set_title(f"Activity Change Over Time - {clan}")
+        ax.set_title(f"Activity Change Over Time")
         #fig.autofmt_xdate()
         # for i in range(5):
         #     meanst = np.array(means.ix[i].values[3:-1], dtype=np.float64)
