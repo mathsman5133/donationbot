@@ -41,7 +41,7 @@ class Activity(commands.Cog):
     def get_line_graph(self, channel_id, author_id):
         try:
             data = self.graphs[("line", channel_id, author_id)]
-            return data
+            return data[0]
         except KeyError:
             return []
 
