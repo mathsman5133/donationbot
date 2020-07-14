@@ -173,7 +173,7 @@ class Activity(commands.Cog):
 
         data: typing.Tuple[str, list] = data
 
-        y_pos = numpy.arrange(len(data[1]))
+        y_pos = numpy.arange(len(data[1]))
         bar = plt.bar(y_pos, [n[1] for n in data[1]])
         plt.xticks(y_pos, [n['date'].strftime("%d/%m") for n in data[1]])
         plt.xlabel("Time")
