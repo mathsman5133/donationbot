@@ -503,14 +503,9 @@ class ActivityLineConverter(commands.Converter):
         guild, channel, user, clan, player, time_ = await ActivityArgumentConverter().convert(ctx, argument)
 
         if clan:
-            query = """SELECT SUM(counter) AS "counter", 
-                              date_trunc('DAY', hour_time) AS "DATE" 
-                       FROM activity_query 
-                       WHERE clan_tag = $1 
-                       AND activity_query.hour_time > now() - ($2 || 'days')::INTERVAL 
-                       GROUP BY "DATE" 
-                       ORDER BY "DATE"
-                    """
+            query = """with cte as (select sum(counter)as counter, date_trunc('day', hour_time) as date from activity_query where clan_tag = $1 group by date order by date asc),
+cte2 as (select stddev(counter) as stdev, avg(counter) as avg, date_trunc('week', date) as week from cte group by week)
+select cte.date, counter, stdev from cte inner join cte2 on date_trunc('week', cte.date) = cte2.week where counter between avg - stdev and avg + stdev                    """
             fetch = await ctx.db.fetch(query, clan['clan_tag'], str(time_ or 365))
             if not fetch:
                 return None

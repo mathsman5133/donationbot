@@ -4,8 +4,9 @@ import itertools
 import typing
 
 import discord
-import numpy
+import numpy as np
 import matplotlib
+import seaborn as sns
 
 from matplotlib import pyplot as plt
 from discord.ext import commands, tasks
@@ -115,7 +116,7 @@ class Activity(commands.Cog):
             width = 0.8 / len(data_to_add)
             return width, width * index
 
-        y_pos = numpy.arange(24)
+        y_pos = np.arange(24)
         graphs = []
 
         for i, (name, data) in enumerate(data_to_add.items()):
@@ -172,19 +173,42 @@ class Activity(commands.Cog):
         if not data:
             return await ctx.send(f"Not enough history. Please try again later.")
 
-        data: typing.Tuple[str, list] = data
+        clan, data = data
 
-        # y_pos = numpy.arange(len(data[1]))
-        dates = matplotlib.dates.date2num([n['DATE'] for n in data[1]])
-        plt.plot_date(dates, [n['counter'] for n in data[1]], linestyle="solid")
+        means = []
+        stdev = []
+        dates = []
+        for item in data:
+            means.append(item['counter'])
+            stdev.append(item['stdev'])
+            dates.append(item['date'])
 
-        # bar = plt.bar([n + 1 for n in y_pos], [n[1] for n in data[1]])
-        # plt.xticks(y_pos, [n['DATE'] for n in data[1]])
-        plt.xlabel("Time")
-        plt.ylabel("Activity (average events)")
-        plt.title("Activity over Time")
-        # plt.legend((bar, ), (data[0], ))
-        # plt.legend(tuple(n[0] for n in graphs), tuple(n[1] for n in graphs))
+        fig, ax = plt.subplots()
+        clrs = sns.color_palette("husl", 5)
+        with sns.axes_style("darkgrid"):
+            meanst = np.array(means, dtype=np.float64)
+            sdt = np.array(stdev, dtype=np.float64)
+            ax.plot(dates, means, label="test", color='m')
+            ax.fill_between(means, meanst - sdt, meanst + sdt, alpha=0.3, facecolor='m')
+            # for i in range(5):
+            #     meanst = np.array(means.ix[i].values[3:-1], dtype=np.float64)
+            #     sdt = np.array(stds.ix[i].values[3:-1], dtype=np.float64)
+            #     ax.plot(epochs, meanst, label=means.ix[i]["label"], c=clrs[i])
+            #     ax.fill_between(epochs, meanst - sdt, meanst + sdt, alpha=0.3, facecolor=clrs[i])
+            ax.legend()
+            # ax.set_yscale('log')
+
+        # # y_pos = numpy.arange(len(data[1]))
+        # dates = matplotlib.dates.date2num([n['DATE'] for n in data[1]])
+        # plt.plot_date(dates, [n['counter'] for n in data[1]], linestyle="solid")
+        #
+        # # bar = plt.bar([n + 1 for n in y_pos], [n[1] for n in data[1]])
+        # # plt.xticks(y_pos, [n['DATE'] for n in data[1]])
+        # plt.xlabel("Time")
+        # plt.ylabel("Activity (average events)")
+        # plt.title("Activity over Time")
+        # # plt.legend((bar, ), (data[0], ))
+        # # plt.legend(tuple(n[0] for n in graphs), tuple(n[1] for n in graphs))
 
         # self.add_bar_graph(ctx.channel.id, ctx.author.id, **data_to_add)
 
