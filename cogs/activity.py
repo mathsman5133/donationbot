@@ -189,7 +189,7 @@ class Activity(commands.Cog):
         existing = self.get_line_graph(ctx.channel.id, ctx.author.id)
         data.extend(existing)
 
-        colours = sns.palplot(sns.color_palette("hls", len(data)))
+        colours = sns.color_palette("hls", len(data))
 
         for i, entry in enumerate(data):
             name, record = entry
