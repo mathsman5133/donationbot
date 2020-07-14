@@ -506,7 +506,7 @@ class ActivityLineConverter(commands.Converter):
             query = """with cte as (select sum(counter)as counter, date_trunc('day', hour_time) as date from activity_query where clan_tag = $1 group by date order by date asc),
 cte2 as (select stddev(counter) as stdev, avg(counter) as avg, date_trunc('week', date) as week from cte group by week)
 select cte.date, counter, stdev from cte inner join cte2 on date_trunc('week', cte.date) = cte2.week where counter between avg - stdev and avg + stdev                    """
-            fetch = await ctx.db.fetch(query, clan['clan_tag'], str(time_ or 365))
+            fetch = await ctx.db.fetch(query, clan['clan_tag'])
             if not fetch:
                 return None
             return (clan['clan_name'], fetch)
