@@ -516,7 +516,7 @@ class ActivityLineConverter(commands.Converter):
                         FROM activity_query 
                         INNER JOIN clan_tags
                         ON clan_tags.clan_tag = activity_query.clan_tag
-                        WHERE date < 
+                        AND hour_time < TIMESTAMP 'today'
                         AND activity_query.hour_time > now() - ($2 ||' days')::interval
                         GROUP BY date, clan_tags.clan_name 
                         ORDER BY date
@@ -560,7 +560,7 @@ class ActivityLineConverter(commands.Converter):
                         FROM activity_query 
                         INNER JOIN player_tags
                         ON player_tags.player_tag = activity_query.player_tag
-                        WHERE date < 
+                        AND hour_time < TIMESTAMP 'today'
                         AND activity_query.hour_time > now() - ($2 ||' days')::interval
                         GROUP BY date, player_tags.player_name 
                         ORDER BY date
@@ -597,7 +597,7 @@ class ActivityLineConverter(commands.Converter):
                                    date_trunc('day', hour_time) AS date 
                             FROM activity_query 
                             WHERE player_tag = $1 
-                            AND date < 
+                            AND hour_time < TIMESTAMP 'today'
                             AND activity_query.hour_time > now() - ($2 ||' days')::interval
                             GROUP BY date 
                             ORDER BY date
@@ -624,10 +624,10 @@ class ActivityLineConverter(commands.Converter):
         if clan:
             query = """WITH cte AS (
                             SELECT SUM(counter) AS counter, 
-                                   date_trunc('day', hour_time) AS date 
+                                   date_trunc('day', hour_time) AS "date" 
                             FROM activity_query 
                             WHERE clan_tag = $1 
-                            AND date < 
+                            AND hour_time < TIMESTAMP 'today'
                             AND activity_query.hour_time > now() - ($2 ||' days')::interval
                             GROUP BY date 
                             ORDER BY date
