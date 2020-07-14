@@ -176,7 +176,7 @@ class Activity(commands.Cog):
 
         # y_pos = numpy.arange(len(data[1]))
         dates = matplotlib.dates.date2num([n['DATE'] for n in data[1]])
-        plt.plot_date(dates, [n[1] for n in data[1]], xdate=True)
+        plt.plot_date(dates, [n['counter'] for n in data[1]], xdate=True)
 
         # bar = plt.bar([n + 1 for n in y_pos], [n[1] for n in data[1]])
         # plt.xticks(y_pos, [n['DATE'] for n in data[1]])
