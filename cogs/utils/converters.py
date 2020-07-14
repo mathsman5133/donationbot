@@ -17,9 +17,7 @@ tag_validator = re.compile("^#?[PYLQGRJCUV0289]+$")
 activity_days_re = re.compile(r"\b\d*d$")
 log = logging.getLogger(__name__)
 
-TypedPlayer = typing.NewType("Player", coc.Player)
-
-class PlayerConverter(commands.Converter, TypedPlayer):
+class PlayerConverter(commands.Converter):
     async def convert(self, ctx, argument):
         if isinstance(argument, coc.Player):
             return argument
