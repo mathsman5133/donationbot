@@ -181,22 +181,20 @@ class Activity(commands.Cog):
         for item in data:
             means.append(item['counter'])
             stdev.append(item['stdev'])
-            dates.append(matplotlib.dates.date2num(item['date']))
+            dates.append(item['date'].strftime("%m-%d"))
 
         fig, ax = plt.subplots()
         clrs = sns.color_palette("husl", 5)
-        with sns.axes_style("darkgrid"):
-            meanst = np.array(means, dtype=np.float64)
-            sdt = np.array(stdev, dtype=np.float64)
-            ax.plot(dates, means, label="test", color='m')
-            ax.fill_between(means, meanst - sdt, meanst + sdt, alpha=0.3, facecolor='m')
-            # for i in range(5):
-            #     meanst = np.array(means.ix[i].values[3:-1], dtype=np.float64)
-            #     sdt = np.array(stds.ix[i].values[3:-1], dtype=np.float64)
-            #     ax.plot(epochs, meanst, label=means.ix[i]["label"], c=clrs[i])
-            #     ax.fill_between(epochs, meanst - sdt, meanst + sdt, alpha=0.3, facecolor=clrs[i])
-            ax.legend()
-            # ax.set_yscale('log')
+        meanst = np.array(means, dtype=np.float64)
+        sdt = np.array(stdev, dtype=np.float64)
+        ax.plot(dates, means, label="test", color='m')
+        ax.fill_between(means, meanst - sdt, meanst + sdt, alpha=0.3, facecolor='m')
+        # for i in range(5):
+        #     meanst = np.array(means.ix[i].values[3:-1], dtype=np.float64)
+        #     sdt = np.array(stds.ix[i].values[3:-1], dtype=np.float64)
+        #     ax.plot(epochs, meanst, label=means.ix[i]["label"], c=clrs[i])
+        #     ax.fill_between(epochs, meanst - sdt, meanst + sdt, alpha=0.3, facecolor=clrs[i])
+        # ax.set_yscale('log')
 
         # # y_pos = numpy.arange(len(data[1]))
         # dates = matplotlib.dates.date2num([n['DATE'] for n in data[1]])
