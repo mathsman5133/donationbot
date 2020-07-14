@@ -191,6 +191,8 @@ class Activity(commands.Cog):
 
         colours = sns.color_palette("hls", len(data))
 
+        fig, ax = plt.subplots()
+
         for i, entry in enumerate(data):
             name, record = entry
             means = []
@@ -201,7 +203,6 @@ class Activity(commands.Cog):
                 stdev.append(item['stdev'])
                 dates.append(item['date'])
 
-            fig, ax = plt.subplots()
             meanst = np.array(means, dtype=np.float64)
             sdt = np.array(stdev, dtype=np.float64)
             ax.plot(dates, means, label=name, color=colours[i])
