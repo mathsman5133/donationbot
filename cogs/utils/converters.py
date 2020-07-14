@@ -502,11 +502,151 @@ class ActivityLineConverter(commands.Converter):
     async def convert(self, ctx, argument):
         guild, channel, user, clan, player, time_ = await ActivityArgumentConverter().convert(ctx, argument)
 
-        if clan:
-            query = """with cte as (select sum(counter)as counter, date_trunc('day', hour_time) as date from activity_query where clan_tag = $1 group by date order by date asc),
-cte2 as (select stddev(counter) as stdev, avg(counter) as avg, date_trunc('week', date) as week from cte group by week)
-select cte.date, counter, stdev from cte inner join cte2 on date_trunc('week', cte.date) = cte2.week where counter between avg - stdev and avg + stdev order by date asc              """
-            fetch = await ctx.db.fetch(query, clan['clan_tag'])
+        if channel or guild:
+            query = """
+                    WITH clan_tags AS (
+                        SELECT DISTINCT clan_tag, clan_name 
+                        FROM clans 
+                        WHERE channel_id = $1 OR guild_id = $1
+                    ),
+                    cte AS (
+                        SELECT SUM(counter) AS counter, 
+                               date_trunc('day', hour_time) AS date,
+                               clan_tags.clan_name
+                        FROM activity_query 
+                        INNER JOIN clan_tags
+                        ON clan_tags.clan_tag = activity_query.clan_tag
+                        WHERE date < 
+                        AND activity_query.hour_time > now() - ($2 ||' days')::interval
+                        GROUP BY date, clan_tags.clan_name 
+                        ORDER BY date
+                    ),
+                    cte2 AS (
+                        SELECT stddev(counter) AS stdev, 
+                               avg(counter) as avg, 
+                               date_trunc('week', date) as week,
+                               clan_name
+                        FROM cte 
+                        GROUP BY week, clan_name
+                    )
+                    SELECT cte.date, counter, stdev, cte.clan_name 
+                    FROM cte 
+                    INNER JOIN cte2 
+                    ON date_trunc('week', cte.date) = cte2.week 
+                    WHERE counter BETWEEN avg - stdev AND avg + stdev 
+                    GROUP BY cte.clan_name
+                    ORDER BY date
+                    """
+
+            fetch = await ctx.db.fetch(query, channel and channel.id or guild.id, str(time_ or 365))
             if not fetch:
                 return None
-            return (clan['clan_name'], fetch)
+
+            to_return = []
+            for clan_name, records in itertools.groupby(fetch, key=lambda r: r['clan_name']):
+                to_return.append((clan_name, list(records)))
+
+            return to_return
+
+        if user:
+            query = """
+                    WITH player_tags AS (
+                        SELECT DISTINCT player_tag, player_name FROM players WHERE user_id = $1 AND player_name IS NOT null
+                    ),
+                    cte AS (
+                        SELECT SUM(counter) AS counter, 
+                               date_trunc('day', hour_time) AS date,
+                               player_tags.player_name
+                        FROM activity_query 
+                        INNER JOIN player_tags
+                        ON player_tags.player_tag = activity_query.player_tag
+                        WHERE date < 
+                        AND activity_query.hour_time > now() - ($2 ||' days')::interval
+                        GROUP BY date, player_tags.player_name 
+                        ORDER BY date
+                    ),
+                    cte2 AS (
+                        SELECT stddev(counter) AS stdev, 
+                               avg(counter) as avg, 
+                               date_trunc('week', date) as week,
+                               player_name
+                        FROM cte 
+                        GROUP BY week, player_name
+                    )
+                    SELECT cte.date, counter, stdev, cte.player_name 
+                    FROM cte 
+                    INNER JOIN cte2 
+                    ON date_trunc('week', cte.date) = cte2.week 
+                    WHERE counter BETWEEN avg - stdev AND avg + stdev 
+                    GROUP BY cte.player_name
+                    ORDER BY date
+                    """
+            fetch = await ctx.db.fetch(query, user.id, str(time_ or 365))
+            if not fetch:
+                return None
+
+            to_return = []
+            for player_tag, records in itertools.groupby(fetch, key=lambda r: r['player_name']):
+                to_return.append((player_tag, list(records)))
+
+            return to_return
+
+        if player:
+            query = """WITH cte AS (
+                            SELECT SUM(counter) AS counter, 
+                                   date_trunc('day', hour_time) AS date 
+                            FROM activity_query 
+                            WHERE player_tag = $1 
+                            AND date < 
+                            AND activity_query.hour_time > now() - ($2 ||' days')::interval
+                            GROUP BY date 
+                            ORDER BY date
+                        ),
+                        cte2 AS (
+                            SELECT stddev(counter) AS stdev, 
+                                   avg(counter) as avg, 
+                                   date_trunc('week', date) as week 
+                            FROM cte 
+                            GROUP BY week
+                        )
+                        SELECT cte.date, counter, stdev 
+                        FROM cte 
+                        INNER JOIN cte2 
+                        ON date_trunc('week', cte.date) = cte2.week 
+                        WHERE counter BETWEEN avg - stdev AND avg + stdev 
+                        ORDER BY date
+                    """
+            fetch = await ctx.db.fetch(query, player['player_tag'], str(time_ or 365))
+            if not fetch:
+                return None
+            return [(player['player_name'], fetch)]
+
+        if clan:
+            query = """WITH cte AS (
+                            SELECT SUM(counter) AS counter, 
+                                   date_trunc('day', hour_time) AS date 
+                            FROM activity_query 
+                            WHERE clan_tag = $1 
+                            AND date < 
+                            AND activity_query.hour_time > now() - ($2 ||' days')::interval
+                            GROUP BY date 
+                            ORDER BY date
+                        ),
+                        cte2 AS (
+                            SELECT stddev(counter) AS stdev, 
+                                   avg(counter) as avg, 
+                                   date_trunc('week', date) as week 
+                            FROM cte 
+                            GROUP BY week
+                        )
+                        SELECT cte.date, counter, stdev 
+                        FROM cte 
+                        INNER JOIN cte2 
+                        ON date_trunc('week', cte.date) = cte2.week 
+                        WHERE counter BETWEEN avg - stdev AND avg + stdev 
+                        ORDER BY date
+                    """
+            fetch = await ctx.db.fetch(query, clan['clan_tag'], str(time_ or 365))
+            if not fetch:
+                return None
+            return [(clan['clan_name'], fetch)]

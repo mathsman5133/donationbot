@@ -5,7 +5,7 @@ import typing
 
 import discord
 import numpy as np
-import matplotlib
+import seaborn as sns
 
 from matplotlib import pyplot as plt
 from matplotlib import dates as mdates
@@ -24,15 +24,26 @@ class Activity(commands.Cog):
         self.clean_graph_cache.cancel()
 
     def add_bar_graph(self, channel_id, author_id, **data):
-        key = (channel_id, author_id)
+        key = ("bar", channel_id, author_id)
         self.graphs[key] = (data, datetime.datetime.now())
 
     def get_bar_graph(self, channel_id, author_id):
         try:
-            data = self.graphs[(channel_id, author_id)]
+            data = self.graphs[("bar", channel_id, author_id)]
             return data[0]
         except KeyError:
             return {}
+
+    def add_line_graph(self, channel_id, author, data):
+        key = ("line", channel_id, author)
+        self.graphs[key] = (data, datetime.datetime.utcnow())
+
+    def get_line_graph(self, channel_id, author_id):
+        try:
+            data = self.graphs[("line", channel_id, author_id)]
+            return data
+        except KeyError:
+            return []
 
     @tasks.loop(minutes=1)
     async def clean_graph_cache(self):
@@ -151,7 +162,7 @@ class Activity(commands.Cog):
         :information_source: `+activity bar clear`
         """
         try:
-            del self.graphs[(ctx.channel.id, ctx.author.id)]
+            del self.graphs[("bar", ctx.channel.id, ctx.author.id)]
         except KeyError:
             pass
         await ctx.send(":ok_hand: Graph has been reset.")
@@ -160,9 +171,9 @@ class Activity(commands.Cog):
     async def before_activity_bar(self, ctx):
         await ctx.trigger_typing()
 
-    @activity.command()
+    @activity.group(name="line", invoke_without_command=True)
     @commands.is_owner()
-    async def line(self, ctx, *, data: ActivityLineConverter):
+    async def activity_line(self, ctx, *, data: ActivityLineConverter):
         query = """SELECT COALESCE((SELECT dark_mode FROM user_config WHERE user_id = $1), False) as dark_mode"""
         fetch = await ctx.db.fetchrow(query, ctx.author.id)
         if fetch['dark_mode']:
@@ -173,57 +184,41 @@ class Activity(commands.Cog):
         if not data:
             return await ctx.send(f"Not enough history. Please try again later.")
 
-        clan, data = data
+        data: typing.List[typing.Tuple[str, typing.Dict]] = data
 
-        means = []
-        stdev = []
-        dates = []
-        for item in data:
-            means.append(item['counter'])
-            stdev.append(item['stdev'])
-            dates.append(item['date'])
+        existing = self.get_line_graph(ctx.channel.id, ctx.author.id)
+        data.extend(existing)
 
-        fig, ax = plt.subplots()
-        meanst = np.array(means, dtype=np.float64)
-        sdt = np.array(stdev, dtype=np.float64)
-        ax.plot(dates, means, label=clan, color='m')
-        ax.fill_between(dates, meanst - sdt, meanst + sdt, alpha=0.3, facecolor='m')
+        colours = sns.palplot(sns.color_palette("hls", len(data)))
 
-        locator = mdates.AutoDateLocator(minticks=3, maxticks=10)
-        formatter = mdates.ConciseDateFormatter(locator)
-        ax.xaxis.set_major_locator(locator)
-        ax.xaxis.set_major_formatter(formatter)
+        for i, entry in enumerate(data):
+            name, record = entry
+            means = []
+            stdev = []
+            dates = []
+            for item in record:
+                means.append(item['counter'])
+                stdev.append(item['stdev'])
+                dates.append(item['date'])
 
-        # ax.xaxis.set_major_locator(mdates.MonthLocator())
-        # ax.xaxis.set_minor_locator(mdates.WeekdayLocator())
-        # ax.xaxis.set_major_formatter(mdates.DateFormatter("%m"))
-        ax.set_xlim(dates[0], dates[-1])
-        ax.grid(True)
-        # ax.format_xdata = mdates.DateFormatter('%Y-%m-%d')
-        ax.legend()
-        ax.set_ylabel("Activity")
-        ax.set_title(f"Activity Change Over Time")
-        #fig.autofmt_xdate()
-        # for i in range(5):
-        #     meanst = np.array(means.ix[i].values[3:-1], dtype=np.float64)
-        #     sdt = np.array(stds.ix[i].values[3:-1], dtype=np.float64)
-        #     ax.plot(epochs, meanst, label=means.ix[i]["label"], c=clrs[i])
-        #     ax.fill_between(epochs, meanst - sdt, meanst + sdt, alpha=0.3, facecolor=clrs[i])
-        # ax.set_yscale('log')
+            fig, ax = plt.subplots()
+            meanst = np.array(means, dtype=np.float64)
+            sdt = np.array(stdev, dtype=np.float64)
+            ax.plot(dates, means, label=name, color=colours[i])
+            ax.fill_between(dates, meanst - sdt, meanst + sdt, alpha=0.3, facecolor=colours[i])
 
-        # # y_pos = numpy.arange(len(data[1]))
-        # dates = matplotlib.dates.date2num([n['DATE'] for n in data[1]])
-        # plt.plot_date(dates, [n['counter'] for n in data[1]], linestyle="solid")
-        #
-        # # bar = plt.bar([n + 1 for n in y_pos], [n[1] for n in data[1]])
-        # # plt.xticks(y_pos, [n['DATE'] for n in data[1]])
-        # plt.xlabel("Time")
-        # plt.ylabel("Activity (average events)")
-        # plt.title("Activity over Time")
-        # # plt.legend((bar, ), (data[0], ))
-        # # plt.legend(tuple(n[0] for n in graphs), tuple(n[1] for n in graphs))
+            locator = mdates.AutoDateLocator(minticks=3, maxticks=10)
+            formatter = mdates.ConciseDateFormatter(locator)
+            ax.xaxis.set_major_locator(locator)
+            ax.xaxis.set_major_formatter(formatter)
 
-        # self.add_bar_graph(ctx.channel.id, ctx.author.id, **data_to_add)
+            ax.set_xlim(dates[0], dates[-1])
+            ax.grid(True)
+            ax.legend()
+            ax.set_ylabel("Activity")
+            ax.set_title(f"Activity Change Over Time")
+
+        self.add_line_graph(ctx.channel.id, ctx.author.id, data)
 
         b = io.BytesIO()
         plt.savefig(b, format='png')
@@ -231,7 +226,22 @@ class Activity(commands.Cog):
         await ctx.send(file=discord.File(b, f'activitygraph.png'))
         plt.close()
 
-        ...
+    @activity_line.command(name='clear')
+    async def activity_line_clear(self, ctx):
+        """Clear your activity line graph of previous results.
+
+        **Format**
+        :information_source: `+activity line clear`
+
+        **Example**
+        :information_source: `+activity line clear`
+        """
+        try:
+            del self.graphs[("line", ctx.channel.id, ctx.author.id)]
+        except KeyError:
+            pass
+        await ctx.send(":ok_hand: Graph has been reset.")
+
 
 def setup(bot):
     bot.add_cog(Activity(bot))
