@@ -529,7 +529,7 @@ class ActivityLineConverter(commands.Converter):
                         FROM cte 
                         GROUP BY week, clan_name
                     )
-                    SELECT cte.date, counter, stdev, cte.clan_name 
+                    SELECT cte.date, min(counter) as counter, min(stdev) as stdev, cte.clan_name 
                     FROM cte 
                     INNER JOIN cte2 
                     ON date_trunc('week', cte.date) = cte2.week 
@@ -573,7 +573,7 @@ class ActivityLineConverter(commands.Converter):
                         FROM cte 
                         GROUP BY week, player_name
                     )
-                    SELECT cte.date, counter, stdev, cte.player_name 
+                    SELECT cte.date, min(counter) as counter, min(stdev) as stdev, cte.player_name 
                     FROM cte 
                     INNER JOIN cte2 
                     ON date_trunc('week', cte.date) = cte2.week 
