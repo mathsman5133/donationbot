@@ -545,6 +545,7 @@ class ActivityLineConverter(commands.Converter):
             for clan_name, records in itertools.groupby(fetch, key=lambda r: r['clan_name']):
                 to_return.append((clan_name, list(records)))
 
+            print('returning')
             return to_return
 
         if user:
@@ -587,6 +588,7 @@ class ActivityLineConverter(commands.Converter):
             for player_tag, records in itertools.groupby(fetch, key=lambda r: r['player_name']):
                 to_return.append((player_tag, list(records)))
 
+            print('returning')
             return to_return
 
         if player:

@@ -167,10 +167,6 @@ class Activity(commands.Cog):
             pass
         await ctx.send(":ok_hand: Graph has been reset.")
 
-    @activity_bar.before_invoke
-    async def before_activity_bar(self, ctx):
-        await ctx.trigger_typing()
-
     @activity.group(name="line", invoke_without_command=True)
     @commands.is_owner()
     async def activity_line(self, ctx, *, data: ActivityLineConverter):
@@ -187,7 +183,7 @@ class Activity(commands.Cog):
         data: typing.List[typing.Tuple[str, typing.Dict]] = data
 
         existing = self.get_line_graph(ctx.channel.id, ctx.author.id)
-        data.extend(existing)
+        data = [*existing, *data]
 
         colours = sns.color_palette("hls", len(data))
 
@@ -208,7 +204,8 @@ class Activity(commands.Cog):
             meanst = np.array(means, dtype=np.float64)
             sdt = np.array(stdev, dtype=np.float64)
             ax.plot(dates, means, label=name, color=colours[i])
-            ax.fill_between(dates, meanst - sdt, meanst + sdt, alpha=0.3, facecolor=colours[i])
+            lower = max(0, meanst - sdt)
+            ax.fill_between(dates, int(lower), meanst + sdt, alpha=0.3, facecolor=colours[i])
 
             locator = mdates.AutoDateLocator(minticks=3, maxticks=10)
             formatter = mdates.ConciseDateFormatter(locator)
@@ -220,11 +217,11 @@ class Activity(commands.Cog):
             if not max_date or dates[-1] > max_date:
                 max_date = dates[-1]
 
-            ax.grid(True)
             ax.legend()
-            ax.set_ylabel("Activity")
-            ax.set_title("Activity Change Over Time")
 
+        ax.grid(True)
+        ax.set_ylabel("Activity")
+        ax.set_title("Activity Change Over Time")
         ax.set_xlim(min_date, max_date)
         self.add_line_graph(ctx.channel.id, ctx.author.id, data)
 
@@ -249,6 +246,10 @@ class Activity(commands.Cog):
         except KeyError:
             pass
         await ctx.send(":ok_hand: Graph has been reset.")
+
+    @activity.before_invoke
+    async def before_activity(self, ctx):
+        await ctx.trigger_typing()
 
 
 def setup(bot):
