@@ -192,6 +192,8 @@ class Activity(commands.Cog):
         colours = sns.color_palette("hls", len(data))
 
         fig, ax = plt.subplots()
+        min_date = None
+        max_date = None
 
         for i, entry in enumerate(data):
             name, record = entry
@@ -206,19 +208,24 @@ class Activity(commands.Cog):
             meanst = np.array(means, dtype=np.float64)
             sdt = np.array(stdev, dtype=np.float64)
             ax.plot(dates, means, label=name, color=colours[i])
-            ax.fill_between(dates, max(meanst - sdt, 0), meanst + sdt, alpha=0.3, facecolor=colours[i])
+            ax.fill_between(dates, meanst - sdt, meanst + sdt, alpha=0.3, facecolor=colours[i])
 
             locator = mdates.AutoDateLocator(minticks=3, maxticks=10)
             formatter = mdates.ConciseDateFormatter(locator)
             ax.xaxis.set_major_locator(locator)
             ax.xaxis.set_major_formatter(formatter)
 
-            ax.set_xlim(dates[0], dates[-1])
+            if not min_date or dates[0] < min_date:
+                min_date = dates[0]
+            if not max_date or dates[-1] > max_date:
+                max_date = dates[-1]
+
             ax.grid(True)
             ax.legend()
             ax.set_ylabel("Activity")
             ax.set_title("Activity Change Over Time")
 
+        ax.set_xlim(min_date, max_date)
         self.add_line_graph(ctx.channel.id, ctx.author.id, data)
 
         b = io.BytesIO()

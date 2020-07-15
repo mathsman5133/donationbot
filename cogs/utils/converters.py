@@ -500,7 +500,7 @@ class ActivityBarConverter(commands.Converter):
 
 class ActivityLineConverter(commands.Converter):
     async def convert(self, ctx, argument):
-        guild, channel, user, clan, player, time_ = await ActivityArgumentConverter().convert(ctx, argument)
+        guild, channel, user, clan, player, _ = await ActivityArgumentConverter().convert(ctx, argument)
 
         if channel or guild:
             query = """
@@ -517,7 +517,6 @@ class ActivityLineConverter(commands.Converter):
                         INNER JOIN clan_tags
                         ON clan_tags.clan_tag = activity_query.clan_tag
                         AND hour_time < TIMESTAMP 'today'
-                        AND activity_query.hour_time > now() - ($2 ||' days')::interval
                         GROUP BY date, clan_tags.clan_name 
                         ORDER BY date
                     ),
@@ -538,7 +537,7 @@ class ActivityLineConverter(commands.Converter):
                     ORDER BY cte.date
                     """
 
-            fetch = await ctx.db.fetch(query, channel and channel.id or guild.id, str(time_ or 365))
+            fetch = await ctx.db.fetch(query, channel and channel.id or guild.id)
             if not fetch:
                 return None
 
@@ -561,7 +560,6 @@ class ActivityLineConverter(commands.Converter):
                         INNER JOIN player_tags
                         ON player_tags.player_tag = activity_query.player_tag
                         AND hour_time < TIMESTAMP 'today'
-                        AND activity_query.hour_time > now() - ($2 ||' days')::interval
                         GROUP BY date, player_tags.player_name 
                         ORDER BY date
                     ),
@@ -581,7 +579,7 @@ class ActivityLineConverter(commands.Converter):
                     GROUP BY cte.player_name, cte.date
                     ORDER BY cte.date
                     """
-            fetch = await ctx.db.fetch(query, user.id, str(time_ or 365))
+            fetch = await ctx.db.fetch(query, user.id)
             if not fetch:
                 return None
 
@@ -598,7 +596,6 @@ class ActivityLineConverter(commands.Converter):
                             FROM activity_query 
                             WHERE player_tag = $1 
                             AND hour_time < TIMESTAMP 'today'
-                            AND activity_query.hour_time > now() - ($2 ||' days')::interval
                             GROUP BY date 
                             ORDER BY date
                         ),
@@ -616,7 +613,7 @@ class ActivityLineConverter(commands.Converter):
                         WHERE counter BETWEEN avg - stdev AND avg + stdev 
                         ORDER BY date
                     """
-            fetch = await ctx.db.fetch(query, player['player_tag'], str(time_ or 365))
+            fetch = await ctx.db.fetch(query, player['player_tag'])
             if not fetch:
                 return None
             return [(player['player_name'], fetch)]
@@ -628,7 +625,6 @@ class ActivityLineConverter(commands.Converter):
                             FROM activity_query 
                             WHERE clan_tag = $1 
                             AND hour_time < TIMESTAMP 'today'
-                            AND activity_query.hour_time > now() - ($2 ||' days')::interval
                             GROUP BY date 
                             ORDER BY date
                         ),
@@ -646,7 +642,7 @@ class ActivityLineConverter(commands.Converter):
                         WHERE counter BETWEEN avg - stdev AND avg + stdev 
                         ORDER BY date
                     """
-            fetch = await ctx.db.fetch(query, clan['clan_tag'], str(time_ or 365))
+            fetch = await ctx.db.fetch(query, clan['clan_tag'])
             if not fetch:
                 return None
             return [(clan['clan_name'], fetch)]
