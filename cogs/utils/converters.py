@@ -352,14 +352,18 @@ class ActivityArgumentConverter(commands.Converter):
                 "Please wait a few days for me to gather reliable data."
             )
             await ctx.db.execute("UPDATE guilds SET activity_sync = TRUE WHERE guild_id = $1", ctx.guild.id)
-            return None, None
+            return None
 
         return guild, channel, user, clan, player, time_
 
 
 class ActivityBarConverter(commands.Converter):
     async def convert(self, ctx, argument):
-        guild, channel, user, clan, player, time_ = await ActivityArgumentConverter().convert(ctx, argument)
+        parsed = await ActivityArgumentConverter().convert(ctx, argument)
+        if not parsed:
+            return  # oops, they haven't run an activity bar/line command before.
+
+        guild, channel, user, clan, player, time_ = parsed
         if channel or guild:
             query = """
                     WITH clan_tags AS (
@@ -500,7 +504,11 @@ class ActivityBarConverter(commands.Converter):
 
 class ActivityLineConverter(commands.Converter):
     async def convert(self, ctx, argument):
-        guild, channel, user, clan, player, _ = await ActivityArgumentConverter().convert(ctx, argument)
+        parsed = await ActivityArgumentConverter().convert(ctx, argument)
+        if not parsed:
+            return  # oops, they haven't run an activity bar/line command before.
+
+        guild, channel, user, clan, player, _ = parsed
 
         if channel or guild:
             query = """
