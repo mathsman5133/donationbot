@@ -510,7 +510,7 @@ class ActivityLineConverter(commands.Converter):
                         WHERE channel_id = $1 OR guild_id = $1
                     ),
                     cte AS (
-                        SELECT SUM(counter) AS counter, 
+                        SELECT cast(SUM(counter) as decimal) / COUNT(DISTINCT player_tag) AS counter, 
                                date_trunc('day', hour_time) AS date,
                                clan_tags.clan_name
                         FROM activity_query 
@@ -623,7 +623,7 @@ class ActivityLineConverter(commands.Converter):
 
         if clan:
             query = """WITH cte AS (
-                            SELECT SUM(counter) AS counter, 
+                            SELECT cast(SUM(counter) as decimal) / COUNT(distinct player_tag) AS counter, 
                                    date_trunc('day', hour_time) AS "date" 
                             FROM activity_query 
                             WHERE clan_tag = $1 
