@@ -168,8 +168,30 @@ class Activity(commands.Cog):
         await ctx.send(":ok_hand: Graph has been reset.")
 
     @activity.group(name="line", invoke_without_command=True)
-    @commands.is_owner()
     async def activity_line(self, ctx, *, data: ActivityLineConverter):
+        """Get a graph showing the change in activity for a clan or player over time.
+
+        This command will return a graph that is generated from approximate activity readers
+        based on donations, received, exp level change and other measures used to calculate last online.
+
+        This command will remember your previous graph, and the next command you run will automatically compare
+        the previous graph(s) with this one. If you wish to reset the graph, use `+activity line clear`.
+
+        **Parameters**
+        :key: Clan name or tag, player name or tag. The player or clan you wish to find activity for.
+
+        **Format**
+        :information_source: `+activity line #CLANTAG`
+        :information_source: `+activity line Clan Name`
+        :information_source: `+activity line #PLAYERTAG`
+        :information_source: `+activity line Player Name`
+
+        **Example**
+        :white_check_mark: `+activity line #P0LYJC8C`
+        :white_check_mark: `+activity line Rock Throwers`
+        :white_check_mark: `+activity line #PL80J2YL`
+        :white_check_mark: `+activity line Mathsman`
+        """
         query = """SELECT COALESCE((SELECT dark_mode FROM user_config WHERE user_id = $1), False) as dark_mode"""
         fetch = await ctx.db.fetchrow(query, ctx.author.id)
         if fetch['dark_mode']:
