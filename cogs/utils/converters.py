@@ -534,8 +534,8 @@ class ActivityLineConverter(commands.Converter):
                     INNER JOIN cte2 
                     ON date_trunc('week', cte.date) = cte2.week 
                     WHERE counter BETWEEN avg - stdev AND avg + stdev 
-                    GROUP BY cte.clan_name
-                    ORDER BY date
+                    GROUP BY cte.clan_name, cte.date
+                    ORDER BY cte.date
                     """
 
             fetch = await ctx.db.fetch(query, channel and channel.id or guild.id, str(time_ or 365))
@@ -578,8 +578,8 @@ class ActivityLineConverter(commands.Converter):
                     INNER JOIN cte2 
                     ON date_trunc('week', cte.date) = cte2.week 
                     WHERE counter BETWEEN avg - stdev AND avg + stdev 
-                    GROUP BY cte.player_name
-                    ORDER BY date
+                    GROUP BY cte.player_name, cte.date
+                    ORDER BY cte.date
                     """
             fetch = await ctx.db.fetch(query, user.id, str(time_ or 365))
             if not fetch:

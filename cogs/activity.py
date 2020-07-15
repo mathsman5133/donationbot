@@ -206,7 +206,7 @@ class Activity(commands.Cog):
             meanst = np.array(means, dtype=np.float64)
             sdt = np.array(stdev, dtype=np.float64)
             ax.plot(dates, means, label=name, color=colours[i])
-            ax.fill_between(dates, meanst - sdt, meanst + sdt, alpha=0.3, facecolor=colours[i])
+            ax.fill_between(dates, max(meanst - sdt, 0), meanst + sdt, alpha=0.3, facecolor=colours[i])
 
             locator = mdates.AutoDateLocator(minticks=3, maxticks=10)
             formatter = mdates.ConciseDateFormatter(locator)
@@ -217,7 +217,7 @@ class Activity(commands.Cog):
             ax.grid(True)
             ax.legend()
             ax.set_ylabel("Activity")
-            ax.set_title(f"Activity Change Over Time")
+            ax.set_title("Activity Change Over Time")
 
         self.add_line_graph(ctx.channel.id, ctx.author.id, data)
 
