@@ -534,7 +534,7 @@ class ActivityLineConverter(commands.Converter):
                     ON date_trunc('week', cte.date) = cte2.week 
                     WHERE counter BETWEEN avg - stdev AND avg + stdev 
                     GROUP BY cte.clan_name, cte.date
-                    ORDER BY cte.date
+                    ORDER BY cte.clan_name, cte.date
                     """
 
             fetch = await ctx.db.fetch(query, channel and channel.id or guild.id)
@@ -545,7 +545,6 @@ class ActivityLineConverter(commands.Converter):
             for clan_name, records in itertools.groupby(fetch, key=lambda r: r['clan_name']):
                 to_return.append((clan_name, list(records)))
 
-            print('returning')
             return to_return
 
         if user:
@@ -578,7 +577,7 @@ class ActivityLineConverter(commands.Converter):
                     ON date_trunc('week', cte.date) = cte2.week 
                     WHERE counter BETWEEN avg - stdev AND avg + stdev 
                     GROUP BY cte.player_name, cte.date
-                    ORDER BY cte.date
+                    ORDER BY cte.player_name, cte.date
                     """
             fetch = await ctx.db.fetch(query, user.id)
             if not fetch:
@@ -588,7 +587,6 @@ class ActivityLineConverter(commands.Converter):
             for player_tag, records in itertools.groupby(fetch, key=lambda r: r['player_name']):
                 to_return.append((player_tag, list(records)))
 
-            print('returning')
             return to_return
 
         if player:
