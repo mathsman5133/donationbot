@@ -204,8 +204,7 @@ class Activity(commands.Cog):
             meanst = np.array(means, dtype=np.float64)
             sdt = np.array(stdev, dtype=np.float64)
             ax.plot(dates, means, label=name, color=colours[i])
-            lower = max(0, meanst - sdt)
-            ax.fill_between(dates, int(lower), meanst + sdt, alpha=0.3, facecolor=colours[i])
+            ax.fill_between(dates, [max(0, n) for n in meanst - sdt], meanst + sdt, alpha=0.3, facecolor=colours[i])
 
             locator = mdates.AutoDateLocator(minticks=3, maxticks=10)
             formatter = mdates.ConciseDateFormatter(locator)
