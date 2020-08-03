@@ -72,7 +72,7 @@ async def on_event_error(exception):
     log.exception("event failed", exc_info=exception)
 
 
-@tasks.loop(seconds=60.0)
+@tasks.loop(seconds=30.0)
 async def batch_insert_loop():
     log.info('Starting batch insert loop for donationlogs.')
     async with donationlog_batch_lock:
@@ -718,6 +718,17 @@ async def update_clan_tags():
     except:
         log.exception("task failed?")
         pass
+
+@coc_client.event
+@coc.ClientEvents.maintenance_start()
+async def maintenance_start():
+    await safe_send(594286547449282587, "Maintenance has started!")
+
+@coc_client.event
+@coc.ClientEvents.maintenance_completion()
+async def maintenance_completed(start_time):
+    await safe_send(594286547449282587, f"Maintenance has finished, started at {start_time}!")
+
 
 if __name__ == "__main__":
     loop.run_until_complete(bot.login(creds.bot_token))
