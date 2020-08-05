@@ -2,6 +2,7 @@ import asyncio
 import creds
 import discord
 import logging
+import logging.handlers
 import math
 import sqlite3
 
@@ -44,6 +45,21 @@ def setup_logging(bot, test_syncer=False):
         token=creds.log_hook_token,
         adapter=discord.RequestsWebhookAdapter()
     )
+
+    logger = logging.getLogger()
+    logger.setLevel(logging.DEBUG)
+
+    # add handler to the logger
+    handler = logging.handlers.SysLogHandler('/dev/log')
+
+    # add syslog format to the handler
+    formatter = logging.Formatter(
+        'Python: { "loggerName":"%(name)s", "timestamp":"%(asctime)s", "pathName":"%(pathname)s", "logRecordCreationTime":"%(created)f", "functionName":"%(funcName)s", "levelNo":"%(levelno)s", "lineNo":"%(lineno)d", "time":"%(msecs)d", "levelName":"%(levelname)s", "message":"%(message)s"}')
+
+    handler.formatter = formatter
+    logger.addHandler(handler)
+
+    logger.info("Test Log")
 
     class DiscordHandler(logging.NullHandler):
         def handle(self, record):
