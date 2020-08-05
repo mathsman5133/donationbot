@@ -61,6 +61,12 @@ def setup_logging(bot, test_syncer=False):
 
     logger.info("Test Log")
 
+    logger = logging.getLogger("coc.http")
+    logger.setLevel(logging.DEBUG)
+    formatter = logging.Formatter('coc.py API: { "loggerName":"%(name)s", "timestamp":"%(asctime)s", "pathName":"%(pathname)s", "method": "%(method)s", "url": "%(url)s", "status": "%(url)s", "perf_counter": "%(perf_counter)s"}')
+    handler.formatter = formatter
+    logger.addHandler(handler)
+
     class DiscordHandler(logging.NullHandler):
         def handle(self, record):
             if not creds.live:

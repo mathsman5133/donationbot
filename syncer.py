@@ -713,7 +713,6 @@ async def update_clan_tags():
         query = "SELECT DISTINCT(clan_tag) FROM clans"
         fetch = await pool.fetch(query)
         log.info(f"Setting {len(fetch)} tags to update")
-        log.info(f"coc.py most common requests: {coc_client.http.requests_made.most_common()}, successful: {coc_client.http.successful_requests}")
         coc_client._clan_updates = [n[0] for n in fetch]
     except:
         log.exception("task failed?")
