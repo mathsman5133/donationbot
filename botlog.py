@@ -68,7 +68,7 @@ def setup_logging(bot, test_syncer=False):
     logger = logging.getLogger("coc.http")
     logger.addFilter(COCPYFilter())
     logger.setLevel(logging.DEBUG)
-    formatter = logging.Formatter('coc.py API: { "loggerName":"%(name)s", "timestamp":"%(asctime)s", "pathName":"%(pathname)s", "method": "%(method)s", "url": "%(url)s", "status": "%(url)s", "perf_counter": "%(perf_counter)s"}')
+    formatter = logging.Formatter('coc.py API: { "loggerName":"%(name)s", "timestamp":"%(asctime)s", "pathName":"%(pathname)s", "method": "%(method)s", "url": "%(url)s", "status": "%(status)s", "perf_counter": "%(perf_counter)s"}')
     handler = logging.handlers.SysLogHandler('/dev/log')
     handler.formatter = formatter
     logger.addHandler(handler)
