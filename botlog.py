@@ -61,7 +61,12 @@ def setup_logging(bot, test_syncer=False):
 
     logger.info("Test Log")
 
+    class COCPYFilter(logging.Filter):
+        def filter(self, record: logging.LogRecord) -> int:
+            return record.message == "API HTTP Request"
+
     logger = logging.getLogger("coc.http")
+    logger.addFilter(COCPYFilter())
     logger.setLevel(logging.DEBUG)
     formatter = logging.Formatter('coc.py API: { "loggerName":"%(name)s", "timestamp":"%(asctime)s", "pathName":"%(pathname)s", "method": "%(method)s", "url": "%(url)s", "status": "%(url)s", "perf_counter": "%(perf_counter)s"}')
     handler.formatter = formatter
