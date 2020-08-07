@@ -59,7 +59,8 @@ coc_client = coc.login(
     client=coc.EventsClient,
     key_names=key_names,
     throttle_limit=30,
-    key_count=3,
+    key_count=2,
+    key_scopes=creds.scopes
 )
 
 
