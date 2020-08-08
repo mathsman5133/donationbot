@@ -28,6 +28,9 @@ REGULAR_FONT_FP = absolute_path + "assets/Roboto-Black.ttf"
 REGULAR_FONT_SIZE = 140
 REGULAR_FONT = ImageFont.truetype(REGULAR_FONT_FP, REGULAR_FONT_SIZE)
 
+def get_font_size(height, width):
+    return
+
 SEASON_FONT = ImageFont.truetype(REGULAR_FONT_FP, 60)
 
 IMAGE_WIDTH = 4000
@@ -88,12 +91,13 @@ class DonationBoardImage:
         self.icon = icon
         self.season_start, self.season_finish = season_start, season_finish
         self.height = MINIMUM_COLUMN_HEIGHT
+        self.bottom_height = MINIMUM_COLUMN_HEIGHT + 80
         self.width = 0
         self.max_width = IMAGE_WIDTH / 2 - 40
         self.image = copy.deepcopy(BACKGROUND)
         self.draw = ImageDraw.Draw(self.image)
 
-    def special_text(self, position, text, rgb, font_fp, font_size, max_width, centre_align=False, offset=0):
+    def special_text(self, position, text, rgb, font_fp, font_size, max_width, max_height=0, centre_align=False, offset=0):
         if CJK_REGEX.search(text):
             font_fp = CJK_FRIENDLY_FONT_FP
 
@@ -102,6 +106,11 @@ class DonationBoardImage:
         text_width, text_height = self.draw.textsize(text, font)
 
         need_to_offset = False
+        while max_height > text_height:
+            font_size += 1
+            font = ImageFont.truetype(font_fp, font_size)
+            text_width, text_height = self.draw.textsize(text, font)
+
         while text_width > max_width - offset:
             font_size -= 1
             font = ImageFont.truetype(font_fp, font_size)
@@ -127,25 +136,30 @@ class DonationBoardImage:
             self.image.paste(self.icon, (10, 10))
         adc = add_double_column
 
+        w = get_width(RECEIVED_LEFT_COLUMN_WIDTH, adc) - get_width(DONATIONS_LEFT_COLUMN_WIDTH, adc)
+        font = get_font_size(w, self.bottom_height - self.height)
+
         self.draw.rectangle(((get_width(LEFT_COLUMN_WIDTH, adc), MINIMUM_COLUMN_HEIGHT), (get_width(COLUMN_RIGHT_BOUND, adc), MINIMUM_COLUMN_HEIGHT + 100)), fill=HEADER_RECTANGLE_RGB)
-        self.draw.text((get_width(NUMBER_LEFT_COLUMN_WIDTH, adc), MINIMUM_COLUMN_HEIGHT + 2), "#", NUMBER_RGB, font=SUPERCELL_FONT)
-        self.draw.text((get_width(NAME_LEFT_COLUMN_WIDTH, adc), MINIMUM_COLUMN_HEIGHT + 2), "Name", NAME_RGB, font=SUPERCELL_FONT)
-        self.draw.text((get_width(DONATIONS_LEFT_COLUMN_WIDTH, adc), MINIMUM_COLUMN_HEIGHT + 2), "Dons", DONATIONS_RGB, font=SUPERCELL_FONT)
-        self.draw.text((get_width(RECEIVED_LEFT_COLUMN_WIDTH, adc), MINIMUM_COLUMN_HEIGHT + 2), "Rec", RECEIVED_RGB, font=SUPERCELL_FONT)
-        self.draw.text((get_width(RATIO_LEFT_COLUNM_WIDTH, adc), MINIMUM_COLUMN_HEIGHT + 2), "Ratio", RATIO_RGB, font=SUPERCELL_FONT)
-        self.draw.text((get_width(LAST_ONLINE_LEFT_COLUMN_WIDTH, adc), MINIMUM_COLUMN_HEIGHT + 2), "Last On", LAST_ONLINE_RGB, font=SUPERCELL_FONT)
+        self.draw.text((get_width(NUMBER_LEFT_COLUMN_WIDTH, adc), MINIMUM_COLUMN_HEIGHT + 2), "#", NUMBER_RGB, font=get_font_size(w/2, self.bottom_height - self.height))
+        self.draw.text((get_width(NAME_LEFT_COLUMN_WIDTH, adc), MINIMUM_COLUMN_HEIGHT + 2), "Name", NAME_RGB, font=get_font_size(w*3, self.bottom_height - self.height))
+        self.draw.text((get_width(DONATIONS_LEFT_COLUMN_WIDTH, adc), MINIMUM_COLUMN_HEIGHT + 2), "Dons", DONATIONS_RGB, font=font)
+        self.draw.text((get_width(RECEIVED_LEFT_COLUMN_WIDTH, adc), MINIMUM_COLUMN_HEIGHT + 2), "Rec", RECEIVED_RGB, font=font)
+        self.draw.text((get_width(RATIO_LEFT_COLUNM_WIDTH, adc), MINIMUM_COLUMN_HEIGHT + 2), "Ratio", RATIO_RGB, font=font)
+        self.draw.text((get_width(LAST_ONLINE_LEFT_COLUMN_WIDTH, adc), MINIMUM_COLUMN_HEIGHT + 2), "Last On", LAST_ONLINE_RGB, font=get_font_size(w*2, self.bottom_height - self.height))
 
         if add_double_column:
+            w = get_width(RECEIVED_LEFT_COLUMN_WIDTH, True, True) - get_width(DONATIONS_LEFT_COLUMN_WIDTH, True, True)
+            font = get_font_size(w, self.bottom_height - self.height)
             self.draw.rectangle(((get_width(LEFT_COLUMN_WIDTH, True, True), MINIMUM_COLUMN_HEIGHT), (COLUMN_RIGHT_BOUND, MINIMUM_COLUMN_HEIGHT + 60)), fill=HEADER_RECTANGLE_RGB)
-            self.draw.text((get_width(NUMBER_LEFT_COLUMN_WIDTH, True, True), MINIMUM_COLUMN_HEIGHT + 2), "#", NUMBER_RGB, font=SUPERCELL_FONT)
-            self.draw.text((get_width(NAME_LEFT_COLUMN_WIDTH, True, True), MINIMUM_COLUMN_HEIGHT + 2), "Name", NAME_RGB, font=SUPERCELL_FONT)
-            self.draw.text((get_width(DONATIONS_LEFT_COLUMN_WIDTH, True, True), MINIMUM_COLUMN_HEIGHT + 2), "Dons", DONATIONS_RGB, font=SUPERCELL_FONT)
-            self.draw.text((get_width(RECEIVED_LEFT_COLUMN_WIDTH, True, True), MINIMUM_COLUMN_HEIGHT + 2), "Rec", RECEIVED_RGB, font=SUPERCELL_FONT)
-            self.draw.text((get_width(RATIO_LEFT_COLUNM_WIDTH, True, True), MINIMUM_COLUMN_HEIGHT + 2), "Ratio", RATIO_RGB, font=SUPERCELL_FONT)
-            self.draw.text((get_width(LAST_ONLINE_LEFT_COLUMN_WIDTH, True, True), MINIMUM_COLUMN_HEIGHT + 2), "Last On", LAST_ONLINE_RGB, font=SUPERCELL_FONT)
+            self.draw.text((get_width(NUMBER_LEFT_COLUMN_WIDTH, True, True), MINIMUM_COLUMN_HEIGHT + 2), "#", NUMBER_RGB, font=get_font_size(w/2, self.bottom_height - self.height))
+            self.draw.text((get_width(NAME_LEFT_COLUMN_WIDTH, True, True), MINIMUM_COLUMN_HEIGHT + 2), "Name", NAME_RGB, font=get_font_size(w*3, self.bottom_height - self.height))
+            self.draw.text((get_width(DONATIONS_LEFT_COLUMN_WIDTH, True, True), MINIMUM_COLUMN_HEIGHT + 2), "Dons", DONATIONS_RGB, font=font)
+            self.draw.text((get_width(RECEIVED_LEFT_COLUMN_WIDTH, True, True), MINIMUM_COLUMN_HEIGHT + 2), "Rec", RECEIVED_RGB, font=font)
+            self.draw.text((get_width(RATIO_LEFT_COLUNM_WIDTH, True, True), MINIMUM_COLUMN_HEIGHT + 2), "Ratio", RATIO_RGB, font=font)
+            self.draw.text((get_width(LAST_ONLINE_LEFT_COLUMN_WIDTH, True, True), MINIMUM_COLUMN_HEIGHT + 2), "Last On", LAST_ONLINE_RGB, font=get_font_size(w*2, self.bottom_height - self.height))
 
     def add_player(self, player, double=False, left=True):
-        position = ((get_width(LEFT_COLUMN_WIDTH, double, left), self.height), (get_width(COLUMN_RIGHT_BOUND, double, left), self.height + 80))
+        position = ((get_width(LEFT_COLUMN_WIDTH, double, left), self.height), (get_width(COLUMN_RIGHT_BOUND, double, left), self.bottom_height))
 
         self.draw.rectangle(position, fill=RECTANGLE_RGB)
         self.draw.text((get_width(NUMBER_LEFT_COLUMN_WIDTH, double, left), self.height + 2), f"{player.index}.", NUMBER_RGB, font=SUPERCELL_FONT)
@@ -158,12 +172,14 @@ class DonationBoardImage:
     def add_players(self, players):
         double_column = len(players) > 25
         self.add_headers(add_double_column=double_column)
+        self.bottom_height = int(IMAGE_HEIGHT / ((len(players) + 1) * 2) - IMAGE_HEIGHT / 200)
 
         if double_column:
-            no_players = len(players)
+            no_players = len(players) + 1
 
             for p in players[:int(no_players / 2)]:
                 self.height += int(IMAGE_HEIGHT / no_players / 2)
+                self.bottom_height += int(IMAGE_HEIGHT / no_players / 2)
                 self.add_player(p, True, True)
 
             self.width = IMAGE_WIDTH / 2 + 40
@@ -172,11 +188,13 @@ class DonationBoardImage:
 
             for p in players[int(no_players / 2):]:
                 self.height += int(IMAGE_HEIGHT / no_players / 2)
+                self.bottom_height += int(IMAGE_HEIGHT / no_players / 2)
                 self.add_player(p, True, False)
 
         else:
             for player in players:
-                self.height += int(IMAGE_HEIGHT / len(players))
+                self.height += int(IMAGE_HEIGHT / (len(players) + 1))
+                self.bottom_height += int(IMAGE_HEIGHT / (len(players) + 1))
                 self.add_player(player, False, False)
 
         self.draw.text((40, self.height + 90), f"Season: {self.season_start} - {self.season_finish}.", NAME_RGB, font=SEASON_FONT)
