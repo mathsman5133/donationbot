@@ -23,7 +23,7 @@ initial_extensions = [
     'cogs.aliases',
     'cogs.auto_claim',
     'cogs.botutils',
-    'cogs.boards'
+    'cogs.boards',
     'cogs.deprecated',
     'cogs.donations',
     'cogs.guildsetup',
