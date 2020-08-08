@@ -82,7 +82,8 @@ class DonationBoardImage:
         self.height = MINIMUM_COLUMN_HEIGHT
         self.width = 0
         self.max_width = IMAGE_WIDTH / 2 - 40
-        self.image = copy.deepcopy(BACKGROUND)
+        #self.image = copy.deepcopy(BACKGROUND)
+        self.image = Image.new("RGBA", (4500, 4000))
         self.draw = ImageDraw.Draw(self.image)
 
     def special_text(self, position, text, rgb, font_fp, font_size, max_width, centre_align=False, offset=0):
@@ -178,7 +179,9 @@ class DonationBoardImage:
 
 
     def render(self):
-        self.image = self.image.resize((int(self.image.size[0] / 4), int(self.image.size[1] / 4)))
+        background = copy.deepcopy(BACKGROUND).resize((int(self.image.size[0] / 4), int(self.image.size[1] / 4)))
+        self.image = background.paste(self.image.resize((int(self.image.size[0] / 4), int(self.image.size[1] / 4))))
+
         buffer = io.BytesIO()
         self.image.save(buffer, format="png")
         buffer.seek(0)
