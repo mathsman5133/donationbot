@@ -17,6 +17,7 @@ from cogs.utils.db_objects import DatabaseMessage, BoardPlayer, BoardConfig
 from cogs.utils.formatters import CLYTable, get_render_type
 from cogs.utils.images import DonationBoardImage, TrophyBoardImage
 from cogs.utils import checks
+import creds
 
 
 log = logging.getLogger(__name__)
@@ -48,11 +49,12 @@ class DonationBoard(commands.Cog):
         self._batch_lock = asyncio.Lock(loop=bot.loop)
         self._data_batch = {}
 
-        self.update_board_loops.add_exception_type(asyncpg.PostgresConnectionError, coc.ClashOfClansException)
-        self.update_board_loops.start()
+        if creds.live:
+            self.update_board_loops.add_exception_type(asyncpg.PostgresConnectionError, coc.ClashOfClansException)
+            self.update_board_loops.start()
 
-        self.update_global_board.add_exception_type(asyncpg.PostgresConnectionError, coc.ClashOfClansException)
-        self.update_global_board.start()
+            self.update_global_board.add_exception_type(asyncpg.PostgresConnectionError, coc.ClashOfClansException)
+            self.update_global_board.start()
 
         self.tags_to_update = set()
         self.last_updated_tags = {}
@@ -60,12 +62,14 @@ class DonationBoard(commands.Cog):
         self._board_channels = []
 
     def cog_unload(self):
-        self.update_board_loops.cancel()
-        self.update_global_board.cancel()
+        if creds.live:
+            self.update_board_loops.cancel()
+            self.update_global_board.cancel()
 
     @commands.Cog.listener()
     async def on_ready(self):
-        self.webhooks = itertools.cycle(n for n in await self.bot.get_guild(691779140059267084).webhooks())
+        if creds.live:
+            self.webhooks = itertools.cycle(n for n in await self.bot.get_guild(691779140059267084).webhooks())
 
     @property
     def board_channels(self):
@@ -221,13 +225,22 @@ class DonationBoard(commands.Cog):
 
         return config_per_page
 
-    async def new_donationboard_updater(self, config, add_pages=0, season_offset=0, reset=False, update_global_board=False):
+    @commands.command()
+    @commands.is_owner()
+    async def random_board(self, ctx, page: int = None):
+        query = "SELECT * FROM boards ORDER BY random() LIMIT 1"
+        fetch = await ctx.db.fetchrow(query)
+        config = BoardConfig(bot=self.bot, record=fetch)
+        msg = await ctx.send("Placeholder")
+        await self.new_donationboard_updater(config, add_pages=page, message=msg)
+
+    async def new_donationboard_updater(self, config, add_pages=0, season_offset=0, reset=False, update_global_board=False, message=None):
         if config.channel_id == GLOBAL_BOARDS_CHANNEL_ID and not update_global_board:
             return
 
         donationboard = config.type == 'donation'
         start = time.perf_counter()
-        message = await self.bot.utils.get_message(config.channel, config.message_id)
+        message = message or await self.bot.utils.get_message(config.channel, config.message_id)
         if not message:
             try:
                 message = await config.channel.send("Placeholder.... do not delete me!")
