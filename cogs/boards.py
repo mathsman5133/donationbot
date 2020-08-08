@@ -68,8 +68,7 @@ class DonationBoard(commands.Cog):
 
     @commands.Cog.listener()
     async def on_ready(self):
-        if creds.live:
-            self.webhooks = itertools.cycle(n for n in await self.bot.get_guild(691779140059267084).webhooks())
+        self.webhooks = itertools.cycle(n for n in await self.bot.get_guild(691779140059267084).webhooks())
 
     @property
     def board_channels(self):
