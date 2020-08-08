@@ -16,8 +16,8 @@ if creds.live:
     absolute_path = "/home/mathsman/donationbot/"
 else:
     absolute_path = ""
-BACKGROUND = Image.open(f"{absolute_path}assets/clash_cliffs.jpg").resize((4000, 4500))
-TROPHYBOARD_BACKGROUND = Image.open(f"{absolute_path}assets/snowyfield.jpg").resize((4000, 4500))
+BACKGROUND = Image.open(f"{absolute_path}assets/clash_cliffs.png").resize((4000, 4500))
+TROPHYBOARD_BACKGROUND = Image.open(f"{absolute_path}assets/snowyfield.png").resize((4000, 4500))
 
 CJK_FRIENDLY_FONT_FP = absolute_path + "assets/NotoSansCJK-Bold.ttc"
 SUPERCELL_FONT_FP = absolute_path + "assets/DejaVuSans-Bold.ttf"
