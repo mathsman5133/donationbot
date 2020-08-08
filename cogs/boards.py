@@ -225,9 +225,9 @@ class DonationBoard(commands.Cog):
 
         return config_per_page
 
-    @commands.command()
+    @commands.command(hidden=True)
     @commands.is_owner()
-    async def random_board(self, ctx, page: int = None):
+    async def random_board(self, ctx, page: int = 0):
         query = "SELECT * FROM boards ORDER BY random() LIMIT 1"
         fetch = await ctx.db.fetchrow(query)
         config = BoardConfig(bot=self.bot, record=fetch)

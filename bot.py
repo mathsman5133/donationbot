@@ -39,7 +39,6 @@ if creds.live and not beta:
     initial_extensions.extend(
         (
             'cogs.background_management',
-            'cogs.boards',
         )
     )
     command_prefix = '+'
