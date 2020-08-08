@@ -23,6 +23,7 @@ initial_extensions = [
     'cogs.aliases',
     'cogs.auto_claim',
     'cogs.botutils',
+    'cogs.boards'
     'cogs.deprecated',
     'cogs.donations',
     'cogs.guildsetup',
@@ -47,6 +48,7 @@ elif beta:
     command_prefix = '+'
     key_names = 'test'
     creds.bot_token = creds.beta_bot_token
+    creds.live = False
 else:
     command_prefix = '//'
     key_names = 'windows'
