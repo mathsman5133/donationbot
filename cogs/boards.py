@@ -345,8 +345,8 @@ class DonationBoard(commands.Cog):
         else:
             image = TrophyBoardImage(config.title, icon, season_start, season_finish)
 
-        image.add_players(players)
-        render = image.render()
+        await self.bot.loop.run_in_executor(None, image.add_players, players)
+        render = await self.bot.loop.run_in_executor(None, image.render)
 
         logged_board_message = await next(self.webhooks).send(
             f"Perf: {(time.perf_counter() - start) * 1000}ms\n"

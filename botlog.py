@@ -21,9 +21,9 @@ def setup_logging(bot, test_syncer=False):
     # logging.getLogger('coc.http').setLevel(logging.WARNING)
 
     log = logging.getLogger()
-    log.setLevel(logging.DEBUG)
+    log.setLevel(logging.INFO)
     stream_handler = logging.StreamHandler()
-    stream_handler.setLevel(logging.DEBUG)
+    stream_handler.setLevel(logging.INFO)
     dt_fmt = '%d-%m-%Y %H:%M:%S'
     fmt = logging.Formatter('[{asctime}] [{levelname:<7}] {name}: {message}', dt_fmt, style='{')
     if creds.live:

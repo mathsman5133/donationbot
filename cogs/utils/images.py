@@ -180,10 +180,10 @@ class DonationBoardImage:
 
     def render(self):
         background = copy.deepcopy(BACKGROUND).resize((int(self.image.size[0] / 4), int(self.image.size[1] / 4)))
-        self.image = background.paste(self.image.resize((int(self.image.size[0] / 4), int(self.image.size[1] / 4))))
+        background.paste(self.image.resize((int(self.image.size[0] / 4), int(self.image.size[1] / 4))))
 
         buffer = io.BytesIO()
-        self.image.save(buffer, format="png")
+        background.save(buffer, format="png")
         buffer.seek(0)
         return buffer
 
@@ -289,6 +289,14 @@ class TrophyBoardImage:
 
 
     def render(self):
+        background = copy.deepcopy(TROPHYBOARD_BACKGROUND).resize((int(self.image.size[0] / 4), int(self.image.size[1] / 4)))
+        background.paste(self.image.resize((int(self.image.size[0] / 4), int(self.image.size[1] / 4))))
+
+        buffer = io.BytesIO()
+        background.save(buffer, format="png")
+        buffer.seek(0)
+        return buffer
+
         self.image = self.image.resize((int(self.image.size[0] / 4), int(self.image.size[1] / 4)))
         buffer = io.BytesIO()
         self.image.save(buffer, format="png")
