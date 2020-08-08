@@ -16,8 +16,8 @@ if creds.live:
     absolute_path = "/home/mathsman/donationbot/"
 else:
     absolute_path = ""
-BACKGROUND = Image.open(f"{absolute_path}assets/clash_cliffs.png").resize((4000, 4500))
-TROPHYBOARD_BACKGROUND = Image.open(f"{absolute_path}assets/snowyfield.png").resize((4000, 4500))
+BACKGROUND = Image.open(f"{absolute_path}assets/clash_cliffs.png")
+TROPHYBOARD_BACKGROUND = Image.open(f"{absolute_path}assets/snowyfield.png")
 
 CJK_FRIENDLY_FONT_FP = absolute_path + "assets/NotoSansCJK-Bold.ttc"
 SUPERCELL_FONT_FP = absolute_path + "assets/DejaVuSans-Bold.ttf"
@@ -33,13 +33,14 @@ SEASON_FONT = ImageFont.truetype(REGULAR_FONT_FP, 60)
 IMAGE_WIDTH = 4000
 
 MINIMUM_COLUMN_HEIGHT = 200
-LEFT_COLUMN_WIDTH = 20
-NUMBER_LEFT_COLUMN_WIDTH = 40
-NAME_LEFT_COLUMN_WIDTH = 220
-DONATIONS_LEFT_COLUMN_WIDTH = 720
-RECEIVED_LEFT_COLUMN_WIDTH = 1020
-RATIO_LEFT_COLUNM_WIDTH = 1320
-LAST_ONLINE_LEFT_COLUMN_WIDTH = 1620
+LEFT_COLUMN_WIDTH = IMAGE_WIDTH / 55  # 20
+COLUMN_RIGHT_BOUND = IMAGE_WIDTH - IMAGE_WIDTH / 55
+NUMBER_LEFT_COLUMN_WIDTH = IMAGE_WIDTH / 35  # 40
+NAME_LEFT_COLUMN_WIDTH = IMAGE_WIDTH / 8.5  # 220
+DONATIONS_LEFT_COLUMN_WIDTH = IMAGE_WIDTH / 2.72  # 720
+RECEIVED_LEFT_COLUMN_WIDTH = IMAGE_WIDTH / 1.945
+RATIO_LEFT_COLUNM_WIDTH = IMAGE_WIDTH / 1.51
+LAST_ONLINE_LEFT_COLUMN_WIDTH = IMAGE_WIDTH / 1.23
 
 HEADER_RECTANGLE_RGB = (40, 40, 70)
 RECTANGLE_RGB = (60,80,100)
@@ -62,6 +63,12 @@ T_TROPHIES_RGB = (224, 230, 69)
 T_GAIN_RGB = (33, 174, 181)
 T_LAST_ONLINE_RGB = (194, 84, 34)
 
+def get_width(original_size, is_double=False, left=True):
+    if not is_double:
+        return original_size
+    if left:
+        return (original_size / IMAGE_WIDTH) * (IMAGE_WIDTH / 2) - IMAGE_WIDTH / 55
+    return (original_size / IMAGE_WIDTH) * (IMAGE_WIDTH / 2) + IMAGE_WIDTH / 2 + IMAGE_WIDTH / 55
 
 def get_readable(delta):
     hours, remainder = divmod(int(delta.total_seconds()), 3600)
@@ -117,36 +124,35 @@ class DonationBoardImage:
 
         if self.icon:
             self.image.paste(self.icon, (10, 10))
+        adc = add_double_column
 
-        self.draw.rectangle(((LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT), ((IMAGE_WIDTH / 2) - 40, MINIMUM_COLUMN_HEIGHT + 100)), fill=HEADER_RECTANGLE_RGB)
-        self.draw.text((NUMBER_LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT + 2), "#", NUMBER_RGB, font=SUPERCELL_FONT)
-        self.draw.text((NAME_LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT + 2), "Name", NAME_RGB, font=SUPERCELL_FONT)
-        self.draw.text((DONATIONS_LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT + 2), "Dons", DONATIONS_RGB, font=SUPERCELL_FONT)
-        self.draw.text((RECEIVED_LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT + 2), "Rec", RECEIVED_RGB, font=SUPERCELL_FONT)
-        self.draw.text((RATIO_LEFT_COLUNM_WIDTH, MINIMUM_COLUMN_HEIGHT + 2), "Ratio", RATIO_RGB, font=SUPERCELL_FONT)
-        self.draw.text((LAST_ONLINE_LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT + 2), "Last On", LAST_ONLINE_RGB, font=SUPERCELL_FONT)
+        self.draw.rectangle(((get_width(LEFT_COLUMN_WIDTH, adc), MINIMUM_COLUMN_HEIGHT), (get_width(COLUMN_RIGHT_BOUND, adc), MINIMUM_COLUMN_HEIGHT + 100)), fill=HEADER_RECTANGLE_RGB)
+        self.draw.text((get_width(NUMBER_LEFT_COLUMN_WIDTH, adc), MINIMUM_COLUMN_HEIGHT + 2), "#", NUMBER_RGB, font=SUPERCELL_FONT)
+        self.draw.text((get_width(NAME_LEFT_COLUMN_WIDTH, adc), MINIMUM_COLUMN_HEIGHT + 2), "Name", NAME_RGB, font=SUPERCELL_FONT)
+        self.draw.text((get_width(DONATIONS_LEFT_COLUMN_WIDTH, adc), MINIMUM_COLUMN_HEIGHT + 2), "Dons", DONATIONS_RGB, font=SUPERCELL_FONT)
+        self.draw.text((get_width(RECEIVED_LEFT_COLUMN_WIDTH, adc), MINIMUM_COLUMN_HEIGHT + 2), "Rec", RECEIVED_RGB, font=SUPERCELL_FONT)
+        self.draw.text((get_width(RATIO_LEFT_COLUNM_WIDTH, adc), MINIMUM_COLUMN_HEIGHT + 2), "Ratio", RATIO_RGB, font=SUPERCELL_FONT)
+        self.draw.text((get_width(LAST_ONLINE_LEFT_COLUMN_WIDTH, adc), MINIMUM_COLUMN_HEIGHT + 2), "Last On", LAST_ONLINE_RGB, font=SUPERCELL_FONT)
 
         if add_double_column:
-            halfway = IMAGE_WIDTH / 2 + 40
-            self.draw.rectangle(((IMAGE_WIDTH + LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT), ((IMAGE_WIDTH / 2) + 40, MINIMUM_COLUMN_HEIGHT + 60)), fill=HEADER_RECTANGLE_RGB)
-            self.draw.text((halfway + NUMBER_LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT + 2), "#", NUMBER_RGB, font=SUPERCELL_FONT)
-            self.draw.text((halfway + NAME_LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT + 2), "Name", NAME_RGB, font=SUPERCELL_FONT)
-            self.draw.text((halfway + DONATIONS_LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT + 2), "Dons", DONATIONS_RGB, font=SUPERCELL_FONT)
-            self.draw.text((halfway + RECEIVED_LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT + 2), "Rec", RECEIVED_RGB, font=SUPERCELL_FONT)
-            self.draw.text((halfway + RATIO_LEFT_COLUNM_WIDTH, MINIMUM_COLUMN_HEIGHT + 2), "Ratio", RATIO_RGB, font=SUPERCELL_FONT)
-            self.draw.text((halfway + LAST_ONLINE_LEFT_COLUMN_WIDTH, MINIMUM_COLUMN_HEIGHT + 2), "Last On", LAST_ONLINE_RGB, font=SUPERCELL_FONT)
+            self.draw.rectangle(((get_width(LEFT_COLUMN_WIDTH, True, True), MINIMUM_COLUMN_HEIGHT), (COLUMN_RIGHT_BOUND, MINIMUM_COLUMN_HEIGHT + 60)), fill=HEADER_RECTANGLE_RGB)
+            self.draw.text((get_width(NUMBER_LEFT_COLUMN_WIDTH, True, True), MINIMUM_COLUMN_HEIGHT + 2), "#", NUMBER_RGB, font=SUPERCELL_FONT)
+            self.draw.text((get_width(NAME_LEFT_COLUMN_WIDTH, True, True), MINIMUM_COLUMN_HEIGHT + 2), "Name", NAME_RGB, font=SUPERCELL_FONT)
+            self.draw.text((get_width(DONATIONS_LEFT_COLUMN_WIDTH, True, True), MINIMUM_COLUMN_HEIGHT + 2), "Dons", DONATIONS_RGB, font=SUPERCELL_FONT)
+            self.draw.text((get_width(RECEIVED_LEFT_COLUMN_WIDTH, True, True), MINIMUM_COLUMN_HEIGHT + 2), "Rec", RECEIVED_RGB, font=SUPERCELL_FONT)
+            self.draw.text((get_width(RATIO_LEFT_COLUNM_WIDTH, True, True), MINIMUM_COLUMN_HEIGHT + 2), "Ratio", RATIO_RGB, font=SUPERCELL_FONT)
+            self.draw.text((get_width(LAST_ONLINE_LEFT_COLUMN_WIDTH, True, True), MINIMUM_COLUMN_HEIGHT + 2), "Last On", LAST_ONLINE_RGB, font=SUPERCELL_FONT)
 
-    def add_player(self, player):
-        self.height += 100
-        position = ((self.width or LEFT_COLUMN_WIDTH, self.height), (self.max_width, self.height + 80))
+    def add_player(self, player, double=False, left=True):
+        position = ((get_width(LEFT_COLUMN_WIDTH, double, left), self.height), (get_width(COLUMN_RIGHT_BOUND, double, left), self.height + 80))
 
         self.draw.rectangle(position, fill=RECTANGLE_RGB)
-        self.draw.text((self.width + NUMBER_LEFT_COLUMN_WIDTH, self.height + 2), f"{player.index}.", NUMBER_RGB, font=SUPERCELL_FONT)
-        self.special_text((self.width + NAME_LEFT_COLUMN_WIDTH, self.height + 2), str(player.name), NAME_RGB, SUPERCELL_FONT_FP, SUPERCELL_FONT_SIZE, 450)
-        self.draw.text((self.width + DONATIONS_LEFT_COLUMN_WIDTH, self.height + 2), str(player.donations), DONATIONS_RGB, font=SUPERCELL_FONT)
-        self.draw.text((self.width + RECEIVED_LEFT_COLUMN_WIDTH, self.height + 2), str(player.received), RECEIVED_RGB, font=SUPERCELL_FONT)
-        self.draw.text((self.width + RATIO_LEFT_COLUNM_WIDTH, self.height + 2), f"{round((player.donations or 0) / (player.received or 1), 2)}", RATIO_RGB, font=SUPERCELL_FONT)
-        self.draw.text((self.width + LAST_ONLINE_LEFT_COLUMN_WIDTH, self.height + 2), get_readable(player.last_online), LAST_ONLINE_RGB, font=SUPERCELL_FONT)
+        self.draw.text((get_width(NUMBER_LEFT_COLUMN_WIDTH, double, left), self.height + 2), f"{player.index}.", NUMBER_RGB, font=SUPERCELL_FONT)
+        self.special_text((get_width(NAME_LEFT_COLUMN_WIDTH, double, left), self.height + 2), str(player.name), NAME_RGB, SUPERCELL_FONT_FP, SUPERCELL_FONT_SIZE, 450)
+        self.draw.text((get_width(DONATIONS_LEFT_COLUMN_WIDTH, double, left), self.height + 2), str(player.donations), DONATIONS_RGB, font=SUPERCELL_FONT)
+        self.draw.text((get_width(RECEIVED_LEFT_COLUMN_WIDTH, double, left), self.height + 2), str(player.received), RECEIVED_RGB, font=SUPERCELL_FONT)
+        self.draw.text((get_width(RATIO_LEFT_COLUNM_WIDTH, double, left), self.height + 2), f"{round((player.donations or 0) / (player.received or 1), 2)}", RATIO_RGB, font=SUPERCELL_FONT)
+        self.draw.text((get_width(LAST_ONLINE_LEFT_COLUMN_WIDTH, double, left), self.height + 2), get_readable(player.last_online), LAST_ONLINE_RGB, font=SUPERCELL_FONT)
 
     def add_players(self, players):
         double_column = len(players) > 25
@@ -156,25 +162,28 @@ class DonationBoardImage:
             no_players = len(players)
 
             for p in players[:int(no_players / 2)]:
-                self.add_player(p)
+                self.height += int(IMAGE_HEIGHT / no_players / 2)
+                self.add_player(p, True, True)
 
             self.width = IMAGE_WIDTH / 2 + 40
             self.max_width = IMAGE_WIDTH
             self.height = MINIMUM_COLUMN_HEIGHT
 
             for p in players[int(no_players / 2):]:
-                self.add_player(p)
+                self.height += int(IMAGE_HEIGHT / no_players / 2)
+                self.add_player(p, True, False)
 
         else:
             for player in players:
-                self.add_player(player)
+                self.height += int(IMAGE_HEIGHT / len(players))
+                self.add_player(player, False, False)
 
         self.draw.text((40, self.height + 90), f"Season: {self.season_start} - {self.season_finish}.", NAME_RGB, font=SEASON_FONT)
 
-        if double_column:
-            self.image = self.image.crop((0, 0, IMAGE_WIDTH, self.height + 160))
-        else:
-            self.image = self.image.crop((0, 0, IMAGE_WIDTH / 2 - 20, self.height + 160))
+        # if double_column:
+        #     self.image = self.image.crop((0, 0, IMAGE_WIDTH, self.height + 160))
+        # else:
+        #     self.image = self.image.crop((0, 0, IMAGE_WIDTH / 2 - 20, self.height + 160))
 
 
     def render(self):
