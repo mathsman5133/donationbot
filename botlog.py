@@ -13,12 +13,12 @@ def setup_logging(bot, test_syncer=False):
         db.execute("create table if not exists errors (script text, level integer, message text, time timestamp, module text);")
         db.commit()
 
-    # logging.getLogger('discord').setLevel(logging.INFO)
-    # logging.getLogger('discord.http').setLevel(logging.WARNING)
-    # logging.getLogger('discord.state').setLevel(logging.WARNING)
-    # logging.getLogger('websockets.protocol').setLevel(logging.WARNING)
-    # logging.getLogger('coc').setLevel(logging.INFO)
-    # logging.getLogger('coc.http').setLevel(logging.WARNING)
+    logging.getLogger('discord').setLevel(logging.INFO)
+    logging.getLogger('discord.http').setLevel(logging.WARNING)
+    logging.getLogger('discord.state').setLevel(logging.WARNING)
+    logging.getLogger('websockets.protocol').setLevel(logging.WARNING)
+    logging.getLogger('coc').setLevel(logging.INFO)
+    logging.getLogger('coc.http').setLevel(logging.WARNING)
 
     log = logging.getLogger()
     log.setLevel(logging.INFO)
@@ -50,28 +50,28 @@ def setup_logging(bot, test_syncer=False):
     logger.setLevel(logging.DEBUG)
 
     # add handler to the logger
-    handler = logging.handlers.SysLogHandler('/dev/log')
-
-    # add syslog format to the handler
-    formatter = logging.Formatter(
-        'Python: { "loggerName":"%(name)s", "timestamp":"%(asctime)s", "pathName":"%(pathname)s", "logRecordCreationTime":"%(created)f", "functionName":"%(funcName)s", "levelNo":"%(levelno)s", "lineNo":"%(lineno)d", "time":"%(msecs)d", "levelName":"%(levelname)s", "message":"%(message)s"}')
-
-    handler.formatter = formatter
-    logger.addHandler(handler)
-
-    logger.info("Test Log")
-
-    class COCPYFilter(logging.Filter):
-        def filter(self, record: logging.LogRecord) -> int:
-            return record.msg == "API HTTP Request"
-
-    logger = logging.getLogger("coc.http")
-    logger.addFilter(COCPYFilter())
-    logger.setLevel(logging.DEBUG)
-    formatter = logging.Formatter('coc.py API: { "loggerName":"%(name)s", "timestamp":"%(asctime)s", "pathName":"%(pathname)s", "method": "%(method)s", "url": "%(url)s", "status": "%(status)s", "perf_counter": "%(perf_counter)s"}')
-    handler = logging.handlers.SysLogHandler('/dev/log')
-    handler.formatter = formatter
-    logger.addHandler(handler)
+    # handler = logging.handlers.SysLogHandler('/dev/log')
+    #
+    # # add syslog format to the handler
+    # formatter = logging.Formatter(
+    #     'Python: { "loggerName":"%(name)s", "timestamp":"%(asctime)s", "pathName":"%(pathname)s", "logRecordCreationTime":"%(created)f", "functionName":"%(funcName)s", "levelNo":"%(levelno)s", "lineNo":"%(lineno)d", "time":"%(msecs)d", "levelName":"%(levelname)s", "message":"%(message)s"}')
+    #
+    # handler.formatter = formatter
+    # logger.addHandler(handler)
+    #
+    # logger.info("Test Log")
+    #
+    # class COCPYFilter(logging.Filter):
+    #     def filter(self, record: logging.LogRecord) -> int:
+    #         return record.msg == "API HTTP Request"
+    #
+    # logger = logging.getLogger("coc.http")
+    # logger.addFilter(COCPYFilter())
+    # logger.setLevel(logging.DEBUG)
+    # formatter = logging.Formatter('coc.py API: { "loggerName":"%(name)s", "timestamp":"%(asctime)s", "pathName":"%(pathname)s", "method": "%(method)s", "url": "%(url)s", "status": "%(status)s", "perf_counter": "%(perf_counter)s"}')
+    # handler = logging.handlers.SysLogHandler('/dev/log')
+    # handler.formatter = formatter
+    # logger.addHandler(handler)
 
     class DiscordHandler(logging.NullHandler):
         def handle(self, record):
