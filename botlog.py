@@ -5,7 +5,7 @@ import logging
 import logging.handlers
 import math
 import sqlite3
-
+import itertools
 
 def setup_logging(bot, test_syncer=False):
     if test_syncer:
@@ -35,17 +35,11 @@ def setup_logging(bot, test_syncer=False):
     stream_handler.setFormatter(fmt)
     log.addHandler(stream_handler)
 
-    error_webhook = discord.Webhook.partial(
+    bot.error_webhooks = itertools.cycle(discord.Webhook.partial(
         id=creds.log_hook_id,
         token=creds.log_hook_token,
         adapter=discord.AsyncWebhookAdapter(session=bot.session)
-                                            )
-    requests_hook = discord.Webhook.partial(
-        id=creds.log_hook_id,
-        token=creds.log_hook_token,
-        adapter=discord.RequestsWebhookAdapter()
-    )
-
+                                            ))
     logger = logging.getLogger()
     logger.setLevel(logging.DEBUG)
 
@@ -88,7 +82,7 @@ def setup_logging(bot, test_syncer=False):
 
             for n in messages:
                 try:
-                    asyncio.ensure_future(error_webhook.send(f'```\n{n}\n```'))
+                    asyncio.ensure_future(next(bot.error_webhooks).send(f'```\n{n}\n```'))
                 except:
                     pass
 

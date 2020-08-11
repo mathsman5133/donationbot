@@ -7,6 +7,7 @@ import traceback
 import creds
 import sqlite3
 import sys
+import itertools
 
 import sentry_sdk
 
@@ -186,6 +187,9 @@ class DonationBot(commands.AutoShardedBot):
     async def after_command_invoke(self, ctx):
         if hasattr(ctx, 'after_invoke'):
             await ctx.after_invoke(ctx)
+
+    async def on_ready(self):
+        self.error_webhooks = itertools.cycle(n for n in await self.get_channel(625160612791451661).webhooks())
 
     async def on_message(self, message):
         if message.author.bot:
