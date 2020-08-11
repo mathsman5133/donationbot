@@ -35,11 +35,11 @@ def setup_logging(bot, test_syncer=False):
     stream_handler.setFormatter(fmt)
     log.addHandler(stream_handler)
 
-    bot.error_webhooks = itertools.cycle(discord.Webhook.partial(
+    bot.error_webhooks = itertools.cycle([discord.Webhook.partial(
         id=creds.log_hook_id,
         token=creds.log_hook_token,
         adapter=discord.AsyncWebhookAdapter(session=bot.session)
-                                            ))
+                                            )])
     logger = logging.getLogger()
     logger.setLevel(logging.DEBUG)
 
