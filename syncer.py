@@ -729,7 +729,7 @@ async def maintenance_completed(start_time):
     await safe_send(594286547449282587, f"Maintenance has finished, started at {start_time}!")
 
 async def fetch_webhooks():
-    bot.error_webhooks = itertools.cycle(await bot.fetch_webhook(id_) for id_ in (742689063751909426, 742689064481718382, 742689064670724148, 742689065245081623, 742689066096787517))
+    bot.error_webhooks = itertools.cycle([await bot.fetch_webhook(id_) for id_ in (742689063751909426, 742689064481718382, 742689064670724148, 742689065245081623, 742689066096787517)])
 
 
 if __name__ == "__main__":
