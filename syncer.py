@@ -5,6 +5,7 @@ import time
 import itertools
 import math
 import copy
+import io
 
 import aiohttp
 import coc
@@ -13,6 +14,7 @@ import sentry_sdk
 
 from discord.ext import commands, tasks
 from collections import Counter
+from matplotlib import pyplot as plt
 
 import creds
 
@@ -349,7 +351,9 @@ async def send_trophylog_events(clan_tags):
                AND logs.toggle = TRUE
                AND logs.type = 'trophy'
             """
-    clan_tags = list(set(n['clan_tag'] for n in trophylog_batch_data))
+    data = copy.copy(trophylog_batch_data)
+    trophylog_batch_data.clear()
+    clan_tags = list(set(n['clan_tag'] for n in data))
     fetch = await pool.fetch(query, clan_tags)
 
     clan_tag_to_channel_data = {r['clan_tag']: LogConfig(bot=None, record=r) for r in fetch}
@@ -361,7 +365,7 @@ async def send_trophylog_events(clan_tags):
             n['clan_tag'],
             n['clan_name'],
             clan_tag_to_channel_data.get(n['clan_tag'])
-        ) for n in trophylog_batch_data if clan_tag_to_channel_data.get(n['clan_tag'])
+        ) for n in data if clan_tag_to_channel_data.get(n['clan_tag'])
     ]
     events.sort(key=lambda n: n.log_config.channel_id)
 
@@ -382,8 +386,6 @@ async def send_trophylog_events(clan_tags):
                           f'(ID {config.channel_id} type={config.type})')
 
                 await safe_send(config.channel_id, '\n'.join(x))
-
-    trophylog_batch_data.clear()
 
 
 @coc_client.event
@@ -715,6 +717,28 @@ async def maintenance_completed(start_time):
 async def fetch_webhooks():
     bot.error_webhooks = itertools.cycle([await bot.fetch_webhook(id_) for id_ in (742689063751909426, 742689064481718382, 742689064670724148, 742689065245081623, 742689066096787517)])
 
+@tasks.loop(seconds=120.0)
+async def send_stats():
+    await bot.wait_until_ready()
+    stats = coc_client.http.get_all_average()
+    if len(stats) > 2:
+        columns = 2
+        rows = math.ceil(len(stats) / 2)
+    else:
+        columns = 1
+        rows = len(stats)
+
+    fig, axs = plt.subplots(rows, columns)
+    for i, (key, values) in enumerate(stats.items()):
+        axs[i].plot(range(len(values)), list(values))
+        axs[i].set_ylabel(key)
+    fig.suptitle(f"Latency for last minute to {datetime.datetime.utcnow().strftime('%H:%M %d/%m')}")
+    b = io.BytesIO()
+    plt.savefig(b, format='png')
+    b.seek(0)
+    await next(bot.error_webhooks).send(file=discord.File(b, f'cocapi.png'))
+    plt.close()
+
 
 if __name__ == "__main__":
     loop.run_until_complete(bot.login(creds.bot_token))
@@ -730,5 +754,8 @@ if __name__ == "__main__":
     last_updated_loop.start()
     board_insert_loop.add_exception_type(Exception, BaseException)
     board_insert_loop.start()
+
+    send_stats.add_exception_type(Exception, BaseException)
+    send_stats.start()
 
     coc_client.run_forever()
