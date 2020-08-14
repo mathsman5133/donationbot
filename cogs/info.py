@@ -4,6 +4,10 @@ import os
 import asyncio
 import discord
 import itertools
+import io
+import math
+
+from matplotlib import pyplot as plt
 
 from discord.ext import commands
 from cogs.utils.paginator import Pages, EmbedPages
@@ -344,8 +348,25 @@ class Info(commands.Cog, name='\u200bInfo'):
 
     @commands.command(hidden=True)
     async def ping(self, ctx):
+        stats = self.bot.coc.http.stats.get_all_average()
+        if len(stats) > 2:
+            columns = 2
+            rows = math.ceil(len(stats) / 2)
+        else:
+            columns = 1
+            rows = len(stats)
+
+        fig, axs = plt.subplots(rows, columns)
+        for i, (key, values) in enumerate(stats.items()):
+            axs[i].plot(range(len(values)), list(values))
+            axs[i].set_ylabel(key)
+        fig.suptitle(f"Latency for last minute to {datetime.utcnow().strftime('%H:%M %d/%m')}")
+        b = io.BytesIO()
+        plt.savefig(b, format='png')
+        b.seek(0)
         fmt = "\n".join(f'Shard ID: {i}, Latency: {n*1000:.2f}ms' for i, n in self.bot.latencies)
-        await ctx.send(f'Pong!\n{fmt}\nAverage Latency: {self.bot.latency*1000:.2f}ms')
+        await ctx.send(f'Pong!\n{fmt}\nAverage Latency: {self.bot.latency*1000:.2f}ms', file=discord.File(b, f'cocapi.png'))
+        plt.close()
 
     @commands.command(hidden=True)
     @commands.is_owner()
