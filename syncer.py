@@ -719,7 +719,7 @@ async def fetch_webhooks():
 @tasks.loop(seconds=120.0)
 async def send_stats():
     try:
-        stats = coc_client.http.get_all_average()
+        stats = coc_client.http.stats.get_all_average()
         if len(stats) > 2:
             columns = 2
             rows = math.ceil(len(stats) / 2)
