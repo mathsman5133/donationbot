@@ -108,7 +108,6 @@ async def safe_send(channel_id, content=None, embed=None):
 @coc_client.event
 @coc.ClientEvents.clan_loop_finish()
 async def send_donationlog_events(clan_tags):
-    log.info("sending logs")
     query = """SELECT logs.channel_id, 
                       clans.clan_tag,
                       logs.guild_id, 
@@ -719,26 +718,28 @@ async def fetch_webhooks():
 
 @tasks.loop(seconds=120.0)
 async def send_stats():
-    await bot.wait_until_ready()
-    stats = coc_client.http.get_all_average()
-    if len(stats) > 2:
-        columns = 2
-        rows = math.ceil(len(stats) / 2)
-    else:
-        columns = 1
-        rows = len(stats)
+    try:
+        await bot.wait_until_ready()
+        stats = coc_client.http.get_all_average()
+        if len(stats) > 2:
+            columns = 2
+            rows = math.ceil(len(stats) / 2)
+        else:
+            columns = 1
+            rows = len(stats)
 
-    fig, axs = plt.subplots(rows, columns)
-    for i, (key, values) in enumerate(stats.items()):
-        axs[i].plot(range(len(values)), list(values))
-        axs[i].set_ylabel(key)
-    fig.suptitle(f"Latency for last minute to {datetime.datetime.utcnow().strftime('%H:%M %d/%m')}")
-    b = io.BytesIO()
-    plt.savefig(b, format='png')
-    b.seek(0)
-    await next(bot.error_webhooks).send(file=discord.File(b, f'cocapi.png'))
-    plt.close()
-
+        fig, axs = plt.subplots(rows, columns)
+        for i, (key, values) in enumerate(stats.items()):
+            axs[i].plot(range(len(values)), list(values))
+            axs[i].set_ylabel(key)
+        fig.suptitle(f"Latency for last minute to {datetime.datetime.utcnow().strftime('%H:%M %d/%m')}")
+        b = io.BytesIO()
+        plt.savefig(b, format='png')
+        b.seek(0)
+        await next(bot.error_webhooks).send(file=discord.File(b, f'cocapi.png'))
+        plt.close()
+    except Exception:
+        log.exception("sending stats")
 
 if __name__ == "__main__":
     loop.run_until_complete(bot.login(creds.bot_token))
