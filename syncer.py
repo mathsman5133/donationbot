@@ -22,7 +22,7 @@ from cogs.utils.donationtrophylogs import SlimDonationEvent2, SlimTrophyEvent, g
 from cogs.utils.db_objects import LogConfig
 
 log = logging.getLogger(__name__)
-log.setLevel(logging.DEBUG)
+log.setLevel(logging.INFO)
 sentry_sdk.init(creds.SENTRY_KEY)
 
 
