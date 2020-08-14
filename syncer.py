@@ -4,6 +4,7 @@ import logging
 import time
 import itertools
 import math
+import copy
 
 import aiohttp
 import coc
@@ -21,7 +22,7 @@ from cogs.utils.donationtrophylogs import SlimDonationEvent2, SlimTrophyEvent, g
 from cogs.utils.db_objects import LogConfig
 
 log = logging.getLogger(__name__)
-log.setLevel(logging.INFO)
+log.setLevel(logging.DEBUG)
 sentry_sdk.init(creds.SENTRY_KEY)
 
 
@@ -46,7 +47,7 @@ SEASON_ID = 14
 
 loop = asyncio.get_event_loop()
 pool = loop.run_until_complete(Table.create_pool(creds.postgres))
-coc_client = coc.login(creds.email, creds.password, client=coc.EventsClient, key_names="test2", throttle_limit=20, key_count=3, scopes=creds.scopes)
+coc_client = coc.login(creds.email, creds.password, client=coc.EventsClient, key_names="test2", throttle_limit=30, key_count=3, scopes=creds.scopes, events_batch_limit=200)
 coc_client.clan_cls = CustomClan
 
 bot = commands.Bot(command_prefix="+", loop=loop)
@@ -70,16 +71,6 @@ last_updated_counter = Counter()
 @coc.ClientEvents.event_error()
 async def on_event_error(exception):
     log.exception("event failed", exc_info=exception)
-
-
-@tasks.loop(seconds=30.0)
-async def batch_insert_loop():
-    log.info('Starting batch insert loop for donationlogs.')
-    async with donationlog_batch_lock:
-        try:
-            await send_donationlog_events()
-        except:
-            log.exception("donationlogs failed")
 
 
 async def add_temp_events(log_type, channel_id, fmt):
@@ -112,7 +103,10 @@ async def safe_send(channel_id, content=None, embed=None):
         log.exception(f"{channel_id} failed to send {content} {embed}")
 
 
-async def send_donationlog_events():
+@coc_client.event
+@coc.ClientEvents.clan_loop_finish()
+async def send_donationlog_events(clan_tags):
+    log.info("sending logs")
     query = """SELECT logs.channel_id, 
                       clans.clan_tag,
                       logs.guild_id, 
@@ -139,7 +133,9 @@ async def send_donationlog_events():
             clan_tag_to_channel_data[row['clan_tag']] = [LogConfig(bot=None, record=row)]
 
     events = []
-    for event in donationlog_batch_data:
+    data = copy.copy(donationlog_batch_data)
+    donationlog_batch_data.clear()
+    for event in data:
         for log_config in clan_tag_to_channel_data.get(event['clan_tag'], []):
             events.append(
                 SlimDonationEvent2(
@@ -186,9 +182,6 @@ async def send_donationlog_events():
             for x in messages:
                 log.debug(f'Dispatching a detailed log to channel (ID {config.channel_id}), {x}')
                 await safe_send(channel_id, '\n'.join(x))
-
-    donationlog_batch_data.clear()
-
         
 @tasks.loop(seconds=60.0)
 async def board_insert_loop():
@@ -339,18 +332,9 @@ async def on_clan_member_received(old_player, player):
 
     # await update(player.tag, player.clan and player.clan.tag)
 
-
-@tasks.loop(seconds=60.0)
-async def trophylog_batch_insert_loop():
-    log.info('Starting batch insert loop.')
-    async with trophylog_batch_lock:
-        try:
-            await send_trophylog_events()
-        except:
-            log.exception("trophylogs failed")
-
-
-async def send_trophylog_events():
+@coc_client.event
+@coc.ClientEvents.clan_loop_finish()
+async def send_trophylog_events(clan_tags):
     query = """SELECT logs.channel_id, 
                       clans.clan_tag,
                       logs.guild_id, 
@@ -738,12 +722,6 @@ if __name__ == "__main__":
     print("STARTING")
     update_clan_tags.add_exception_type(Exception, BaseException)
     update_clan_tags.start()
-
-    batch_insert_loop.add_exception_type(Exception, BaseException)
-    batch_insert_loop.start()
-    #
-    trophylog_batch_insert_loop.add_exception_type(Exception, BaseException)
-    trophylog_batch_insert_loop.start()
 
     # event_player_updater.add_exception_type(coc.HTTPException)
     # event_player_updater.start()
