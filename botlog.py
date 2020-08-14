@@ -40,9 +40,6 @@ def setup_logging(bot, test_syncer=False):
         token=creds.log_hook_token,
         adapter=discord.AsyncWebhookAdapter(session=bot.session)
                                             )])
-    logger = logging.getLogger()
-    logger.setLevel(logging.DEBUG)
-
     # add handler to the logger
     # handler = logging.handlers.SysLogHandler('/dev/log')
     #
@@ -90,7 +87,7 @@ def setup_logging(bot, test_syncer=False):
             self.handle(record)
 
     discord_hndlr = DiscordHandler()
-    discord_hndlr.setLevel(logging.DEBUG)
+    discord_hndlr.setLevel(logging.INFO)
     log.addHandler(discord_hndlr)
 
 
