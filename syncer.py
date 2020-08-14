@@ -755,7 +755,7 @@ if __name__ == "__main__":
     board_insert_loop.add_exception_type(Exception, BaseException)
     board_insert_loop.start()
 
-    # send_stats.add_exception_type(Exception, BaseException)
-    # send_stats.start()
+    send_stats.add_exception_type(Exception, BaseException)
+    send_stats.start()
 
     coc_client.run_forever()
