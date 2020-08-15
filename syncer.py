@@ -728,7 +728,8 @@ async def send_stats():
             rows = len(stats)
 
         if len(stats) == 1:
-            fig, (axs) = plt.subplots(rows, columns)
+            fig, axs = plt.subplots(rows, columns)
+            axs = [axs]
         else:
             fig, (*axs, ) = plt.subplots(rows, columns)
 
