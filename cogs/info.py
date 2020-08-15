@@ -7,8 +7,10 @@ import itertools
 import io
 import math
 import copy
+import statistics
 
 from matplotlib import pyplot as plt
+import numpy as np
 
 from discord.ext import commands
 from cogs.utils.paginator import Pages, EmbedPages
@@ -250,6 +252,7 @@ class Info(commands.Cog, name='\u200bInfo'):
     def __init__(self, bot):
         self.bot = bot
 
+        self._old_help = bot.help_command
         bot.help_command = HelpCommand()
         bot.help_command.cog = self
         bot.invite = self.invite_link
@@ -257,6 +260,9 @@ class Info(commands.Cog, name='\u200bInfo'):
         bot.front_help_page_false = []
 
         self.process = psutil.Process()
+
+    def cog_unload(self):
+        self.bot.help_command = self._old_help
 
     async def bot_check(self, ctx):
         if ctx.guild is None:
@@ -349,30 +355,23 @@ class Info(commands.Cog, name='\u200bInfo'):
 
     @commands.command(hidden=True)
     async def ping(self, ctx):
-        stats = self.bot.coc.http.stats.items()
-        if len(stats) > 2:
-            columns = 2
-            rows = math.ceil(len(stats) / 2)
-        else:
-            columns = 1
-            rows = len(stats)
-        
-        if len(stats) == 1:
-            fig, axs = plt.subplots(rows, columns)
-            axs = [axs]
-        elif columns == 1:
-            fig, (*axs, ) = plt.subplots(rows, columns)
-        else:
-            fig, axis = plt.subplots(rows, columns)
-            axs = []
-            for a in axis:
-                axs.extend(list(a))
-        
-        for i, (key, values) in enumerate(stats):
-            axs[i].bar(range(len(values)), list(values), color="blue")
-            axs[i].set_ylabel(key, fontsize=80/len(key))
+        stats = self.bot.http.stats
+        med = []
+        error = []
+        for key, perf in stats.items():
+            median = statistics.median(perf)
+            error.append([median - statistics.median_low(perf), statistics.median_high(perf) - median])
+            med.append(median)
 
-        fig.suptitle(f"Last 20 COC API Requests: {datetime.utcnow().strftime('%H:%M %d/%m')}")
+        y_pos = np.arrange(len(stats))
+        fig, ax = plt.subplots()
+        ax.barh(y_pos, med, xerr=error)
+        ax.set_yticks(y_pos)
+        ax.set_yticklabels(stats.keys())
+        ax.invert_yaxis()  # labels read top-to-bottom
+        ax.set_xlabel("Average Latency (ms)")
+        ax.set_title("Average COC API Latency by Endpoint.")
+
         b = io.BytesIO()
         plt.savefig(b, format='png')
         b.seek(0)
