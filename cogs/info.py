@@ -358,7 +358,8 @@ class Info(commands.Cog, name='\u200bInfo'):
             rows = len(stats)
 
         if len(stats) == 1:
-            fig, (axs) = plt.subplots(rows, columns)
+            fig, axs = plt.subplots(rows, columns)
+            axs = [axs]
         else:
             fig, (*axs, ) = plt.subplots(rows, columns)
 
