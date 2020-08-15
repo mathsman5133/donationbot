@@ -371,11 +371,12 @@ class Info(commands.Cog, name='\u200bInfo'):
         ax.set_yticks(y_pos)
         ax.set_yticklabels(stats.keys())
         ax.invert_yaxis()  # labels read top-to-bottom
-        ax.set_xlabel("Average Latency (ms)")
-        ax.set_title("Average COC API Latency by Endpoint.")
+        ax.set_xlabel("Median Latency (ms)")
+        ax.set_title("Median COC API Latency by Endpoint.")
+        ax.set_autoscaley_on()
 
         b = io.BytesIO()
-        plt.savefig(b, format='png')
+        plt.savefig(b, format='png', pad_inches=0.2)
         b.seek(0)
         fmt = "\n".join(f'Shard ID: {i}, Latency: {n*1000:.2f}ms' for i, n in self.bot.latencies)
         await ctx.send(f'Pong!\n{fmt}\nAverage Latency: {self.bot.latency*1000:.2f}ms', file=discord.File(b, f'cocapi.png'))
