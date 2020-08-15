@@ -727,9 +727,13 @@ async def send_stats():
             columns = 1
             rows = len(stats)
 
-        fig, (*axs, ) = plt.subplots(rows, columns)
+        if len(stats) == 1:
+            fig, (axs, ) = plt.subplots(rows, columns)
+        else:
+            fig, (*axs, ) = plt.subplots(rows, columns)
+
         for i, (key, values) in enumerate(stats):
-            axs[i].plot(range(len(values)), list(values), color="blue")
+            axs[i].bar(range(len(values)), list(values), color="blue")
             axs[i].set_ylabel(key)
         fig.suptitle(f"Latency for last minute to {datetime.datetime.utcnow().strftime('%H:%M %d/%m')}")
         b = io.BytesIO()
