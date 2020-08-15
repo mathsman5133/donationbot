@@ -124,10 +124,10 @@ class Admin(commands.Cog):
     @commands.command(hidden=True)
     async def loadapi(self, ctx, num: int = 20):
         tasks = []
-        def run(item, *args, **kwargs):
+        async def run(item, *args, **kwargs):
             for _ in range(num):
                 try:
-                    tasks.append(asyncio.ensure_future(item(*args, **kwargs)))
+                    await item(*args, **kwargs)
                 except:
                     continue
 
@@ -141,7 +141,7 @@ class Admin(commands.Cog):
             client.get_current_war,
             client.get_player
         ):
-            run(call, "#2PP")
+            tasks.append(asyncio.ensure_future(run(call, "#2PP")))
         
         for call in (
             client.search_locations,
@@ -153,9 +153,9 @@ class Admin(commands.Cog):
             client.get_location_clans_versus,
             client.get_location_players_versus,
         ):
-            run(call)
+            tasks.append(asyncio.ensure_future(run(call, "#2PP")))
 
-        run(client.search_clans, "Reddit")
+        tasks.append(asyncio.ensure_future(run(call, "#2PP")))
         await asyncio.gather(*tasks)
         await ctx.send('\N{OK HAND SIGN}')
 
