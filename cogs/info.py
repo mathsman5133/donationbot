@@ -366,7 +366,7 @@ class Info(commands.Cog, name='\u200bInfo'):
         for i, (key, values) in enumerate(stats):
             axs[i].bar(range(len(values)), list(values), color="blue")
             axs[i].set_ylabel(key)
-        fig.suptitle(f"Latency for last minute to {datetime.utcnow().strftime('%H:%M %d/%m')}")
+        fig.suptitle(f"Last 20 COC API Requests: {datetime.utcnow().strftime('%H:%M %d/%m')}")
         b = io.BytesIO()
         plt.savefig(b, format='png')
         b.seek(0)
