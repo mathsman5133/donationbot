@@ -356,16 +356,21 @@ class Info(commands.Cog, name='\u200bInfo'):
         else:
             columns = 1
             rows = len(stats)
-
+        
         if len(stats) == 1:
             fig, axs = plt.subplots(rows, columns)
             axs = [axs]
-        else:
+        elif columns == 1:
             fig, (*axs, ) = plt.subplots(rows, columns)
-
+        else:
+            fix, axis = plt.subplots(rows, columns)
+            axs = []
+            for a in axis:
+                axs.extend(list(a))
+        
         for i, (key, values) in enumerate(stats):
             axs[i].bar(range(len(values)), list(values), color="blue")
-            axs[i].set_ylabel(key)
+            axs[i].set_ylabel(key, fontsize=80/len(key))
         fig.suptitle(f"Last 20 COC API Requests: {datetime.utcnow().strftime('%H:%M %d/%m')}")
         b = io.BytesIO()
         plt.savefig(b, format='png')
