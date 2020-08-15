@@ -369,7 +369,7 @@ class Info(commands.Cog, name='\u200bInfo'):
         fig, ax = plt.subplots()
         ax.barh(y_pos, med, xerr=[l_err, h_err])
         ax.set_yticks(y_pos)
-        ax.set_yticklabels(stats.keys())
+        ax.set_yticklabels([k.replace("locations/global", "loc") for k in stats.keys()])
         ax.invert_yaxis()  # labels read top-to-bottom
         ax.set_xlabel("Median Latency (ms)")
         ax.set_title("Median COC API Latency by Endpoint.")
