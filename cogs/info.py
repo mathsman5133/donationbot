@@ -363,7 +363,7 @@ class Info(commands.Cog, name='\u200bInfo'):
             error.append([median - statistics.median_low(perf), statistics.median_high(perf) - median])
             med.append(median)
 
-        y_pos = np.arrange(len(stats))
+        y_pos = np.arange(len(stats))
         fig, ax = plt.subplots()
         ax.barh(y_pos, med, xerr=error)
         ax.set_yticks(y_pos)
