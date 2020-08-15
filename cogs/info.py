@@ -355,7 +355,7 @@ class Info(commands.Cog, name='\u200bInfo'):
 
     @commands.command(hidden=True)
     async def ping(self, ctx):
-        stats = self.bot.http.stats
+        stats = self.bot.coc.http.stats
         med = []
         error = []
         for key, perf in stats.items():
