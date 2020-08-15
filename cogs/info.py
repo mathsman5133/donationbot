@@ -6,6 +6,7 @@ import discord
 import itertools
 import io
 import math
+import copy
 
 from matplotlib import pyplot as plt
 
@@ -348,7 +349,7 @@ class Info(commands.Cog, name='\u200bInfo'):
 
     @commands.command(hidden=True)
     async def ping(self, ctx):
-        stats = self.bot.coc.http.stats.get_all_average()
+        stats = copy.copy(self.bot.coc.http.stats.items())
         if len(stats) > 2:
             columns = 2
             rows = math.ceil(len(stats) / 2)
@@ -356,9 +357,9 @@ class Info(commands.Cog, name='\u200bInfo'):
             columns = 1
             rows = len(stats)
 
-        fig, axs = plt.subplots(rows, columns)
-        for i, (key, values) in enumerate(stats.items()):
-            axs[i].plot(range(len(values)), list(values))
+        fig, (*axs, ) = plt.subplots(rows, columns)
+        for i, (key, values) in enumerate(stats):
+            axs[i].plot(range(len(values)), list(values), color="blue")
             axs[i].set_ylabel(key)
         fig.suptitle(f"Latency for last minute to {datetime.utcnow().strftime('%H:%M %d/%m')}")
         b = io.BytesIO()

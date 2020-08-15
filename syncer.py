@@ -719,7 +719,7 @@ async def fetch_webhooks():
 @tasks.loop(seconds=120.0)
 async def send_stats():
     try:
-        stats = coc_client.http.stats.get_all_average()
+        stats = copy.copy(coc_client.http.stats.items())
         if len(stats) > 2:
             columns = 2
             rows = math.ceil(len(stats) / 2)
@@ -727,9 +727,9 @@ async def send_stats():
             columns = 1
             rows = len(stats)
 
-        fig, axs = plt.subplots(rows, columns)
-        for i, (key, values) in enumerate(stats.items()):
-            axs[i].plot(range(len(values)), list(values))
+        fig, (*axs, ) = plt.subplots(rows, columns)
+        for i, (key, values) in enumerate(stats):
+            axs[i].plot(range(len(values)), list(values), color="blue")
             axs[i].set_ylabel(key)
         fig.suptitle(f"Latency for last minute to {datetime.datetime.utcnow().strftime('%H:%M %d/%m')}")
         b = io.BytesIO()
