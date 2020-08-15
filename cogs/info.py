@@ -373,7 +373,7 @@ class Info(commands.Cog, name='\u200bInfo'):
         ax.invert_yaxis()  # labels read top-to-bottom
         ax.set_xlabel("Median Latency (ms)")
         ax.set_title("Median COC API Latency by Endpoint.")
-        ax.set_autoscaley_on()
+        ax.set_autoscaley_on(True)
 
         b = io.BytesIO()
         plt.savefig(b, format='png', pad_inches=0.2)
