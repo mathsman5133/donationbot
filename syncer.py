@@ -719,7 +719,7 @@ async def fetch_webhooks():
 @tasks.loop(seconds=120.0)
 async def send_stats():
     try:
-        stats = copy.copy(coc_client.http.stats.items())
+        stats = coc_client.http.stats.items()
         if len(stats) > 2:
             columns = 2
             rows = math.ceil(len(stats) / 2)

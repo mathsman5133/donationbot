@@ -349,7 +349,7 @@ class Info(commands.Cog, name='\u200bInfo'):
 
     @commands.command(hidden=True)
     async def ping(self, ctx):
-        stats = copy.copy(self.bot.coc.http.stats.items())
+        stats = self.bot.coc.http.stats.items()
         if len(stats) > 2:
             columns = 2
             rows = math.ceil(len(stats) / 2)
