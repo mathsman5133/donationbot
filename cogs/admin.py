@@ -122,6 +122,44 @@ class Admin(commands.Cog):
             await ctx.send(coll)
 
     @commands.command(hidden=True)
+    async def loadapi(self, ctx, num: int = 20):
+        tasks = []
+        def run(item, *args, **kwargs):
+            for _ in range(num):
+                try:
+                    tasks.append(asyncio.ensure_future(item(*args, **kwargs)))
+                except:
+                    continue
+
+        client = self.bot.coc
+        for call in (
+            client.get_clan,
+            client.get_members,
+            client.get_warlog,
+            client.get_clan_war,
+            client.get_league_group,
+            client.get_current_war,
+            client.get_player
+        ):
+            run(call, "#2PP")
+        
+        for call in (
+            client.search_locations,
+            client.search_leagues,
+            client.get_clan_labels,
+            client.get_player_labels,
+            client.get_location_clans,
+            client.get_location_players,
+            client.get_location_clans_versus,
+            client.get_location_players_versus,
+        ):
+            run(call)
+
+        run(client.search_clans, "Reddit")
+        await asyncio.gather(*tasks)
+        await ctx.send('\N{OK HAND SIGN}')
+
+    @commands.command(hidden=True)
     async def load(self, ctx, *, module):
         """Loads a module."""
         try:
