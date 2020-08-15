@@ -357,15 +357,17 @@ class Info(commands.Cog, name='\u200bInfo'):
     async def ping(self, ctx):
         stats = self.bot.coc.http.stats
         med = []
-        error = []
+        l_err = []
+        h_err = []
         for key, perf in stats.items():
             median = statistics.median(perf)
-            error.append([median - statistics.median_low(perf), statistics.median_high(perf) - median])
+            l_err.append(median - statistics.median_low(perf))
+            h_err.append(statistics.median_high(perf) - median)
             med.append(median)
 
         y_pos = np.arange(len(stats))
         fig, ax = plt.subplots()
-        ax.barh(y_pos, med, xerr=error)
+        ax.barh(y_pos, med, xerr=[l_err, h_err])
         ax.set_yticks(y_pos)
         ax.set_yticklabels(stats.keys())
         ax.invert_yaxis()  # labels read top-to-bottom

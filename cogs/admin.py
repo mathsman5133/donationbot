@@ -139,9 +139,8 @@ class Admin(commands.Cog):
             client.get_clan_war,
             client.get_league_group,
             client.get_current_war,
-            client.get_player
         ):
-            tasks.append(asyncio.ensure_future(run(call, "#2PP")))
+            tasks.append(asyncio.ensure_future(run(call, "#G88CYQP")))
         
         for call in (
             client.search_locations,
@@ -153,9 +152,10 @@ class Admin(commands.Cog):
             client.get_location_clans_versus,
             client.get_location_players_versus,
         ):
-            tasks.append(asyncio.ensure_future(run(call, "#2PP")))
+            tasks.append(asyncio.ensure_future(run(call)))
 
-        tasks.append(asyncio.ensure_future(run(call, "#2PP")))
+        tasks.append(asyncio.ensure_future(run(client.get_player, "#JY9J2Y99")))
+        tasks.append(asyncio.ensure_future(run(client.get_clan, "Reddit")))
         await asyncio.gather(*tasks)
         await ctx.send('\N{OK HAND SIGN}')
 
