@@ -88,7 +88,7 @@ def setup_logging(bot, test_syncer=False):
 
     discord_hndlr = DiscordHandler()
     discord_hndlr.setLevel(logging.INFO)
-    log.addHandler(discord_hndlr)
+    # log.addHandler(discord_hndlr)
 
 
 def add_hooks(bot):
