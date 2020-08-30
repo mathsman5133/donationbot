@@ -95,7 +95,7 @@ async def add_detailed_temp_events(channel_id, clan_tag, events):
 
 
 async def safe_send(channel_id, content=None, embed=None):
-    if len(content) > 2000:
+    if content and len(content) > 2000:
         log.debug(f"{channel_id} content {content} is too long; didn't try to send")
         return
     try:
