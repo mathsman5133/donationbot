@@ -201,6 +201,10 @@ class DonationBot(commands.AutoShardedBot):
         # we have a couple attributes to add to context, lets add them now (easy db connection etc.)
         ctx = await self.get_context(message, cls=context.Context)
 
+        if ctx.guild is None:
+            invite = getattr(self, "invite", discord.utils.oauth_url(self.user.id))
+            return await ctx.send(f"Please invite me to a server to run commands: {invite}")
+
         if ctx.command is None:
             if self.user in message.mentions:
                 await ctx.send(f"My prefix for this guild is {self.prefixes.get(message.guild.id, '+')}")
