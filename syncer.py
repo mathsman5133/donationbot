@@ -45,7 +45,7 @@ class CustomClan(coc.Clan):
         self._members = {m['tag']: CustomClanMember(data=m, client=client) for m in data.get("memberList", [])}
 
 
-SEASON_ID = 15
+SEASON_ID = 16
 
 loop = asyncio.get_event_loop()
 pool = loop.run_until_complete(Table.create_pool(creds.postgres))
