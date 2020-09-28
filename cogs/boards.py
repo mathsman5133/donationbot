@@ -420,7 +420,7 @@ class DonationBoard(commands.Cog):
                                         donations,
                                         received,
                                         donations / NULLIF(received, 0) AS "ratio",
-                                        now() - last_updated AS "last_online",
+                                        now() - last_updated AS "last_online"
                        FROM players
                        INNER JOIN clans
                        ON clans.clan_tag = players.clan_tag
@@ -441,7 +441,7 @@ class DonationBoard(commands.Cog):
                                         donations,
                                         received,
                                         donations / NULLIF(received, 0) AS "ratio",
-                                        now() - last_updated AS "last_online",
+                                        now() - last_updated AS "last_online"
                        FROM players
                        INNER JOIN clans
                        ON clans.clan_tag = players.clan_tag
