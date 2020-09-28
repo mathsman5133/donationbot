@@ -50,7 +50,7 @@ class MPLTable:
         plt.savefig(b, format='png')
         b.seek(0)
         plt.close()
-        return discord.File(b, f'board.png')
+        return b
 
 
 class DonationBoardTable(MPLTable):
