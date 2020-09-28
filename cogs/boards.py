@@ -507,7 +507,7 @@ class DonationBoard(commands.Cog):
     @commands.command(hidden=True)
     @commands.is_owner()
     async def random_board(self, ctx, offset=0):
-        query = "SELECT * FROM boards WHERE toggle=True ORDER BY random() LIMIT 1"
+        query = "SELECT * FROM boards WHERE toggle=True AND type='donation' ORDER BY random() LIMIT 1"
         fetch = await self.bot.pool.fetchrow(query)
         if not fetch:
             return
