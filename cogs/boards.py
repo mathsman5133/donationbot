@@ -473,8 +473,8 @@ class DonationBoard(commands.Cog):
         else:
             icon = None
 
-        fetch = await self.bot.pool.fetchrow("SELECT start, finish FROM seasons WHERE id = $1", season_id)
-        season_start, season_finish = fetch[0].strftime('%d-%b-%Y'), fetch[1].strftime('%d-%b-%Y')
+        # fetch = await self.bot.pool.fetchrow("SELECT start, finish FROM seasons WHERE id = $1", season_id)
+        # season_start, season_finish = fetch[0].strftime('%d-%b-%Y'), fetch[1].strftime('%d-%b-%Y')
 
         if donationboard:
             table = DonationBoardTable(config.title, offset)
