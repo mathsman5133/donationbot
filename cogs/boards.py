@@ -512,10 +512,12 @@ class DonationBoard(commands.Cog):
         if not fetch:
             return
 
+        message = await ctx.send("Placeholder")
+
         config = BoardConfig(bot=self.bot, record=fetch)
-        config.guild_id = ctx.guild.id
-        config.channel_id = ctx.channel.id
-        config.message_id = ctx.message.id
+        config.guild_id = message.guild.id
+        config.channel_id = message.channel.id
+        config.message_id = message.id
         await self.mpl_boards(config, offset)
 
     @commands.Cog.listener()
