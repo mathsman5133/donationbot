@@ -12,7 +12,7 @@ class MPLTable:
         self.rows = []
 
     def add_row(self, data):
-        self.rows.append(*[str(n) for n in data])
+        self.rows.append([str(n) for n in data])
 
     def add_rows(self, rows):
         for row in rows:
