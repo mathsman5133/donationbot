@@ -53,13 +53,13 @@ class MPLTable:
         return discord.File(b, f'board.png')
 
 
-class DonationBoardTable:
+class DonationBoardTable(MPLTable):
     def __init__(self, board_name, start):
         columns = ("Name", "Cups", "Gain", "Last On")
         super().__init__(board_name, columns, start)
 
 
-class TrophyBoardTable:
+class TrophyBoardTable(MPLTable):
     def __init__(self, board_name, start):
         columns = ("Name", "Dons", "Rec", "Ratio", "Last On", )
         super().__init__(board_name, columns, start)

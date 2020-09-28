@@ -516,7 +516,7 @@ class DonationBoard(commands.Cog):
         config.guild_id = ctx.guild.id
         config.channel_id = ctx.channel.id
         config.message_id = ctx.message.id
-        await self.new_donationboard_updater(config, offset)
+        await self.mpl_boards(config, offset)
 
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent):
