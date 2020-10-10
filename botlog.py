@@ -13,17 +13,22 @@ def setup_logging(bot, test_syncer=False):
         db.execute("create table if not exists errors (script text, level integer, message text, time timestamp, module text);")
         db.commit()
 
-    logging.getLogger('discord').setLevel(logging.INFO)
-    logging.getLogger('discord.http').setLevel(logging.WARNING)
-    logging.getLogger('discord.state').setLevel(logging.WARNING)
-    logging.getLogger('websockets.protocol').setLevel(logging.WARNING)
-    logging.getLogger('coc').setLevel(logging.INFO)
-    logging.getLogger('coc.http').setLevel(logging.WARNING)
-
     log = logging.getLogger()
-    log.setLevel(logging.INFO)
     stream_handler = logging.StreamHandler()
-    stream_handler.setLevel(logging.INFO)
+
+    if creds.live:
+        logging.getLogger('discord').setLevel(logging.INFO)
+        logging.getLogger('discord.http').setLevel(logging.WARNING)
+        logging.getLogger('discord.state').setLevel(logging.WARNING)
+        logging.getLogger('websockets.protocol').setLevel(logging.WARNING)
+        logging.getLogger('coc').setLevel(logging.INFO)
+        logging.getLogger('coc.http').setLevel(logging.WARNING)
+        log.setLevel(logging.INFO)
+        stream_handler.setLevel(logging.INFO)
+    else:
+        log.setLevel(logging.INFO)
+        stream_handler.setLevel(logging.INFO)
+
     dt_fmt = '%d-%m-%Y %H:%M:%S'
     fmt = logging.Formatter('[{asctime}] [{levelname:<7}] {name}: {message}', dt_fmt, style='{')
     if creds.live:

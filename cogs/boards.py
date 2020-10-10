@@ -13,6 +13,8 @@ from datetime import datetime
 from discord.ext import commands, tasks
 from PIL import Image, UnidentifiedImageError
 
+import creds
+
 from cogs.utils.db_objects import DatabaseMessage, BoardPlayer, BoardConfig
 from cogs.utils.formatters import CLYTable, get_render_type
 from cogs.utils.images import DonationBoardImage, TrophyBoardImage
@@ -49,23 +51,26 @@ class DonationBoard(commands.Cog):
         self._batch_lock = asyncio.Lock(loop=bot.loop)
         self._data_batch = {}
 
-        self.update_board_loops.add_exception_type(asyncpg.PostgresConnectionError, coc.ClashOfClansException)
-        self.update_board_loops.start()
+        if creds.live:
+            self.update_board_loops.add_exception_type(asyncpg.PostgresConnectionError, coc.ClashOfClansException)
+            self.update_board_loops.start()
 
-        self.update_global_board.add_exception_type(asyncpg.PostgresConnectionError, coc.ClashOfClansException)
-        self.update_global_board.start()
+            self.update_global_board.add_exception_type(asyncpg.PostgresConnectionError, coc.ClashOfClansException)
+            self.update_global_board.start()
 
         self.tags_to_update = set()
         self.last_updated_tags = {}
         self.last_updated_channels = {}
         self._board_channels = []
+        self.bot.loop.create_task(self.init_webhooks())
 
     def cog_unload(self):
-        self.update_board_loops.cancel()
-        self.update_global_board.cancel()
+        if creds.live:
+            self.update_board_loops.cancel()
+            self.update_global_board.cancel()
 
-    @commands.Cog.listener()
-    async def on_ready(self):
+    async def init_webhooks(self):
+        await self.bot.wait_until_ready()
         self.webhooks = itertools.cycle(n for n in await self.bot.get_guild(691779140059267084).webhooks())
 
     @property
@@ -210,8 +215,8 @@ class DonationBoard(commands.Cog):
     def get_next_per_page(page_no, config_per_page):
         if config_per_page == 0:
             lookup = {
-                1: 15,
-                2: 15,
+                1: 20,
+                2: 20,
                 3: 20,
                 4: 25,
                 5: 25
@@ -280,7 +285,7 @@ class DonationBoard(commands.Cog):
                                         received,
                                         trophies,
                                         now() - last_updated AS "last_online",
-                                        donations / NULLIF(received, 0) AS "ratio",
+                                        cast(nullif(donations, 0) as decimal) / NULLIF(received, 0) AS "ratio",
                                         trophies - start_trophies AS "gain"
                        FROM players
                        INNER JOIN clans
@@ -303,7 +308,7 @@ class DonationBoard(commands.Cog):
                                         received,
                                         trophies,
                                         now() - last_updated AS "last_online",
-                                        donations / NULLIF(received, 0) AS "ratio",
+                                        cast(nullif(donations, 0) as decimal) / NULLIF(received, 0) AS "ratio",
                                         trophies - start_trophies AS "gain"
                        FROM players
                        INNER JOIN clans
@@ -393,8 +398,12 @@ class DonationBoard(commands.Cog):
             page = int(message.embeds[0]._footer['text'].split(";")[0].split(" ")[1])
             season_id = int(message.embeds[0]._footer['text'].split(";")[1].split(" ")[1])
         except (AttributeError, KeyError, ValueError, IndexError):
-            page = 1
-            season_id = await self.bot.seasonconfig.get_season_id()
+            try:
+                page = int(message.content.split("\n")[1].split(";")[0].split(" ")[1])
+                season_id = int(message.content.split("\n")[1].split(";")[1].split(" ")[1])
+            except:
+                page = 1
+                season_id = await self.bot.seasonconfig.get_season_id()
 
         if page + add_pages < 1:
             return  # don't bother about page 0's
@@ -419,7 +428,9 @@ class DonationBoard(commands.Cog):
             query = f"""SELECT DISTINCT player_name,
                                         donations,
                                         received,
-                                        donations / NULLIF(received, 0) AS "ratio",
+                                        trophies,
+                                        trophies - start_trophies as "gain",
+                                        round(cast(nullif(donations, 0) as decimal) / NULLIF(received, 0), 2) AS "ratio",
                                         now() - last_updated AS "last_online"
                        FROM players
                        INNER JOIN clans
@@ -427,20 +438,19 @@ class DonationBoard(commands.Cog):
                        WHERE season_id = $1
                        ORDER BY {'donations' if config.sort_by == 'donation' else config.sort_by} DESC
                        NULLS LAST
-                       LIMIT $2
-                       OFFSET $3
+                       LIMIT 200
                     """
             fetch = await self.bot.pool.fetch(
                 query,
                 season_id,
-                self.get_next_per_page(page + add_pages, config.per_page),
-                offset
             )
         else:
             query = f"""SELECT DISTINCT player_name,
                                         donations,
                                         received,
-                                        donations / NULLIF(received, 0) AS "ratio",
+                                        round(cast(nullif(donations, 0) as decimal) / NULLIF(received, 0), 2) AS "ratio",
+                                        trophies,
+                                        trophies - start_trophies as "gain",
                                         now() - last_updated AS "last_online"
                        FROM players
                        INNER JOIN clans
@@ -449,54 +459,55 @@ class DonationBoard(commands.Cog):
                        AND season_id = $2
                        ORDER BY {'donations' if config.sort_by == 'donation' else config.sort_by} DESC
                        NULLS LAST
-                       LIMIT $3
-                       OFFSET $4
+                       LIMIT 100
                     """
+            b = time.perf_counter()
             fetch = await self.bot.pool.fetch(
                 query,
                 config.channel_id,
                 season_id,
-                self.get_next_per_page(page + add_pages, config.per_page),
-                offset
             )
+            log.info(f"{(time.perf_counter() - b) * 1000}ms to query")
 
         if not fetch:
             return  # they scrolled too far
 
-        if config.icon_url:
-            try:
-                icon_bytes = await self.bot.http.get_from_cdn(config.icon_url)
-                #icon = Image.open(io.BytesIO(icon_bytes)).resize((180, 180))
-            except (discord.Forbidden, UnidentifiedImageError):
-                await self.bot.pool.execute("UPDATE boards SET icon_url = NULL WHERE message_id = $1", message.id)
-                icon = None
-        else:
-            icon = None
+        # if config.icon_url:
+        #     try:
+        #         icon_bytes = await self.bot.http.get_from_cdn(config.icon_url)
+        #         #icon = Image.open(io.BytesIO(icon_bytes)).resize((180, 180))
+        #     except (discord.Forbidden, UnidentifiedImageError):
+        #         await self.bot.pool.execute("UPDATE boards SET icon_url = NULL WHERE message_id = $1", message.id)
+        #         icon = None
+        # else:
+        #     icon = None
 
         # fetch = await self.bot.pool.fetchrow("SELECT start, finish FROM seasons WHERE id = $1", season_id)
         # season_start, season_finish = fetch[0].strftime('%d-%b-%Y'), fetch[1].strftime('%d-%b-%Y')
 
         if donationboard:
-            table = DonationBoardTable(config.title, offset)
+            table = DonationBoardTable(config.title)
         else:
-            table = TrophyBoardTable(config.title, offset)
+            table = TrophyBoardTable(config.title)
 
         table.add_rows(fetch)
-        render = await self.bot.loop.run_in_executor(None, table.render)
+        renders = table.render()
 
-        logged_board_message = await next(self.webhooks).send(
-            f"Perf: {(time.perf_counter() - start) * 1000}ms\n"
-            f"Channel: {config.channel_id}\n"
-            f"Guild: {config.guild_id}",
-            file=discord.File(render, f'{config.type}board.png'),
-            wait=True
-        )
-        await self.bot.background.log_message_send(config.message_id, config.channel_id,  config.guild_id, config.type + 'board')
+        files = [discord.File(byte, f"board{i}.png") for i, byte in enumerate(renders)]
+        msg = await config.channel.send(files=files)
+        await message.edit(content='\n'.join([a.url for a in msg.attachments]))
 
-        e = discord.Embed(colour=discord.Colour.blue() if donationboard else discord.Colour.green())
-        e.set_image(url=logged_board_message.attachments[0].url)
-        e.set_footer(text=f"Page {page + add_pages};Season {season_id};").timestamp = datetime.utcnow()
-        await message.edit(content=None, embed=e)
+        # for byte in renders:
+        #     logged_board_message = await config.channel.send(
+        #         # f"Perf: {(time.perf_counter() - start) * 1000}ms\n"
+        #         # f"Channel: {config.channel_id}\n"
+        #         # f"Guild: {config.guild_id}",
+        #         file=discord.File(byte, f'{config.type}board.png'),
+        #         # wait=True
+        #     )
+        #
+        # urls = '\n'.join([a.url for a in logged_board_message.attachments])
+        # await message.edit(content=urls)
 
     @commands.command(hidden=True)
     @commands.is_owner()
@@ -504,7 +515,7 @@ class DonationBoard(commands.Cog):
         await self.update_board(message_id=message_id)
         await ctx.confirm()
 
-    @commands.command(hidden=True)
+    @commands.command(hidden=True, aliases=["rb"])
     @commands.is_owner()
     async def random_board(self, ctx, offset=0):
         query = "SELECT * FROM boards WHERE toggle=True AND type='donation' ORDER BY random() LIMIT 1"

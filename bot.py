@@ -23,6 +23,7 @@ initial_extensions = [
     'cogs.admin',
     'cogs.aliases',
     'cogs.auto_claim',
+    'cogs.boards',
     'cogs.botutils',
     'cogs.deprecated',
     'cogs.donations',
@@ -40,7 +41,6 @@ if creds.live and not beta:
     initial_extensions.extend(
         (
             'cogs.background_management',
-            'cogs.boards',
         )
     )
     command_prefix = '+'
@@ -60,15 +60,22 @@ coc_client = coc.login(
     client=coc.EventsClient,
     key_names=key_names,
     throttle_limit=30,
-    key_count=2,
+    key_count=1,
     key_scopes=creds.scopes
 )
 
 
 description = "A simple discord bot to track donations of clan families in clash of clans."
+intents = discord.Intents.none()
+intents.guilds = True
+intents.guild_messages = True
+intents.guild_reactions = True
 
 
 async def get_pref(bot, message):
+    if beta or not creds.live:
+        return command_prefix
+
     if not message.guild:
         # message is a DM
         return "+"
@@ -81,8 +88,8 @@ async def get_pref(bot, message):
 class DonationBot(commands.AutoShardedBot):
     def __init__(self):
         super().__init__(command_prefix=get_pref, case_insensitive=True,
-                         description=description, pm_help=None, help_attrs=dict(hidden=True),
-                         fetch_offline_members=True)
+                         description=description, pm_help=None, help_attrs=dict(hidden=True), intents=intents,
+                         chunk_guilds_at_startup=False)
 
         self.categories = {}
 

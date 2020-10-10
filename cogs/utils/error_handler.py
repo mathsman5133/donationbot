@@ -3,11 +3,13 @@ import discord
 import textwrap
 import traceback
 import io
+import logging
 
 from cogs.utils import formatters, paginator, checks
 
 from discord.ext import commands
 
+log = logging.getLogger()
 
 async def error_handler(ctx, error):
     error = getattr(error, 'original', error)
@@ -31,6 +33,7 @@ async def error_handler(ctx, error):
     if isinstance(error, (discord.Forbidden, discord.NotFound, paginator.CannotPaginate)):
         return
 
+    log.exception("Command Error", exc_info=error)
     e = discord.Embed(title='Command Error', colour=0xcc3366)
     e.add_field(name='Name', value=ctx.command.qualified_name)
     e.add_field(name='Author', value=f'{ctx.author} (ID: {ctx.author.id})')
@@ -53,6 +56,10 @@ async def error_handler(ctx, error):
     e.description = f'```py\n{exc}\n```'
 
     e.timestamp = datetime.datetime.utcnow()
+    if await ctx.bot.is_owner(ctx.author):
+        await ctx.send(embed=e)
+        return
+
     await ctx.bot.error_webhook.send(embed=e)
     try:
         await ctx.send('Uh oh! Something broke. This error has been reported; '
