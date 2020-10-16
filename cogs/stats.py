@@ -49,14 +49,12 @@ class Stats(commands.Cog):
         clan_names = set((p.get('clan_name'), p['clan_tag']) for p in players if p.get('clan_name'))
         if clan_names:
             description = "Showing Stats For:\n" + "".join(
-                f"{emojis.get(tag, '•')} {name}\n" for name, tag in clan_names)
+                f"{emojis.get(tag, '•')} {name}\n" for name, tag in clan_names) + "\n"
         else:
             description = ""
 
         if not emojis:
             description += "Want to see who is in which clan?\nTry adding a clan emoji: `+add emoji #clantag :emoji:`\n\n"
-        else:
-            description += "\n"
 
         return description
 

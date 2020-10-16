@@ -158,7 +158,7 @@ class CLYTable:
 
     def last_online_board(self):
         show = any(v[1] for v in self._rows)
-        fmt = f"{misc['number']}{misc['clanbadge'] if show else ''}`⠀{'Name':\u00A0>12.12}⠀` `⠀{'Last Online':\u00A0>11.11}⠀`\n"
+        fmt = f"{misc['number']}{emojis[17] if show else ''}`⠀{'Name':\u00A0>12.12}⠀` `⠀{'Last Online':\u00A0>11.11}⠀`\n"
         for v in self._rows:
             index = int(v[0]) + 1
             index = number_emojis[index] if index <= 100 else misc['idle']
@@ -167,7 +167,7 @@ class CLYTable:
 
     def donationboard_1(self):
         show = any(v[1] for v in self._rows)
-        fmt = f"{misc['number']}{misc['clanbadge'] if show else ''}`⠀{'Dons':\u00A0>6.6}⠀` `⠀{'Rec':\u00A0>5.5}⠀` `⠀{'Name':\u00A0<10.10}⠀`\n"
+        fmt = f"{misc['number']}{emojis[17] if show else ''}`⠀{'Dons':\u00A0>6.6}⠀` `⠀{'Rec':\u00A0>5.5}⠀` `⠀{'Name':\u00A0<10.10}⠀`\n"
         for v in self._rows:
             index = int(v[0])
             index = number_emojis[index] if index <= 100 else misc['idle']
@@ -176,7 +176,7 @@ class CLYTable:
 
     def donationboard_2(self):
         show = any(v[1] for v in self._rows)
-        fmt = f"{misc['number']}{misc['clanbadge'] if show else ''}`⠀⠀{'Dons':\u00A0>6.6}⠀` `⠀{'Name':\u00A0<15.15}⠀`\n"
+        fmt = f"{misc['number']}{emojis[17] if show else ''}`⠀⠀{'Dons':\u00A0>6.6}⠀` `⠀{'Name':\u00A0<15.15}⠀`\n"
         for v in self._rows:
             index = int(v[0])
             index = number_emojis[index] if index <= 100 else misc['idle']
@@ -185,7 +185,7 @@ class CLYTable:
 
     def trophyboard_1(self):
         show = any(v[1] for v in self._rows)
-        fmt = f"{misc['number']}{misc['clanbadge'] if show else ''}`⠀{'Cups':\u00A0>4.4}⠀` ` {'Gain':\u00A0>5.5} ` `⠀{'Name':\u00A0<10.10}⠀`\n"
+        fmt = f"{misc['number']}{emojis[17] if show else ''}`⠀{'Cups':\u00A0>4.4}⠀` ` {'Gain':\u00A0>5.5} ` `⠀{'Name':\u00A0<10.10}⠀`\n"
         for v in self._rows:
             index = int(v[0]) + 1
             index = number_emojis[index] if index <= 100 else misc['idle']
@@ -194,7 +194,7 @@ class CLYTable:
 
     def trophyboard_2(self):
         show = any(v[1] for v in self._rows)
-        fmt = f"{misc['number']}{misc['clanbadge'] if show else ''}` {'Gain':\u00A0>5.5}⠀` ` {'Name':\u00A0<18.18}⠀`\n"
+        fmt = f"{misc['number']}{emojis[17] if show else ''}` {'Gain':\u00A0>5.5}⠀` ` {'Name':\u00A0<18.18}⠀`\n"
         for v in self._rows:
             index = int(v[0])
             index = number_emojis[index] if index <= 100 else misc['idle']
@@ -203,7 +203,7 @@ class CLYTable:
 
     def trophyboard_attacks(self):
         show = any(v[1] for v in self._rows)
-        fmt = f"{misc['number']}{misc['clanbadge'] if show else ''}⠀⠀{misc['attack']}⠀ `⠀{'Name':\u00A0<15.15}⠀`\n"
+        fmt = f"{misc['number']}{emojis[17] if show else ''}⠀⠀{misc['attack']}⠀ `⠀{'Name':\u00A0<15.15}⠀`\n"
         for v in self._rows:
             index = int(v[0])
             index = number_emojis[index] if index <= 100 else misc['idle']
@@ -212,7 +212,7 @@ class CLYTable:
 
     def trophyboard_defenses(self):
         show = any(v[1] for v in self._rows)
-        fmt = f"{misc['number']}{misc['clanbadge'] if show else ''}⠀⠀{misc['defense']} ⠀`⠀{'Name':\u00A0<15.15}⠀`\n"
+        fmt = f"{misc['number']}{emojis[17] if show else ''}⠀⠀{misc['defense']} ⠀`⠀{'Name':\u00A0<15.15}⠀`\n"
         for v in self._rows:
             index = int(v[0])
             index = number_emojis[index] if index <= 100 else misc['idle']
@@ -221,7 +221,7 @@ class CLYTable:
 
     def trophyboard_gain(self):
         show = any(v[1] for v in self._rows)
-        fmt = f"{misc['number']}{misc['clanbadge'] if show else ''}⠀⠀{misc['trophygreen']}⠀ `⠀{'Name':\u00A0<15.15}⠀`\n"
+        fmt = f"{misc['number']}{emojis[17] if show else ''}⠀⠀{misc['trophygreen']}⠀ `⠀{'Name':\u00A0<15.15}⠀`\n"
         for v in self._rows:
             index = int(v[0])
             index = number_emojis[index] if index <= 100 else misc['idle']
@@ -230,7 +230,7 @@ class CLYTable:
 
     def events_list(self):
         show = any(v[1] for v in self._rows)
-        fmt = f"{misc['number']}{misc['clanbadge'] if show else ''}` {'Starts In':\u00A0^9}⠀` ` {'Name':\u00A0<15.15}⠀`\n"
+        fmt = f"{misc['number']}{emojis[17] if show else ''}` {'Starts In':\u00A0^9}⠀` ` {'Name':\u00A0<15.15}⠀`\n"
         for v in self._rows:
             index = int(v[0]) + 1
             index = number_emojis[index] if index <= 100 else misc['idle']
@@ -239,21 +239,21 @@ class CLYTable:
 
     def donation_log_command(self):
         show = any(v[1] for v in self._rows)
-        fmt = f"{misc['number']}{misc['clanbadge'] if show else ''}`⠀{'Don/Rec':\u00A0>7.7}⠀`  `⠀{'Name':\u00A0<12.12}⠀`  `⠀{'Age':\u00A0<5.5}⠀`\n"
+        fmt = f"{misc['number']}{emojis[17] if show else ''}`⠀{'Don/Rec':\u00A0>7.7}⠀`  `⠀{'Name':\u00A0<12.12}⠀`  `⠀{'Age':\u00A0<5.5}⠀`\n"
         for v in self._rows:
             fmt += f"{v[0]}{v[1]}`⠀{str(v[2]):\u00A0>7.7}⠀`  `⠀{str(v[3]):\u00A0<12.12}⠀`  `⠀{str(v[4]):\u00A0<5.5}⠀`\n"
         return fmt
 
     def trophy_log_command(self):
         show = any(v[1] for v in self._rows)
-        fmt = f"{misc['number']}{misc['clanbadge'] if show else ''}`⠀{'Gain':\u00A0>4.4}⠀`  `⠀{'Name':\u00A0<14.14}⠀`  `⠀{'Age':\u00A0<5.5}⠀`\n"
+        fmt = f"{misc['number']}{emojis[17] if show else ''}`⠀{'Gain':\u00A0>4.4}⠀`  `⠀{'Name':\u00A0<14.14}⠀`  `⠀{'Age':\u00A0<5.5}⠀`\n"
         for v in self._rows:
             fmt += f"{v[0]}{v[1]}`⠀{str(v[2]):\u00A0>3.3}⠀`  `⠀{str(v[3]):\u00A0<14.14}⠀`  `⠀{str(v[4]):\u00A0<5.5}⠀`\n"
         return fmt
 
     def last_online(self):
         show = any(v[1] for v in self._rows)
-        fmt = f"{misc['number']}{misc['clanbadge'] if show else ''}`⠀{'Last On':\u00A0>9.9}⠀` `⠀{'Name':\u00A0>15.15}⠀`\n"
+        fmt = f"{misc['number']}{emojis[17] if show else ''}`⠀{'Last On':\u00A0>9.9}⠀` `⠀{'Name':\u00A0>15.15}⠀`\n"
         for v in self._rows:
             index = int(v[0]) + 1
             index = number_emojis[index] if index <= 100 else misc['idle']
@@ -262,7 +262,7 @@ class CLYTable:
 
     def achievement(self):
         show = any(v[1] for v in self._rows)
-        fmt = f"{misc['number']}{misc['clanbadge'] if show else ''}`⠀{'Achievement':\u00A0>11.11}⠀` `⠀{'Name':\u00A0>13.13}⠀`\n"
+        fmt = f"{misc['number']}{emojis[17] if show else ''}`⠀{'Achievement':\u00A0>11.11}⠀` `⠀{'Name':\u00A0>13.13}⠀`\n"
         for v in self._rows:
             index = int(v[0])
             index = number_emojis[index] if index <= 100 else misc['idle']
@@ -271,7 +271,7 @@ class CLYTable:
 
     def accounts(self):
         show = any(v[1] for v in self._rows)
-        fmt = f"{misc['number']}{misc['clanbadge'] if show else ''}`⠀{'Player IGN':\u00A0>11.11}⠀` `⠀{'Discord/Tag':\u00A0>13.13}⠀`\n"
+        fmt = f"{misc['number']}{emojis[17] if show else ''}`⠀{'Player IGN':\u00A0>11.11}⠀` `⠀{'Discord/Tag':\u00A0>13.13}⠀`\n"
         for v in self._rows:
             index = int(v[0])
             index = number_emojis[index] if index <= 100 else misc['idle']
