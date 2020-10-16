@@ -54,7 +54,7 @@ class Stats(commands.Cog):
             description = ""
 
         if not emojis:
-            description += "Want to see who is in which clan? Try adding a clan emoji: `+add emoji #clantag :emoji:`\n\n"
+            description += "Want to see who is in which clan?\nTry adding a clan emoji: `+add emoji #clantag :emoji:`\n\n"
         else:
             description += "\n"
 

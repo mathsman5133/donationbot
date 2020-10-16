@@ -191,9 +191,9 @@ class Add(commands.Cog):
         :white_check_mark: `+add emoji #P0LYJC8C :the_best_clan:`
         :white_check_mark: `+add player Reddit Elephino :elephino:`
         """
-        custom = custom_emoji.match(clan)
+        custom = custom_emoji.search(clan)
         if not custom:
-            unicode = unicode_emoji.match(clan)
+            unicode = unicode_emoji.search(clan)
             if not unicode:
                 return await ctx.send("I couldn't find an emoji in your message!")
 
