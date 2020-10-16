@@ -42,8 +42,23 @@ class Stats(commands.Cog):
         return [v for (k, (v, _)) in self._players.items() if k in player_tags]
 
     async def _get_emojis(self, guild_id):
-        query = "SElECT DISTINCT clan_tag, emoji FROM clans WHERE guild_id = $1"
+        query = "SElECT DISTINCT clan_tag, emoji FROM clans WHERE guild_id = $1 AND emoji != ''"
         return {n['clan_tag']: n['emoji'] for n in await self.bot.pool.fetch(query, guild_id)}
+
+    def _get_description(self, emojis, players):
+        clan_names = set((p.get('clan_name'), p['clan_tag']) for p in players if p.get('clan_name'))
+        if clan_names:
+            description = "Showing Stats For:\n" + "".join(
+                f"{emojis.get(tag, '•')} {name}\n" for name, tag in clan_names)
+        else:
+            description = ""
+
+        if not emojis:
+            description += "Want to see who is in which clan? Try adding a clan emoji: `+add emoji #clantag :emoji:`\n\n"
+        else:
+            description += "\n"
+
+        return description
 
     async def cog_before_invoke(self, ctx):
         await ctx.trigger_typing()
@@ -81,11 +96,7 @@ class Stats(commands.Cog):
 
         title = f"Top Attack Wins"
         emojis = await self._get_emojis(ctx.guild.id)
-        clan_names = set((p.get('clan_name'), p['clan_tag']) for p in argument if p.get('clan_name'))
-        if clan_names:
-            description = "Showing Stats For:\n" + "".join(f"{emojis.get(tag, '•')} {name}\n" for name, tag in clan_names) + "\n"
-        else:
-            description = ""
+        description = self._get_description(emojis, argument)
 
         p = StatsAttacksPaginator(
             ctx,
@@ -131,11 +142,7 @@ class Stats(commands.Cog):
 
         title = f"Top Defense Wins"
         emojis = await self._get_emojis(ctx.guild.id)
-        clan_names = set((p.get('clan_name'), p['clan_tag']) for p in argument if p.get('clan_name'))
-        if clan_names:
-            description = "Showing Stats For:\n" + "".join(f"{emojis.get(tag, '•')} {name}\n" for name, tag in clan_names) + "\n"
-        else:
-            description = ""
+        description = self._get_description(emojis, argument)
 
         p = StatsDefensesPaginator(
             ctx,
@@ -180,12 +187,7 @@ class Stats(commands.Cog):
 
         title = "Top Donations"
         emojis = await self._get_emojis(ctx.guild.id)
-        clan_names = set((p.get('clan_name'), p['clan_tag']) for p in argument if p.get('clan_name'))
-        if clan_names:
-            description = "Showing Stats For:\n" + "".join(
-                f"{emojis.get(tag, '•')} {name}\n" for name, tag in clan_names) + "\n"
-        else:
-            description = ""
+        description = self._get_description(emojis, argument)
 
         data = sorted(argument, key=lambda p: p['donations'], reverse=True)
         p = StatsDonorsPaginator(
@@ -231,12 +233,7 @@ class Stats(commands.Cog):
 
         title = "Top Receivers"
         emojis = await self._get_emojis(ctx.guild.id)
-        clan_names = set((p.get('clan_name'), p['clan_tag']) for p in argument if p.get('clan_name'))
-        if clan_names:
-            description = "Showing Stats For:\n" + "".join(
-                f"{emojis.get(tag, '•')} {name}\n" for name, tag in clan_names) + "\n"
-        else:
-            description = ""
+        description = self._get_description(emojis, argument)
 
         data = sorted(argument, key=lambda p: p['received'], reverse=True)
         p = StatsDonorsPaginator(
@@ -278,12 +275,7 @@ class Stats(commands.Cog):
 
         title = "Top Trophies"
         emojis = await self._get_emojis(ctx.guild.id)
-        clan_names = set((p.get('clan_name'), p['clan_tag']) for p in argument if p.get('clan_name'))
-        if clan_names:
-            description = "Showing Stats For:\n" + "".join(
-                f"{emojis.get(tag, '•')} {name}\n" for name, tag in clan_names) + "\n"
-        else:
-            description = ""
+        description = self._get_description(emojis, argument)
 
         data = sorted(argument, key=lambda p: p['trophies'], reverse=True)
         p = StatsTrophiesPaginator(
@@ -325,12 +317,7 @@ class Stats(commands.Cog):
 
         title = "Last Online"
         emojis = await self._get_emojis(ctx.guild.id)
-        clan_names = set((p.get('clan_name'), p['clan_tag']) for p in argument if p.get('clan_name'))
-        if clan_names:
-            description = "Showing Stats For:\n" + "".join(
-                f"{emojis.get(tag, '•')} {name}\n" for name, tag in clan_names) + "\n"
-        else:
-            description = ""
+        description = self._get_description(emojis, argument)
 
         data = sorted(argument, key=lambda p: p['since'], reverse=True)
         p = StatsLastOnlinePaginator(
@@ -384,10 +371,7 @@ class Stats(commands.Cog):
 
         emojis = await self._get_emojis(ctx.guild.id)
         description = "*" + data[0].get_caseinsensitive_achievement(achievement).info + "*\n\n"
-        clan_names = set((p.get('clan_name'), p['clan_tag']) for p in data if p.get('clan_name'))
-        if clan_names:
-            description += "Showing Stats For:\n" + "".join(
-                f"{emojis.get(tag, '•')} {name}\n" for name, tag in clan_names) + "\n"
+        description += self._get_description(emojis, data)
 
         data = sorted(data, key=lambda p: p.get_ach_value(achievement), reverse=True)
         p = StatsAchievementPaginator(
@@ -436,12 +420,7 @@ class Stats(commands.Cog):
 
         title = "Accounts Added"
         emojis = await self._get_emojis(ctx.guild.id)
-        clan_names = set((p.get('clan_name'), p['clan_tag']) for p in argument if p.get('clan_name'))
-        if clan_names:
-            description = "Showing Stats For:\n" + "".join(
-                f"{emojis.get(tag, '•')} {name}\n" for name, tag in clan_names) + "\n"
-        else:
-            description = ""
+        description = self._get_description(emojis, argument)
 
         tags_to_name = {p['player_tag']: p['player_name'] for p in argument}
 
