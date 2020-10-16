@@ -543,7 +543,7 @@ class BackgroundManagement(commands.Cog):
     async def send_guild_stats(self, e, guild):
         e.add_field(name='Name', value=guild.name)
         e.add_field(name='ID', value=guild.id)
-        e.add_field(name='Owner', value=f'{guild.owner} (ID: {guild.owner.id})')
+        e.add_field(name='Owner', value=f'{guild.owner} (ID: {guild.owner and guild.owner.id})')
 
         bots = sum(m.bot for m in guild.members)
         total = guild.member_count
@@ -582,7 +582,7 @@ class BackgroundManagement(commands.Cog):
 
         e.add_field(name='Guild Name', value=guild.name)
         e.add_field(name='Guild ID', value=guild.id)
-        e.add_field(name='Guild Owner', value=f'{guild.owner} (ID: {guild.owner.id})')
+        e.add_field(name='Guild Owner', value=f'{guild.owner} (ID: {guild.owner and guild.owner.id})')
 
         bots = sum(m.bot for m in guild.members)
         total = guild.member_count
