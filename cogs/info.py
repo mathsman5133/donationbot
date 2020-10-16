@@ -281,8 +281,8 @@ class Info(commands.Cog, name='\u200bInfo'):
                     embed.add_field(name=name, value=fmt, inline=False)
 
                 if group_name == "Meta Commands":
-                    embed.add_field(name="\u200b", value=f"Problems? Please join the [support server]({self.invite})\n"
-                                                         "Feeling generous? Please support us on [patreon](https://www.patreon.com/donationtracker)!")
+                    embed.add_field(name="Problems? Bug?", value=f"Please join the [Support Server]({self.invite})")
+                    embed.add_field(name="Feeling generous?", value=f"Please support us on [Patreon](https://www.patreon.com/donationtracker)!")
 
                 await ctx.send(embed=embed)
 
