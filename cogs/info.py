@@ -12,7 +12,7 @@ import statistics
 from matplotlib import pyplot as plt
 import numpy as np
 
-from discord.ext import commands, menus
+from discord.ext import commands
 from cogs.utils.paginator import Pages, EmbedPages
 from cogs.utils.formatters import CLYTable, readable_time, TabularData
 from cogs.utils.emoji_lookup import misc
