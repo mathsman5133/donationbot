@@ -84,7 +84,7 @@ class Remove(commands.Cog):
         await ctx.confirm()
 
     @remove.command(name='discord')
-    async def remove_discord(self, ctx, *, player: PlayerConverter):
+    async def remove_discord(self, ctx, *, player: str):
         """Unlink a clash account from your discord account.
 
         If you have not claimed the account, you must have `Manage Server` permissions.
@@ -101,28 +101,30 @@ class Remove(commands.Cog):
         :white_check_mark: `+remove discord mathsman`
         """
         season_id = await self.bot.seasonconfig.get_season_id()
+
+        if not coc.utils.is_valid_tag(player):
+            fetch = await ctx.db.fetchrow("SELECT DISTINCT player_tag FROM players WHERE player_name LIKE $1", player)
+            if not fetch:
+                return await ctx.send(f"{player} is not a valid player tag, and I couldn't find a player with that name in my database. Please try again.")
+            player = fetch['player_tag']
+
         if ctx.channel.permissions_for(ctx.author).manage_guild \
                 or await self.bot.is_owner(ctx.author):
-            query = "UPDATE players SET user_id = NULL WHERE player_tag = $1 AND season_id = $2"
-            await ctx.db.execute(query, player.tag, season_id)
-            return await ctx.confirm()
+            await ctx.db.execute("UPDATE players SET user_id = NULL WHERE player_tag = $1 AND season_id = $2", player, season_id)
+            await self.bot.links.delete_link(player)
+            return await ctx.send("👌 Player successfully removed.")
 
-        query = "SELECT user_id FROM players WHERE player_tag = $1 AND season_id = $2"
-        fetch = await ctx.db.fetchrow(query, player.tag, season_id)
-        if not fetch:
-            query = "UPDATE players SET user_id = NULL WHERE player_tag = $1 AND season_id = $2"
-            await ctx.db.execute(query, player.tag, season_id)
-            return await ctx.confirm()
+        link = await self.bot.links.get_link(player)
+        if link != ctx.author.id:
+            member = ctx.guild.get_member(link) or self.bot.get_user(link) or await self.bot.fetch_user(link) or link
+            return await ctx.send(
+                f'Player has been claimed by {member}.\n'
+                f'Please contact them, or someone with `Manage Server` permissions to unclaim it.'
+            )
 
-        if fetch[0] != ctx.author.id:
-            return await ctx.send(f'Player has been claimed by '
-                                  f'{self.bot.get_user(fetch[0]) or "unknown"}.\n'
-                                  f'Please contact them, or someone '
-                                  f'with `manage_guild` permissions to unclaim it.')
-
-        query = "UPDATE players SET user_id = NULL WHERE player_tag = $1 AND season_id = $2"
-        await ctx.db.execute(query, player.tag, season_id)
-        await ctx.confirm()
+        await ctx.db.execute("UPDATE players SET user_id = NULL WHERE player_tag = $1 AND season_id = $2", player, season_id)
+        await self.bot.links.delete_link(player)
+        return await ctx.send("👌 Player successfully removed.")
 
     @remove.command(name='donationboard', aliases=['donation board', 'donboard'])
     @checks.manage_guild()

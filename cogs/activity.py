@@ -64,7 +64,7 @@ class Activity(commands.Cog):
         await ctx.send_help(ctx.command)
 
     @activity.group(name='bar', invoke_without_command=True)
-    async def activity_bar(self, ctx, *, data: ActivityBarConverter):
+    async def activity_bar(self, ctx, *, argument: ActivityBarConverter = None):
         """Get a graph showing the approximate activity/online times for a clan.
 
         This command will return a graph that is generated from approximate activity readers
@@ -98,10 +98,10 @@ class Activity(commands.Cog):
         else:
             plt.style.use('default')
 
-        if not data:
+        if not argument:
             return await ctx.send(f"Not enough history. Please try again later.")
 
-        data: typing.List[typing.Tuple[str, typing.List]] = data
+        data: typing.List[typing.Tuple[str, typing.List]] = argument
 
         existing_graph_data = self.get_bar_graph(ctx.channel.id, ctx.author.id)
 
@@ -168,7 +168,7 @@ class Activity(commands.Cog):
         await ctx.send(":ok_hand: Graph has been reset.")
 
     @activity.group(name="line", invoke_without_command=True)
-    async def activity_line(self, ctx, *, data: ActivityLineConverter):
+    async def activity_line(self, ctx, *, argument: ActivityLineConverter = None):
         """Get a graph showing the change in activity for a clan or player over time.
 
         This command will return a graph that is generated from approximate activity readers
@@ -199,10 +199,10 @@ class Activity(commands.Cog):
         else:
             plt.style.use('default')
 
-        if not data:
+        if not argument:
             return await ctx.send(f"Not enough history. Please try again later.")
 
-        data: typing.List[typing.Tuple[str, typing.Dict]] = data
+        data: typing.List[typing.Tuple[str, typing.Dict]] = argument
 
         existing = self.get_line_graph(ctx.channel.id, ctx.author.id)
         data = [*existing, *data]

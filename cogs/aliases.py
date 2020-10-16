@@ -18,8 +18,7 @@ class Aliases(commands.Cog, name='\u200bAliases'):
 
     @commands.command()
     @requires_config('event')
-    async def claim(self, ctx, user: typing.Optional[discord.Member] = None, *,
-                    player: PlayerConverter):
+    async def claim(self, ctx, user: typing.Optional[discord.Member] = None, *, player: str):
         """Link a clash account to your discord account
 
         **Parameters**

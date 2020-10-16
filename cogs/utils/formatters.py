@@ -2,6 +2,18 @@ from discord.utils import _string_width
 from discord.ext import commands
 from cogs.utils.emoji_lookup import emojis, misc, number_emojis
 
+def big_number_fmt(value):
+    value = int(value)
+    if value // 1_000_000_000:
+        return f'{round(value / 1_000_000_000, 3)}'.replace('.0', '') + 'bil'
+    if value // 1_000_000 > 0:
+        return f'{round(value / 1_000_000, 3)}'.replace('.0', '') + 'mil'
+    elif value // 1_000 > 0:
+        return f'{round(value / 1_000, 3)}'.replace('.0', '') + 'k'
+    else:
+        return f'{value}'
+
+
 def get_render_type(config, table):
     if getattr(config, 'type', None) == 'donation':
         if config.render == 1:
@@ -42,9 +54,9 @@ def readable_time(delta_seconds):
     days, hours = divmod(hours, 24)
 
     if days:
-        fmt = '{d}d {h}h {m}m {s}s'
+        fmt = '{d}d {h}h {m}m'
     elif hours:
-        fmt = '{h}h {m}m {s}s'
+        fmt = '{h}h {m}m'
     else:
         fmt = '{m}m {s}s'
 
@@ -151,7 +163,7 @@ class CLYTable:
     def donationboard_1(self):
         fmt = f"{misc['number']}`⠀{'Dons':\u00A0>6.6}⠀` `⠀{'Rec':\u00A0>5.5}⠀` `⠀{'Name':\u00A0<10.10}⠀`\n"
         for v in self._rows:
-            index = int(v[0]) + 1
+            index = int(v[0])
             index = number_emojis[index] if index <= 100 else misc['idle']
             fmt += f"{index}`⠀{str(v[1]):\u00A0>6.6}⠀` `⠀{str(v[2]):\u00A0>5.5}⠀` `⠀{str(v[3]):\u00A0<10.10}⠀`\n"
         return fmt
@@ -225,11 +237,27 @@ class CLYTable:
         return fmt
 
     def last_online(self):
-        fmt = f"{misc['number']}⠀`⠀{'Name':\u00A0>13.13}⠀` `⠀{'Last Online':\u00A0>11.11}⠀`\n"
+        fmt = f"{misc['number']}⠀`⠀{'Last On':\u00A0>9.9}⠀` `⠀{'Name':\u00A0>15.15}⠀`\n"
         for v in self._rows:
             index = int(v[0]) + 1
             index = number_emojis[index] if index <= 100 else misc['idle']
-            fmt += f"{index}⠀`⠀{str(v[1]):\u00A0>13.13}⠀`  `⠀{str(v[2]):\u00A0>11.11}⠀`\n"
+            fmt += f"{index}⠀`⠀{str(v[1]):\u00A0>9.9}⠀` `⠀{str(v[2]):\u00A0>15.15}⠀`\n"
+        return fmt
+
+    def achievement(self):
+        fmt = f"{misc['number']}⠀`⠀{'Achievement':\u00A0>11.11}⠀` `⠀{'Name':\u00A0>13.13}⠀`\n"
+        for v in self._rows:
+            index = int(v[0])
+            index = number_emojis[index] if index <= 100 else misc['idle']
+            fmt += f"{index}⠀`⠀{big_number_fmt(v[1]):\u00A0>11.11}⠀` `⠀{str(v[2]):\u00A0>13.13}⠀`\n"
+        return fmt
+
+    def accounts(self):
+        fmt = f"{misc['number']}⠀`⠀{'Player IGN':\u00A0>11.11}⠀` `⠀{'Discord/Tag':\u00A0>13.13}⠀`\n"
+        for v in self._rows:
+            index = int(v[0])
+            index = number_emojis[index] if index <= 100 else misc['idle']
+            fmt += f"{index}⠀`⠀{str(v[1]):\u00A0>11.11}⠀` `⠀{str(v[2]):\u00A0>13.13}⠀`\n"
         return fmt
 
 

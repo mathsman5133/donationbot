@@ -169,7 +169,6 @@ class Add(commands.Cog):
         self.bot.dispatch('clan_claim', ctx, clan)
 
     @add.command(name='player')
-    @requires_config('event')
     async def add_player(self, ctx, *, player: PlayerConverter):
         """Manually add a clash account to the database. This does not claim the account.
 
@@ -199,9 +198,7 @@ class Add(commands.Cog):
         await ctx.send('All done!')
 
     @add.command(name='discord', aliases=['claim', 'link'])
-    @requires_config('event')
-    async def add_discord(self, ctx, user: typing.Optional[discord.Member] = None, *,
-                          player: PlayerConverter):
+    async def add_discord(self, ctx, user: typing.Optional[discord.Member] = None, *, player: str):
         """Link a clash account to your discord account
 
         **Parameters**
@@ -218,32 +215,28 @@ class Add(commands.Cog):
         """
         if not user:
             user = ctx.author
-        if not isinstance(player, coc.Player):
-            player = await self.bot.coc.get_player(player.tag)
+
+        if not coc.utils.is_valid_tag(player):
+            fetch = await ctx.db.fetchrow("SELECT DISTINCT player_tag FROM players WHERE player_name LIKE $1", player)
+            if not fetch:
+                return await ctx.send(
+                    f"{player} is not a valid player tag, and "
+                    f"I couldn't find a player with that name in my database. Ensure their clan is added and try again."
+                )
+            player = fetch['player_tag']
 
         season_id = await self.bot.seasonconfig.get_season_id()
-        query = "SELECT user_id FROM players WHERE player_tag = $1 AND season_id = $2"
-        fetch = await ctx.db.fetchrow(query, player.tag, season_id)
+        existing = await self.bot.links.get_link(player)
+        if existing is not None:
+            member = ctx.guild.get_member(existing) or self.bot.get_user(existing) or await self.bot.fetch_user(existing) or existing
+            return await ctx.send(f"Sorry, {player} has already been added by {member}. You can try removing and re-adding their link.")
 
-        if fetch and fetch[0] is not None:
-            return await ctx.send(f'Player {player.name} ({player.tag}) '
-                                  f'has already been claimed by {self.bot.get_user(fetch[0])}')
-
-        if ctx.config:
-            if ctx.config.start < datetime.datetime.utcnow():
-                prompt = await ctx.prompt(f'Do you wish to add {player} to the current event?')
-                await self.insert_player(ctx.db, player, season_id, prompt, ctx.config.event_id)
-        else:
-            await self.insert_player(ctx.db, player, season_id)
-
-        query = "UPDATE players SET user_id = $1 WHERE player_tag = $2 AND season_id = $3"
-        await ctx.db.execute(query, user.id, player.tag, season_id)
-        await ctx.confirm()
+        await ctx.db.execute("UPDATE players SET user_id = $1 WHERE player_tag = $2 AND season_id = $3", user.id, player, season_id)
+        await self.bot.links.add_link(player, user.id)
+        await ctx.send(f"👌 Player successfully added.")
 
     @add.command(name='multidiscord', aliases=['multi_discord', 'multiclaim', 'multi_claim', 'multilink', 'multi_link'])
-    @requires_config('event')
-    async def add_multi_discord(self, ctx, user: discord.Member,
-                                players: commands.Greedy[PlayerConverter]):
+    async def add_multi_discord(self, ctx, user: discord.Member, *players: str):
         """Helper command to link many clash accounts to a user's discord.
 
         **Parameters**
@@ -262,132 +255,131 @@ class Add(commands.Cog):
             # TODO: fix this
             await ctx.invoke(self.add_discord, user=user, player=n)
 
-    @add.command(name="event")
-    @checks.manage_guild()
-    @requires_config('event', invalidate=True)
-    async def add_event(self, ctx, *, event_name: str = None):
-        """Allows user to add a new trophy push event. Trophy Push events override season statistics for trophy
-        counts.
-
-        This command is interactive and will ask you questions about the new event. After the initial command,
-        the bot will ask you further questions about the event.
-
-        **Parameters**
-        :key: Name of the event
-
-        **Format**
-        :information_source: `+add event EVENT NAME`
-
-        **Example**
-        :white_check_mark: `+add event Donation Bot Event`
-
-        **Required Permissions**
-        :warning: Manage Server
-        """
-        if ctx.config:
-            if ctx.config.start > datetime.datetime.now():
-                return await ctx.send(f'This server is already set up for {ctx.config.event_name}. Please use '
-                                      f'`+remove event` if you would like to remove this event and create a new one.')
-
-        def check_author(m):
-            return m.author == ctx.author
-
-        if not event_name:
-            try:
-                await ctx.send('Please enter the name of the new event.')
-                response = await ctx.bot.wait_for('message', check=check_author, timeout=60.0)
-                event_name = response.content
-            except asyncio.TimeoutError:
-                return await ctx.send('I can\'t wait all day. Try again later.')
-
-        for i in range(5):
-            try:
-                await ctx.send(f'What date does the {event_name} begin?  (YYYY-MM-DD)')
-                response = await ctx.bot.wait_for('message', check=check_author, timeout=60.0)
-                start_date = await DateConverter().convert(ctx, response.clean_content)
-                break
-            except (ValueError, commands.BadArgument):
-                await ctx.send('Date must be in the YYYY-MM-DD format.')
-            except asyncio.TimeoutError:
-                return await ctx.send('Yawn! Time\'s up. You\'re going to have to start over some other time.')
-        else:
-            return await ctx.send(
-                'I don\'t really know what happened, but I can\'t figure out what the start '
-                'date is. Please start over and let\'s see what happens')
-
-        try:
-            await ctx.send('And what time does this fantastic event begin? (Please provide HH:MM in UTC)')
-            response = await ctx.bot.wait_for('message', check=check_author, timeout=60.0)
-            hour, minute = map(int, response.content.split(':'))
-            if hour < 13:
-                try:
-                    await ctx.send('And is that AM or PM?')
-                    response = await ctx.bot.wait_for('message', check=check_author, timeout=60.0)
-                    if response.content.lower() == 'pm':
-                        hour += 12
-                except asyncio.TimeoutError:
-                    if hour < 6:
-                        await ctx.send('Well I\'ll just go with PM then.')
-                        hour += 12
-                    else:
-                        await ctx.send('I\'m going to assume you want AM.')
-            start_time = datetime.time(hour, minute)
-        except asyncio.TimeoutError:
-            return await ctx.send('I was asking for time, but you ran out of it. You\'ll have to start over again.')
-
-        event_start = datetime.datetime.combine(start_date, start_time)
-
-        try:
-            await ctx.send('What is the end date for the event? (YYYY-MM-DD)')
-            response = await ctx.bot.wait_for('message', check=check_author, timeout=60.0)
-            year, month, day = map(int, response.content.split('-'))
-            end_date = datetime.date(year, month, day)
-        except asyncio.TimeoutError:
-            return await ctx.send('I can\'t wait all day. Try again later.')
-
-        answer = await ctx.prompt('Does the event end at the same time of day?')
-        if answer:
-            end_time = start_time
-        elif answer is None:
-            end_time = start_time
-            await ctx.send('You must have fallen asleep. I\'ll just set the end time to match the start time.')
-        else:
-            try:
-                await ctx.send('What time does the event end? (Please provide HH:MM in UTC)')
-                response = await ctx.bot.wait_for('message', check=check_author, timeout=60.0)
-                hour, minute = map(int, response.content.split(':'))
-                end_time = datetime.time(hour, minute)
-            except asyncio.TimeoutError:
-                end_time = start_time
-                await ctx.send('You must have fallen asleep. I\'ll just set the end time to match the start time.')
-
-        event_end = datetime.datetime.combine(end_date, end_time)
-
-        try:
-            await ctx.send('Which #channel do you want me to send updates '
-                           '(event starting, ending, records broken etc.) to?')
-            response = await ctx.bot.wait_for('message', check=check_author, timeout=60.0)
-            try:
-                channel = await commands.TextChannelConverter().convert(ctx, response.content)
-            except commands.BadArgument:
-                return await ctx.send('Uh oh.. I didn\'t like that channel! '
-                                      'Try the command again with a channel # mention or ID.')
-        except asyncio.TimeoutError:
-            return await ctx.send('I can\'t wait all day. Try again later.')
-
-        query = 'INSERT INTO events (guild_id, event_name, start, finish, channel_id) VALUES ($1, $2, $3, $4, $5) RETURNING id'
-        event_id = await ctx.db.fetchrow(query, ctx.guild.id, event_name, event_start, event_end, channel.id)
-        log.info(f"{event_name} added to events table for {ctx.guild} by {ctx.author}")
-
-        query = 'UPDATE clans SET in_event = True WHERE guild_id = $1'
-        await ctx.db.execute(query, ctx.guild.id)
-
-        fmt = (f'**Event Created:**\n\n{event_name}\n{event_start.strftime("%d %b %Y %H:%M")}\n'
-               f'{event_end.strftime("%d %b %Y %H:%M")}\n\nEnjoy your event!')
-        e = discord.Embed(colour=discord.Colour.green(),
-                          description=fmt)
-        await ctx.send(embed=e)
-        self.bot.dispatch('event_register')
+    # @add.command(name="event")
+    # @checks.manage_guild()
+    # async def add_event(self, ctx, *, event_name: str = None):
+    #     """Allows user to add a new trophy push event. Trophy Push events override season statistics for trophy
+    #     counts.
+    #
+    #     This command is interactive and will ask you questions about the new event. After the initial command,
+    #     the bot will ask you further questions about the event.
+    #
+    #     **Parameters**
+    #     :key: Name of the event
+    #
+    #     **Format**
+    #     :information_source: `+add event EVENT NAME`
+    #
+    #     **Example**
+    #     :white_check_mark: `+add event Donation Bot Event`
+    #
+    #     **Required Permissions**
+    #     :warning: Manage Server
+    #     """
+    #     if ctx.config:
+    #         if ctx.config.start > datetime.datetime.now():
+    #             return await ctx.send(f'This server is already set up for {ctx.config.event_name}. Please use '
+    #                                   f'`+remove event` if you would like to remove this event and create a new one.')
+    #
+    #     def check_author(m):
+    #         return m.author == ctx.author
+    #
+    #     if not event_name:
+    #         try:
+    #             await ctx.send('Please enter the name of the new event.')
+    #             response = await ctx.bot.wait_for('message', check=check_author, timeout=60.0)
+    #             event_name = response.content
+    #         except asyncio.TimeoutError:
+    #             return await ctx.send('I can\'t wait all day. Try again later.')
+    #
+    #     for i in range(5):
+    #         try:
+    #             await ctx.send(f'What date does the {event_name} begin?  (YYYY-MM-DD)')
+    #             response = await ctx.bot.wait_for('message', check=check_author, timeout=60.0)
+    #             start_date = await DateConverter().convert(ctx, response.clean_content)
+    #             break
+    #         except (ValueError, commands.BadArgument):
+    #             await ctx.send('Date must be in the YYYY-MM-DD format.')
+    #         except asyncio.TimeoutError:
+    #             return await ctx.send('Yawn! Time\'s up. You\'re going to have to start over some other time.')
+    #     else:
+    #         return await ctx.send(
+    #             'I don\'t really know what happened, but I can\'t figure out what the start '
+    #             'date is. Please start over and let\'s see what happens')
+    #
+    #     try:
+    #         await ctx.send('And what time does this fantastic event begin? (Please provide HH:MM in UTC)')
+    #         response = await ctx.bot.wait_for('message', check=check_author, timeout=60.0)
+    #         hour, minute = map(int, response.content.split(':'))
+    #         if hour < 13:
+    #             try:
+    #                 await ctx.send('And is that AM or PM?')
+    #                 response = await ctx.bot.wait_for('message', check=check_author, timeout=60.0)
+    #                 if response.content.lower() == 'pm':
+    #                     hour += 12
+    #             except asyncio.TimeoutError:
+    #                 if hour < 6:
+    #                     await ctx.send('Well I\'ll just go with PM then.')
+    #                     hour += 12
+    #                 else:
+    #                     await ctx.send('I\'m going to assume you want AM.')
+    #         start_time = datetime.time(hour, minute)
+    #     except asyncio.TimeoutError:
+    #         return await ctx.send('I was asking for time, but you ran out of it. You\'ll have to start over again.')
+    #
+    #     event_start = datetime.datetime.combine(start_date, start_time)
+    #
+    #     try:
+    #         await ctx.send('What is the end date for the event? (YYYY-MM-DD)')
+    #         response = await ctx.bot.wait_for('message', check=check_author, timeout=60.0)
+    #         year, month, day = map(int, response.content.split('-'))
+    #         end_date = datetime.date(year, month, day)
+    #     except asyncio.TimeoutError:
+    #         return await ctx.send('I can\'t wait all day. Try again later.')
+    #
+    #     answer = await ctx.prompt('Does the event end at the same time of day?')
+    #     if answer:
+    #         end_time = start_time
+    #     elif answer is None:
+    #         end_time = start_time
+    #         await ctx.send('You must have fallen asleep. I\'ll just set the end time to match the start time.')
+    #     else:
+    #         try:
+    #             await ctx.send('What time does the event end? (Please provide HH:MM in UTC)')
+    #             response = await ctx.bot.wait_for('message', check=check_author, timeout=60.0)
+    #             hour, minute = map(int, response.content.split(':'))
+    #             end_time = datetime.time(hour, minute)
+    #         except asyncio.TimeoutError:
+    #             end_time = start_time
+    #             await ctx.send('You must have fallen asleep. I\'ll just set the end time to match the start time.')
+    #
+    #     event_end = datetime.datetime.combine(end_date, end_time)
+    #
+    #     try:
+    #         await ctx.send('Which #channel do you want me to send updates '
+    #                        '(event starting, ending, records broken etc.) to?')
+    #         response = await ctx.bot.wait_for('message', check=check_author, timeout=60.0)
+    #         try:
+    #             channel = await commands.TextChannelConverter().convert(ctx, response.content)
+    #         except commands.BadArgument:
+    #             return await ctx.send('Uh oh.. I didn\'t like that channel! '
+    #                                   'Try the command again with a channel # mention or ID.')
+    #     except asyncio.TimeoutError:
+    #         return await ctx.send('I can\'t wait all day. Try again later.')
+    #
+    #     query = 'INSERT INTO events (guild_id, event_name, start, finish, channel_id) VALUES ($1, $2, $3, $4, $5) RETURNING id'
+    #     event_id = await ctx.db.fetchrow(query, ctx.guild.id, event_name, event_start, event_end, channel.id)
+    #     log.info(f"{event_name} added to events table for {ctx.guild} by {ctx.author}")
+    #
+    #     query = 'UPDATE clans SET in_event = True WHERE guild_id = $1'
+    #     await ctx.db.execute(query, ctx.guild.id)
+    #
+    #     fmt = (f'**Event Created:**\n\n{event_name}\n{event_start.strftime("%d %b %Y %H:%M")}\n'
+    #            f'{event_end.strftime("%d %b %Y %H:%M")}\n\nEnjoy your event!')
+    #     e = discord.Embed(colour=discord.Colour.green(),
+    #                       description=fmt)
+    #     await ctx.send(embed=e)
+    #     self.bot.dispatch('event_register')
 
     @add.command(name="boards", aliases=["board"])
     @manage_guild()

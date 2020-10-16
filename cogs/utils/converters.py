@@ -17,6 +17,7 @@ tag_validator = re.compile("^#?[PYLQGRJCUV0289]+$")
 activity_days_re = re.compile(r"\b\d*d$")
 log = logging.getLogger(__name__)
 
+
 class PlayerConverter(commands.Converter):
     async def convert(self, ctx, argument):
         if isinstance(argument, coc.Player):
@@ -254,7 +255,9 @@ class CustomActivityMemberConverter(commands.IDConverter):
             result = discord.utils.get(guild.members, name=argument[:-5], discriminator=potential_discriminator)
         else:
             user_id = int(match.group(1))
-            result = guild.get_member(user_id) or discord.utils.get(ctx.message.mentions, id=user_id)
+            result = guild.get_member(user_id) \
+                     or discord.utils.get(ctx.message.mentions, id=user_id) \
+                     or await ctx.bot.fetch_user(user_id)
 
         if result is None:
             raise commands.BadArgument('Member "{}" not found'.format(argument))
@@ -654,3 +657,128 @@ class ActivityLineConverter(commands.Converter):
             if not fetch:
                 return None
             return [(clan['clan_name'], fetch)]
+
+
+class ConvertToPlayers(commands.Converter):
+    async def convert(self, ctx, argument):
+        season_id = await ctx.bot.seasonconfig.get_season_id()
+
+        player, clan = False, False
+        if "player" in argument:
+            player = True
+            argument = argument.replace("player", "").strip()
+        if "clan" in argument:
+            clan = True
+            argument = argument.replace("clan", "").strip()
+
+        if not (player or clan):
+            if argument in ("all", "server", "guild"):
+                query = """SELECT DISTINCT player_tag, 
+                                  player_name,
+                                  clans.clan_name,
+                                  donations, 
+                                  received, 
+                                  trophies, 
+                                  trophies - start_trophies AS "gain", 
+                                  last_updated - now() AS "since",
+                                  user_id 
+                           FROM players 
+                           INNER JOIN clans 
+                           ON clans.clan_tag = players.clan_tag 
+                           WHERE clans.guild_id = $1 
+                           AND players.season_id = $2
+                        """
+                return await ctx.db.fetch(query, ctx.guild.id, season_id)
+
+            try:
+                channel = await commands.TextChannelConverter().convert(ctx, argument)
+                query = """SELECT DISTINCT player_tag, 
+                                  player_name,
+                                  clans.clan_name,
+                                  donations, 
+                                  received, 
+                                  trophies, 
+                                  trophies - start_trophies AS "gain", 
+                                  last_updated - now() AS "since",
+                                  user_id 
+                           FROM players 
+                           INNER JOIN clans 
+                           ON clans.clan_tag = players.clan_tag 
+                           WHERE clans.channel_id = $1 
+                           AND players.season_id = $2
+                        """
+                return await ctx.db.fetch(query, channel.id, season_id)
+            except commands.BadArgument:
+                pass
+
+            try:
+                user = await CustomActivityMemberConverter().convert(ctx, argument)
+                links = await ctx.bot.links.get_linked_players(user.id)
+                query = """SELECT DISTINCT player_tag, 
+                                  player_name,
+                                  donations, 
+                                  received, 
+                                  trophies, 
+                                  trophies - start_trophies AS "gain", 
+                                  last_updated - now() AS "since",
+                                  user_id 
+                           FROM players 
+                           WHERE player_tag = ANY($1::TEXT[])
+                           AND players.season_id = $2
+                        """
+                return await ctx.db.fetch(query, links, season_id)
+            except commands.BadArgument:
+                pass
+
+        if not player:
+            query = """SELECT DISTINCT player_tag, 
+                              player_name,
+                              clans.clan_name,
+                              donations, 
+                              received, 
+                              trophies, 
+                              trophies - start_trophies AS "gain", 
+                              last_updated - now() AS "since",
+                              user_id 
+                       FROM players 
+                       INNER JOIN clans 
+                       ON clans.clan_tag = players.clan_tag 
+                       WHERE clans.clan_tag = $1 
+                       AND players.season_id = $3
+                       OR clans.clan_name LIKE $2 
+                       AND players.season_id = $3
+                    """
+            fetch = await ctx.db.fetch(query, correct_tag(argument), argument, season_id)
+
+            if fetch:
+                return fetch
+
+        if not clan:
+            query = """SELECT DISTINCT player_tag, 
+                              player_name,
+                              donations, 
+                              received, 
+                              trophies, 
+                              trophies - start_trophies AS "gain", 
+                              last_updated - now() AS "since",
+                              user_id 
+                       FROM players 
+                       WHERE player_tag = $1 
+                       AND players.season_id = $3
+                       OR player_name LIKE $2 
+                       AND players.season_id = $3
+                    """
+            fetch = await ctx.db.fetch(query, correct_tag(argument), argument, season_id)
+            if fetch:
+                return fetch
+
+        await ctx.send(
+            "I'm sorry, but I couldn't parse your argument as one of the following:\n\n"
+            "1. A player tag or player name\n"
+            "2. A clan tag or clan name\n"
+            "3. A user @mention or name\n"
+            "4. A channel #mention or name\n"
+            "5. `server` or `all` to get all clans for the server.\n\n"
+            f"Please try again with a valid argument, or use `{ctx.prefix}help {ctx.command}` for more help."
+        )
+        raise commands.BadArgument
