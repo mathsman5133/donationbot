@@ -41,6 +41,10 @@ class Stats(commands.Cog):
 
         return [v for (k, (v, _)) in self._players.items() if k in player_tags]
 
+    async def _get_emojis(self, guild_id):
+        query = "SElECT DISTINCT clan_tag, emoji FROM clans WHERE guild_id = $1"
+        return {n['clan_tag']: n['emoji'] for n in await self.bot.pool.fetch(query, guild_id)}
+
     async def cog_before_invoke(self, ctx):
         await ctx.trigger_typing()
 
@@ -72,21 +76,24 @@ class Stats(commands.Cog):
         """
         if argument is None:
             argument = await ConvertToPlayers().convert(ctx, "all")
+        if not argument:
+            return await ctx.send("I couldn't find any players. Perhaps try adding a clan?")
 
         title = f"Top Attack Wins"
-        clan_names = set(p.get('clan_name') for p in argument if p.get('clan_name'))
+        emojis = await self._get_emojis(ctx.guild.id)
+        clan_names = set((p.get('clan_name'), p['clan_tag']) for p in argument if p.get('clan_name'))
         if clan_names:
-            description = "Showing Stats For:\n" + "".join(f"• {name}\n" for name in clan_names) + "\n"
+            description = "Showing Stats For:\n" + "".join(f"{emojis.get(tag, '•')} {name}\n" for name, tag in clan_names) + "\n"
         else:
             description = ""
-        key = f"**Key:**\n{misc['attack']} - Attacks"
 
         p = StatsAttacksPaginator(
             ctx,
             data=await self._get_players([p['player_tag'] for p in argument]),
             page_count=math.ceil(len(argument) / 20),
             title=title,
-            description=description
+            description=description,
+            emojis=emojis,
         )
         await p.paginate()
 
@@ -119,20 +126,24 @@ class Stats(commands.Cog):
         if not argument:
             argument = await ConvertToPlayers().convert(ctx, "all")
 
+        if not argument:
+            return await ctx.send("I couldn't find any players. Perhaps try adding a clan?")
+
         title = f"Top Defense Wins"
-        clan_names = set(p.get('clan_name') for p in argument if p.get('clan_name'))
+        emojis = await self._get_emojis(ctx.guild.id)
+        clan_names = set((p.get('clan_name'), p['clan_tag']) for p in argument if p.get('clan_name'))
         if clan_names:
-            description = "Showing Stats For:\n" + "".join(f"• {name}\n" for name in clan_names) + "\n"
+            description = "Showing Stats For:\n" + "".join(f"{emojis.get(tag, '•')} {name}\n" for name, tag in clan_names) + "\n"
         else:
             description = ""
-        key = f"**Key:**\n{misc['defense']} - Defenses"
 
         p = StatsDefensesPaginator(
             ctx,
             data=await self._get_players([p['player_tag'] for p in argument]),
             page_count=math.ceil(len(argument) / 20),
             title=title,
-            description=description
+            description=description,
+            emojis=emojis,
         )
         await p.paginate()
 
@@ -164,18 +175,26 @@ class Stats(commands.Cog):
         """
         if not argument:
             argument = await ConvertToPlayers().convert(ctx, "all")
+        if not argument:
+            return await ctx.send("I couldn't find any players. Perhaps try adding a clan?")
 
         title = "Top Donations"
-        clan_names = set(p.get('clan_name') for p in argument if p.get('clan_name'))
+        emojis = await self._get_emojis(ctx.guild.id)
+        clan_names = set((p.get('clan_name'), p['clan_tag']) for p in argument if p.get('clan_name'))
         if clan_names:
-            description = "Showing Stats For:\n" + "".join(f"• {name}\n" for name in clan_names) + "\n"
+            description = "Showing Stats For:\n" + "".join(
+                f"{emojis.get(tag, '•')} {name}\n" for name, tag in clan_names) + "\n"
         else:
             description = ""
-        # key = f"**Key:**\n{misc['defense']} - Defenses"
 
         data = sorted(argument, key=lambda p: p['donations'], reverse=True)
         p = StatsDonorsPaginator(
-            ctx, data=data, page_count=math.ceil(len(argument) / 20), title=title, description=description
+            ctx,
+            data=data,
+            page_count=math.ceil(len(argument) / 20),
+            title=title,
+            description=description,
+            emojis=emojis,
         )
         await p.paginate()
 
@@ -207,18 +226,21 @@ class Stats(commands.Cog):
         """
         if not argument:
             argument = await ConvertToPlayers().convert(ctx, "all")
+        if not argument:
+            return await ctx.send("I couldn't find any players. Perhaps try adding a clan?")
 
         title = "Top Receivers"
-        clan_names = set(p.get('clan_name') for p in argument if p.get('clan_name'))
+        emojis = await self._get_emojis(ctx.guild.id)
+        clan_names = set((p.get('clan_name'), p['clan_tag']) for p in argument if p.get('clan_name'))
         if clan_names:
-            description = "Showing Stats For:\n" + "".join(f"• {name}\n" for name in clan_names) + "\n"
+            description = "Showing Stats For:\n" + "".join(
+                f"{emojis.get(tag, '•')} {name}\n" for name, tag in clan_names) + "\n"
         else:
             description = ""
-        # key = f"**Key:**\n{misc['defense']} - Defenses"
 
         data = sorted(argument, key=lambda p: p['received'], reverse=True)
         p = StatsDonorsPaginator(
-            ctx, data=data, page_count=math.ceil(len(argument) / 20), title=title, description=description
+            ctx, data=data, page_count=math.ceil(len(argument) / 20), title=title, description=description, emojis=emojis
         )
         await p.paginate()
 
@@ -251,17 +273,21 @@ class Stats(commands.Cog):
         if not argument:
             argument = await ConvertToPlayers().convert(ctx, "all")
 
+        if not argument:
+            return await ctx.send("I couldn't find any players. Perhaps try adding a clan?")
+
         title = "Top Trophies"
-        clan_names = set(p.get('clan_name') for p in argument if p.get('clan_name'))
+        emojis = await self._get_emojis(ctx.guild.id)
+        clan_names = set((p.get('clan_name'), p['clan_tag']) for p in argument if p.get('clan_name'))
         if clan_names:
-            description = "Showing Stats For:\n" + "".join(f"• {name}\n" for name in clan_names) + "\n"
+            description = "Showing Stats For:\n" + "".join(
+                f"{emojis.get(tag, '•')} {name}\n" for name, tag in clan_names) + "\n"
         else:
             description = ""
-        # key = f"**Key:**\n{misc['defense']} - Defenses"
 
         data = sorted(argument, key=lambda p: p['trophies'], reverse=True)
         p = StatsTrophiesPaginator(
-            ctx, data=data, page_count=math.ceil(len(argument) / 20), title=title, description=description
+            ctx, data=data, page_count=math.ceil(len(argument) / 20), title=title, description=description, emojis=emojis
         )
         await p.paginate()
 
@@ -294,17 +320,21 @@ class Stats(commands.Cog):
         if not argument:
             argument = await ConvertToPlayers().convert(ctx, "all")
 
+        if not argument:
+            return await ctx.send("I couldn't find any players. Perhaps try adding a clan?")
+
         title = "Last Online"
-        clan_names = set(p.get('clan_name') for p in argument if p.get('clan_name'))
+        emojis = await self._get_emojis(ctx.guild.id)
+        clan_names = set((p.get('clan_name'), p['clan_tag']) for p in argument if p.get('clan_name'))
         if clan_names:
-            description = "Showing Stats For:\n" + "".join(f"• {name}\n" for name in clan_names) + "\n"
+            description = "Showing Stats For:\n" + "".join(
+                f"{emojis.get(tag, '•')} {name}\n" for name, tag in clan_names) + "\n"
         else:
             description = ""
-        # key = f"**Key:**\n{misc['defense']} - Defenses"
 
         data = sorted(argument, key=lambda p: p['since'], reverse=True)
         p = StatsLastOnlinePaginator(
-            ctx, data=data, page_count=math.ceil(len(argument) / 20), title=title, description=description
+            ctx, data=data, page_count=math.ceil(len(argument) / 20), title=title, description=description, emojis=emojis
         )
         await p.paginate()
 
@@ -352,11 +382,12 @@ class Stats(commands.Cog):
         if not data[0].get_caseinsensitive_achievement(achievement):
             return await ctx.send("I couldn't find that achievement, sorry. Please make sure your spelling is correct!")
 
-        clan_names = set(p.get('clan_name') for p in players if p.get('clan_name'))
+        emojis = await self._get_emojis(ctx.guild.id)
         description = "*" + data[0].get_caseinsensitive_achievement(achievement).info + "*\n\n"
+        clan_names = set((p.get('clan_name'), p['clan_tag']) for p in data if p.get('clan_name'))
         if clan_names:
-            description += "Showing Stats For:\n" + "".join(f"• {name}\n" for name in clan_names) + "\n"
-        # key = f"**Key:**\n{misc['defense']} - Defenses"
+            description += "Showing Stats For:\n" + "".join(
+                f"{emojis.get(tag, '•')} {name}\n" for name, tag in clan_names) + "\n"
 
         data = sorted(data, key=lambda p: p.get_ach_value(achievement), reverse=True)
         p = StatsAchievementPaginator(
@@ -404,20 +435,25 @@ class Stats(commands.Cog):
         argument = await ConvertToPlayers().convert(ctx, argument)
 
         title = "Accounts Added"
-        clan_names = set(p.get('clan_name') for p in argument if p.get('clan_name'))
+        emojis = await self._get_emojis(ctx.guild.id)
+        clan_names = set((p.get('clan_name'), p['clan_tag']) for p in argument if p.get('clan_name'))
         if clan_names:
-            description = "Showing Accounts For:\n" + "".join(f"• {name}\n" for name in clan_names) + "\n"
+            description = "Showing Stats For:\n" + "".join(
+                f"{emojis.get(tag, '•')} {name}\n" for name, tag in clan_names) + "\n"
         else:
             description = ""
-        # key = f"**Key:**\n{misc['defense']} - Defenses"
 
-        async def get_claim(player):
-            if player['user_id'] is None or show_tags is True:
-                return (player['player_name'] or 'Unknown', player['player_tag'])
-            member = ctx.guild.get_member(player['user_id']) or self.bot.get_user(player['user_id']) or await self.bot.fetch_user(player['user_id']) or 'Unknown.....'
-            return (player['player_name'] or 'Unknown', str(member)[:-5])
+        tags_to_name = {p['player_tag']: p['player_name'] for p in argument}
 
-        data = sorted([await get_claim(player) for player in argument], key=lambda p: (p[1], p[0]), reverse=True)
+        async def get_claim(tag, discord_id):
+            if discord_id is None or show_tags is True:
+                return tags_to_name.get(tag, 'Unknown'), tag
+
+            member = ctx.guild.get_member(discord_id) or self.bot.get_user(discord_id) or await self.bot.fetch_user(discord_id) or 'Unknown.....'
+            return tags_to_name.get(tag, 'Unknown'), str(member)[:-5]
+
+        links = await self.bot.links.get_links(*tags_to_name.keys())
+        data = sorted([await get_claim(player_tag, discord_id) for player_tag, discord_id in links], key=lambda p: (p[1], p[0]), reverse=True)
 
         p = StatsAccountsPaginator(
             ctx, data=data, page_count=math.ceil(len(argument) / 20), title=title, description=description

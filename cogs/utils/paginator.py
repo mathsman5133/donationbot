@@ -503,13 +503,14 @@ class TrophyPaginator(TablePaginator):
 
 
 class DonationsPaginator(TablePaginator):
-    def __init__(self, ctx, data, title, page_count=1, rows_per_table=20, key='', description=''):
+    def __init__(self, ctx, data, title, page_count=1, rows_per_table=20, key='', description='', emojis=None):
         super().__init__(
             ctx, data, title=title, page_count=page_count, rows_per_table=rows_per_table, description=description
         )
         self.key = key
         self.player_data = []
         self.data = data
+        self.emojis = emojis or {}
 
     def create_row(self, index, player):
         self.table.add_row([index, player["donations"], player["player_name"]])
@@ -532,16 +533,17 @@ class DonationsPaginator(TablePaginator):
 
 
 class StatsAttacksPaginator(TablePaginator):
-    def __init__(self, ctx, data, title, page_count=1, rows_per_table=20, key='', description=''):
+    def __init__(self, ctx, data, title, page_count=1, rows_per_table=20, key='', description='', emojis=None):
         super().__init__(
             ctx, data, title=title, page_count=page_count, rows_per_table=rows_per_table, description=description
         )
         self.key = key
         self.player_data = []
         self.data = data
+        self.emojis = emojis or {}
 
     def create_row(self, index, player):
-        self.table.add_row([index, player.attack_wins, player.name])
+        self.table.add_row([index, self.emojis.get(player.clan and player.clan.tag, ""), player.attack_wins, player.name])
 
     async def prepare_entry(self, page):
         self.table.clear_rows()
@@ -557,16 +559,17 @@ class StatsAttacksPaginator(TablePaginator):
 
 
 class StatsDefensesPaginator(TablePaginator):
-    def __init__(self, ctx, data, title, page_count=1, rows_per_table=20, key='', description=''):
+    def __init__(self, ctx, data, title, page_count=1, rows_per_table=20, key='', description='', emojis=None):
         super().__init__(
             ctx, data, title=title, page_count=page_count, rows_per_table=rows_per_table, description=description
         )
         self.key = key
         self.player_data = []
         self.data = data
+        self.emojis = emojis or {}
 
     def create_row(self, index, player):
-        self.table.add_row([index, player.defense_wins, player.name])
+        self.table.add_row([index, self.emojis.get(player.clan and player.clan.tag, ""), player.defense_wins, player.name])
 
     async def prepare_entry(self, page):
         self.table.clear_rows()
@@ -582,14 +585,15 @@ class StatsDefensesPaginator(TablePaginator):
 
 
 class StatsGainsPaginator(TablePaginator):
-    def __init__(self, ctx, data, title, page_count=1, rows_per_table=20, key='', description=''):
+    def __init__(self, ctx, data, title, page_count=1, rows_per_table=20, key='', description='', emojis=None):
         super().__init__(
             ctx, data, title=title, page_count=page_count, rows_per_table=rows_per_table, description=description
         )
         self.key = key
+        self.emojis = emojis or {}
 
     def create_row(self, i, data):
-        self.table.add_row([i, data['gain'], data['player_name']])
+        self.table.add_row([i, self.emojis.get(data['clan_tag'], ""), data['gain'], data['player_name']])
 
     async def prepare_entry(self, page):
         self.table.clear_rows()
@@ -604,14 +608,15 @@ class StatsGainsPaginator(TablePaginator):
 
 
 class StatsTrophiesPaginator(TablePaginator):
-    def __init__(self, ctx, data, title, page_count=1, rows_per_table=20, key='', description=''):
+    def __init__(self, ctx, data, title, page_count=1, rows_per_table=20, key='', description='', emojis=None):
         super().__init__(
             ctx, data, title=title, page_count=page_count, rows_per_table=rows_per_table, description=description
         )
         self.key = key
+        self.emojis = emojis or {}
 
     def create_row(self, i, data):
-        self.table.add_row([i, data['trophies'], data['player_name']])
+        self.table.add_row([i, self.emojis.get(data['clan_tag'], ""), data['trophies'], data['player_name']])
 
     async def prepare_entry(self, page):
         self.table.clear_rows()
@@ -626,14 +631,15 @@ class StatsTrophiesPaginator(TablePaginator):
 
 
 class StatsDonorsPaginator(TablePaginator):
-    def __init__(self, ctx, data, title, page_count=1, rows_per_table=20, key='', description=''):
+    def __init__(self, ctx, data, title, page_count=1, rows_per_table=20, key='', description='', emojis=None):
         super().__init__(
             ctx, data, title=title, page_count=page_count, rows_per_table=rows_per_table, description=description
         )
         self.key = key
+        self.emojis = emojis or {}
 
     def create_row(self, i, data):
-        self.table.add_row([i, data['donations'], data['received'], data['player_name']])
+        self.table.add_row([i, self.emojis.get(data['clan_tag'], ""), data['donations'], data['received'], data['player_name']])
 
     async def prepare_entry(self, page):
         self.table.clear_rows()
@@ -648,14 +654,15 @@ class StatsDonorsPaginator(TablePaginator):
 
 
 class StatsLastOnlinePaginator(TablePaginator):
-    def __init__(self, ctx, data, title, page_count=1, rows_per_table=20, key='', description=''):
+    def __init__(self, ctx, data, title, page_count=1, rows_per_table=20, key='', description='', emojis=None):
         super().__init__(
             ctx, data, title=title, page_count=page_count, rows_per_table=rows_per_table, description=description
         )
         self.key = key
+        self.emojis = emojis or {}
 
     def create_row(self, i, data):
-        self.table.add_row([i, readable_time(data['since'].total_seconds())[:-3], data['player_name']])
+        self.table.add_row([i, self.emojis.get(data['clan_tag'], ""), readable_time(data['since'].total_seconds())[:-3], data['player_name']])
 
     async def prepare_entry(self, page):
         self.table.clear_rows()
@@ -670,15 +677,16 @@ class StatsLastOnlinePaginator(TablePaginator):
 
 
 class StatsAchievementPaginator(TablePaginator):
-    def __init__(self, ctx, data, title, page_count=1, rows_per_table=20, key='', description='', achievement=''):
+    def __init__(self, ctx, data, title, page_count=1, rows_per_table=20, key='', description='', achievement='', emojis=None):
         super().__init__(
             ctx, data, title=title, page_count=page_count, rows_per_table=rows_per_table, description=description
         )
         self.key = key
         self.achievement = achievement
+        self.emojis = emojis or {}
 
     def create_row(self, i, player):
-        self.table.add_row([i, player.get_ach_value(self.achievement), player.name])
+        self.table.add_row([i, self.emojis.get(player.clan and player.clan.tag, ""), player.get_ach_value(self.achievement), player.name])
 
     async def prepare_entry(self, page):
         self.table.clear_rows()
@@ -689,19 +697,19 @@ class StatsAchievementPaginator(TablePaginator):
             self.create_row(i + 1, row[1])
             print(row)
 
-        r = self.table.achievement() + self.key
-        return r
+        return self.table.achievement() + self.key
 
 
 class StatsAccountsPaginator(TablePaginator):
-    def __init__(self, ctx, data, title, page_count=1, rows_per_table=20, key='', description=''):
+    def __init__(self, ctx, data, title, page_count=1, rows_per_table=20, key='', description='', emojis=None):
         super().__init__(
             ctx, data, title=title, page_count=page_count, rows_per_table=rows_per_table, description=description
         )
         self.key = key
+        self.emojis = emojis or {}
 
     def create_row(self, i, data):
-        self.table.add_row([i, data[0], data[1]])
+        self.table.add_row([i, self.emojis.get(data['clan_tag'], ""), data[0], data[1]])
 
     async def prepare_entry(self, page):
         self.table.clear_rows()
