@@ -162,7 +162,7 @@ class CLYTable:
         for v in self._rows:
             index = int(v[0]) + 1
             index = number_emojis[index] if index <= 100 else misc['idle']
-            fmt += f"{index}{v[1]}`⠀{str(v[4]):\u00A0>12.12}⠀` `⠀{v[3]:\u00A0>11.11}⠀`\n"
+            fmt += f"{index}{v[1] or '⠀⠀' if show else ''}`⠀{str(v[4]):\u00A0>12.12}⠀` `⠀{v[3]:\u00A0>11.11}⠀`\n"
         return fmt
 
     def donationboard_1(self):
@@ -171,7 +171,7 @@ class CLYTable:
         for v in self._rows:
             index = int(v[0])
             index = number_emojis[index] if index <= 100 else misc['idle']
-            fmt += f"{index}{v[1]}`⠀{str(v[2]):\u00A0>6.6}⠀` `⠀{str(v[3]):\u00A0>5.5}⠀` `⠀{str(v[4]):\u00A0<10.10}⠀`\n"
+            fmt += f"{index}{v[1] or '⠀⠀' if show else ''}`⠀{str(v[2]):\u00A0>6.6}⠀` `⠀{str(v[3]):\u00A0>5.5}⠀` `⠀{str(v[4]):\u00A0<10.10}⠀`\n"
         return fmt
 
     def donationboard_2(self):
@@ -180,7 +180,7 @@ class CLYTable:
         for v in self._rows:
             index = int(v[0])
             index = number_emojis[index] if index <= 100 else misc['idle']
-            fmt += f"{index}{v[1]}`⠀{str(v[2]):\u00A0>6.6}⠀` `⠀{str(v[3]):\u00A0<15.15}⠀`\n"
+            fmt += f"{index}{v[1] or '⠀⠀' if show else ''}`⠀{str(v[2]):\u00A0>6.6}⠀` `⠀{str(v[3]):\u00A0<15.15}⠀`\n"
         return fmt
 
     def trophyboard_1(self):
@@ -189,7 +189,7 @@ class CLYTable:
         for v in self._rows:
             index = int(v[0]) + 1
             index = number_emojis[index] if index <= 100 else misc['idle']
-            fmt += f"{index}{v[1]}`⠀{str(v[2]):\u00A0>4.4}⠀` ` {str(v[3]):\u00A0>5.5} ` `⠀{str(v[4]):\u00A0<10.10}⠀`\n"
+            fmt += f"{index}{v[1] or '⠀⠀' if show else ''}`⠀{str(v[2]):\u00A0>4.4}⠀` ` {str(v[3]):\u00A0>5.5} ` `⠀{str(v[4]):\u00A0<10.10}⠀`\n"
         return fmt
 
     def trophyboard_2(self):
@@ -198,7 +198,7 @@ class CLYTable:
         for v in self._rows:
             index = int(v[0])
             index = number_emojis[index] if index <= 100 else misc['idle']
-            fmt += f"{index}{v[1]}`⠀{str(v[2]):\u00A0>5.5}⠀` ` {str(v[3]):\u00A0<18.18}⠀`\n"
+            fmt += f"{index}{v[1] or '⠀⠀' if show else ''}`⠀{str(v[2]):\u00A0>5.5}⠀` ` {str(v[3]):\u00A0<18.18}⠀`\n"
         return fmt
 
     def trophyboard_attacks(self):
@@ -207,7 +207,7 @@ class CLYTable:
         for v in self._rows:
             index = int(v[0])
             index = number_emojis[index] if index <= 100 else misc['idle']
-            fmt += f"{index}{v[1]}`⠀{str(v[2]):\u00A0>4.4}⠀` `⠀{str(v[3]):\u00A0<15.15}⠀`\n"
+            fmt += f"{index}{v[1] or '⠀⠀' if show else ''}`⠀{str(v[2]):\u00A0>4.4}⠀` `⠀{str(v[3]):\u00A0<15.15}⠀`\n"
         return fmt
 
     def trophyboard_defenses(self):
@@ -216,7 +216,7 @@ class CLYTable:
         for v in self._rows:
             index = int(v[0])
             index = number_emojis[index] if index <= 100 else misc['idle']
-            fmt += f"{index}{v[1]}`⠀{str(v[2]):\u00A0>4.4}⠀` `⠀{str(v[3]):\u00A0<15.15}⠀`\n"
+            fmt += f"{index}{v[1] or '⠀⠀' if show else ''}`⠀{str(v[2]):\u00A0>4.4}⠀` `⠀{str(v[3]):\u00A0<15.15}⠀`\n"
         return fmt
 
     def trophyboard_gain(self):
@@ -225,7 +225,7 @@ class CLYTable:
         for v in self._rows:
             index = int(v[0])
             index = number_emojis[index] if index <= 100 else misc['idle']
-            fmt += f"{index}{v[1]}`⠀{str(v[2]):\u00A0>4.4}⠀` `⠀{str(v[3]):\u00A0<15.15}⠀`\n"
+            fmt += f"{index}{v[1] or '⠀⠀' if show else ''}`⠀{str(v[2]):\u00A0>4.4}⠀` `⠀{str(v[3]):\u00A0<15.15}⠀`\n"
         return fmt
 
     def events_list(self):
@@ -234,21 +234,21 @@ class CLYTable:
         for v in self._rows:
             index = int(v[0]) + 1
             index = number_emojis[index] if index <= 100 else misc['idle']
-            fmt += f"{index}{v[1]}`⠀{str(v[2]):\u00A0^9}⠀` ` {str(v[3]):\u00A0<15.15}⠀`\n"
+            fmt += f"{index}{v[1] or '⠀⠀' if show else ''}`⠀{str(v[2]):\u00A0^9}⠀` ` {str(v[3]):\u00A0<15.15}⠀`\n"
         return fmt
 
     def donation_log_command(self):
         show = any(v[1] for v in self._rows)
         fmt = f"{misc['number']}{emojis[17] if show else ''}`⠀{'Don/Rec':\u00A0>7.7}⠀`  `⠀{'Name':\u00A0<12.12}⠀`  `⠀{'Age':\u00A0<5.5}⠀`\n"
         for v in self._rows:
-            fmt += f"{v[0]}{v[1]}`⠀{str(v[2]):\u00A0>7.7}⠀`  `⠀{str(v[3]):\u00A0<12.12}⠀`  `⠀{str(v[4]):\u00A0<5.5}⠀`\n"
+            fmt += f"{v[0]}{v[1] or '⠀⠀' if show else ''}`⠀{str(v[2]):\u00A0>7.7}⠀`  `⠀{str(v[3]):\u00A0<12.12}⠀`  `⠀{str(v[4]):\u00A0<5.5}⠀`\n"
         return fmt
 
     def trophy_log_command(self):
         show = any(v[1] for v in self._rows)
         fmt = f"{misc['number']}{emojis[17] if show else ''}`⠀{'Gain':\u00A0>4.4}⠀`  `⠀{'Name':\u00A0<14.14}⠀`  `⠀{'Age':\u00A0<5.5}⠀`\n"
         for v in self._rows:
-            fmt += f"{v[0]}{v[1]}`⠀{str(v[2]):\u00A0>3.3}⠀`  `⠀{str(v[3]):\u00A0<14.14}⠀`  `⠀{str(v[4]):\u00A0<5.5}⠀`\n"
+            fmt += f"{v[0]}{v[1] or '⠀⠀' if show else ''}`⠀{str(v[2]):\u00A0>3.3}⠀`  `⠀{str(v[3]):\u00A0<14.14}⠀`  `⠀{str(v[4]):\u00A0<5.5}⠀`\n"
         return fmt
 
     def last_online(self):
@@ -257,7 +257,7 @@ class CLYTable:
         for v in self._rows:
             index = int(v[0]) + 1
             index = number_emojis[index] if index <= 100 else misc['idle']
-            fmt += f"{index}{v[1]}`⠀{str(v[2]):\u00A0>9.9}⠀` `⠀{str(v[3]):\u00A0>15.15}⠀`\n"
+            fmt += f"{index}{v[1] or '⠀⠀' if show else ''}`⠀{str(v[2]):\u00A0>9.9}⠀` `⠀{str(v[3]):\u00A0>15.15}⠀`\n"
         return fmt
 
     def achievement(self):
@@ -266,7 +266,7 @@ class CLYTable:
         for v in self._rows:
             index = int(v[0])
             index = number_emojis[index] if index <= 100 else misc['idle']
-            fmt += f"{index}{v[1]}`⠀{big_number_fmt(v[2]):\u00A0>11.11}⠀` `⠀{str(v[3]):\u00A0>13.13}⠀`\n"
+            fmt += f"{index}{v[1] or '⠀⠀' if show else ''}`⠀{big_number_fmt(v[2]):\u00A0>11.11}⠀` `⠀{str(v[3]):\u00A0>13.13}⠀`\n"
         return fmt
 
     def accounts(self):
@@ -275,7 +275,7 @@ class CLYTable:
         for v in self._rows:
             index = int(v[0])
             index = number_emojis[index] if index <= 100 else misc['idle']
-            fmt += f"{index}{v[1]}`⠀{str(v[2]):\u00A0>11.11}⠀` `⠀{str(v[3]):\u00A0>13.13}⠀`\n"
+            fmt += f"{index}{v[1] or '⠀⠀' if show else ''}`⠀{str(v[2]):\u00A0>11.11}⠀` `⠀{str(v[3]):\u00A0>13.13}⠀`\n"
         return fmt
 
 

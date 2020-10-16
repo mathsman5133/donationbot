@@ -423,11 +423,12 @@ class Stats(commands.Cog):
         tags_to_name = {p['player_tag']: p['player_name'] for p in argument}
 
         async def get_claim(tag, discord_id):
+            player = tags_to_name.get(tag, {'player_name': 'Unknown', 'clan_tag': ''})
             if discord_id is None or show_tags is True:
-                return tags_to_name.get(tag, 'Unknown'), tag
+                return player['player_name'], tag, emojis.get(player['clan_tag'], '')
 
             member = ctx.guild.get_member(discord_id) or self.bot.get_user(discord_id) or await self.bot.fetch_user(discord_id) or 'Unknown.....'
-            return tags_to_name.get(tag, 'Unknown'), str(member)[:-5]
+            return player['player_name'], str(member)[:-5], emojis.get(player['clan_tag'], '')
 
         links = await self.bot.links.get_links(*tags_to_name.keys())
         data = sorted([await get_claim(player_tag, discord_id) for player_tag, discord_id in links], key=lambda p: (p[1], p[0]), reverse=True)

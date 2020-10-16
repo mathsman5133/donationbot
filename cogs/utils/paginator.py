@@ -709,7 +709,7 @@ class StatsAccountsPaginator(TablePaginator):
         self.emojis = emojis or {}
 
     def create_row(self, i, data):
-        self.table.add_row([i, self.emojis.get(data['clan_tag'], ""), data[0], data[1]])
+        self.table.add_row([i, data[2], data[0], data[1]])
 
     async def prepare_entry(self, page):
         self.table.clear_rows()
