@@ -751,9 +751,10 @@ class Info(commands.Cog, name='\u200bInfo'):
                           season_id
                     FROM players
                     WHERE player_tag = ANY($1::TEXT[])
+                    AND clan_tag = ANY($2::TEXT[])
                     ORDER BY season_id DESC
                     """
-        fetch = await ctx.db.fetch(query, [p['player_tag'] for p in argument])
+        fetch = await ctx.db.fetch(query, [p['player_tag'] for p in argument], list({p['clan_tag'] for p in argument}))
         csv = ""
         for i, row in enumerate(fetch):
             if i == 0:
