@@ -420,7 +420,7 @@ class Stats(commands.Cog):
         emojis = await self._get_emojis(ctx.guild.id)
         description = self._get_description(emojis, argument)
 
-        tags_to_name = {p['player_tag']: p['player_name'] for p in argument}
+        tags_to_name = {p['player_tag']: p for p in argument}
 
         async def get_claim(tag, discord_id):
             player = tags_to_name.get(tag, {'player_name': 'Unknown', 'clan_tag': ''})
