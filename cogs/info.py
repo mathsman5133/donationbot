@@ -735,6 +735,10 @@ class Info(commands.Cog, name='\u200bInfo'):
         :white_check_mark: `+dump #donation-log`
         :white_check_mark: `+dump all`
         """
+        if not argument:
+            argument = await ConvertToPlayers().convert(ctx, "all")
+        if not argument:
+            return await ctx.send("Couldn't find any players - try adding a clan?")
         query = """SELECT player_tag, 
                           player_name, 
                           donations, 
