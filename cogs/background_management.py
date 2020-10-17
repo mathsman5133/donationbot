@@ -39,6 +39,7 @@ class BackgroundManagement(commands.Cog):
         asyncio.ensure_future(self.sync_temp_event_tasks())
         #self.sync_activity_stats.start()
         self._log_tasks = {}
+        self.bot.loop.create_task(self.chunk_on_startup())
         # self.event_player_updater.start()
 
     def cog_unload(self):
@@ -48,6 +49,10 @@ class BackgroundManagement(commands.Cog):
             v.cancel()
         #self.sync_activity_stats.cancel()
         # self.event_player_updater.cancel()
+
+    async def chunk_on_startup(self):
+        await self.bot.wait_until_ready()
+        await self.bot.get_guild(594276321937326091).chunk()
 
     async def bot_check(self, ctx):
         if ctx.guild.id in ctx.bot.locked_guilds:

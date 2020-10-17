@@ -18,7 +18,8 @@ async def error_handler(ctx, error):
         return await ctx.send(str(error))
 
     if isinstance(error, (commands.BadArgument, commands.BadUnionArgument)):
-        return await ctx.send(str(error))
+        if str(error):
+            return await ctx.send(str(error))
     if isinstance(error, commands.MissingRequiredArgument):
         return await ctx.send(f'Oops! That didn\'t look right... '
                               f'please see how to use the command with `+help {ctx.command.qualified_name}`')

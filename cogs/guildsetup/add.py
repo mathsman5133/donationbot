@@ -205,7 +205,9 @@ class Add(commands.Cog):
                 "It seems as though I don't have access to that emoji! Make sure it's on a server I share, and try again."
             )
 
+        print(clan)
         clan = clan.replace(str(emoji), "").strip()
+        print(clan)
 
         if coc.utils.is_valid_tag(coc.utils.correct_tag(clan)):
             clan_tag = coc.utils.correct_tag(clan)
