@@ -373,7 +373,7 @@ class Stats(commands.Cog):
 
         data = sorted(data, key=lambda p: p.get_ach_value(achievement), reverse=True)
         p = StatsAchievementPaginator(
-            ctx, data=data, page_count=math.ceil(len(data) / 20), title=title, description=description, achievement=achievement
+            ctx, data=data, page_count=math.ceil(len(data) / 20), title=title, description=description, achievement=achievement, emojis=emojis
         )
         await p.paginate()
 
