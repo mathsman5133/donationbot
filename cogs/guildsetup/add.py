@@ -194,7 +194,7 @@ class Add(commands.Cog):
                 return await ctx.send("I couldn't find an emoji in your message!")
 
         if custom:
-            emoji = self.bot.get_emoji(int(custom.group('id')))
+            emoji = self.bot.get_emoji(int(custom.group('id'))).id
         else:
             emoji = unicode[0]
         if not emoji:

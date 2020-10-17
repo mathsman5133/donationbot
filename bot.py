@@ -69,6 +69,7 @@ intents.guilds = True
 intents.guild_messages = True
 intents.guild_reactions = True
 intents.members = True
+intents.emojis = True
 
 
 async def get_pref(bot, message):
