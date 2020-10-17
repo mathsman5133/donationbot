@@ -194,15 +194,19 @@ class Add(commands.Cog):
                 return await ctx.send("I couldn't find an emoji in your message!")
 
         if custom:
-            emoji = self.bot.get_emoji(int(custom.group('id'))).id
+            emoji = self.bot.get_emoji(int(custom.group('id')))
+            emoji_id = emoji.id
         else:
             emoji = unicode[0]
+            emoji_id = emoji
+
         if not emoji:
             return await ctx.send(
                 "It seems as though I don't have access to that emoji! Make sure it's on a server I share, and try again."
             )
 
         clan = clan.replace(str(emoji), "").strip()
+
         if coc.utils.is_valid_tag(coc.utils.correct_tag(clan)):
             clan_tag = coc.utils.correct_tag(clan)
         else:
@@ -211,7 +215,7 @@ class Add(commands.Cog):
                 return await ctx.send("I couldn't find that clan. Please try again with the tag.")
             clan_tag = fetch['clan_tag']
 
-        result = await ctx.db.fetchrow("UPDATE clans SET emoji = $1 WHERE clan_tag = $2 AND guild_id = $3 RETURNING clan_tag", str(emoji), clan_tag, ctx.guild.id)
+        result = await ctx.db.fetchrow("UPDATE clans SET emoji = $1 WHERE clan_tag = $2 AND guild_id = $3 RETURNING clan_tag", str(emoji_id), clan_tag, ctx.guild.id)
         if result:
             await ctx.send("👌 Emoji added successfully.")
         else:
