@@ -368,8 +368,14 @@ class Stats(commands.Cog):
             return await ctx.send("I couldn't find that achievement, sorry. Please make sure your spelling is correct!")
 
         emojis = await self._get_emojis(ctx.guild.id)
+
         description = "*" + data[0].get_caseinsensitive_achievement(achievement).info + "*\n\n"
-        description += self._get_description(emojis, data)
+
+        clan_names = set((p.clan.name, p.clan.tag) for p in players)
+        if clan_names:
+            description += "Showing Stats For:\n" + "".join(f"{emojis.get(tag, '•')} {name}\n" for name, tag in clan_names) + "\n"
+        if not emojis:
+            description += "Want to see who is in which clan?\nTry adding a clan emoji: `+add emoji #clantag :emoji:`\n\n"
 
         data = sorted(data, key=lambda p: p.get_ach_value(achievement), reverse=True)
         p = StatsAchievementPaginator(
