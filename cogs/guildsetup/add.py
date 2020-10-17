@@ -842,7 +842,7 @@ class Add(commands.Cog):
         if response and response['status'] == "ok":
             await ctx.db.execute(
                 "INSERT INTO players (player_tag, user_id, season_id, verified) VALUES ($1, $2, $3, True)"
-                "ON CONFLICT DO UPDATE SET verified = True",
+                "ON CONFLICT (player_tag, season_id) DO UPDATE SET verified = True",
                 tag,
                 ctx.author.id,
                 await self.bot.seasonconfig.get_season_id()
