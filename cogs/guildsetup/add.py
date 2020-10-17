@@ -832,7 +832,8 @@ class Add(commands.Cog):
                        "2. Go to the 'Settings' tab and click 'More Settings' in the bottom-right\n"
                        "3. Scroll to the bottom of that page, and click the 'Show' button next to 'API Token'.\n"
                        "4. Click it again top 'Copy' the 8-character code.\n"
-                       "5. Post it in this channel and I will verify it is correct.\n\nYou have 2 minutes before I time-out.")
+                       "5. Post it in this channel and I will verify it is correct.\n\nYou have 2 minutes before I time-out.\n"
+                       "https://cdn.discordapp.com/attachments/681438398455742536/766911636375601162/PSX_20201017_1731392.jpg")
         try:
             message = await self.bot.wait_for("message", check=check, timeout=120.0)
         except asyncio.TimeoutError:
