@@ -221,6 +221,7 @@ class Info(commands.Cog, name='\u200bInfo'):
         if query is None:
             groups = [
                 ("Clan Tracking Commands", (
+                    "accounts",
                     "activity bar",
                     "activity line",
                     "achievement",
@@ -229,7 +230,7 @@ class Info(commands.Cog, name='\u200bInfo'):
                     "donations",
                     "lastonline",
                     "trophies",
-                    "accounts",
+                    "dump",
                 )),
                 ("Setup Commands", (
                     "add boards",
@@ -239,6 +240,7 @@ class Info(commands.Cog, name='\u200bInfo'):
                     "[add|edit|remove] trophylog",
                     "[add|remove] clan",
                     "[add|remove] discord",
+                    "add emoji",
                     "edit darkmode",
                     "edit prefix",
                     "edit timezone",
@@ -708,7 +710,31 @@ class Info(commands.Cog, name='\u200bInfo'):
         await ctx.send(f"Guild ID: {ctx.guild.id}\nChannel ID: {ctx.channel.id}")
 
     @commands.command()
-    async def dump(self, ctx, *, argument: ConvertToPlayers):
+    async def dump(self, ctx, *, argument: ConvertToPlayers = None):
+        """Get a .csv of all player data the bot has stored for a clan/players.
+
+        **Parameters**
+        :key: The argument: Can be a clan tag, name, player tag, name, channel #mention, user @mention or `server` for all clans linked to the server.
+
+        **Format**
+        :information_source: `+dump`
+        :information_source: `+dump #CLAN_TAG`
+        :information_source: `+dump CLAN NAME`
+        :information_source: `+dump #PLAYER_TAG`
+        :information_source: `+dump Player Name`
+        :information_source: `+dump #channel`
+        :information_source: `+dump @user`
+        :information_source: `+dump all`
+
+        **Example**
+        :white_check_mark: `+dump`
+        :white_check_mark: `+dump #JY9J2Y99`
+        :white_check_mark: `+dump Reddit`
+        :white_check_mark: `+dump Mathsman`
+        :white_check_mark: `+dump @mathsman#1208`
+        :white_check_mark: `+dump #donation-log`
+        :white_check_mark: `+dump all`
+        """
         query = """SELECT player_tag, 
                           player_name, 
                           donations, 
@@ -736,6 +762,10 @@ class Info(commands.Cog, name='\u200bInfo'):
 
         bytesio = io.BytesIO(csv.encode("utf-8"))
         await ctx.send(file=discord.File(filename="donation-tracker-export.csv", fp=bytesio))
+
+    @dump.before_invoke
+    async def before_dump(self, ctx):
+        await ctx.trigger_typing()
 
 
 def setup(bot):
