@@ -200,7 +200,7 @@ class Add(commands.Cog):
         if custom:
             emoji = self.bot.get_emoji(int(custom.group('id')))
         else:
-            emoji = unicode_emoji
+            emoji = unicode[0]
         if not emoji:
             return await ctx.send(
                 "It seems as though I don't have access to that emoji! Make sure it's on a server I share, and try again."
