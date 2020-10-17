@@ -17,7 +17,7 @@ from cogs.utils.paginator import Pages, EmbedPages
 from cogs.utils.formatters import CLYTable, readable_time, TabularData
 from cogs.utils.emoji_lookup import misc
 from cogs.utils.checks import requires_config
-from cogs.utils.converters import GlobalChannel
+from cogs.utils.converters import GlobalChannel, ConvertToPlayers
 from datetime import datetime
 from collections import Counter
 
@@ -706,6 +706,36 @@ class Info(commands.Cog, name='\u200bInfo'):
     @commands.command(hidden=True)
     async def channelid(self, ctx):
         await ctx.send(f"Guild ID: {ctx.guild.id}\nChannel ID: {ctx.channel.id}")
+
+    @commands.command()
+    async def dump(self, ctx, *, argument: ConvertToPlayers):
+        query = """SELECT player_tag, 
+                          player_name, 
+                          donations, 
+                          received, 
+                          trophies, 
+                          start_trophies, 
+                          clan_tag, 
+                          last_updated,
+                          user_id,
+                          season_id
+                    FROM players
+                    WHERE player_tag = ANY($1::TEXT[])
+                    ORDER BY season_id DESC
+                    """
+        fetch = await ctx.db.fetch(query, [p['player_tag'] for p in argument])
+        csv = ""
+        for i, row in enumerate(fetch):
+            if i == 0:
+                # headers
+                csv += ''.join(f"{col}," for col in row.keys())
+                csv += '\n'
+
+            csv += ''.join(f"{r}," for r in row.values())
+            csv += '\n'
+
+        bytesio = io.BytesIO(csv.encode("utf-8"))
+        await ctx.send(file=discord.File(filename="donation-tracker-export.csv", fp=bytesio))
 
 
 def setup(bot):
