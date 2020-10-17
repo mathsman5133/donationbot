@@ -43,7 +43,7 @@ class Stats(commands.Cog):
 
     async def _get_emojis(self, guild_id):
         query = "SElECT DISTINCT clan_tag, emoji FROM clans WHERE guild_id = $1 AND emoji != ''"
-        return {n['clan_tag']: '<:x:' + n['emoji'] + '>' for n in await self.bot.pool.fetch(query, guild_id)}
+        return {n['clan_tag']: f"<:x:{n['emoji']}>" if n['emoji'].isdigit() else n['emoji'] for n in await self.bot.pool.fetch(query, guild_id)}
 
     def _get_description(self, emojis, players):
         clan_names = set((p.get('clan_name'), p['clan_tag']) for p in players if p.get('clan_name'))
