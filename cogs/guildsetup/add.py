@@ -104,11 +104,7 @@ class Add(commands.Cog):
         """Link a clan to your server.
         This will add all accounts in clan to the database, if not already added.
 
-        Note: As a security feature, the clan must have the letters `dt` added
-        at the end of the clan's description.
-
-        This is a security feature of the bot to ensure you have proper (co)ownership of the clan.
-        `dt` should be removed once the command has been sucessfully run.
+        Note: you must be an Elder or above in-game to add a clan. In order for the bot to verify this, please run `+verify #playertag`
 
         **Parameters**
         :key: A discord channel (#mention). If you don't have this, it will use the channel you're in
@@ -144,19 +140,19 @@ class Add(commands.Cog):
         except coc.NotFound:
             return await ctx.send(f'Clan not found with `{clan_tag}` tag.')
 
-        check = clan.description.strip().endswith('dt') \
+        fetch = await ctx.db.fetch("SELECT player_tag FROM players WHERE user_id = $1 AND verified = True", ctx.author.id)
+        is_verified = any(clan.get_member(m['player_tag']) and clan.get_member(m['player_tag']).role in (coc.Role.elder, coc.Role.co_leader, coc.Role.leader) for m in fetch)
+
+        check = is_verified \
                 or await self.bot.is_owner(ctx.author) \
                 or clan_tag in (n.tag for n in current_clans) \
                 or ctx.guild.id == RCS_GUILD_ID \
                 or helper_check(self.bot, ctx.author) is True
 
         if not check:
-            return await ctx.send('Please add the letters `dt` to the end of '
-                                  f'`{clan.name}`\'s clan description. Wait 5 minutes and try again.'
-                                  '\n\nThis is a security feature of the bot and should '
-                                  'be removed once the clan has been added.\n'
-                                  '<https://cdn.discordapp.com/attachments/'
-                                  '605352421929123851/634226338852503552/Screenshot_20191017-140812.png>')
+            return await ctx.send("Please verify your account before adding a clan. "
+                                  "See `+help verify` for more information.\n\n"
+                                  "This is a security feature of the bot to ensure you are an elder or above of the clan.")
 
         query = "INSERT INTO clans (clan_tag, guild_id, channel_id, clan_name) VALUES ($1, $2, $3, $4)"
         await ctx.db.execute(query, clan.tag, ctx.guild.id, channel.id, clan.name)
@@ -804,6 +800,58 @@ class Add(commands.Cog):
                               'See all clans claimed with `+info clans`. '
                               'Please note that only clans claimed to this channel will appear in the log.')
 
+    @commands.command()
+    async def verify(self, ctx, *, player: str):
+        """Verify your clash account in order to add clans to the bot.
+
+        This uses the in-game API token to verify your ownership.
+
+        **Parameters**
+        :key: You player tag or name.
+
+        **Format**
+        :information_source: `+verify #PLAYERTAG`
+        :information_source: `+verify Player Name`
+
+        **Example**
+        :white_check_mark: `+verify showtags`
+        :white_check_mark: `+verify #JY9J2Y99`
+        """
+        if player and coc.utils.is_valid_tag(coc.utils.correct_tag(player)):
+            tag = coc.utils.correct_tag(player)
+        else:
+            fetch = await ctx.db.fetchrow("SELECT DISTINCT player_tag FROM players WHERE player_name LIKE $1", player)
+            if not fetch:
+                return await ctx.send("I couldn't find that player - perhaps try their tag?")
+            tag = fetch['player_tag']
+
+        def check(m):
+            return m.author.id == ctx.author.id and m.channel == ctx.channel
+        await ctx.send("To find your player API token, please follow these steps:\n"
+                       "1. Go in-game and ensure the account is the one you're trying to verify\n"
+                       "2. Go to the 'Settings' tab and click 'More Settings' in the bottom-right\n"
+                       "3. Scroll to the bottom of that page, and click the 'Show' button next to 'API Token'.\n"
+                       "4. Click it again top 'Copy' the 8-character code.\n"
+                       "5. Post it in this channel and I will verify it is correct.\n\nYou have 2 minutes before I time-out.")
+        try:
+            message = await self.bot.wait_for("message", check=check, timeout=120.0)
+        except asyncio.TimeoutError:
+            return await ctx.send("You took too long. Please try again.")
+
+        response = await self.bot.coc.http.request(coc.http.Route("POST", f"/players/{tag}/verifytoken", {}), json={"token": message.content.strip()})
+        if response and response['status'] == "ok":
+            await ctx.db.execute(
+                "INSERT INTO players (player_tag, user_id, season_id, verified) VALUES ($1, $2, $3, True)"
+                "ON CONFLICT DO UPDATE SET verified = True",
+                tag,
+                ctx.author.id,
+                await self.bot.seasonconfig.get_season_id()
+            )
+            await self.bot.links.delete_link(tag)
+            await self.bot.links.add_link(tag, ctx.author.id)
+            await ctx.send(f"👌 Player successfully verified.")
+        else:
+            await ctx.send("Sorry, that token wasn't correct. Please run the command again.")
 
 def setup(bot):
     bot.add_cog(Add(bot))
