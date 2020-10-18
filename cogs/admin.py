@@ -647,7 +647,7 @@ class Admin(commands.Cog):
                        FROM players
                        INNER JOIN clans
                        ON clans.clan_tag = players.clan_tag
-                       WHERE clans.channel_id = (SELECT channel_id FROM clans ORDER BY random() OFFSET random() LIMIT 1)
+                       WHERE clans.channel_id = (SELECT channel_id FROM clans OFFSET random() LIMIT 1)
                        AND season_id = 16
                        ORDER BY donations DESC
                        NULLS LAST
