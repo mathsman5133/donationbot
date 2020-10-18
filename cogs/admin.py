@@ -132,7 +132,9 @@ header {
             stdin=asyncio.subprocess.PIPE,
         )
         stdout, stderr = await proc.communicate(input=self.html.encode('utf-8'))
-        return io.BytesIO(stdout)
+        b = io.BytesIO(stdout)
+        b.seek(0)
+        return b
 
 
 # to expose to the eval command
