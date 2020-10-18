@@ -132,9 +132,7 @@ header {
             stdin=asyncio.subprocess.PIPE,
         )
         stdout, stderr = await proc.communicate(input=self.html.encode('utf-8'))
-        b = io.BytesIO(stdout)
-        b.seek(0)
-        return b
+        return stdout, stderr
 
 
 # to expose to the eval command
@@ -775,7 +773,11 @@ class Admin(commands.Cog):
         players = [(i, p['player_name'], p['donations'], p['received'], round(p['donations'] / p['received'], 2), p['trophies'], p['gain'], p['last_online']) for i, p in enumerate(f)]
 
         im = await HTMLImages(players=players).make()
-        await ctx.send(file=discord.File(im, filename="donationboard.png"))
+        await ctx.send(im)
+        b = io.BytesIO(im[0])
+        b.seek(0)
+
+        await ctx.send(file=discord.File(b, filename="donationboard.png"))
 
 def setup(bot):
     bot.add_cog(Admin(bot))
