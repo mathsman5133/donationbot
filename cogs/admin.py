@@ -106,7 +106,7 @@ header {
     def add_table(self):
         to_add = "<table>"
 
-        headers = ("#", "Player Name", "Dons", "Rec", "Ratio", "Trophies", "Gain", "Last On")
+        headers = ("#", "Player Name", "Dons", "Rec", "Ratio", "Last On")
         to_add += "<tr>" + "".join(f"<th>{column}</th>" for column in headers) + "</tr>"
 
         for player in self.players:
@@ -120,14 +120,14 @@ header {
 
     def parse_players(self):
         self.players = [(i, p['player_name'], p['donations'], p['received'], round(p['donations'] / p['received'], 2),
-                         p['trophies'], p['gain'], p['last_online']) for i, p in enumerate(self.players)]
+                         p['last_online']) for i, p in enumerate(self.players)]
 
     async def make(self):
         s = time.perf_counter()
         self.add_style()
         self.add_body()
         self.add_title()
-        #self.add_image()
+        self.add_image()
         self.add_table()
         self.end_html()
         log.info((time.perf_counter() - s)*1000)
@@ -776,7 +776,7 @@ class Admin(commands.Cog):
                        AND season_id = 16
                        ORDER BY donations DESC
                        NULLS LAST
-                       LIMIT 20
+                       LIMIT 15
                        
                        """
         s = time.perf_counter()
