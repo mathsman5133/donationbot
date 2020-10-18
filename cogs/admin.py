@@ -781,7 +781,7 @@ class Admin(commands.Cog):
                        """
         s = time.perf_counter()
         f = await ctx.db.fetch(query)
-        players = [(i, p['player_name'], p['donations'], p['received'], round(p['donations'] / p['received'], 2), p['trophies'], p['gain'], p['last_online']) for i, p in enumerate(f)]
+        players = [(i, p['player_name'], p['donations'], p['received'], round(p['donations'] / p['received'], 2), p['last_online']) for i, p in enumerate(f)]
         e = (time.perf_counter() - s)*1000
 
         s = time.perf_counter()
