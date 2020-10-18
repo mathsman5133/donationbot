@@ -134,13 +134,13 @@ header {
 
 
         s = time.perf_counter()
-        proc = await asyncio.create_subprocess_shell(
-            'wkhtmltoimage - -', stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
-            stdin=asyncio.subprocess.PIPE,
+        proc = subprocess.Popen(
+            'wkhtmltoimage - -', stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            stdin=subprocess.PIPE,
         )
         log.info((time.perf_counter() - s)*1000)
         s = time.perf_counter()
-        stdout, stderr = await proc.communicate(input=self.html.encode('utf-8'))
+        stdout, stderr = proc.communicate(input=self.html.encode('utf-8'))
         log.info((time.perf_counter() - s)*1000)
         return stdout, stderr
 
