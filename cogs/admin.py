@@ -18,6 +18,7 @@ from typing import Union, Optional
 
 from cogs.utils.formatters import TabularData
 from cogs.utils.converters import GlobalChannel
+from cogs.utils.html_images import HTMLImages
 
 # to expose to the eval command
 import datetime
@@ -632,6 +633,30 @@ class Admin(commands.Cog):
             success = True
 
         await ctx.send(f'Status: {ctx.tick(success)} Time: {(end - start) * 1000:.2f}ms')
+
+    @commands.command()
+    async def rb(self, ctx):
+        query = """
+        SELECT DISTINCT player_name,
+                                        donations,
+                                        received,
+                                        trophies,
+                                        now() - last_updated AS "last_online",
+                                        donations / NULLIF(received, 0) AS "ratio",
+                                        trophies - start_trophies AS "gain"
+                       FROM players
+                       INNER JOIN clans
+                       ON clans.clan_tag = players.clan_tag
+                       WHERE clans.channel_id = (SELECT channel_id FROM clans ORDER BY random() OFFSET random() LIMIT 1)
+                       AND season_id = 16
+                       ORDER BY 'donations' DESC
+                       NULLS LAST
+                       LIMIT 20
+                       
+                       """
+        f = await ctx.db.fetch(query)
+        im = HTMLImages(players=f)
+        await ctx.send(file=discord.File(im, filename="donationboard.png"))
 
 def setup(bot):
     bot.add_cog(Admin(bot))
