@@ -107,7 +107,7 @@ header {
         self.end_html()
 
         proc = await asyncio.create_subprocess_shell(
-            'wkhtmltoimage - -', stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+            'wkhtmltoimage - -', stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE, stdin=asyncio.subprocess.PIPE,
         )
         stdout, stderr = await proc.communicate(input=self.html.encode('utf-8'))
         return io.BytesIO(stdout)
