@@ -127,7 +127,7 @@ header {
         self.add_style()
         self.add_body()
         self.add_title()
-        self.add_image()
+        #self.add_image()
         self.add_table()
         self.end_html()
         log.info((time.perf_counter() - s)*1000)
