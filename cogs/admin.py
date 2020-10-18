@@ -135,7 +135,7 @@ header {
 
         s = time.perf_counter()
         proc = subprocess.Popen(
-            'wkhtmltoimage - -', stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            ['wkhtmltoimage', '-', '-'], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
             stdin=subprocess.PIPE,
         )
         log.info((time.perf_counter() - s)*1000)
