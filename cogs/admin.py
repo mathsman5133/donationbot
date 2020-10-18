@@ -14,12 +14,15 @@ import sys
 import copy
 import time
 import subprocess
+import logging
 from typing import Union, Optional
 
 from cogs.utils.formatters import TabularData
 from cogs.utils.converters import GlobalChannel
 import asyncio
 import io
+
+log = logging.getLogger(__name__)
 
 
 class HTMLImages:
@@ -47,7 +50,7 @@ img {
   opacity:0.9;
 }
 table {
-  font-family: Lato, Helvetica, Arial, sans-serif;
+  font-family: Arial, sans-serif;
   border-collapse: seperate;
   border-spacing: 0 12px;
   width: 100%;
@@ -120,18 +123,25 @@ header {
                          p['trophies'], p['gain'], p['last_online']) for i, p in enumerate(self.players)]
 
     async def make(self):
+        s = time.perf_counter()
         self.add_style()
         self.add_body()
         self.add_title()
         self.add_image()
         self.add_table()
         self.end_html()
+        log.info((time.perf_counter() - s)*1000)
 
+
+        s = time.perf_counter()
         proc = await asyncio.create_subprocess_shell(
             'wkhtmltoimage - -', stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
             stdin=asyncio.subprocess.PIPE,
         )
+        log.info((time.perf_counter() - s)*1000)
+        s = time.perf_counter()
         stdout, stderr = await proc.communicate(input=self.html.encode('utf-8'))
+        log.info((time.perf_counter() - s)*1000)
         return stdout, stderr
 
 
@@ -769,15 +779,19 @@ class Admin(commands.Cog):
                        LIMIT 20
                        
                        """
+        s = time.perf_counter()
         f = await ctx.db.fetch(query)
         players = [(i, p['player_name'], p['donations'], p['received'], round(p['donations'] / p['received'], 2), p['trophies'], p['gain'], p['last_online']) for i, p in enumerate(f)]
+        e = (time.perf_counter() - s)*1000
 
+        s = time.perf_counter()
         im = await HTMLImages(players=players).make()
         # await ctx.send(im)
         b = io.BytesIO(im[0])
         b.seek(0)
+        f = (time.perf_counter() - s) * 1000
 
-        await ctx.send(file=discord.File(b, filename="donationboard.png"))
+        await ctx.send(f"q: {e}, s: {f}", file=discord.File(b, filename="donationboard.png"))
 
 def setup(bot):
     bot.add_cog(Admin(bot))
