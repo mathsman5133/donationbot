@@ -773,7 +773,7 @@ class Admin(commands.Cog):
         players = [(i, p['player_name'], p['donations'], p['received'], round(p['donations'] / p['received'], 2), p['trophies'], p['gain'], p['last_online']) for i, p in enumerate(f)]
 
         im = await HTMLImages(players=players).make()
-        await ctx.send(im)
+        # await ctx.send(im)
         b = io.BytesIO(im[0])
         b.seek(0)
 
