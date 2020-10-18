@@ -655,7 +655,7 @@ class Admin(commands.Cog):
                        
                        """
         f = await ctx.db.fetch(query)
-        im = HTMLImages(players=f)
+        im = await HTMLImages(players=f).make()
         await ctx.send(file=discord.File(im, filename="donationboard.png"))
 
 def setup(bot):
