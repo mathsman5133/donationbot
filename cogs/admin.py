@@ -649,7 +649,7 @@ class Admin(commands.Cog):
                        ON clans.clan_tag = players.clan_tag
                        WHERE clans.channel_id = (SELECT channel_id FROM clans ORDER BY random() OFFSET random() LIMIT 1)
                        AND season_id = 16
-                       ORDER BY 'donations' DESC
+                       ORDER BY donations DESC
                        NULLS LAST
                        LIMIT 20
                        
