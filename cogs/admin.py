@@ -146,7 +146,7 @@ header {
 
         s = time.perf_counter()
         proc = await asyncio.create_subprocess_shell(
-            "wkhtmltoimage.exe - -", stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
+            "wkhtmltoimage - -", stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
             stdin=asyncio.subprocess.PIPE,
         )
         log.info((time.perf_counter() - s)*1000)
