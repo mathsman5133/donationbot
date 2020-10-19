@@ -36,7 +36,7 @@ class Add(commands.Cog):
 
     @add.command(name='clan')
     @checks.manage_guild()
-    async def add_clan(self, ctx, *, clan_tag: str = None, channel: str = None):
+    async def add_clan(self, ctx, *, clan_tag: str, channel: str = None):
         """Link a clan to a channel in your server.
         This will add all accounts in clan to the database, if not already added.
 
