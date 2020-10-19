@@ -129,7 +129,7 @@ header {
         self.html += "</body></html>"
 
     def parse_players(self):
-        self.players = [(i + ".", p['player_name'], p['donations'], p['received'], round(p['donations'] / p['received'], 2),
+        self.players = [(str(i) + ".", p['player_name'], p['donations'], p['received'], round(p['donations'] / p['received'], 2),
                         self.get_readable(p['last_online'])) for i, p in enumerate(self.players, start=1)]
 
     async def make(self):
