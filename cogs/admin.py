@@ -16,6 +16,7 @@ import time
 import subprocess
 import logging
 from typing import Union, Optional
+import shlex
 
 from cogs.utils.formatters import TabularData
 from cogs.utils.converters import GlobalChannel
@@ -60,7 +61,7 @@ img {
   opacity:0.9;
 }
 table {
-  font-family: Lato, Helvetica, Arial, sans-serif;
+  font-family: Helvetica, Verdana,courier,arial,helvetica;
   border-collapse: seperate;
   border-spacing: 0 12px;
   width: 100%;
@@ -70,16 +71,16 @@ table {
 }
 
 td, th {
-  text-align: left;
-  font-size: 40px;
-  padding: 10px;
+  text-align: center;
+  letter-spacing: 1px;
+  font-size: 42px;
+  padding: 7px;
   box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
 }
 
 th {
   border: 1px solid #404040;
   background-color: rgba(185, 147, 108, 0.6);
-
 }
 
 
@@ -92,7 +93,7 @@ tr:nth-child(odd) {
 
 header {
   background:-webkit-gradient(linear,left bottom,left top,color-stop(20%,rgb(196, 183, 166)),color-stop(80%,rgb(220, 207, 186)));
-  font-size: 60px;
+  font-size: 70px;
   margin-left: auto;
   margin-right: auto;
   text-align: center;
@@ -105,7 +106,7 @@ header {
         """
 
     def add_body(self):
-        self.html += "<body>"
+        self.html += '<body>'
 
     def add_title(self):
         self.html += f"<header>{self.title}</header>"
@@ -145,17 +146,17 @@ header {
 
         s = time.perf_counter()
         proc = await asyncio.create_subprocess_shell(
-            'wkhtmltoimage - -', stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
+            "wkhtmltoimage.exe - -", stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
             stdin=asyncio.subprocess.PIPE,
         )
         log.info((time.perf_counter() - s)*1000)
         s = time.perf_counter()
         stdout, stderr = await proc.communicate(input=self.html.encode('utf-8'))
+        print(stdout, stderr)
         log.info((time.perf_counter() - s)*1000)
         b = io.BytesIO(stdout)
         b.seek(0)
         return b
-
 
 # to expose to the eval command
 import datetime
@@ -772,7 +773,7 @@ class Admin(commands.Cog):
         await ctx.send(f'Status: {ctx.tick(success)} Time: {(end - start) * 1000:.2f}ms')
 
     @commands.command()
-    async def rb(self, ctx):
+    async def rb(self, ctx, limit: int = 15):
         query = """
         SELECT DISTINCT player_name,
                         donations,
@@ -788,10 +789,10 @@ class Admin(commands.Cog):
        AND season_id = 16
        ORDER BY donations DESC
        NULLS LAST
-       LIMIT 15
+       LIMIT $1
        """
         s = time.perf_counter()
-        f = await ctx.db.fetch(query)
+        f = await ctx.db.fetch(query, limit)
         # players = [(i, p['player_name'], p['donations'], p['received'], round(p['donations'] / p['received'], 2), p['last_online']) for i, p in enumerate(f)]
         e = (time.perf_counter() - s)*1000
 

@@ -271,7 +271,12 @@ class Info(commands.Cog, name='\u200bInfo'):
 
                     if isinstance(cmd, commands.Group):
                         fmt += f"\n{misc['idle']}Use `{ctx.prefix}help {name}` for subcommands."
-                    if not await cmd.can_run(ctx):
+                    try:
+                        can_run = await cmd.can_run(ctx)
+                    except commands.CheckFailure:
+                        can_run = False
+
+                    if not can_run:
                         fmt += f"\n{misc['offline']}You don't have the required permissions to run this command."
 
                     name = ctx.prefix + name
