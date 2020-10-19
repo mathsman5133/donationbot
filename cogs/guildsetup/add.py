@@ -36,7 +36,7 @@ class Add(commands.Cog):
 
     @add.command(name='clan')
     @checks.manage_guild()
-    async def add_clan(self, ctx, *, channel: str = None, clan_tag: str = None):
+    async def add_clan(self, ctx, *, clan_tag: str = None, channel: str = None):
         """Link a clan to a channel in your server.
         This will add all accounts in clan to the database, if not already added.
 
@@ -57,8 +57,9 @@ class Add(commands.Cog):
         **Required Permissions**
         :warning: Manage Server
         """
-        clan_tag = channel  # just to fool the #help parser
-        if not ctx.message.channel_mentions:
+        if channel:
+            pass  # it's been invoked from another command
+        elif not ctx.message.channel_mentions:
             channel = ctx.channel
         elif len(ctx.message.channel_mentions) > 1:
             return await ctx.send("Please only mention 1 channel.")
