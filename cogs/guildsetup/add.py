@@ -57,7 +57,7 @@ class Add(commands.Cog):
         **Required Permissions**
         :warning: Manage Server
         """
-        clan_tag = channel + clan_tag  # just to fool the #help parser
+        clan_tag = channel  # just to fool the #help parser
         if not ctx.message.channel_mentions:
             channel = ctx.channel
         elif len(ctx.message.channel_mentions) > 1:
