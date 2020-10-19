@@ -34,6 +34,16 @@ class HTMLImages:
 
         self.html = ""
 
+    def get_readable(self, delta):
+        hours, remainder = divmod(int(delta.total_seconds()), 3600)
+        minutes, seconds = divmod(remainder, 60)
+        days, hours = divmod(hours, 24)
+
+        if delta.days:
+            return f"{days}d {hours}h"
+        else:
+            return f"{hours}h {minutes}m"
+
     def add_style(self):
         self.html += """
 <!DOCTYPE html>
@@ -50,7 +60,7 @@ img {
   opacity:0.9;
 }
 table {
-  font-family: Arial, sans-serif;
+  font-family: Lato, Helvetica, Arial, sans-serif;
   border-collapse: seperate;
   border-spacing: 0 12px;
   width: 100%;
@@ -119,11 +129,12 @@ header {
         self.html += "</body></html>"
 
     def parse_players(self):
-        self.players = [(i, p['player_name'], p['donations'], p['received'], round(p['donations'] / p['received'], 2),
-                         p['last_online']) for i, p in enumerate(self.players)]
+        self.players = [(i + ".", p['player_name'], p['donations'], p['received'], round(p['donations'] / p['received'], 2),
+                        self.get_readable(p['last_online'])) for i, p in enumerate(self.players, start=1)]
 
     async def make(self):
         s = time.perf_counter()
+        self.parse_players()
         self.add_style()
         self.add_body()
         self.add_title()
@@ -132,17 +143,18 @@ header {
         self.end_html()
         log.info((time.perf_counter() - s)*1000)
 
-
         s = time.perf_counter()
-        proc = subprocess.Popen(
-            ['wkhtmltoimage', '-', '-'], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            stdin=subprocess.PIPE,
+        proc = await asyncio.create_subprocess_shell(
+            'wkhtmltoimage - -', stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
+            stdin=asyncio.subprocess.PIPE,
         )
         log.info((time.perf_counter() - s)*1000)
         s = time.perf_counter()
-        stdout, stderr = proc.communicate(input=self.html.encode('utf-8'))
+        stdout, stderr = await proc.communicate(input=self.html.encode('utf-8'))
         log.info((time.perf_counter() - s)*1000)
-        return stdout, stderr
+        b = io.BytesIO(stdout)
+        b.seek(0)
+        return b
 
 
 # to expose to the eval command
@@ -763,32 +775,29 @@ class Admin(commands.Cog):
     async def rb(self, ctx):
         query = """
         SELECT DISTINCT player_name,
-                                        donations,
-                                        received,
-                                        trophies,
-                                        now() - last_updated AS "last_online",
-                                        donations / NULLIF(received, 0) AS "ratio",
-                                        trophies - start_trophies AS "gain"
-                       FROM players
-                       INNER JOIN clans
-                       ON clans.clan_tag = players.clan_tag
-                       WHERE clans.channel_id = (SELECT channel_id FROM clans OFFSET random() LIMIT 1)
-                       AND season_id = 16
-                       ORDER BY donations DESC
-                       NULLS LAST
-                       LIMIT 15
-                       
-                       """
+                        donations,
+                        received,
+                        trophies,
+                        now() - last_updated AS "last_online",
+                        donations / NULLIF(received, 0) AS "ratio",
+                        trophies - start_trophies AS "gain"
+       FROM players
+       INNER JOIN clans
+       ON clans.clan_tag = players.clan_tag
+       WHERE clans.channel_id = (SELECT channel_id FROM clans OFFSET random() LIMIT 1)
+       AND season_id = 16
+       ORDER BY donations DESC
+       NULLS LAST
+       LIMIT 15
+       """
         s = time.perf_counter()
         f = await ctx.db.fetch(query)
-        players = [(i, p['player_name'], p['donations'], p['received'], round(p['donations'] / p['received'], 2), p['last_online']) for i, p in enumerate(f)]
+        # players = [(i, p['player_name'], p['donations'], p['received'], round(p['donations'] / p['received'], 2), p['last_online']) for i, p in enumerate(f)]
         e = (time.perf_counter() - s)*1000
 
         s = time.perf_counter()
-        im = await HTMLImages(players=players).make()
+        b = await HTMLImages(players=f).make()
         # await ctx.send(im)
-        b = io.BytesIO(im[0])
-        b.seek(0)
         f = (time.perf_counter() - s) * 1000
 
         await ctx.send(f"q: {e}, s: {f}", file=discord.File(b, filename="donationboard.png"))
