@@ -64,14 +64,14 @@ table {
   border-collapse: seperate;
   border-spacing: 0 12px;
   width: 100%;
-  padding-bottom: 30px;
-  padding-left: 30px;
-  padding-right: 30px
+  padding-bottom: 25px;
+  padding-left: 25px;
+  padding-right: 25px
 }
 
 td, th {
   text-align: left;
-  font-size: 40px;
+  font-size: 45px;
   padding: 10px;
   box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
 }
