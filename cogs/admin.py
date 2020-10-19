@@ -64,9 +64,9 @@ table {
   border-collapse: seperate;
   border-spacing: 0 12px;
   width: 100%;
-  padding-bottom: 25px;
-  padding-left: 25px;
-  padding-right: 25px
+  padding-bottom: 35px;
+  padding-left: 35px;
+  padding-right: 35px
 }
 
 td, th {
