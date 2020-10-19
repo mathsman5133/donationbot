@@ -11,6 +11,7 @@ import itertools
 
 import sentry_sdk
 
+from coc.ext import discordlinks
 from discord.ext import commands
 
 from botlog import setup_logging, add_hooks
@@ -24,15 +25,12 @@ initial_extensions = [
     'cogs.aliases',
     'cogs.auto_claim',
     'cogs.botutils',
+    'cogs.stats',
     'cogs.deprecated',
-    'cogs.donations',
     'cogs.guildsetup',
     'cogs.info',
     'cogs.reset_season',
-    'cogs.stats',
-    'cogs.trophies',
-    'cogs.last_updated',
-    'cogs.activity'
+    'cogs.activity',
 ]
 beta = "beta" in sys.argv
 
@@ -43,10 +41,10 @@ if creds.live and not beta:
             'cogs.boards',
         )
     )
-    command_prefix = '+'
+    command_prefix = None
     key_names = 'test'
 elif beta:
-    command_prefix = '+'
+    command_prefix = '//'
     key_names = 'test'
     creds.bot_token = creds.beta_bot_token
 else:
@@ -63,12 +61,21 @@ coc_client = coc.login(
     key_count=2,
     key_scopes=creds.scopes
 )
-
+links_client = discordlinks.login(creds.links_username, creds.links_password)
 
 description = "A simple discord bot to track donations of clan families in clash of clans."
+intents = discord.Intents.none()
+intents.guilds = True
+intents.guild_messages = True
+intents.guild_reactions = True
+intents.members = True
+intents.emojis = True
 
 
 async def get_pref(bot, message):
+    if command_prefix:
+        return command_prefix
+
     if not message.guild:
         # message is a DM
         return "+"
@@ -82,7 +89,7 @@ class DonationBot(commands.AutoShardedBot):
     def __init__(self):
         super().__init__(command_prefix=get_pref, case_insensitive=True,
                          description=description, pm_help=None, help_attrs=dict(hidden=True),
-                         fetch_offline_members=True)
+                         intents=intents, chunk_guilds_at_startup=False)
 
         self.categories = {}
 
@@ -91,6 +98,7 @@ class DonationBot(commands.AutoShardedBot):
         self.colour = discord.Colour.blurple()
 
         self.coc = coc_client
+        self.links = links_client
 
         self.client_id = creds.client_id
         self.dbl_token = creds.dbl_token

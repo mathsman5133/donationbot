@@ -2,6 +2,22 @@ from discord.utils import _string_width
 from discord.ext import commands
 from cogs.utils.emoji_lookup import emojis, misc, number_emojis
 
+
+def big_number_fmt(value):
+    value = int(value)
+    if value < 10_000:
+        return '{:,}'.format(value)
+
+    if value // 1_000_000_000:
+        return f'{round(value / 1_000_000_000, 3)}'.replace('.0', '') + 'bil'
+    if value // 1_000_000 > 0:
+        return f'{round(value / 1_000_000, 3)}'.replace('.0', '') + 'mil'
+    elif value // 1_000 > 0:
+        return f'{round(value / 1_000, 3)}'.replace('.0', '') + 'k'
+    else:
+        return f'{value}'
+
+
 def get_render_type(config, table):
     if getattr(config, 'type', None) == 'donation':
         if config.render == 1:
@@ -42,9 +58,9 @@ def readable_time(delta_seconds):
     days, hours = divmod(hours, 24)
 
     if days:
-        fmt = '{d}d {h}h {m}m {s}s'
+        fmt = '{d}d {h}h {m}m'
     elif hours:
-        fmt = '{h}h {m}m {s}s'
+        fmt = '{h}h {m}m'
     else:
         fmt = '{m}m {s}s'
 
@@ -141,95 +157,125 @@ class CLYTable:
         self._rows = []
 
     def last_online_board(self):
-        fmt = f"{misc['number']}`⠀{'Name':\u00A0>12.12}⠀` `⠀{'Last Online':\u00A0>11.11}⠀`\n"
+        show = any(v[1] for v in self._rows)
+        fmt = f"{misc['number']}{emojis[17] if show else ''}`⠀{'Name':\u00A0>12.12}⠀` `⠀{'Last Online':\u00A0>11.11}⠀`\n"
         for v in self._rows:
             index = int(v[0]) + 1
             index = number_emojis[index] if index <= 100 else misc['idle']
-            fmt += f"{index}`⠀{str(v[3]):\u00A0>12.12}⠀` `⠀{v[1]:\u00A0>11.11}⠀`\n"
+            fmt += f"{index}{v[1] or '⠀⠀' if show else ''}`⠀{str(v[4]):\u00A0>12.12}⠀` `⠀{v[3]:\u00A0>11.11}⠀`\n"
         return fmt
 
     def donationboard_1(self):
-        fmt = f"{misc['number']}`⠀{'Dons':\u00A0>6.6}⠀` `⠀{'Rec':\u00A0>5.5}⠀` `⠀{'Name':\u00A0<10.10}⠀`\n"
+        show = any(v[1] for v in self._rows)
+        fmt = f"{misc['number']}{emojis[17] if show else ''}`⠀{'Dons':\u00A0>6.6}⠀` `⠀{'Rec':\u00A0>5.5}⠀` `⠀{'Name':\u00A0<10.10}⠀`\n"
         for v in self._rows:
-            index = int(v[0]) + 1
+            index = int(v[0])
             index = number_emojis[index] if index <= 100 else misc['idle']
-            fmt += f"{index}`⠀{str(v[1]):\u00A0>6.6}⠀` `⠀{str(v[2]):\u00A0>5.5}⠀` `⠀{str(v[3]):\u00A0<10.10}⠀`\n"
+            fmt += f"{index}{v[1] or '⠀⠀' if show else ''}`⠀{str(v[2]):\u00A0>6.6}⠀` `⠀{str(v[3]):\u00A0>5.5}⠀` `⠀{str(v[4]):\u00A0<10.10}⠀`\n"
         return fmt
 
     def donationboard_2(self):
-        fmt = f"{misc['number']}`⠀⠀{'Dons':\u00A0>6.6}⠀` `⠀{'Name':\u00A0<16.16}⠀`\n"
+        show = any(v[1] for v in self._rows)
+        fmt = f"{misc['number']}{emojis[17] if show else ''}`⠀⠀{'Dons':\u00A0>6.6}⠀` `⠀{'Name':\u00A0<15.15}⠀`\n"
         for v in self._rows:
             index = int(v[0])
             index = number_emojis[index] if index <= 100 else misc['idle']
-            fmt += f"{index}`⠀{str(v[1]):\u00A0>6.6}⠀` `⠀{str(v[2]):\u00A0<16.16}⠀`\n"
+            fmt += f"{index}{v[1] or '⠀⠀' if show else ''}`⠀{str(v[2]):\u00A0>6.6}⠀` `⠀{str(v[3]):\u00A0<15.15}⠀`\n"
         return fmt
 
     def trophyboard_1(self):
-        fmt = f"{misc['number']}`⠀{'Cups':\u00A0>4.4}⠀` ` {'Gain':\u00A0>5.5} ` `⠀{'Name':\u00A0<10.10}⠀`\n"
+        show = any(v[1] for v in self._rows)
+        fmt = f"{misc['number']}{emojis[17] if show else ''}`⠀{'Cups':\u00A0>4.4}⠀` ` {'Gain':\u00A0>5.5} ` `⠀{'Name':\u00A0<10.10}⠀`\n"
         for v in self._rows:
             index = int(v[0]) + 1
             index = number_emojis[index] if index <= 100 else misc['idle']
-            fmt += f"{index}`⠀{str(v[1]):\u00A0>4.4}⠀` ` {str(v[2]):\u00A0>5.5} ` `⠀{str(v[3]):\u00A0<10.10}⠀`\n"
+            fmt += f"{index}{v[1] or '⠀⠀' if show else ''}`⠀{str(v[2]):\u00A0>4.4}⠀` ` {str(v[3]):\u00A0>5.5} ` `⠀{str(v[4]):\u00A0<10.10}⠀`\n"
         return fmt
 
     def trophyboard_2(self):
-        fmt = f"{misc['number']}` {'Gain':\u00A0>5.5}⠀` ` {'Name':\u00A0<18.18}⠀`\n"
+        show = any(v[1] for v in self._rows)
+        fmt = f"{misc['number']}{emojis[17] if show else ''}` {'Gain':\u00A0>5.5}⠀` ` {'Name':\u00A0<18.18}⠀`\n"
         for v in self._rows:
             index = int(v[0])
             index = number_emojis[index] if index <= 100 else misc['idle']
-            fmt += f"{index}`⠀{str(v[1]):\u00A0>5.5}⠀` ` {str(v[2]):\u00A0<18.18}⠀`\n"
+            fmt += f"{index}{v[1] or '⠀⠀' if show else ''}`⠀{str(v[2]):\u00A0>5.5}⠀` ` {str(v[3]):\u00A0<18.18}⠀`\n"
         return fmt
 
     def trophyboard_attacks(self):
-        fmt = f"{misc['number']}⠀⠀{misc['attack']}⠀ `⠀{'Name':\u00A0<15.15}⠀`\n"
+        show = any(v[1] for v in self._rows)
+        fmt = f"{misc['number']}{emojis[17] if show else ''}⠀⠀{misc['attack']}⠀ `⠀{'Name':\u00A0<15.15}⠀`\n"
         for v in self._rows:
             index = int(v[0])
             index = number_emojis[index] if index <= 100 else misc['idle']
-            fmt += f"{index}`⠀{str(v[1]):\u00A0>4.4}⠀` `⠀{str(v[2]):\u00A0<15.15}⠀`\n"
+            fmt += f"{index}{v[1] or '⠀⠀' if show else ''}`⠀{str(v[2]):\u00A0>4.4}⠀` `⠀{str(v[3]):\u00A0<15.15}⠀`\n"
         return fmt
 
     def trophyboard_defenses(self):
-        fmt = f"{misc['number']} ⠀⠀{misc['defense']} ⠀`⠀{'Name':\u00A0<15.15}⠀`\n"
+        show = any(v[1] for v in self._rows)
+        fmt = f"{misc['number']}{emojis[17] if show else ''}⠀⠀{misc['defense']} ⠀`⠀{'Name':\u00A0<15.15}⠀`\n"
         for v in self._rows:
             index = int(v[0])
             index = number_emojis[index] if index <= 100 else misc['idle']
-            fmt += f"{index}`⠀{str(v[1]):\u00A0>4.4}⠀` `⠀{str(v[2]):\u00A0<15.15}⠀`\n"
+            fmt += f"{index}{v[1] or '⠀⠀' if show else ''}`⠀{str(v[2]):\u00A0>4.4}⠀` `⠀{str(v[3]):\u00A0<15.15}⠀`\n"
         return fmt
 
     def trophyboard_gain(self):
-        fmt = f"{misc['number']}⠀⠀{misc['trophygreen']}⠀ `⠀{'Name':\u00A0<15.15}⠀`\n"
+        show = any(v[1] for v in self._rows)
+        fmt = f"{misc['number']}{emojis[17] if show else ''}⠀⠀{misc['trophygreen']}⠀ `⠀{'Name':\u00A0<15.15}⠀`\n"
         for v in self._rows:
             index = int(v[0])
             index = number_emojis[index] if index <= 100 else misc['idle']
-            fmt += f"{index}`⠀{str(v[1]):\u00A0>4.4}⠀` `⠀{str(v[2]):\u00A0<15.15}⠀`\n"
+            fmt += f"{index}{v[1] or '⠀⠀' if show else ''}`⠀{str(v[2]):\u00A0>4.4}⠀` `⠀{str(v[3]):\u00A0<15.15}⠀`\n"
         return fmt
 
     def events_list(self):
-        fmt = f"{misc['number']}` {'Starts In':\u00A0^9}⠀` ` {'Name':\u00A0<15.15}⠀`\n"
+        show = any(v[1] for v in self._rows)
+        fmt = f"{misc['number']}{emojis[17] if show else ''}` {'Starts In':\u00A0^9}⠀` ` {'Name':\u00A0<15.15}⠀`\n"
         for v in self._rows:
             index = int(v[0]) + 1
             index = number_emojis[index] if index <= 100 else misc['idle']
-            fmt += f"{index}`⠀{str(v[1]):\u00A0^9}⠀` ` {str(v[2]):\u00A0<15.15}⠀`\n"
+            fmt += f"{index}{v[1] or '⠀⠀' if show else ''}`⠀{str(v[2]):\u00A0^9}⠀` ` {str(v[3]):\u00A0<15.15}⠀`\n"
         return fmt
 
     def donation_log_command(self):
-        fmt = f"{misc['number']}⠀`⠀{'Don/Rec':\u00A0>7.7}⠀`  `⠀{'Name':\u00A0<12.12}⠀`  `⠀{'Age':\u00A0<5.5}⠀`\n"
+        show = any(v[1] for v in self._rows)
+        fmt = f"{misc['number']}{emojis[17] if show else ''}`⠀{'Don/Rec':\u00A0>7.7}⠀`  `⠀{'Name':\u00A0<12.12}⠀`  `⠀{'Age':\u00A0<5.5}⠀`\n"
         for v in self._rows:
-            fmt += f"{v[0]}⠀`⠀{str(v[1]):\u00A0>7.7}⠀`  `⠀{str(v[2]):\u00A0<12.12}⠀`  `⠀{str(v[3]):\u00A0<5.5}⠀`\n"
+            fmt += f"{v[0]}{v[1] or '⠀⠀' if show else ''}`⠀{str(v[2]):\u00A0>7.7}⠀`  `⠀{str(v[3]):\u00A0<12.12}⠀`  `⠀{str(v[4]):\u00A0<5.5}⠀`\n"
         return fmt
 
     def trophy_log_command(self):
-        fmt = f"{misc['number']}⠀`⠀{'Gain':\u00A0>4.4}⠀`  `⠀{'Name':\u00A0<14.14}⠀`  `⠀{'Age':\u00A0<5.5}⠀`\n"
+        show = any(v[1] for v in self._rows)
+        fmt = f"{misc['number']}{emojis[17] if show else ''}`⠀{'Gain':\u00A0>4.4}⠀`  `⠀{'Name':\u00A0<14.14}⠀`  `⠀{'Age':\u00A0<5.5}⠀`\n"
         for v in self._rows:
-            fmt += f"{v[0]}⠀`⠀{str(v[1]):\u00A0>3.3}⠀`  `⠀{str(v[2]):\u00A0<14.14}⠀`  `⠀{str(v[3]):\u00A0<5.5}⠀`\n"
+            fmt += f"{v[0]}{v[1] or '⠀⠀' if show else ''}`⠀{str(v[2]):\u00A0>3.3}⠀`  `⠀{str(v[3]):\u00A0<14.14}⠀`  `⠀{str(v[4]):\u00A0<5.5}⠀`\n"
         return fmt
 
     def last_online(self):
-        fmt = f"{misc['number']}⠀`⠀{'Name':\u00A0>13.13}⠀` `⠀{'Last Online':\u00A0>11.11}⠀`\n"
+        show = any(v[1] for v in self._rows)
+        fmt = f"{misc['number']}{emojis[17] if show else ''}`⠀{'Last On':\u00A0>9.9}⠀` `⠀{'Name':\u00A0>15.15}⠀`\n"
         for v in self._rows:
             index = int(v[0]) + 1
             index = number_emojis[index] if index <= 100 else misc['idle']
-            fmt += f"{index}⠀`⠀{str(v[1]):\u00A0>13.13}⠀`  `⠀{str(v[2]):\u00A0>11.11}⠀`\n"
+            fmt += f"{index}{v[1] or '⠀⠀' if show else ''}`⠀{str(v[2]):\u00A0>9.9}⠀` `⠀{str(v[3]):\u00A0>15.15}⠀`\n"
+        return fmt
+
+    def achievement(self):
+        show = any(v[1] for v in self._rows)
+        fmt = f"{misc['number']}{emojis[17] if show else ''}`⠀{'Achievement':\u00A0>11.11}⠀` `⠀{'Name':\u00A0>13.13}⠀`\n"
+        for v in self._rows:
+            index = int(v[0])
+            index = number_emojis[index] if index <= 100 else misc['idle']
+            fmt += f"{index}{v[1] or '⠀⠀' if show else ''}`⠀{big_number_fmt(v[2]):\u00A0>11.11}⠀` `⠀{str(v[3]):\u00A0>13.13}⠀`\n"
+        return fmt
+
+    def accounts(self):
+        show = any(v[1] for v in self._rows)
+        fmt = f"{misc['number']}{emojis[17] if show else ''}`⠀{'Player IGN':\u00A0>11.11}⠀` `⠀{'Discord/Tag':\u00A0>13.13}⠀`\n"
+        for v in self._rows:
+            index = int(v[0])
+            index = number_emojis[index] if index <= 100 else misc['idle']
+            fmt += f"{index}{v[1] or '⠀⠀' if show else ''}`⠀{str(v[2]):\u00A0>11.11}⠀` `⠀{str(v[3]):\u00A0>13.13}⠀`\n"
         return fmt
 
 

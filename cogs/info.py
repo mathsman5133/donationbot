@@ -17,7 +17,7 @@ from cogs.utils.paginator import Pages, EmbedPages
 from cogs.utils.formatters import CLYTable, readable_time, TabularData
 from cogs.utils.emoji_lookup import misc
 from cogs.utils.checks import requires_config
-from cogs.utils.converters import GlobalChannel
+from cogs.utils.converters import GlobalChannel, ConvertToPlayers
 from datetime import datetime
 from collections import Counter
 
@@ -48,213 +48,15 @@ Other Info:
 """
 
 
-class HelpPaginator(Pages):
-    def __init__(self, help_command, ctx, entries, *, per_page=9):
-        super().__init__(ctx, entries=entries, per_page=per_page)
-        self.ctx = ctx
-        self.embed.colour = discord.Colour.green()
-        self.title = ''
-        self.description = ''
-        self.prefix = help_command.clean_prefix
-        self.total = len(entries)
-        self.help_command = help_command
-        self.reaction_emojis = [
-            ('\N{BLACK LEFT-POINTING TRIANGLE}', self.previous_page),
-            ('\N{BLACK RIGHT-POINTING TRIANGLE}', self.next_page),
-            ('\N{INPUT SYMBOL FOR NUMBERS}', self.numbered_page),
-            ('\N{WHITE QUESTION MARK ORNAMENT}', self.show_help)
-        ]
-
-    def get_bot_page(self, page):
-        cog, description, commands = self.entries[page - 1]
-        if hasattr(cog, 'qualified_name'):
-            self.title = cog.qualified_name
-        else:
-            self.title = cog.name
-        self.description = description
-        return commands
-
-    def prepare_embed(self, entries, page, *, first=False):
-        self.embed.clear_fields()
-        self.embed.title = self.title
-        self.embed.description = self.description
-
-        self.embed.set_footer(text=f'Use the reactions to navigate pages, '
-                                   f'and "{self.prefix}help command" for more help.')
-        self.embed.timestamp = datetime.utcnow()
-
-        for i, entry in enumerate(entries):
-            sig = f'{self.help_command.get_command_signature(command=entry)}'
-            fmt = misc['online'] + entry.short_doc
-            if entry.short_doc.startswith('[Group]'):
-                fmt += f"\n{misc['idle']}Use `{self.prefix}help {entry.name}` for subcommands."
-            if not entry._can_run:
-                fmt += f"\n{misc['offline']}You don't have the required permissions to run this command."
-
-            self.embed.add_field(name=sig,
-                                 value=fmt + '\n\u200b' if i == (len(entries) - 1) else fmt,
-                                 inline=False
-                                 )
-
-        self.embed.add_field(name='Support', value='Problem? Bug? Please join the support '
-                                                   'server for more help: '
-                                                   'https://discord.gg/ePt8y4V')
-
-        if self.maximum_pages:
-            self.embed.set_author(name=f'Page {page}/{self.maximum_pages} ({self.total} commands)')
-
-    async def show_help(self):
-        self.title = 'The Donation Tracker Bot Help'
-        description = 'This is the help command for the bot.\nA few points to notice:\n\n' \
-                      f"{misc['online']}This command is powered by reactions: \n" \
-                      ':arrow_backward: goes to the previous page\n' \
-                      ':arrow_forward: goes to the next page\n' \
-                      ':1234: lets you type a page number to go to\n' \
-                      ':grey_question: Takes you to this page\n' \
-                      f"{misc['online']}Help for a specific command can be found with `+help commandname`\n" \
-                      f"{misc['online']}e.g `+help don` or `+help add donationboard`.\n\n" \
-                      f"{misc['online']}Press :arrow_forward: to proceed."
-
-        self.description = description
-        embed = self.embed.copy() if self.embed else discord.Embed(colour=self.bot.colour)
-        embed.clear_fields()
-        embed.description = description
-        embed.set_footer(text=f'We were on page {self.current_page} before this message.')
-        await self.message.edit(content=None, embed=embed)
-
-        async def go_back_to_current_page():
-            await asyncio.sleep(60.0)
-            await self.show_current_page()
-
-        self.bot.loop.create_task(go_back_to_current_page())
-
-
-class HelpCommand(commands.HelpCommand):
-    async def command_callback(self, ctx, *, command=None):
-        category = self.context.bot.get_category(command)
-        if category:
-            return await self.send_category_help(category)
-        return await super().command_callback(ctx, command=command)
-
-    def get_command_signature(self, command):
-        parent = command.full_parent_name
-
-        aliases = self.context.bot.get_cog('\u200bAliases').get_aliases(command.full_parent_name)
-        if aliases:
-            if parent:
-                return f'{self.clean_prefix}{parent} or {self.clean_prefix}{aliases}'
-            return f'{self.clean_prefix}{command.name} or {self.clean_prefix}{aliases}'
-        else:
-            if parent:
-                return f'{self.clean_prefix}{parent} {command.name}'
-            return f'{self.clean_prefix}{command.name}'
-
-    async def send_bot_help(self, mapping):
-        def key(c):
-            if c.cog:
-                if hasattr(c.cog, 'category'):
-                    return c.cog.category.name or '\u200bNo Category'
-            return c.cog_name or '\u200bNo Category'
-
-        bot = self.context.bot
-        entries = await self.filter_commands(bot.commands, sort=True, key=key)
-        nested_pages = []
-        per_page = 9
-        total = len(entries)
-
-        for cog, commands in itertools.groupby(entries, key=key):
-            def key(c):
-                if c.short_doc.startswith('[Group]'):
-                    c.name = f'\u200b{c.name}'
-                return c.name
-            commands = sorted(commands, key=key)
-            if len(commands) == 0:
-                continue
-
-            total += len(commands)
-            actual_cog = bot.get_cog(cog) or bot.get_category(cog)
-            # get the description if it exists (and the cog is valid) or return Empty embed.
-            description = actual_cog.description or discord.Embed.Empty
-            nested_pages.extend((actual_cog, description, commands[i:i + per_page])
-                                for i in range(0, len(commands), per_page
-                                               )
-                                )
-
-        # a value of 1 forces the pagination session
-        pages = HelpPaginator(self, self.context, entries=nested_pages, per_page=1)
-
-        # swap the get_page implementation to work with our nested pages.
-        pages.is_bot = True
-        pages.total = total
-        pages.get_page = pages.get_bot_page
-        await self.context.release()
-        await pages.paginate()
-
-    async def send_category_help(self, category):
-        entries = await self.filter_commands(category.commands, sort=True)
-        pages = HelpPaginator(self, self.context, entries)
-        pages.title = f'{category.name} Commands'
-        pages.description = f'{category.description}\n\n'
-
-        await self.context.release()
-        await pages.paginate()
-
-    async def filter_commands(self, _commands, *, sort=False, key=None):
-        self.verify_checks = False
-        valid = await super().filter_commands(_commands, sort=sort, key=key)
-        for n in valid:
-            try:
-                can_run = await n.can_run(self.context)
-                n._can_run = can_run
-            except commands.CommandError:
-                n._can_run = False
-        return valid
-
-    async def send_cog_help(self, cog):
-        entries = await self.filter_commands(cog.get_commands(), sort=True)
-        pages = HelpPaginator(self, self.context, entries)
-        pages.title = f'{cog.qualified_name} Commands'
-        pages.description = f'{cog.description}\n\n'
-
-        await self.context.release()
-        await pages.paginate()
-
-    def common_command_formatting(self, page_or_embed, command):
-        page_or_embed.title = self.get_command_signature(command)
-        if command.description:
-            page_or_embed.description = f'{command.description}\n\n{command.help}'
-        else:
-            page_or_embed.description = command.help or 'No help found...'
-        if isinstance(page_or_embed, discord.Embed):
-            print(page_or_embed.to_dict())
-
-    async def send_command_help(self, command):
-        # No pagination necessary for a single command.
-        embed = discord.Embed(colour=discord.Colour.blurple())
-        self.common_command_formatting(embed, command)
-        await self.context.send(embed=embed)
-
-    async def send_group_help(self, group):
-        subcommands = group.commands
-        if len(subcommands) == 0:
-            return await self.send_command_help(group)
-
-        entries = await self.filter_commands(subcommands, sort=True)
-        pages = HelpPaginator(self, self.context, entries)
-        self.common_command_formatting(pages, group)
-
-        await self.context.release()
-        await pages.paginate()
-
-
 class Info(commands.Cog, name='\u200bInfo'):
     """Misc commands related to the bot."""
     def __init__(self, bot):
         self.bot = bot
 
         self._old_help = bot.help_command
-        bot.help_command = HelpCommand()
-        bot.help_command.cog = self
+        bot.remove_command("help")
+        # bot.help_command = self.help()
+        # bot.help_command.cog = self
         bot.invite = self.invite_link
         bot.support_invite = self.support_invite
         bot.front_help_page_false = []
@@ -413,6 +215,100 @@ class Info(commands.Cog, name='\u200bInfo'):
                         value=f'Total: {len(inner_tasks)}\nFailed: {bad_inner_tasks or "None"}')
         embed.add_field(name='Events Waiting', value=f'Total: {len(event_tasks)}', inline=False)
         await ctx.send(embed=embed)
+
+    @commands.command()
+    async def help(self, ctx, *, query: str = None):
+        if query is None:
+            groups = [
+                ("Clan Tracking Commands", (
+                    "accounts",
+                    "activity bar",
+                    "activity line",
+                    "achievement",
+                    "attacks",
+                    "defenses",
+                    "donations",
+                    "lastonline",
+                    "trophies",
+                    "dump",
+                )),
+                ("Setup Commands", (
+                    "add boards",
+                    "[add|edit|remove] donationboard",
+                    "[add|edit|remove] trophyboard",
+                    "[add|edit|remove] donationlog",
+                    "[add|edit|remove] trophylog",
+                    "[add|remove] clan",
+                    "[add|remove] discord",
+                    "add emoji",
+                    "edit darkmode",
+                    "edit prefix",
+                    "edit timezone",
+                    "claim",
+                    "autoclaim"
+                )),
+                ("Meta Commands", (
+                    "invite",
+                    "support",
+                    "info [season|clan]",
+                    "patreon",
+                    "welcome"
+                ))
+            ]
+            for group_name, command_names in groups:
+                embed = discord.Embed(
+                    colour=discord.Colour.blue(),
+                )
+                embed.set_author(name=group_name, icon_url=ctx.me.avatar_url)
+                for name in command_names:
+                    if name.startswith("["):
+                        cmd = ctx.bot.get_command("add " + name.split(" ")[1])
+                    else:
+                        cmd = ctx.bot.get_command(name)
+                    if not cmd:
+                        continue
+                    fmt = f"{misc['online']} {cmd.short_doc}"
+
+                    if isinstance(cmd, commands.Group):
+                        fmt += f"\n{misc['idle']}Use `{ctx.prefix}help {name}` for subcommands."
+                    if not await cmd.can_run(ctx):
+                        fmt += f"\n{misc['offline']}You don't have the required permissions to run this command."
+
+                    name = ctx.prefix + name
+                    # if cmd.full_parent_name:
+                    #     name += cmd.full_parent_name + " "
+                    # name += cmd.name
+                    name += f" {cmd.signature.replace('[use_channel=False]', '')}"
+
+                    embed.add_field(name=name, value=fmt, inline=False)
+
+                if group_name == "Meta Commands":
+                    embed.add_field(name="Problems? Bug?", value=f"Please join the [Support Server]({self.support_invite})", inline=False)
+                    embed.add_field(name="Feeling generous?", value=f"Please support us on [Patreon](https://www.patreon.com/donationtracker)!")
+
+                await ctx.send(embed=embed)
+
+        else:
+            command = self.bot.get_command(query)
+            if command is None:
+                return await ctx.send(f"No command called `{query}` found.")
+
+            embed = discord.Embed(colour=discord.Colour.blurple())
+
+            if command.full_parent_name:
+                embed.title = ctx.prefix + command.full_parent_name + " " + command.name
+            else:
+                embed.title = ctx.prefix + command.name
+
+            if command.description:
+                embed.description = f'{command.description}\n\n{command.help}'
+            else:
+                embed.description = command.help or 'No help found...'
+
+            if not await command.can_run(ctx):
+                embed.description += f"\n{misc['offline']}You don't have the required permissions to run this command."
+
+            await ctx.send(embed=embed)
 
     @commands.group(invoke_without_command=True)
     async def info(self, ctx, channel: GlobalChannel = None):
@@ -812,6 +708,69 @@ class Info(commands.Cog, name='\u200bInfo'):
     @commands.command(hidden=True)
     async def channelid(self, ctx):
         await ctx.send(f"Guild ID: {ctx.guild.id}\nChannel ID: {ctx.channel.id}")
+
+    @commands.command()
+    async def dump(self, ctx, *, argument: ConvertToPlayers = None):
+        """Get a .csv of all player data the bot has stored for a clan/players.
+
+        **Parameters**
+        :key: The argument: Can be a clan tag, name, player tag, name, channel #mention, user @mention or `server` for all clans linked to the server.
+
+        **Format**
+        :information_source: `+dump`
+        :information_source: `+dump #CLAN_TAG`
+        :information_source: `+dump CLAN NAME`
+        :information_source: `+dump #PLAYER_TAG`
+        :information_source: `+dump Player Name`
+        :information_source: `+dump #channel`
+        :information_source: `+dump @user`
+        :information_source: `+dump all`
+
+        **Example**
+        :white_check_mark: `+dump`
+        :white_check_mark: `+dump #JY9J2Y99`
+        :white_check_mark: `+dump Reddit`
+        :white_check_mark: `+dump Mathsman`
+        :white_check_mark: `+dump @mathsman#1208`
+        :white_check_mark: `+dump #donation-log`
+        :white_check_mark: `+dump all`
+        """
+        if not argument:
+            argument = await ConvertToPlayers().convert(ctx, "all")
+        if not argument:
+            return await ctx.send("Couldn't find any players - try adding a clan?")
+        query = """SELECT player_tag, 
+                          player_name, 
+                          donations, 
+                          received, 
+                          trophies, 
+                          start_trophies, 
+                          clan_tag, 
+                          last_updated,
+                          user_id,
+                          season_id
+                    FROM players
+                    WHERE player_tag = ANY($1::TEXT[])
+                    AND clan_tag = ANY($2::TEXT[])
+                    ORDER BY season_id DESC
+                    """
+        fetch = await ctx.db.fetch(query, [p['player_tag'] for p in argument], list({p['clan_tag'] for p in argument}))
+        csv = ""
+        for i, row in enumerate(fetch):
+            if i == 0:
+                # headers
+                csv += ''.join(f"{col}," for col in row.keys())
+                csv += '\n'
+
+            csv += ''.join(f"{r}," for r in row.values())
+            csv += '\n'
+
+        bytesio = io.BytesIO(csv.encode("utf-8"))
+        await ctx.send(file=discord.File(filename="donation-tracker-export.csv", fp=bytesio))
+
+    @dump.before_invoke
+    async def before_dump(self, ctx):
+        await ctx.trigger_typing()
 
 
 def setup(bot):

@@ -8,6 +8,8 @@ from cogs.utils import formatters, paginator, checks
 
 from discord.ext import commands
 
+import creds
+
 
 async def error_handler(ctx, error):
     error = getattr(error, 'original', error)
@@ -16,7 +18,10 @@ async def error_handler(ctx, error):
         return await ctx.send(str(error))
 
     if isinstance(error, (commands.BadArgument, commands.BadUnionArgument)):
-        return await ctx.send(str(error))
+        if str(error):
+            return await ctx.send(str(error))
+        else:
+            return
     if isinstance(error, commands.MissingRequiredArgument):
         return await ctx.send(f'Oops! That didn\'t look right... '
                               f'please see how to use the command with `+help {ctx.command.qualified_name}`')
@@ -53,6 +58,10 @@ async def error_handler(ctx, error):
     e.description = f'```py\n{exc}\n```'
 
     e.timestamp = datetime.datetime.utcnow()
+    if not creds.live:
+        await ctx.send(embed=e)
+        return
+
     await ctx.bot.error_webhook.send(embed=e)
     try:
         await ctx.send('Uh oh! Something broke. This error has been reported; '

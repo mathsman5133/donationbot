@@ -753,7 +753,6 @@ class Edit(commands.Cog):
         await ctx.tick()
 
     @commands.command()
-    @requires_config('event')
     @commands.cooldown(1, 60 * 60, commands.BucketType.guild)
     async def refresh(self, ctx, *, clans: ClanConverter = None):
         """Manually refresh all players in the database with current donations and received.
@@ -797,11 +796,6 @@ class Edit(commands.Cog):
                    WHERE players.player_tag = x.player_tag
                    AND players.season_id = $2                      
                 """
-        query2 = """UPDATE eventplayers
-                    SET live=TRUE
-                    WHERE player_tag = ANY($1::TEXT[])
-                    AND event_id = $2
-                """
         query3 = "UPDATE players SET clan_tag = NULL WHERE clan_tag = ANY($1::TEXT[]) AND NOT player_tag = ANY($2::TEXT[])"
         players = []
         async with ctx.typing():
@@ -825,8 +819,6 @@ class Edit(commands.Cog):
             await ctx.db.execute(query3, [n.tag for n in clans], player_tags)
 
             await ctx.db.execute(query, players, season_id)
-            if ctx.config:
-                await ctx.db.execute(query2, player_tags, ctx.config.id)
 
             dboard_channels = await self.bot.utils.get_board_channels(ctx.guild.id, 'donation')
             tboard_channels = await self.bot.utils.get_board_channels(ctx.guild.id, 'trophy')
