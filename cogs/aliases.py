@@ -186,9 +186,25 @@ class Aliases(commands.Cog, name='\u200bAliases'):
         await ctx.db.execute(query, clan.tag, ctx.guild.id, channel.id, clan.name, in_event)
 
         season_id = await self.bot.seasonconfig.get_season_id()
-        cog = self.bot.get_cog("Add")
-        async for member in clan.get_detailed_members():
-            await cog.insert_player(ctx.db, member, season_id, in_event, getattr(ctx.config, 'event_id', None))
+        query = """INSERT INTO players (
+                                                player_tag, 
+                                                donations, 
+                                                received, 
+                                                trophies, 
+                                                start_trophies, 
+                                                season_id,
+                                                start_update,
+                                                clan_tag,
+                                                player_name
+                                                ) 
+                            VALUES ($1,$2,$3,$4,$4,$5,True, $6, $7) 
+                            ON CONFLICT (player_tag, season_id) 
+                            DO UPDATE SET clan_tag = $6
+                        """
+        async with ctx.db.transaction():
+            for member in clan.members:
+                await ctx.db.execute(query, member.tag, member.donations, member.received, member.trophies, season_id,
+                                     clan.tag, member.name)
 
         self.bot.dispatch('clan_claim', ctx, clan)
 

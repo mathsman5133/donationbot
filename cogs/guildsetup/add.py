@@ -28,70 +28,6 @@ class Add(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @staticmethod
-    async def insert_player(connection, player, season_id, in_event: bool = False, event_id: int = None):
-        query = """INSERT INTO players (
-                                    player_tag,
-                                    donations,
-                                    received,
-                                    trophies,
-                                    start_trophies,
-                                    season_id,
-                                    start_friend_in_need,
-                                    start_sharing_is_caring,
-                                    start_attacks,
-                                    start_defenses,
-                                    start_best_trophies,
-                                    start_update
-                                    )
-                    VALUES ($1, $2, $3, $4, $4, $5, $6, $7, $8, $9, $10, True)
-                    ON CONFLICT (player_tag, season_id) 
-                    DO NOTHING
-                """
-        await connection.execute(query,
-                                 player.tag,
-                                 player.donations,
-                                 player.received,
-                                 player.trophies,
-                                 season_id,
-                                 player.get_achievement('Friend in Need').value,
-                                 player.get_achievement('Sharing is caring').value,
-                                 player.attack_wins,
-                                 player.defense_wins,
-                                 player.best_trophies
-                                 )
-        if in_event:
-            event_query = """INSERT INTO eventplayers (
-                                            player_tag,
-                                            donations,
-                                            received,
-                                            trophies,
-                                            start_trophies,
-                                            event_id,
-                                            start_friend_in_need,
-                                            start_sharing_is_caring,
-                                            start_attacks,
-                                            start_defenses,
-                                            start_best_trophies,
-                                            start_update
-                                            )
-                            VALUES ($1, $2, $3, $4, $4, $5, $6, $7, $8, $9, $10, True)
-                            ON CONFLICT (player_tag, event_id)
-                            DO NOTHING
-                        """
-            await connection.execute(event_query,
-                                     player.tag,
-                                     player.donations,
-                                     player.received,
-                                     player.trophies,
-                                     event_id,
-                                     player.get_achievement('Friend in Need').value,
-                                     player.get_achievement('Sharing is caring').value,
-                                     player.attack_wins,
-                                     player.defense_wins,
-                                     player.best_trophies
-                                     )
-
     @commands.group()
     async def add(self, ctx):
         """[Group] Allows the user to add a variety of features to the bot."""
@@ -100,8 +36,8 @@ class Add(commands.Cog):
 
     @add.command(name='clan')
     @checks.manage_guild()
-    async def add_clan(self, ctx, channel: typing.Optional[discord.TextChannel], clan_tag: str):
-        """Link a clan to your server.
+    async def add_clan(self, ctx, *, channel: str = None, clan_tag: str = None):
+        """Link a clan to a channel in your server.
         This will add all accounts in clan to the database, if not already added.
 
         Note: you must be an Elder or above in-game to add a clan. In order for the bot to verify this, please run `+verify #playertag`
@@ -121,19 +57,26 @@ class Add(commands.Cog):
         **Required Permissions**
         :warning: Manage Server
         """
-        channel = channel or ctx.channel
+        clan_tag = channel + clan_tag  # just to fool the #help parser
+        if not ctx.message.channel_mentions:
+            channel = ctx.channel
+        elif len(ctx.message.channel_mentions) > 1:
+            return await ctx.send("Please only mention 1 channel.")
+        else:
+            channel = ctx.message.channel_mentions[0]
 
-        current_clans = await self.bot.get_clans(ctx.guild.id)
-        if len(current_clans) > 3 and not checks.is_patron_pred(ctx):
+        clan_tag = coc.utils.correct_tag(clan_tag.replace(channel.mention, "").strip())
+        if not coc.utils.is_valid_tag(clan_tag):
+            return await ctx.send("That doesn't look like a proper clan tag. Please try again.")
+
+        current = await ctx.db.fetch("SELECT DISTINCT clan_tag FROM clans WHERE guild_id = $1", ctx.guild.id)
+        if len(current) > 3 and not checks.is_patron_pred(ctx):
             return await ctx.send('You must be a patron to have more than 4 clans claimed per server. '
                                   'See more info with `+patron`, or join the support server for more help: '
                                   f'{self.bot.support_invite}')
 
-        clan_tag = coc.utils.correct_tag(clan_tag)
-        query = "SELECT id FROM clans WHERE clan_tag = $1 AND channel_id = $2"
-        fetch = await ctx.db.fetch(query, clan_tag, channel.id)
-        if fetch:
-            return await ctx.send('This clan has already been linked to the channel.')
+        if await ctx.db.fetch("SELECT id FROM clans WHERE clan_tag = $1 AND channel_id = $2", clan_tag, channel.id):
+            return await ctx.send('This clan has already been linked to the channel. Please try again.')
 
         try:
             clan = await ctx.bot.coc.get_clan(clan_tag)
@@ -141,29 +84,48 @@ class Add(commands.Cog):
             return await ctx.send(f'Clan not found with `{clan_tag}` tag.')
 
         fetch = await ctx.db.fetch("SELECT player_tag FROM players WHERE user_id = $1 AND verified = True", ctx.author.id)
-        is_verified = any(clan.get_member(m['player_tag']) and clan.get_member(m['player_tag']).role in (coc.Role.elder, coc.Role.co_leader, coc.Role.leader) for m in fetch)
+        members = [n for n in (clan.get_member(m['player_tag']) for m in fetch) if n]
+        is_verified = any(member.role in (coc.Role.elder, coc.Role.co_leader, coc.Role.leader) for member in members)
 
         check = is_verified \
                 or await self.bot.is_owner(ctx.author) \
-                or clan_tag in (n.tag for n in current_clans) \
+                or clan_tag in (n['clan_tag'] for n in current) \
                 or ctx.guild.id == RCS_GUILD_ID \
                 or helper_check(self.bot, ctx.author) is True
 
-        if not check:
-            return await ctx.send("Please verify your account before adding a clan. "
+        if not check and not fetch:
+            return await ctx.send("Please verify your account before adding a clan: `+verify #playertag`. "
                                   "See `+help verify` for more information.\n\n"
                                   "This is a security feature of the bot to ensure you are an elder or above of the clan.")
+        if not members and not check:
+            return await ctx.send("Please ensure your verified account(s) are in the clan, and try again.")
+        if members and not check:
+            return await ctx.send("Your verified account(s) are not an elder or above. Please try again.")
 
         query = "INSERT INTO clans (clan_tag, guild_id, channel_id, clan_name) VALUES ($1, $2, $3, $4)"
         await ctx.db.execute(query, clan.tag, ctx.guild.id, channel.id, clan.name)
 
-        await ctx.send('Clan has been added. Please wait a moment while all players are added.')
-
         season_id = await self.bot.seasonconfig.get_season_id()
-        async for member in clan.get_detailed_members():
-            await self.insert_player(ctx.db, member, season_id, False, None)
+        query = """INSERT INTO players (
+                                        player_tag, 
+                                        donations, 
+                                        received, 
+                                        trophies, 
+                                        start_trophies, 
+                                        season_id,
+                                        start_update,
+                                        clan_tag,
+                                        player_name
+                                        ) 
+                    VALUES ($1,$2,$3,$4,$4,$5,True, $6, $7) 
+                    ON CONFLICT (player_tag, season_id) 
+                    DO UPDATE SET clan_tag = $6
+                """
+        async with ctx.db.transaction():
+            for member in clan.members:
+                await ctx.db.execute(query, member.tag, member.donations, member.received, member.trophies, season_id, clan.tag, member.name)
 
-        await ctx.send('Clan and all members have been added to the database (if not already added)')
+        await ctx.send(f"👌 {clan} ({clan.tag}) successfully added to {channel.mention}.")
         ctx.channel = channel  # modify for `on_clan_claim` listener
         self.bot.dispatch('clan_claim', ctx, clan)
 
@@ -205,9 +167,7 @@ class Add(commands.Cog):
                 "It seems as though I don't have access to that emoji! Make sure it's on a server I share, and try again."
             )
 
-        print(clan)
         clan = clan.replace(str(emoji), "").strip()
-        print(clan)
 
         if coc.utils.is_valid_tag(coc.utils.correct_tag(clan)):
             clan_tag = coc.utils.correct_tag(clan)
@@ -222,35 +182,6 @@ class Add(commands.Cog):
             await ctx.send("👌 Emoji added successfully.")
         else:
             await ctx.send("That clan has not been added. Try adding it and try again.")
-
-    @add.command(name='player')
-    async def add_player(self, ctx, *, player: PlayerConverter):
-        """Manually add a clash account to the database. This does not claim the account.
-
-
-        **Parameters**
-        :key: A player name OR tag
-
-        **Format**
-        :information_source: `+add player #PLAYER_TAG`
-        :information_source: `+add player PLAYER NAME`
-
-        **Example**
-        :white_check_mark: `+add player #P0LYJC8C`
-        :white_check_mark: `+add player mathsman`
-        """
-        if not isinstance(player, coc.Player):
-            player = await self.bot.coc.get_player(player.tag)
-        if ctx.config:
-            prompt = await ctx.prompt(f'Do you wish to add {player} to the current event?')
-        else:
-            prompt = False
-
-        season_id = await self.bot.seasonconfig.get_season_id()
-        await self.insert_player(ctx.db, player, season_id, prompt,
-                                 getattr(ctx.config, 'event_id', None))
-
-        await ctx.send('All done!')
 
     @add.command(name='discord', aliases=['claim', 'link'])
     async def add_discord(self, ctx, user: typing.Optional[discord.Member] = None, *, player: str):
@@ -655,14 +586,6 @@ class Add(commands.Cog):
             f"and use `+add clan #{channel.name} #clantag` to add more clans."
         )
 
-    @add.command(name='lastonlineboard')
-    @manage_guild()
-    async def add_lastonlineboard(self, ctx, *, name='lastonlineboard'):
-        """Last online boards are deprecated. Please use a donationboard or trophyboard instead - or even better, both!
-        """
-        return await ctx.send(
-            "Last online boards are deprecated. Please use a donationboard or trophyboard instead - or even better, both!")
-
     @add.command(name='donationlog')
     @requires_config('donationlog', invalidate=True)
     @manage_guild()
@@ -807,7 +730,7 @@ class Add(commands.Cog):
                               'Please note that only clans claimed to this channel will appear in the log.')
 
     @commands.command()
-    async def verify(self, ctx, *, player: str):
+    async def verify(self, ctx, *, player_tag: str):
         """Verify your clash account in order to add clans to the bot.
 
         This uses the in-game API token to verify your ownership.
@@ -823,10 +746,10 @@ class Add(commands.Cog):
         :white_check_mark: `+verify showtags`
         :white_check_mark: `+verify #JY9J2Y99`
         """
-        if player and coc.utils.is_valid_tag(coc.utils.correct_tag(player)):
-            tag = coc.utils.correct_tag(player)
+        if player_tag and coc.utils.is_valid_tag(coc.utils.correct_tag(player_tag)):
+            tag = coc.utils.correct_tag(player_tag)
         else:
-            fetch = await ctx.db.fetchrow("SELECT DISTINCT player_tag FROM players WHERE player_name LIKE $1", player)
+            fetch = await ctx.db.fetchrow("SELECT DISTINCT player_tag FROM players WHERE player_name LIKE $1", player_tag)
             if not fetch:
                 return await ctx.send("I couldn't find that player - perhaps try their tag?")
             tag = fetch['player_tag']
