@@ -2,10 +2,17 @@ import asyncio
 import creds
 import discord
 import logging
+import logging.handlers
 import math
+import sqlite3
+import itertools
 
+def setup_logging(bot, test_syncer=False):
+    if test_syncer:
+        db = sqlite3.connect("errors.sqlite")
+        db.execute("create table if not exists errors (script text, level integer, message text, time timestamp, module text);")
+        db.commit()
 
-def setup_logging(bot):
     logging.getLogger('discord').setLevel(logging.INFO)
     logging.getLogger('discord.http').setLevel(logging.WARNING)
     logging.getLogger('discord.state').setLevel(logging.WARNING)
@@ -14,28 +21,48 @@ def setup_logging(bot):
     logging.getLogger('coc.http').setLevel(logging.WARNING)
 
     log = logging.getLogger()
-    log.setLevel(logging.DEBUG)
-    handler = logging.FileHandler(filename='donationtracker.log', encoding='utf-8', mode='w')
-    handler.setLevel(logging.INFO)
+    log.setLevel(logging.INFO)
     stream_handler = logging.StreamHandler()
     stream_handler.setLevel(logging.INFO)
     dt_fmt = '%d-%m-%Y %H:%M:%S'
     fmt = logging.Formatter('[{asctime}] [{levelname:<7}] {name}: {message}', dt_fmt, style='{')
-    handler.setFormatter(fmt)
-    stream_handler.setFormatter(handler)
-    log.addHandler(handler)
+    if creds.live:
+        handler = logging.FileHandler(filename='donationtracker.log', encoding='utf-8', mode='w')
+        handler.setLevel(logging.INFO)
+        handler.setFormatter(fmt)
+        log.addHandler(handler)
+
+    stream_handler.setFormatter(fmt)
     log.addHandler(stream_handler)
 
-    error_webhook = discord.Webhook.partial(
+    bot.error_webhooks = itertools.cycle([discord.Webhook.partial(
         id=creds.log_hook_id,
         token=creds.log_hook_token,
         adapter=discord.AsyncWebhookAdapter(session=bot.session)
-                                            )
-    requests_hook = discord.Webhook.partial(
-        id=creds.log_hook_id,
-        token=creds.log_hook_token,
-        adapter=discord.RequestsWebhookAdapter()
-    )
+                                            )])
+    # add handler to the logger
+    # handler = logging.handlers.SysLogHandler('/dev/log')
+    #
+    # # add syslog format to the handler
+    # formatter = logging.Formatter(
+    #     'Python: { "loggerName":"%(name)s", "timestamp":"%(asctime)s", "pathName":"%(pathname)s", "logRecordCreationTime":"%(created)f", "functionName":"%(funcName)s", "levelNo":"%(levelno)s", "lineNo":"%(lineno)d", "time":"%(msecs)d", "levelName":"%(levelname)s", "message":"%(message)s"}')
+    #
+    # handler.formatter = formatter
+    # logger.addHandler(handler)
+    #
+    # logger.info("Test Log")
+    #
+    # class COCPYFilter(logging.Filter):
+    #     def filter(self, record: logging.LogRecord) -> int:
+    #         return record.msg == "API HTTP Request"
+    #
+    # logger = logging.getLogger("coc.http")
+    # logger.addFilter(COCPYFilter())
+    # logger.setLevel(logging.DEBUG)
+    # formatter = logging.Formatter('coc.py API: { "loggerName":"%(name)s", "timestamp":"%(asctime)s", "pathName":"%(pathname)s", "method": "%(method)s", "url": "%(url)s", "status": "%(status)s", "perf_counter": "%(perf_counter)s"}')
+    # handler = logging.handlers.SysLogHandler('/dev/log')
+    # handler.formatter = formatter
+    # logger.addHandler(handler)
 
     class DiscordHandler(logging.NullHandler):
         def handle(self, record):
@@ -52,16 +79,16 @@ def setup_logging(bot):
 
             for n in messages:
                 try:
-                    asyncio.ensure_future(error_webhook.send(f'```\n{n}\n```'))
+                    asyncio.ensure_future(next(bot.error_webhooks).send(f'```\n{n}\n```'))
                 except:
-                    requests_hook.send(f'```\n{n}\n```')
+                    pass
 
         def emit(self, record):
             self.handle(record)
 
     discord_hndlr = DiscordHandler()
-    discord_hndlr.setLevel(logging.DEBUG)
-    log.addHandler(discord_hndlr)
+    discord_hndlr.setLevel(logging.INFO)
+    # log.addHandler(discord_hndlr)
 
 
 def add_hooks(bot):

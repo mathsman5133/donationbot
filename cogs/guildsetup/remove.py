@@ -44,7 +44,7 @@ class Remove(commands.Cog):
 
         **Example**
         :white_check_mark: `+remove clan #P0LYJC8C`
-        :information_source: `+remove clan #donationlog #CLAN_TAG`
+        :white_check_mark: `+remove clan #donationlog #CLAN_TAG`
 
         **Required Permissions**
         :warning: Manage Server
@@ -84,7 +84,7 @@ class Remove(commands.Cog):
         await ctx.confirm()
 
     @remove.command(name='discord')
-    async def remove_discord(self, ctx, *, player: PlayerConverter):
+    async def remove_discord(self, ctx, *, player: str):
         """Unlink a clash account from your discord account.
 
         If you have not claimed the account, you must have `Manage Server` permissions.
@@ -101,28 +101,30 @@ class Remove(commands.Cog):
         :white_check_mark: `+remove discord mathsman`
         """
         season_id = await self.bot.seasonconfig.get_season_id()
+
+        if not coc.utils.is_valid_tag(player):
+            fetch = await ctx.db.fetchrow("SELECT DISTINCT player_tag FROM players WHERE player_name LIKE $1", player)
+            if not fetch:
+                return await ctx.send(f"{player} is not a valid player tag, and I couldn't find a player with that name in my database. Please try again.")
+            player = fetch['player_tag']
+
         if ctx.channel.permissions_for(ctx.author).manage_guild \
                 or await self.bot.is_owner(ctx.author):
-            query = "UPDATE players SET user_id = NULL WHERE player_tag = $1 AND season_id = $2"
-            await ctx.db.execute(query, player.tag, season_id)
-            return await ctx.confirm()
+            await ctx.db.execute("UPDATE players SET user_id = NULL WHERE player_tag = $1 AND season_id = $2", player, season_id)
+            await self.bot.links.delete_link(player)
+            return await ctx.send("👌 Player successfully removed.")
 
-        query = "SELECT user_id FROM players WHERE player_tag = $1 AND season_id = $2"
-        fetch = await ctx.db.fetchrow(query, player.tag, season_id)
-        if not fetch:
-            query = "UPDATE players SET user_id = NULL WHERE player_tag = $1 AND season_id = $2"
-            await ctx.db.execute(query, player.tag, season_id)
-            return await ctx.confirm()
+        link = await self.bot.links.get_link(player)
+        if link != ctx.author.id:
+            member = ctx.guild.get_member(link) or self.bot.get_user(link) or await self.bot.fetch_user(link) or link
+            return await ctx.send(
+                f'Player has been claimed by {member}.\n'
+                f'Please contact them, or someone with `Manage Server` permissions to unclaim it.'
+            )
 
-        if fetch[0] != ctx.author.id:
-            return await ctx.send(f'Player has been claimed by '
-                                  f'{self.bot.get_user(fetch[0]) or "unknown"}.\n'
-                                  f'Please contact them, or someone '
-                                  f'with `manage_guild` permissions to unclaim it.')
-
-        query = "UPDATE players SET user_id = NULL WHERE player_tag = $1 AND season_id = $2"
-        await ctx.db.execute(query, player.tag, season_id)
-        await ctx.confirm()
+        await ctx.db.execute("UPDATE players SET user_id = NULL WHERE player_tag = $1 AND season_id = $2", player, season_id)
+        await self.bot.links.delete_link(player)
+        return await ctx.send("👌 Player successfully removed.")
 
     @remove.command(name='donationboard', aliases=['donation board', 'donboard'])
     @checks.manage_guild()
@@ -167,21 +169,24 @@ class Remove(commands.Cog):
         await self.do_board_remove(ctx, channel or ctx.channel, "trophy")
 
     async def do_board_remove(self, ctx, channel, type_):
-        config = await self.bot.utils.board_config(channel.id)
+        config = await self.bot.utils.board_config_from_channel(channel.id, type_)
         if not config:
             return await ctx.send(f"I couldn't find a {type_}board in {channel.mention}.")
 
-        query = "DELETE FROM messages WHERE channel_id = $1"
-        await ctx.db.execute(query, channel.id)
+        query = "DELETE FROM boards WHERE channel_id = $1 AND type = $2"
+        await ctx.db.execute(query, channel.id, type_)
+
+        query = "SELECT * FROM boards WHERE channel_id = $1"
+        fetch = await ctx.db.fetchrow(query, channel.id)
+        if fetch is not None:
+            return await ctx.send(f"{type_}board successfully removed.")
 
         try:
             await channel.delete(reason=f'Command done by {ctx.author} ({ctx.author.id})')
-            msg = f"{type_}board sucessfully removed."
+            msg = f"{type_}board sucessfully removed and channel deleted."
         except (discord.Forbidden, discord.HTTPException):
             msg = "I don't have permissions to delete the channel. Please manually delete it."
 
-        query = """DELETE FROM boards WHERE channel_id = $1"""
-        await self.bot.pool.execute(query, channel.id)
         query = "DELETE FROM clans WHERE channel_id = $1"
         await self.bot.pool.execute(query, channel.id)
 

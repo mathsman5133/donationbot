@@ -18,8 +18,7 @@ class Aliases(commands.Cog, name='\u200bAliases'):
 
     @commands.command()
     @requires_config('event')
-    async def claim(self, ctx, user: typing.Optional[discord.Member] = None, *,
-                    player: PlayerConverter):
+    async def claim(self, ctx, user: typing.Optional[discord.Member] = None, *, player: str):
         """Link a clash account to your discord account
 
         **Parameters**
@@ -171,7 +170,7 @@ class Aliases(commands.Cog, name='\u200bAliases'):
         if not (channel.permissions_for(ctx.me).send_messages or channel.permissions_for(ctx.me).read_messages):
             return await ctx.send('I need permission to send and read messages here!')
 
-        in_event = ctx.config and ctx.config.start_time < datetime.datetime.utcnow()
+        in_event = ctx.config and ctx.config.start < datetime.datetime.utcnow()
 
         query = """INSERT INTO clans (
                        clan_tag, 
@@ -187,9 +186,25 @@ class Aliases(commands.Cog, name='\u200bAliases'):
         await ctx.db.execute(query, clan.tag, ctx.guild.id, channel.id, clan.name, in_event)
 
         season_id = await self.bot.seasonconfig.get_season_id()
-        cog = self.bot.get_cog("Add")
-        async for member in clan.get_detailed_members():
-            await cog.insert_player(ctx.db, member, season_id, in_event, getattr(ctx.config, 'event_id', None))
+        query = """INSERT INTO players (
+                                                player_tag, 
+                                                donations, 
+                                                received, 
+                                                trophies, 
+                                                start_trophies, 
+                                                season_id,
+                                                start_update,
+                                                clan_tag,
+                                                player_name
+                                                ) 
+                            VALUES ($1,$2,$3,$4,$4,$5,True, $6, $7) 
+                            ON CONFLICT (player_tag, season_id) 
+                            DO UPDATE SET clan_tag = $6
+                        """
+        async with ctx.db.transaction():
+            for member in clan.members:
+                await ctx.db.execute(query, member.tag, member.donations, member.received, member.trophies, season_id,
+                                     clan.tag, member.name)
 
         self.bot.dispatch('clan_claim', ctx, clan)
 
@@ -206,6 +221,13 @@ class Aliases(commands.Cog, name='\u200bAliases'):
         await ctx.db.execute(query, ctx.guild.id, channel.id, type_)
 
         return await ctx.send(f'{channel.mention} has been added as a {type_}log channel for {clan} ({clan.tag})')
+
+    @commands.command(aliases=["trophyevents"], hidden=True)
+    async def donationevents(self, ctx):
+        await ctx.send(
+            f"These commands have been removed as this data is no longer saved. "
+            f"Please join the support server for more questions: {self.bot.support_invite}"
+        )
 
 
 def setup(bot):

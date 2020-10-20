@@ -30,7 +30,10 @@ class DatabasePlayer:
 
 
 class LogConfig:
-    __slots__ = ('bot', 'guild_id', 'channel_id', 'interval', 'toggle', 'type')
+    __slots__ = ('bot', 'guild_id', 'channel_id', 'interval', 'toggle', 'type', 'detailed')
+
+    def __eq__(self, other):
+        return isinstance(other, self.__class__) and self.channel_id == other.channel_id and self.type == other.type
 
     def __init__(self, *, bot, record):
         self.bot = bot
@@ -40,6 +43,7 @@ class LogConfig:
         self.interval: timedelta = record['interval']
         self.toggle: bool = record['toggle']
         self.type: str = record['type']
+        self.detailed: bool = record['detailed']
 
     @property
     def guild(self) -> discord.Guild:
@@ -56,7 +60,7 @@ class LogConfig:
 
 class BoardConfig:
     __slots__ = ('bot', 'guild_id', 'channel_id', 'icon_url', 'title',
-                 'render', 'sort_by', 'toggle', 'type', 'in_event')
+                 'render', 'sort_by', 'toggle', 'type', 'in_event', 'message_id', 'per_page')
 
     def __init__(self, *, bot, record):
         self.bot = bot
@@ -70,6 +74,8 @@ class BoardConfig:
         self.toggle: bool = record['toggle']
         self.type: str = record['type']
         self.in_event: bool = record['in_event']
+        self.message_id: int = record['message_id']
+        self.per_page: int = record['per_page']
 
     @property
     def guild(self) -> discord.Guild:
@@ -118,3 +124,5 @@ SlimTrophyEvent = namedtuple('SlimTrophyEvent', 'trophies league_id name clan_ta
 SlimEventConfig = namedtuple('SlimEventConfig', 'id start finish event_name channel_id guild_id')
 SlimDummyBoardConfig = namedtuple('SlimDummyBoardConfig', 'type render title icon_url sort_by')
 SlimDummyLogConfig = namedtuple('SlimDummyLogConfig', 'type title icon_url')
+
+BoardPlayer = namedtuple("DonationBoardPlayer", "name donations received trophies last_online gain index")

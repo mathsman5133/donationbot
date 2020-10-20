@@ -2,11 +2,13 @@ import datetime
 import discord
 import textwrap
 import traceback
-
+import io
 
 from cogs.utils import formatters, paginator, checks
 
 from discord.ext import commands
+
+import creds
 
 
 async def error_handler(ctx, error):
@@ -16,7 +18,10 @@ async def error_handler(ctx, error):
         return await ctx.send(str(error))
 
     if isinstance(error, (commands.BadArgument, commands.BadUnionArgument)):
-        return await ctx.send(str(error))
+        if str(error):
+            return await ctx.send(str(error))
+        else:
+            return
     if isinstance(error, commands.MissingRequiredArgument):
         return await ctx.send(f'Oops! That didn\'t look right... '
                               f'please see how to use the command with `+help {ctx.command.qualified_name}`')
@@ -44,8 +49,19 @@ async def error_handler(ctx, error):
 
     exc = ''.join(
         traceback.format_exception(type(error), error, error.__traceback__, chain=False))
+
+    if len(exc) > 2000:
+        fp = io.BytesIO(exc.encode('utf-8'))
+        e.description = "Traceback was too long."
+        return await ctx.send(embed=e, file=discord.File(fp, 'traceback.txt'))
+
     e.description = f'```py\n{exc}\n```'
+
     e.timestamp = datetime.datetime.utcnow()
+    if not creds.live:
+        await ctx.send(embed=e)
+        return
+
     await ctx.bot.error_webhook.send(embed=e)
     try:
         await ctx.send('Uh oh! Something broke. This error has been reported; '

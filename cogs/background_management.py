@@ -3,31 +3,142 @@ import datetime
 import discord
 import logging
 import textwrap
+import itertools
 import time
+
+import coc
+import pytz
 
 from discord.ext import commands, tasks
 
 from cogs.utils.db_objects import SlimEventConfig
-from cogs.utils.formatters import readable_time
+from cogs.utils.formatters import readable_time, LineWrapper
 from cogs.utils.emoji_lookup import misc
+from cogs.utils.donationtrophylogs import get_events_fmt
 
 log = logging.getLogger(__name__)
+
+
+def seconds_until_5am():
+    now = datetime.datetime.now(pytz.utc)
+
+    if now.hour < 4:
+        five_am = now.replace(hour=4, minute=0, second=0, microsecond=0)
+    else:
+        tomorrow = now + datetime.timedelta(days=1)
+        five_am = tomorrow.replace(hour=4, minute=0, second=0, microsecond=0)
+
+    return (five_am - now).total_seconds()
 
 
 class BackgroundManagement(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.next_event_starts.start()
-        self.event_player_updater.start()
+        # self.daily_history_updater.start()
+        asyncio.ensure_future(self.sync_temp_event_tasks())
+        #self.sync_activity_stats.start()
+        self._log_tasks = {}
+        self.bot.loop.create_task(self.chunk_on_startup())
+        # self.event_player_updater.start()
 
     def cog_unload(self):
         self.next_event_starts.cancel()
-        self.event_player_updater.cancel()
+        # self.daily_history_updater.cancel()
+        for k, v in self._log_tasks:
+            v.cancel()
+        #self.sync_activity_stats.cancel()
+        # self.event_player_updater.cancel()
+
+    async def chunk_on_startup(self):
+        await self.bot.wait_until_ready()
+        await self.bot.get_guild(594276321937326091).chunk()
+
+    async def bot_check(self, ctx):
+        if ctx.guild.id in ctx.bot.locked_guilds:
+            await ctx.send(
+                "Your server is locked. Please be patient while your activity data is synced. "
+                "If you believe this has been issued in error, "
+                "please join the support server: https://discord.gg/ePt8y4V"
+            )
+            return False
+        return True
+
+    async def log_message_send(self, message_id, channel_id, guild_id, type_):
+        # type can be: command, donationboard, trophyboard, donationlog, trophylog
+        query = "INSERT INTO message_sends (message_id, channel_id, guild_id, type) VALUES ($1, $2, $3, $4)"
+        await self.bot.pool.execute(query, message_id, channel_id, guild_id, type_)
+
+    @tasks.loop()
+    async def sync_activity_stats(self):
+        await asyncio.sleep(seconds_until_5am())
+        query = """INSERT INTO activity_query (
+                       player_tag, 
+                       clan_tag, 
+                       hour_time, 
+                       counter, 
+                       hour_digit
+                    ) 
+                    SELECT player_tag, clan_tag, timer, num_events, hour 
+                    FROM get_activity_to_sync()
+                    ON CONFLICT DO NOTHING
+                """
+        await self.bot.pool.execute(query)
 
     @commands.command(hidden=True)
     @commands.is_owner()
     async def forceguild(self, ctx, guild_id: int):
         self.bot.dispatch('guild_join', self.bot.get_guild(guild_id))
+
+    @tasks.loop()
+    async def daily_history_updater(self):
+        await asyncio.sleep(seconds_until_5am())
+        query = """INSERT INTO players_history (
+                                    player_tag, 
+                                    donations, 
+                                    received, 
+                                    user_id, 
+                                    friend_in_need, 
+                                    sharing_is_caring, 
+                                    trophies, 
+                                    best_trophies, 
+                                    last_updated, 
+                                    league_id, 
+                                    versus_trophies, 
+                                    clan_tag, 
+                                    level, 
+                                    player_name, 
+                                    attacks, 
+                                    defenses, 
+                                    versus_attacks, 
+                                    exp_level, 
+                                    games_champion, 
+                                    well_seasoned
+                                )             
+                   SELECT player_tag,
+                          donations,
+                          received,
+                          user_id,
+                          end_friend_in_need,
+                          end_sharing_is_caring,
+                          trophies,
+                          end_best_trophies,
+                          last_updated,
+                          league_id,
+                          versus_trophies,
+                          clan_tag,
+                          level,
+                          player_name,
+                          attacks,
+                          defenses,
+                          versus_attacks,
+                          exp_level,
+                          games_champion,
+                          well_seasoned
+                   FROM players
+                   WHERE players.season_id = $1
+        """
+        await self.bot.pool.execute(query, await self.bot.seasonconfig.get_season_id())
 
     @tasks.loop()
     async def next_event_starts(self):
@@ -131,13 +242,13 @@ class BackgroundManagement(commands.Cog):
 
         log.info(f'Starting loop for event updates. {len(fetch)} players to update!')
         start = time.perf_counter()
-        async for player in self.bot.coc.get_players((n[0] for n in fetch), update_cache=False):
+        async for player in self.bot.coc.get_players((n[0] for n in fetch)):
             to_insert.append(
                 {
                     'player_tag': player.tag,
                     'trophies': player.trophies,
-                    'end_fin': player.achievements_dict['Friend in Need'].value,
-                    'end_sic': player.achievements_dict['Sharing is caring'].value,
+                    'end_fin': player.get_achievement('Friend in Need').value,
+                    'end_sic': player.get_achievement('Sharing is caring').value,
                     'end_attacks': player.attack_wins,
                     'end_defenses': player.defense_wins,
                     'end_best_trophies': player.best_trophies
@@ -175,8 +286,8 @@ class BackgroundManagement(commands.Cog):
                           player.tag,
                           player.trophies,
                           event_id,
-                          player.achievements_dict['Friend in Need'].value,
-                          player.achievements_dict['Sharing is caring'].value,
+                          player.get_achievement('Friend in Need').value,
+                          player.get_achievement('Sharing is caring').value,
                           player.attack_wins,
                           player.defense_wins,
                           player.trophies,
@@ -197,8 +308,8 @@ class BackgroundManagement(commands.Cog):
                    AND event_id = $7
                 """
         await con.execute(query,
-                          player.achievements_dict['Friend in Need'].value,
-                          player.achievements_dict['Sharing is caring'].value,
+                          player.get_achievement('Friend in Need').value,
+                          player.get_achievement('Sharing is caring').value,
                           player.attack_wins,
                           player.defense_wins,
                           player.best_trophies,
@@ -231,12 +342,12 @@ class BackgroundManagement(commands.Cog):
 
         donationboard_configs = await self.bot.utils.get_board_configs(event.guild_id, 'donation')
         for config in donationboard_configs:
-            await self.bot.donationboard.update_board(config.channel_id)
+            await self.bot.donationboard.update_board(config.channel_id, config.type)
             await self.new_event_message(event, event.guild_id, config.channel_id, 'donation')
 
         trophyboard_configs = await self.bot.utils.get_board_configs(event.guild_id, 'trophy')
         for config in trophyboard_configs:
-            await self.bot.donationboard.update_board(config.channel_id)
+            await self.bot.donationboard.update_board(config.channel_id, config.type)
             await self.new_event_message(event, event.guild_id, config.channel_id, 'trophy')
 
         await self.safe_send(channel, f'Boards have been updated. Enjoy your event! '
@@ -306,12 +417,12 @@ class BackgroundManagement(commands.Cog):
 
         donationboard_configs = await self.bot.utils.get_board_configs(event.guild_id, 'donation')
         for config in donationboard_configs:
-            await self.bot.donationboard.update_board(config.channel_id)
+            await self.bot.donationboard.update_board(config.channel_id, config.type)
             await self.remove_event_msg(event.id, config.channel, 'donation')
 
         trophyboard_configs = await self.bot.utils.get_board_configs(event.guild_id, 'trophy')
         for config in trophyboard_configs:
-            await self.bot.donationboard.update_board(config.channel_id)
+            await self.bot.donationboard.update_board(config.channel_id, config.type)
             await self.remove_event_msg(event.id, config.channel, 'trophy')
 
         # todo: crunch some numbers.
@@ -390,6 +501,7 @@ class BackgroundManagement(commands.Cog):
 
     @commands.Cog.listener()
     async def on_command(self, ctx):
+        await self.log_message_send(ctx.message.id, ctx.channel.id, ctx.guild.id, 'command')
         command = ctx.command.qualified_name
         self.bot.command_stats[command] += 1
         message = ctx.message
@@ -425,22 +537,18 @@ class BackgroundManagement(commands.Cog):
     async def on_clan_claim(self, ctx, clan):
         e = discord.Embed(colour=discord.Colour.blue(), title='Clan Claimed')
         await self.send_claim_clan_stats(e, clan, ctx.guild)
-        await self.bot.utils.update_clan_tags()
-        await self.bot.donationlogs.sync_temp_event_tasks()
-        await self.bot.trophylogs.sync_temp_event_tasks()
+        await self.bot.background.sync_temp_event_tasks()
 
     @commands.Cog.listener()
     async def on_clan_unclaim(self, ctx, clan):
         e = discord.Embed(colour=discord.Colour.dark_blue(), title='Clan Unclaimed')
         await self.send_claim_clan_stats(e, clan, ctx.guild)
-        await self.bot.utils.update_clan_tags()
-        await self.bot.donationlogs.sync_temp_event_tasks()
-        await self.bot.trophylogs.sync_temp_event_tasks()
+        await self.bot.background.sync_temp_event_tasks()
 
     async def send_guild_stats(self, e, guild):
         e.add_field(name='Name', value=guild.name)
         e.add_field(name='ID', value=guild.id)
-        e.add_field(name='Owner', value=f'{guild.owner} (ID: {guild.owner.id})')
+        e.add_field(name='Owner', value=f'{guild.owner} (ID: {guild.owner and guild.owner.id})')
 
         bots = sum(m.bot for m in guild.members)
         total = guild.member_count
@@ -479,7 +587,7 @@ class BackgroundManagement(commands.Cog):
 
         e.add_field(name='Guild Name', value=guild.name)
         e.add_field(name='Guild ID', value=guild.id)
-        e.add_field(name='Guild Owner', value=f'{guild.owner} (ID: {guild.owner.id})')
+        e.add_field(name='Guild Owner', value=f'{guild.owner} (ID: {guild.owner and guild.owner.id})')
 
         bots = sum(m.bot for m in guild.members)
         total = guild.member_count
@@ -492,6 +600,114 @@ class BackgroundManagement(commands.Cog):
             e.set_footer(text='Bot Added').timestamp = guild.me.joined_at
 
         await self.bot.join_log_webhook.send(embed=e)
+
+    async def sync_temp_event_tasks(self):
+        query = """SELECT channel_id, type 
+                   FROM logs 
+                   WHERE toggle = True 
+                   AND "interval" > make_interval()
+                """
+        fetch = await self.bot.pool.fetch(query)
+        for n in fetch:
+            channel_id, type_ = n[0], n[1]
+            key = (channel_id, type_)
+            log.debug(f'Syncing task for Channel ID {key}')
+            task = self._log_tasks.get(key)
+            if not task:
+                log.debug(f'Task has not been created. Creating it. Channel ID: {key}')
+                self._log_tasks[key] = self.bot.loop.create_task(self.create_temp_event_task(channel_id, type_))
+                continue
+            elif task.done():
+                log.info(task.get_stack())
+                log.info(f'Task has already been completed, recreating it. Channel ID: {key}')
+                self._log_tasks[key] = self.bot.loop.create_task(self.create_temp_event_task(channel_id, type_))
+                continue
+            else:
+                log.debug(f'Task has already been sucessfully registered for Channel ID {channel_id}')
+
+        to_cancel = [n for n in self._log_tasks.keys() if n not in set((n[0], n[1]) for n in fetch)]
+        for n in to_cancel:
+            log.debug(f'Channel events have been removed from DB. Destroying task. Channel ID: {n}')
+            task = self._log_tasks.pop(n)
+            task.cancel()
+
+        log.info(f'Successfully synced {len(fetch)} channel tasks.')
+
+    async def create_temp_event_task(self, channel_id, type_):
+        try:
+            while not self.bot.is_closed():
+                config = await self.bot.utils.log_config(channel_id, type_)
+                if not config:
+                    log.critical(
+                        f'Requested a task creation for channel id {channel_id} type={type_} but config was not found.'
+                    )
+                    return
+
+                await asyncio.sleep(config.seconds)
+                config = await self.bot.utils.log_config(channel_id, type_)
+
+                if type_ == "donation" and config.detailed:
+                    query = "DELETE FROM detailedtempevents WHERE channel_id = $1 RETURNING clan_tag, exact, combo, unknown"
+                    fetch = await self.bot.pool.fetch(query, channel_id)
+
+                    if not fetch:
+                        continue
+
+                    embeds = []
+
+                    for clan_tag, events in itertools.groupby(sorted(fetch, key=lambda x: x['clan_tag']),
+                                                              key=lambda x: x['clan_tag']):
+                        events = list(events)
+
+                        events_fmt = {
+                            "exact": [],
+                            "combo": [],
+                            "unknown": []
+                        }
+                        for n in events:
+                            events_fmt["exact"].extend(n['exact'].split('\n'))
+                            events_fmt["combo"].extend(n['combo'].split('\n'))
+                            events_fmt["unknown"].extend(n['unknown'].split('\n'))
+
+                        p = LineWrapper()
+                        p.add_lines(get_events_fmt(events_fmt))
+
+                        try:
+                            clan = await self.bot.coc.get_clan(clan_tag)
+                        except coc.NotFound:
+                            log.exception(f'{clan_tag} not found')
+                            continue
+
+                        hex_ = bytes.hex(str.encode(clan.tag))[:20]
+
+                        for page in p.pages:
+                            e = discord.Embed(
+                                colour=int(int(''.join(filter(lambda x: x.isdigit(), hex_))) ** 0.3),
+                                description=page
+                            )
+                            e.set_author(name=f"{clan.name} ({clan.tag})", icon_url=clan.badge.url)
+                            e.set_footer(text="Reported").timestamp = datetime.datetime.utcnow()
+                            embeds.append(e)
+
+                    for n in embeds:
+                        asyncio.ensure_future(self.bot.utils.safe_send(config.channel_id, embed=n))
+
+                else:
+                    query = "DELETE FROM tempevents WHERE channel_id = $1 AND type = $2 RETURNING fmt"
+                    fetch = await self.bot.pool.fetch(query, channel_id, type_)
+                    p = LineWrapper()
+
+                    for n in fetch:
+                        p.add_lines(n[0].split("\n"))
+                    for page in p.pages:
+                        asyncio.ensure_future(self.bot.utils.safe_send(config.channel_id, page))
+
+        except asyncio.CancelledError:
+            raise
+        except:
+            log.exception(f'Exception encountered while running task for {channel_id} {type_}')
+            self._log_tasks[(channel_id, type_)].cancel()
+            self._log_tasks[(channel_id, type_)] = self.bot.loop.create_task(self.create_temp_event_task(channel_id, type_))
 
 
 def setup(bot):

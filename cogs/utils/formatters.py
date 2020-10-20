@@ -1,5 +1,22 @@
 from discord.utils import _string_width
+from discord.ext import commands
 from cogs.utils.emoji_lookup import emojis, misc, number_emojis
+
+
+def big_number_fmt(value):
+    value = int(value)
+    if value < 10_000:
+        return '{:,}'.format(value)
+
+    if value // 1_000_000_000:
+        return f'{round(value / 1_000_000_000, 3)}'.replace('.0', '') + 'bil'
+    if value // 1_000_000 > 0:
+        return f'{round(value / 1_000_000, 3)}'.replace('.0', '') + 'mil'
+    elif value // 1_000 > 0:
+        return f'{round(value / 1_000, 3)}'.replace('.0', '') + 'k'
+    else:
+        return f'{value}'
+
 
 def get_render_type(config, table):
     if getattr(config, 'type', None) == 'donation':
@@ -7,6 +24,8 @@ def get_render_type(config, table):
             render = table.donationboard_1
         else:
             render = table.donationboard_2
+    elif getattr(config, 'type', None) == 'last_online':
+        render = table.last_online_board
     else:
         if config.render == 1:
             render = table.trophyboard_1
@@ -39,9 +58,9 @@ def readable_time(delta_seconds):
     days, hours = divmod(hours, 24)
 
     if days:
-        fmt = '{d}d {h}h {m}m {s}s'
+        fmt = '{d}d {h}h {m}m'
     elif hours:
-        fmt = '{h}h {m}m {s}s'
+        fmt = '{h}h {m}m'
     else:
         fmt = '{m}m {s}s'
 
@@ -64,37 +83,6 @@ def events_time(delta_seconds):
         return f"{minutes}min"
     return f"{seconds}sec"
 
-
-def format_donation_log_message(player, clan_name):
-    if player.donations:
-        emoji = misc['donated']
-        emoji2 = misc['online']
-        if player.donations <= 100:
-            number = number_emojis[player.donations]
-        else:
-            number = str(player.donations)
-    else:
-        emoji = misc['received']
-        emoji2 = misc['offline']
-        if 0 < player.received <= 100:
-            number = number_emojis[player.received]
-        else:
-            number = str(player.received)
-    return f'{emoji2}{player.name} {emoji} {number} ({clan_name})'
-
-
-def format_trophy_log_message(player, clan_name):
-    trophies = player.trophies
-    abs_trophies = abs(trophies)
-
-    if 0 < abs_trophies <= 100:
-        number = number_emojis[abs_trophies]
-    else:
-        number = abs_trophies
-
-    emoji = (misc['trophygreen'], misc['trophygain']) if trophies > 0 else (misc['trophyred'], misc['trophyloss'])
-
-    return f"{emoji[0]} {player.name} {emoji[1]} {number} {emojis[player.league_id]} ({clan_name})"
 
 
 class TabularData:
@@ -168,86 +156,148 @@ class CLYTable:
     def clear_rows(self):
         self._rows = []
 
-    def donationboard_1(self):
-        fmt = f"{misc['number']}`⠀{'Dons':\u00A0>6.6}⠀` `⠀{'Rec':\u00A0>5.5}⠀` `⠀{'Name':\u00A0<10.10}⠀`\n"
+    def last_online_board(self):
+        show = any(v[1] for v in self._rows)
+        fmt = f"{misc['number']}{emojis[17] if show else ''}`⠀{'Name':\u00A0>12.12}⠀` `⠀{'Last Online':\u00A0>11.11}⠀`\n"
         for v in self._rows:
             index = int(v[0]) + 1
             index = number_emojis[index] if index <= 100 else misc['idle']
-            fmt += f"{index}`⠀{str(v[1]):\u00A0>6.6}⠀` `⠀{str(v[2]):\u00A0>5.5}⠀` `⠀{str(v[3]):\u00A0<10.10}⠀`\n"
+            fmt += f"{index}{v[1] or '⠀⠀' if show else ''}`⠀{str(v[4]):\u00A0>12.12}⠀` `⠀{v[3]:\u00A0>11.11}⠀`\n"
+        return fmt
+
+    def donationboard_1(self):
+        show = any(v[1] for v in self._rows)
+        fmt = f"{misc['number']}{emojis[17] if show else ''}`⠀{'Dons':\u00A0>6.6}⠀` `⠀{'Rec':\u00A0>5.5}⠀` `⠀{'Name':\u00A0<10.10}⠀`\n"
+        for v in self._rows:
+            index = int(v[0])
+            index = number_emojis[index] if index <= 100 else misc['idle']
+            fmt += f"{index}{v[1] or '⠀⠀' if show else ''}`⠀{str(v[2]):\u00A0>6.6}⠀` `⠀{str(v[3]):\u00A0>5.5}⠀` `⠀{str(v[4]):\u00A0<10.10}⠀`\n"
         return fmt
 
     def donationboard_2(self):
-        fmt = f"{misc['number']}`⠀{'Dons':\u00A0>6.6}⠀` `⠀{'Name':\u00A0<16.16}⠀`\n"
+        show = any(v[1] for v in self._rows)
+        fmt = f"{misc['number']}{emojis[17] if show else ''}`⠀⠀{'Dons':\u00A0>6.6}⠀` `⠀{'Name':\u00A0<15.15}⠀`\n"
         for v in self._rows:
-            index = int(v[0]) + 1
+            index = int(v[0])
             index = number_emojis[index] if index <= 100 else misc['idle']
-            fmt += f"{index}`⠀{str(v[1]):\u00A0>6.6}⠀` `⠀{str(v[2]):\u00A0<16.16}⠀`\n"
+            fmt += f"{index}{v[1] or '⠀⠀' if show else ''}`⠀{str(v[2]):\u00A0>6.6}⠀` `⠀{str(v[3]):\u00A0<15.15}⠀`\n"
         return fmt
 
     def trophyboard_1(self):
-        fmt = f"{misc['number']}`⠀{'Cups':\u00A0>4.4}⠀` ` {'Gain':\u00A0>5.5} ` `⠀{'Name':\u00A0<10.10}⠀`\n"
+        show = any(v[1] for v in self._rows)
+        fmt = f"{misc['number']}{emojis[17] if show else ''}`⠀{'Cups':\u00A0>4.4}⠀` ` {'Gain':\u00A0>5.5} ` `⠀{'Name':\u00A0<10.10}⠀`\n"
         for v in self._rows:
             index = int(v[0]) + 1
             index = number_emojis[index] if index <= 100 else misc['idle']
-            fmt += f"{index}`⠀{str(v[1]):\u00A0>4.4}⠀` ` {str(v[2]):\u00A0>5.5} ` `⠀{str(v[3]):\u00A0<10.10}⠀`\n"
+            fmt += f"{index}{v[1] or '⠀⠀' if show else ''}`⠀{str(v[2]):\u00A0>4.4}⠀` ` {str(v[3]):\u00A0>5.5} ` `⠀{str(v[4]):\u00A0<10.10}⠀`\n"
         return fmt
 
     def trophyboard_2(self):
-        fmt = f"{misc['number']}` {'Gain':\u00A0>5.5}⠀` ` {'Name':\u00A0<18.18}⠀`\n"
+        show = any(v[1] for v in self._rows)
+        fmt = f"{misc['number']}{emojis[17] if show else ''}` {'Gain':\u00A0>5.5}⠀` ` {'Name':\u00A0<18.18}⠀`\n"
         for v in self._rows:
-            index = int(v[0]) + 1
+            index = int(v[0])
             index = number_emojis[index] if index <= 100 else misc['idle']
-            fmt += f"{index}`⠀{str(v[1]):\u00A0>5.5}⠀` ` {str(v[2]):\u00A0<18.18}⠀`\n"
+            fmt += f"{index}{v[1] or '⠀⠀' if show else ''}`⠀{str(v[2]):\u00A0>5.5}⠀` ` {str(v[3]):\u00A0<18.18}⠀`\n"
         return fmt
 
     def trophyboard_attacks(self):
-        fmt = f"{misc['number']}⠀⠀{misc['attack']}⠀{misc['trophygold']}⠀ `⠀{'Name':\u00A0<10.10}⠀`\n"
+        show = any(v[1] for v in self._rows)
+        fmt = f"{misc['number']}{emojis[17] if show else ''}⠀⠀{misc['attack']}⠀ `⠀{'Name':\u00A0<15.15}⠀`\n"
         for v in self._rows:
-            index = int(v[0]) + 1
+            index = int(v[0])
             index = number_emojis[index] if index <= 100 else misc['idle']
-            fmt += f"{index}`⠀{str(v[1]):\u00A0>4.4}⠀` ` {str(v[2]):\u00A0>4.4} ` `⠀{str(v[3]):\u00A0<10.10}⠀`\n"
+            fmt += f"{index}{v[1] or '⠀⠀' if show else ''}`⠀{str(v[2]):\u00A0>4.4}⠀` `⠀{str(v[3]):\u00A0<15.15}⠀`\n"
         return fmt
 
     def trophyboard_defenses(self):
-        fmt = f"{misc['number']} ⠀⠀{misc['defense']} ⠀{misc['trophygold']}   `⠀{'Name':\u00A0<10.10}⠀`\n"
+        show = any(v[1] for v in self._rows)
+        fmt = f"{misc['number']}{emojis[17] if show else ''}⠀⠀{misc['defense']} ⠀`⠀{'Name':\u00A0<15.15}⠀`\n"
         for v in self._rows:
-            index = int(v[0]) + 1
+            index = int(v[0])
             index = number_emojis[index] if index <= 100 else misc['idle']
-            fmt += f"{index}`⠀{str(v[1]):\u00A0>4.4}⠀` ` {str(v[2]):\u00A0>4.4} ` `⠀{str(v[3]):\u00A0<10.10}⠀`\n"
+            fmt += f"{index}{v[1] or '⠀⠀' if show else ''}`⠀{str(v[2]):\u00A0>4.4}⠀` `⠀{str(v[3]):\u00A0<15.15}⠀`\n"
         return fmt
 
     def trophyboard_gain(self):
-        fmt = f"{misc['number']}    {misc['trophygreen']}⠀{misc['trophygold']}  `⠀{'Name':\u00A0<10.10}⠀`\n"
+        show = any(v[1] for v in self._rows)
+        fmt = f"{misc['number']}{emojis[17] if show else ''}⠀⠀{misc['trophygreen']}⠀ `⠀{'Name':\u00A0<15.15}⠀`\n"
         for v in self._rows:
-            index = int(v[0]) + 1
+            index = int(v[0])
             index = number_emojis[index] if index <= 100 else misc['idle']
-            fmt += f"{index}`⠀{str(v[1]):\u00A0>4.4}⠀` ` {str(v[2]):\u00A0>4.4} ` `⠀{str(v[3]):\u00A0<10.10}⠀`\n"
+            fmt += f"{index}{v[1] or '⠀⠀' if show else ''}`⠀{str(v[2]):\u00A0>4.4}⠀` `⠀{str(v[3]):\u00A0<15.15}⠀`\n"
         return fmt
 
     def events_list(self):
-        fmt = f"{misc['number']}` {'Starts In':\u00A0^9}⠀` ` {'Name':\u00A0<15.15}⠀`\n"
+        show = any(v[1] for v in self._rows)
+        fmt = f"{misc['number']}{emojis[17] if show else ''}` {'Starts In':\u00A0^9}⠀` ` {'Name':\u00A0<15.15}⠀`\n"
         for v in self._rows:
             index = int(v[0]) + 1
             index = number_emojis[index] if index <= 100 else misc['idle']
-            fmt += f"{index}`⠀{str(v[1]):\u00A0^9}⠀` ` {str(v[2]):\u00A0<15.15}⠀`\n"
+            fmt += f"{index}{v[1] or '⠀⠀' if show else ''}`⠀{str(v[2]):\u00A0^9}⠀` ` {str(v[3]):\u00A0<15.15}⠀`\n"
         return fmt
 
     def donation_log_command(self):
-        fmt = f"{misc['number']}⠀`⠀{'Don/Rec':\u00A0>7.7}⠀`  `⠀{'Name':\u00A0<12.12}⠀`  `⠀{'Age':\u00A0<5.5}⠀`\n"
+        show = any(v[1] for v in self._rows)
+        fmt = f"{misc['number']}{emojis[17] if show else ''}`⠀{'Don/Rec':\u00A0>7.7}⠀`  `⠀{'Name':\u00A0<12.12}⠀`  `⠀{'Age':\u00A0<5.5}⠀`\n"
         for v in self._rows:
-            fmt += f"{v[0]}⠀`⠀{str(v[1]):\u00A0>7.7}⠀`  `⠀{str(v[2]):\u00A0<12.12}⠀`  `⠀{str(v[3]):\u00A0<5.5}⠀`\n"
+            fmt += f"{v[0]}{v[1] or '⠀⠀' if show else ''}`⠀{str(v[2]):\u00A0>7.7}⠀`  `⠀{str(v[3]):\u00A0<12.12}⠀`  `⠀{str(v[4]):\u00A0<5.5}⠀`\n"
         return fmt
 
     def trophy_log_command(self):
-        fmt = f"{misc['number']}⠀`⠀{'Gain':\u00A0>4.4}⠀`  `⠀{'Name':\u00A0<14.14}⠀`  `⠀{'Age':\u00A0<5.5}⠀`\n"
+        show = any(v[1] for v in self._rows)
+        fmt = f"{misc['number']}{emojis[17] if show else ''}`⠀{'Gain':\u00A0>4.4}⠀`  `⠀{'Name':\u00A0<14.14}⠀`  `⠀{'Age':\u00A0<5.5}⠀`\n"
         for v in self._rows:
-            fmt += f"{v[0]}⠀`⠀{str(v[1]):\u00A0>3.3}⠀`  `⠀{str(v[2]):\u00A0<14.14}⠀`  `⠀{str(v[3]):\u00A0<5.5}⠀`\n"
+            fmt += f"{v[0]}{v[1] or '⠀⠀' if show else ''}`⠀{str(v[2]):\u00A0>3.3}⠀`  `⠀{str(v[3]):\u00A0<14.14}⠀`  `⠀{str(v[4]):\u00A0<5.5}⠀`\n"
         return fmt
 
     def last_online(self):
-        fmt = f"{misc['number']}⠀`⠀{'Name':\u00A0>13.13}⠀` `⠀{'Last Online':\u00A0>11.11}⠀`\n"
+        show = any(v[1] for v in self._rows)
+        fmt = f"{misc['number']}{emojis[17] if show else ''}`⠀{'Last On':\u00A0>9.9}⠀` `⠀{'Name':\u00A0>15.15}⠀`\n"
         for v in self._rows:
             index = int(v[0]) + 1
             index = number_emojis[index] if index <= 100 else misc['idle']
-            fmt += f"{index}⠀`⠀{str(v[1]):\u00A0>13.13}⠀`  `⠀{str(v[2]):\u00A0>11.11}⠀`\n"
+            fmt += f"{index}{v[1] or '⠀⠀' if show else ''}`⠀{str(v[2]):\u00A0>9.9}⠀` `⠀{str(v[3]):\u00A0>15.15}⠀`\n"
         return fmt
+
+    def achievement(self):
+        show = any(v[1] for v in self._rows)
+        fmt = f"{misc['number']}{emojis[17] if show else ''}`⠀{'Achievement':\u00A0>11.11}⠀` `⠀{'Name':\u00A0>13.13}⠀`\n"
+        for v in self._rows:
+            index = int(v[0])
+            index = number_emojis[index] if index <= 100 else misc['idle']
+            fmt += f"{index}{v[1] or '⠀⠀' if show else ''}`⠀{big_number_fmt(v[2]):\u00A0>11.11}⠀` `⠀{str(v[3]):\u00A0>13.13}⠀`\n"
+        return fmt
+
+    def accounts(self):
+        show = any(v[1] for v in self._rows)
+        fmt = f"{misc['number']}{emojis[17] if show else ''}`⠀{'Player IGN':\u00A0>11.11}⠀` `⠀{'Discord/Tag':\u00A0>13.13}⠀`\n"
+        for v in self._rows:
+            index = int(v[0])
+            index = number_emojis[index] if index <= 100 else misc['idle']
+            fmt += f"{index}{v[1] or '⠀⠀' if show else ''}`⠀{str(v[2]):\u00A0>11.11}⠀` `⠀{str(v[3]):\u00A0>13.13}⠀`\n"
+        return fmt
+
+
+def get_line_chunks(lines, chunk_size=13, max_size=1950):
+    if not lines:
+        return
+
+    chars = 0
+    idx_start = 0
+    for idx, line in enumerate(lines):
+        chars += len(line) + 1  # Need to count the eventual \n
+        if chars > max_size:
+            yield lines[idx_start:idx]
+            chars = len(line) + 1
+            idx_start = idx
+        if idx == len(lines) - 1:
+            yield lines[idx_start:]
+
+
+class LineWrapper(commands.Paginator):
+    def __init__(self, max_size=2000):
+        super().__init__('', '', max_size=max_size)
+    def add_lines(self, lines, empty=False):
+        for line in lines:
+            self.add_line(line)

@@ -1,4 +1,3 @@
-import aioredis
 import asyncio
 import datetime
 import coc
@@ -6,57 +5,77 @@ import discord
 import aiohttp
 import traceback
 import creds
+import sqlite3
+import sys
+import itertools
 
+import sentry_sdk
+
+from coc.ext import discordlinks
 from discord.ext import commands
 
 from botlog import setup_logging, add_hooks
 from cogs.utils import context, category
 from cogs.utils.db import Table
-from cogs.utils.error_handler import error_handler, discord_event_error, clash_event_error
+from cogs.utils.error_handler import error_handler, discord_event_error
 
-
+sentry_sdk.init(creds.SENTRY_KEY)
 initial_extensions = [
     'cogs.admin',
     'cogs.aliases',
     'cogs.auto_claim',
     'cogs.botutils',
+    'cogs.stats',
     'cogs.deprecated',
-    'cogs.donations',
-    'cogs.events',
     'cogs.guildsetup',
     'cogs.info',
     'cogs.reset_season',
-    'cogs.stats',
-    'cogs.trophies',
-    'cogs.last_updated'
+    'cogs.activity',
 ]
-if creds.live:
+beta = "beta" in sys.argv
+
+if creds.live and not beta:
     initial_extensions.extend(
         (
             'cogs.background_management',
             'cogs.boards',
         )
     )
-    command_prefix = '+'
+    command_prefix = None
     key_names = 'test'
+elif beta:
+    command_prefix = '//'
+    key_names = 'test'
+    creds.bot_token = creds.beta_bot_token
 else:
     command_prefix = '//'
     key_names = 'windows'
 
 
-class COCClient(coc.EventsClient):
-    async def on_event_error(self, event_name, exception, *args, **kwargs):
-        await clash_event_error(self.bot, event_name, exception, *args, **kwargs)
-
-
-coc_client = coc.login(creds.email, creds.password, client=COCClient,
-                       key_names=key_names, throttle_limit=30, key_count=3)
-
+coc_client = coc.login(
+    creds.email,
+    creds.password,
+    client=coc.EventsClient,
+    key_names=key_names,
+    throttle_limit=30,
+    key_count=2,
+    key_scopes=creds.scopes
+)
+links_client = discordlinks.login(creds.links_username, creds.links_password)
 
 description = "A simple discord bot to track donations of clan families in clash of clans."
+intents = discord.Intents.none()
+intents.guilds = True
+intents.guild_messages = True
+intents.guild_reactions = True
+intents.members = True
+intents.emojis = True
 
 
 async def get_pref(bot, message):
+    if command_prefix:
+        return command_prefix
+
     if not message.guild:
         # message is a DM
         return "+"
@@ -66,11 +85,11 @@ async def get_pref(bot, message):
     return commands.when_mentioned_or(prefix)(bot, message)
 
 
-class DonationBot(commands.Bot):
+class DonationBot(commands.AutoShardedBot):
     def __init__(self):
         super().__init__(command_prefix=get_pref, case_insensitive=True,
                          description=description, pm_help=None, help_attrs=dict(hidden=True),
-                         fetch_offline_members=True)
+                         intents=intents, chunk_guilds_at_startup=False)
 
         self.categories = {}
 
@@ -78,12 +97,13 @@ class DonationBot(commands.Bot):
 
         self.colour = discord.Colour.blurple()
 
-        coc_client.bot = self
         self.coc = coc_client
+        self.links = links_client
 
         self.client_id = creds.client_id
         self.dbl_token = creds.dbl_token
         self.owner_ids = {230214242618441728, 251150854571163648}  # maths, tuba
+        self.locked_guilds = set()
         self.session = aiohttp.ClientSession(loop=self.loop)
 
         add_hooks(self)
@@ -91,6 +111,8 @@ class DonationBot(commands.Bot):
         self.after_invoke(self.after_command_invoke)
 
         self.uptime = datetime.datetime.utcnow()
+
+        self.sqlite = sqlite3.connect("errors.sqlite")
 
         for e in initial_extensions:
             try:
@@ -101,14 +123,6 @@ class DonationBot(commands.Bot):
     @property
     def donationboard(self):
         return self.get_cog('DonationBoard')
-
-    @property
-    def donationlogs(self):
-        return self.get_cog('DonationLogs')
-
-    @property
-    def trophylogs(self):
-        return self.get_cog('TrophyLogs')
 
     @property
     def seasonconfig(self):
@@ -182,6 +196,9 @@ class DonationBot(commands.Bot):
         if hasattr(ctx, 'after_invoke'):
             await ctx.after_invoke(ctx)
 
+    async def on_ready(self):
+        self.error_webhooks = itertools.cycle(n for n in await self.get_channel(625160612791451661).webhooks())
+
     async def on_message(self, message):
         if message.author.bot:
             return  # ignore bot messages
@@ -191,6 +208,10 @@ class DonationBot(commands.Bot):
     async def process_commands(self, message):
         # we have a couple attributes to add to context, lets add them now (easy db connection etc.)
         ctx = await self.get_context(message, cls=context.Context)
+
+        if ctx.guild is None:
+            invite = getattr(self, "invite", discord.utils.oauth_url(self.user.id))
+            return await ctx.send(f"Please invite me to a server to run commands: {invite}")
 
         if ctx.command is None:
             if self.user in message.mentions:
@@ -202,7 +223,6 @@ class DonationBot(commands.Bot):
             await self.invoke(ctx)
 
     async def on_ready(self):
-        await self.utils.update_clan_tags()
         await self.change_presence(activity=discord.Game('+help for commands'))
         await self.init_prefixes()
 

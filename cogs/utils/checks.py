@@ -1,8 +1,18 @@
 from discord.ext import commands
 
+PATRON_PERK_ROLES = [605349824472154134, 683559116731318423]
+HELPER_ROLE = 705550299699478609
+
 
 class NoConfigFailure(commands.CheckFailure):
     pass
+
+
+def helper_check(bot, user):
+    support_member = bot.get_guild(594276321937326091).get_member(user.id)
+    if support_member and any(r.id == HELPER_ROLE for r in support_member.roles):
+        return True
+    return False
 
 
 async def check_guild_permissions(ctx, perms, check=all):
@@ -17,6 +27,8 @@ async def check_guild_permissions(ctx, perms, check=all):
     if ctx.guild.id == 594276321937326091:
         # custom message for the support server
         raise commands.CheckFailure("You should run this command in your server! Get the invite link with `+invite`.")
+    if helper_check(ctx.bot, ctx.author):
+        return True
 
     resolved = ctx.author.guild_permissions
     return check(getattr(resolved, name, None) == value for name, value in perms.items())
@@ -32,10 +44,18 @@ def manage_guild():
 
 
 def is_patron_pred(ctx):
-    return any(r.id == 605349824472154134 for
-               r in ctx.bot.get_guild(594276321937326091).get_member(ctx.author.id).roles) \
-           or ctx.author.id == ctx.bot.owner_id
+    if ctx.author.id in ctx.bot.owner_ids:
+        return True
 
+    guild = ctx.bot.get_guild(594276321937326091)
+    if not guild:
+        return False
+
+    member = guild.get_member(ctx.author.id)
+    if not member:
+        return False
+
+    return any(r.id in PATRON_PERK_ROLES for r in member.roles)
 
 def is_patron():
     return commands.check(is_patron_pred)
@@ -50,12 +70,7 @@ async def before_invoke(ctx):
     error = getattr(ctx, 'error_without_config', False)
     channel = getattr(ctx, 'custom_channel', ctx.channel)
 
-    if config_type == 'donationboard':
-        if invalidate:
-            ctx.bot.utils.board_config.invalidate(ctx.bot.utils, channel.id)
-        ctx.config = await ctx.bot.utils.board_config(channel.id)
-
-    elif config_type == 'trophyboard':
+    if config_type in ['donationboard', 'trophyboard', 'lastonlineboard']:
         if invalidate:
             ctx.bot.utils.board_config.invalidate(ctx.bot.utils, channel.id)
         ctx.config = await ctx.bot.utils.board_config(channel.id)

@@ -1,13 +1,11 @@
 import inspect
 import asyncio
 import enum
-import json
 import time
 
 from functools import wraps
 
 from lru import LRU
-from coc import Cache, SearchClan, SearchPlayer
 
 
 def _wrap_and_store_coroutine(cache, key, coro):
@@ -17,10 +15,12 @@ def _wrap_and_store_coroutine(cache, key, coro):
         return value
     return func()
 
+
 def _wrap_new_coroutine(value):
     async def new_coroutine():
         return value
     return new_coroutine()
+
 
 class ExpiringCache(dict):
     def __init__(self, seconds):
@@ -36,15 +36,20 @@ class ExpiringCache(dict):
 
     def __getitem__(self, key):
         self.__verify_cache_integrity()
-        return super().__getitem__(key)
+        return super().__getitem__(key)[1]
 
     def __setitem__(self, key, value):
         super().__setitem__(key, (value, time.monotonic()))
+
+    def __contains__(self, key):
+        self.__verify_cache_integrity()
+        return super().__contains__(key)
 
 class Strategy(enum.Enum):
     lru = 1
     raw = 2
     timed = 3
+
 
 def cache(maxsize=128, strategy=Strategy.lru, ignore_kwargs=False):
     def decorator(func):
@@ -132,83 +137,3 @@ def cache(maxsize=128, strategy=Strategy.lru, ignore_kwargs=False):
         return wrap
 
     return decorator
-
-
-class COCCustomCache(Cache):
-    @staticmethod
-    def create_default_cache(max_size, ttl):
-        return
-
-    @staticmethod
-    def make_key(cache_type, key):
-        return f'{cache_type}:{key}'
-
-    @staticmethod
-    def object_type(cache_type):
-        lookup = {
-            'search_clans': SearchClan,
-            'search_players': SearchPlayer
-        }
-        return lookup[cache_type]
-
-    async def get(self, cache_type, key, new_key=True):
-        if new_key:
-            key = self.make_key(cache_type, key)
-
-        value = await self.client.redis.get(key, encoding='utf-8')
-        if not value:
-            return None
-        value = json.loads(value)
-
-        if cache_type == 'search_clans':
-            return self.object_type(cache_type)(data=value, client=self.client)
-        if cache_type == 'events':
-            return [value[0], *(self.object_type(cache_type)(data=n, http=self.client.http) for n in value[1:])]
-        return self.object_type(cache_type)(data=value, http=self.client.http)
-
-    async def set(self, cache_type, key, value, new_key=True):
-        if new_key:
-            key = self.make_key(cache_type, key)
-        value = getattr(value, '_data', value)
-        if isinstance(value, list):
-            value = [json.dumps(getattr(n, '_data', n)) for n in value]
-
-        value = json.dumps(value)
-
-        await self.client.redis.set(key, value)
-
-    async def pop(self, cache_type, key, new_key=True):
-        if new_key:
-            key = self.make_key(cache_type, key)
-        value = await self.client.redis.lpop(key, encoding='utf-8')
-        if not value:
-            return None
-
-        if cache_type == 'search_clans':
-            return self.object_type(cache_type)(data=value, client=self.client)
-        return self.object_type(cache_type)(data=value, http=self.client.http)
-
-    async def keys(self, cache_type, limit=0):
-        cur, keys = await self.client.redis.scan(match=f'{cache_type}*')
-        return (str(n) for n in keys)
-
-    async def values(self, cache_type):
-        keys = await self.keys(cache_type)
-
-        return (self.get(cache_type, k, new_key=False) for k in keys
-                if self.get(cache_type, k, new_key=False))
-
-    async def items(self, cache_type):
-        keys = await self.keys(cache_type)
-        return ((k, self.get(cache_type, k, new_key=False)) for k in keys
-                if self.get(cache_type, k, new_key=False))
-
-    async def clear(self, cache_type):
-        await self.client.redis.flushdb()
-
-    async def get_limit(self, cache_type, limit: int = None):
-        keys = await self.keys(cache_type, limit=limit)
-        return ((k, self.get(cache_type, k, new_key=False)) for k in keys
-                if self.get(cache_type, k, new_key=False))
-
-

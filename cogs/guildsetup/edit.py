@@ -8,7 +8,7 @@ import logging
 from discord.ext import commands
 from cogs.utils.checks import requires_config, manage_guild
 from cogs.utils.formatters import CLYTable
-from cogs.utils.converters import ClanConverter, DateConverter, SortByConverter, TextChannel
+from cogs.utils.converters import ClanConverter, DateConverter, TextChannel
 from cogs.utils import checks
 
 log = logging.getLogger(__name__)
@@ -53,11 +53,59 @@ class Edit(commands.Cog):
         self.bot.prefixes[ctx.guild.id] = new_prefix
         await ctx.send(f"The prefix for the bot has been changed to `{new_prefix}`")
 
+    @edit.command(name='timezone', aliases=['tz'])
+    async def edit_timezone(self, ctx, offset: int = 0):
+        """Edit the timezone in which the bot sees you. This is useful for the `+activity` command.
+
+        Timezone offset should be the number of hours +/- UTC which you are, for example, if you want to
+        set your timezone to "US East Coast" (4 hours behind UTC), you would do use `+edit timezone -4`.
+
+        This is a per-user command. Timezones will appear as the default unless you run this command.
+
+        **Format**
+        :information_source: `+edit timezone OFFSET`
+
+        **Examples**
+        :white_check_mark: `+edit timezone -4` (for US East Coast)
+        :white_check_mark: `+edit timezone +5` (for India)
+        :white_check_mark: `+edit timezone +10` (for Australia)
+        """
+        if not -12 <= offset <= 12:
+            return await ctx.send("Your offset must be between -12 and 12 hours away from UTC.")
+
+        query = "INSERT INTO user_config (user_id, timezone_offset) VALUES ($1, $2) ON CONFLICT (user_id) DO UPDATE SET timezone_offset = $2"
+        await ctx.db.execute(query, ctx.author.id, offset)
+        await ctx.send(":ok_hand: Updated server timezone offset.")
+
+    @edit.command(name='darkmode')
+    async def edit_darkmode(self, ctx):
+        """Toggle your dark mode setting. This is useful for the `+activity` command.
+
+        If this is set to "on", all commands will return a dark-mode-friendly colour theme.
+
+        This defaults to "off".
+
+        This is a per-user command. Dark mode will appear as the default (off) unless you run this command.
+
+        **Format**
+        :information_source: `+edit darkmode`
+
+        **Example**
+        :white_check_mark: `+edit darkmode` (to turn on)
+        """
+        query = """INSERT INTO user_config (user_id, dark_mode) 
+                   VALUES ($1, TRUE) 
+                   ON CONFLICT (user_id) 
+                   DO UPDATE SET dark_mode = NOT user_config.dark_mode 
+                   RETURNING dark_mode
+                """
+        fetch = await ctx.db.fetchrow(query, ctx.author.id)
+        await ctx.send(f":ok_hand: Updated dark mode to: {'on' if fetch['dark_mode'] else 'off'}")
+
     @edit.group(name='donationboard')
     @checks.manage_guild()
-    @requires_config('donationboard', invalidate=True, error=True)
     async def edit_donationboard(self, ctx):
-        """[Group] Run through an interactive process of editting the guild's donationboard.
+        """[Group] Run through an interactive process of editting a donationboard.
 
         **Format**
         :information_source: `+edit donationboard`
@@ -68,345 +116,227 @@ class Edit(commands.Cog):
         **Required Permissions**
         :warning: Manage Server
         """
-        if ctx.invoked_subcommand:
-            return
-
-        p = await ctx.prompt('Would you like to edit all settings for the guild donationboard? ')
-        if not p or p is False:
-            return await ctx.send_help(ctx.command)
-
-        await ctx.invoke(self.edit_donationboard_format)
-
-        def check(m):
-            return m.author == ctx.author and m.channel == ctx.channel
-
-        await ctx.send('Please send the URL of the icon you wish to use.')
-        try:
-            msg = await self.bot.wait_for('message', check=check, timeout=60.0)
-        except asyncio.TimeoutError:
-            return await ctx.send('You took too long! Aborting command...')
-        await ctx.invoke(self.edit_donationboard_icon, url=msg.clean_content)
-
-        await ctx.send('Please send the title message you want to display.')
-        try:
-            msg = await self.bot.wait_for('message', check=check, timeout=60.0)
-        except asyncio.TimeoutError:
-            return await ctx.send('You took too long! Aborting command...')
-
-        await ctx.invoke(self.edit_donationboard_title, title=msg.clean_content)
-
-        return await ctx.send('All done. Thanks!')
-
-    @edit_donationboard.command(name='format')
-    async def edit_donationboard_format(self, ctx):
-        """Edit the format of the server's donationboard.
-
-        The bot will provide 2 options and you must select 1 via reactions.
-
-        **Format**
-        :information_source: `+edit donationboard format`
-
-        **Example**
-        :white_check_mark: `+edit donationboard format`
-
-        **Required Permissions**
-        :warning: Manage Server
-        """
-
-        table = CLYTable()
-        table.add_rows([[0, 9913, 12354, 'Member Name'], [1, 524, 123, 'Another Member'],
-                        [2, 321, 444, 'Yet Another'], [3, 0, 2, 'The Worst Donator']
-                        ])
-        table.title = '**Option 1 Example**'
-        option_1_render = f'**Option 1 Example**\n{table.donationboard_1()}'
-        table.clear_rows()
-        table.add_rows([[0, 6532, 'Member'], [1, 4453, 'Nearly #1'],
-                        [2, 5589, 'Another Member'], [3, 0, 'Winner']
-                        ])
-
-        option_2_render = f'**Option 2 Example**\n{table.donationboard_2()}'
-
-        embed = discord.Embed(colour=self.bot.colour)
-        fmt = f'{option_1_render}\n\n\n{option_2_render}\n\n\n' \
-            f'These are the 2 available default options.\n' \
-            f'Please hit the reaction of the format you \nwish to display on the donationboard.'
-        embed.description = fmt
-        msg = await ctx.send(embed=embed)
-
-        query = "UPDATE boards SET render=$1 WHERE channel_id=$2"
-
-        reactions = ['1\N{combining enclosing keycap}', '2\N{combining enclosing keycap}']
-        for r in reactions:
-            await msg.add_reaction(r)
-
-        def check(r, u):
-            return str(r) in reactions and u.id == ctx.author.id and r.message.id == msg.id
-
-        try:
-            r, u = await self.bot.wait_for('reaction_add', check=check, timeout=60.0)
-        except asyncio.TimeoutError:
-            await ctx.db.execute(query, 1, ctx.config.channel_id)
-            return await ctx.send('You took too long. Option 1 was chosen.')
-
-        await ctx.db.execute(query, reactions.index(str(r)) + 1, ctx.config.channel_id)
-        await ctx.confirm()
+        if not ctx.invoked_subcommand:
+            await ctx.send_help(ctx.command)
 
     @edit_donationboard.command(name='icon')
-    async def edit_donationboard_icon(self, ctx, *, url: str = None):
-        """Specify an icon for the guild's donationboard.
+    async def edit_donationboard_icon(self, ctx, channel: typing.Optional[discord.TextChannel], *, url: str = None):
+        """Change or add an icon for a donationboard.
 
         **Parameters**
+        :key: A channel where the donationboard is located (#mention)
         :key: A URL (jpeg, jpg or png only) or uploaded attachment.
 
         **Format**
-        :information_source: `+edit donationboard icon URL`
+        :information_source: `+edit donationboard icon #CHANNEL URL`
 
         **Example**
-        :white_check_mark: `+edit donationboard icon https://catsareus/thecrazycatbot/123.jpg`
-        :white_check_mark: `+edit donationboard icon` (with an attached image)
+        :white_check_mark: `+edit donationboard icon #dt-boards https://catsareus/thecrazycatbot/123.jpg`
+        :white_check_mark: `+edit donationboard icon #dt-boards` (with an attached image)
 
         **Required Permissions**
         :warning: Manage Server
         """
+        channel = channel or ctx.channel
+
         if not url or not url_validator.match(url):
             attachments = ctx.message.attachments
             if not attachments:
                 return await ctx.send('You must pass in a url or upload an attachment.')
             url = attachments[0].url
+
         if url == 'https://catsareus/thecrazycatbot/123.jpg':
             return await ctx.send('Uh oh! That\'s an example URL - it doesn\'t work!')
 
-        query = "UPDATE boards SET icon_url = $1 WHERE channel_id = $2"
-        await ctx.db.execute(query, url, ctx.config.channel_id)
-        await ctx.confirm()
+        query = "UPDATE boards SET icon_url = $1 WHERE channel_id = $2 AND type = 'donation' RETURNING message_id"
+        result = await ctx.db.fetchrow(query, url, channel.id)
+        if not result:
+            return await ctx.send(f"I couldn't find a donationboard setup in {channel}. Either #mention a valid board channel, or set one up with `+help add donationboard`.")
+
+        await self.bot.donationboard.update_board(message_id=result['message_id'])
+        await ctx.send(f":white_check_mark: Icon URL updated.")
 
     @edit_donationboard.command(name='title')
-    async def edit_donationboard_title(self, ctx, *, title: str):
-        """Specify a title for the guild's donationboard.
+    async def edit_donationboard_title(self, ctx, channel: typing.Optional[discord.TextChannel], *, title: str):
+        """Specify a title for a donationboard.
 
         **Parameters**
+        :key: A channel where the donationboard is located (#mention)
         :key: Title (must be less than 50 characters).
 
         **Format**
-        :information_source: `+edit donationboard title TITLE`
+        :information_source: `+edit donationboard title #CHANNEL TITLE`
 
         **Example**
-        :white_check_mark: `+edit donationboard title The Crazy Cat Bot Title`
+        :white_check_mark: `+edit donationboard title #dt-boards The Crazy Cat Bot Title`
 
         **Required Permissions**
         :warning: Manage Server
         """
+        channel = channel or ctx.channel
         if len(title) >= 50:
             return await ctx.send('Titles must be less than 50 characters.')
 
-        query = "UPDATE boards SET title = $1 WHERE channel_id = $2"
-        await ctx.db.execute(query, title, ctx.config.channel_id)
-        await ctx.confirm()
+        query = "UPDATE boards SET title = $1 WHERE channel_id = $2 AND type = 'donation' RETURNING message_id"
+        result = await ctx.db.fetchrow(query, title, channel.id)
 
-    @edit_donationboard.command(name='sort')
-    async def edit_donationboard_sort(self, ctx, *, sort_by: SortByConverter):
-        """Change which column the donationboard is sorted by.
+        if not result:
+            return await ctx.send(f"I couldn't find a donationboard setup in {channel}. Either #mention a valid board channel, or set one up with `+help add donationboard`.")
+
+        await self.bot.donationboard.update_board(message_id=result['message_id'])
+        await ctx.send(f":white_check_mark: Title updated.")
+
+    @edit_donationboard.command(name='perpage')
+    async def edit_donationboard_per_page(self, ctx, channel: typing.Optional[discord.TextChannel], per_page: int):
+        """Change how many players are displayed on each page of a donationboard.
+
+        By default, it is 15 for the first and second pages, then 20, 25, 25, 50 etc.
+        You can restore the default settings by running `+edit donationboard perpage 0`.
 
         **Parameters**
-        :key: Column to sort by (must be either `donations` or `received`).
+        :key: A channel where the donationboard is located (#mention)
+        :key: The number of players per page. Must be a number (25).
 
         **Format**
-        :information_source: `+edit donationboard sort COLUMN`
+        :information_source: `+edit donationboard perpage #CHANNEL NUMBER`
 
         **Example**
-        :white_check_mark: `+edit donationboard sort donations`
-        :white_check_mark: `+edit donationboard sort received`
+        :white_check_mark: `+edit donationboard perpage #dt-boards 15`
+        :white_check_mark: `+edit donationboard perpage #dt-boards 50`
 
         **Required Permissions**
         :warning: Manage Server
         """
-        if sort_by not in ['donations', 'received']:
-            return await ctx.send("Oops, that didn't look right! Try `donations` or `received` instead.")
+        channel = channel or ctx.channel
+        if per_page < 0:
+            return await ctx.send("You can't have a negative number of players per page!")
 
-        query = "UPDATE boards SET sort_by = $1 WHERE channel_id = $2"
-        await ctx.db.execute(query, sort_by, ctx.config.channel_id)
-        await self.bot.donationboard.update_board(ctx.config.channel_id)
-        await ctx.confirm()
+        query = "UPDATE boards SET per_page = $1 WHERE channel_id = $2 AND type = 'donation' RETURNING message_id"
+        result = await ctx.db.fetchrow(query, per_page, channel.id)
+
+        if not result:
+            return await ctx.send(f"I couldn't find a donationboard setup in {channel}. Either #mention a valid board channel, or set one up with `+help add donationboard`.")
+
+        await self.bot.donationboard.update_board(message_id=result['message_id'])
+        await ctx.send(f":white_check_mark: Per-page count updated.")
 
     @edit.group(name='trophyboard')
     @manage_guild()
-    @requires_config('trophyboard', invalidate=True, error=True)
     async def edit_trophyboard(self, ctx):
-        """[Group] Run through an interactive process of editing the guild's trophyboard.
-
-        **Format**
-        :information_source: `+edit trophyboard`
-
-        **Example**
-        :white_check_mark: `+edit trophyboard`
-
-        **Required Permissions**
-        :warning: Manage Server
+        """[Group] Edit a trophyboard. See the subcommands for more info.
         """
-        if ctx.invoked_subcommand:
-            return
-
-        p = await ctx.prompt('Would you like to edit all settings for the guild trophyboard? ')
-        if not p or p is False:
-            return await ctx.send_help(ctx.command)
-
-        await ctx.invoke(self.edit_trophyboard_format)
-
-        def check(m):
-            return m.author == ctx.author and m.channel == ctx.channel
-
-        await ctx.send('Please send the URL of the icon you wish to use.')
-        try:
-            msg = await self.bot.wait_for('message', check=check, timeout=60.0)
-        except asyncio.TimeoutError:
-            return await ctx.send('You took too long! Aborting command...')
-        await ctx.invoke(self.edit_trophyboard_icon, url=msg.clean_content)
-
-        await ctx.send('Please send the title message you want to display.')
-        try:
-            msg = await self.bot.wait_for('message', check=check, timeout=60.0)
-        except asyncio.TimeoutError:
-            return await ctx.send('You took too long! Aborting command...')
-
-        await ctx.invoke(self.edit_trophyboard_title, title=msg.clean_content)
-
-        return await ctx.send('All done. Thanks!')
-
-    @edit_trophyboard.command(name='format')
-    async def edit_trophyboard_format(self, ctx):
-        """Edit the format of the guild's trophyboard.
-
-        The bot will provide 2 options and you must select 1 via reactions.
-
-        **Format**
-        :information_source: `+edit trophyboard format`
-
-        **Example**
-        :white_check_mark: `+edit trophyboard format`
-
-        **Required Permissions**
-        :warning: Manage Server
-        """
-        table = CLYTable()
-        table.add_rows([[0, 4320, 955, 'Member Name'], [1, 4500, 870, 'Another Member'],
-                        [2, 3900, -600, 'Yet Another'], [3, 1500, -1000, 'Worst Pusher']
-                        ])
-        table.title = '**Option 1 Example**'
-        option_1_render = f'**Option 1 Example**\n{table.trophyboard_1()}'
-
-        table.clear_rows()
-        table.add_rows([[0, 2000, 'Member'], [1, 1500, 'Nearly #1'],
-                        [2, 1490, 'Another Member'], [3, -600, 'Winner']
-                        ])
-
-        option_2_render = f'**Option 2 Example**\n{table.trophyboard_2()}'
-
-        embed = discord.Embed(colour=self.bot.colour)
-        fmt = f'{option_1_render}\n\n\n{option_2_render}\n\n\n' \
-            f'These are the 2 available default options.\n' \
-            f'Please hit the reaction of the format you \nwish to display on the trophyboard.'
-        embed.description = fmt
-        msg = await ctx.send(embed=embed)
-
-        query = "UPDATE boards SET render=$1 WHERE channel_id=$2"
-
-        reactions = ['1\N{combining enclosing keycap}', '2\N{combining enclosing keycap}']
-        for r in reactions:
-            await msg.add_reaction(r)
-
-        def check(r, u):
-            return str(r) in reactions and u.id == ctx.author.id and r.message.id == msg.id
-
-        try:
-            r, u = await self.bot.wait_for('reaction_add', check=check, timeout=60.0)
-        except asyncio.TimeoutError:
-            await ctx.db.execute(query, 1, ctx.config.channel_id)
-            return await ctx.send('You took too long. Option 1 was chosen.')
-
-        await ctx.db.execute(query, reactions.index(str(r)) + 1, ctx.config.channel_id)
-        await ctx.confirm()
+        if not ctx.invoked_subcommand:
+            await ctx.send_help(ctx.command)
 
     @edit_trophyboard.command(name='icon')
-    async def edit_trophyboard_icon(self, ctx, *, url: str = None):
-        """Specify an icon for the server's trophyboard.
+    async def edit_trophyboard_icon(self, ctx, channel: typing.Optional[discord.TextChannel], *, url: str = None):
+        """Add or change the icon for a trophyboard.
 
         **Parameters**
+        :key: A channel where the trophyboard is located (#mention)
         :key: A URL (jpeg, jpg or png only) or uploaded attachment.
 
         **Format**
-        :information_source: `+edit trophyboard icon URL`
+        :information_source: `+edit trophyboard icon #CHANNEL URL`
 
         **Example**
-        :white_check_mark: `+edit tropyboard icon https://catsareus/thecrazycatbot/123.jpg`
-        :white_check_mark: `+edit donatiotrophyboardnboard icon` (with an attached image)
+        :white_check_mark: `+edit tropyboard icon #dt-boards https://catsareus/thecrazycatbot/123.jpg`
+        :white_check_mark: `+edit trophyboard icon #dt-boards` (with an attached image)
 
         **Required Permissions**
         :warning: Manage Server
         """
+        channel = channel or ctx.channel
+
         if not url or not url_validator.match(url):
             attachments = ctx.message.attachments
             if not attachments:
                 return await ctx.send('You must pass in a url or upload an attachment.')
             url = attachments[0].url
+
         if url == 'https://catsareus/thecrazycatbot/123.jpg':
             return await ctx.send('Uh oh! That\'s an example URL - it doesn\'t work!')
 
-        query = "UPDATE boards SET icon_url = $1 WHERE channel_id = $2"
-        await ctx.db.execute(query, url, ctx.config.channel_id)
-        await ctx.confirm()
+        query = "UPDATE boards SET icon_url = $1 WHERE channel_id = $2 AND type = 'trophy' RETURNING message_id"
+        result = await ctx.db.fetchrow(query, url, channel.id)
+        if not result:
+            return await ctx.send(
+                f"I couldn't find a trophyboard setup in {channel}. Either #mention a valid board channel, or set one up with `+help add trophyboard`.")
+
+        await self.bot.donationboard.update_board(message_id=result['message_id'])
+        await ctx.send(f":white_check_mark: Icon URL updated.")
 
     @edit_trophyboard.command(name='title')
-    async def edit_trophyboard_title(self, ctx, *, title: str):
-        """Specify a title for the guild's trophyboard.
+    async def edit_trophyboard_title(self, ctx, channel: typing.Optional[discord.TextChannel], *, title: str):
+        """Change the title for a trophyboard.
 
         **Parameters**
+        :key: A channel where the trophyboard is located (#mention)
         :key: Title (must be less than 50 characters).
 
         **Format**
-        :information_source: `+edit trophyboard title TITLE`
+        :information_source: `+edit trophyboard title #CHANNEL TITLE`
 
         **Example**
-        :white_check_mark: `+edit trophyboard title The Crazy Cat Bot Title`
+        :white_check_mark: `+edit trophyboard title #dt-boards The Crazy Cat Bot Title`
 
         **Required Permissions**
         :warning: Manage Server
         """
+        channel = channel or ctx.channel
         if len(title) >= 50:
             return await ctx.send('Titles must be less than 50 characters.')
 
-        query = "UPDATE boards SET title = $1 WHERE channel_id = $2"
-        await ctx.db.execute(query, title, ctx.config.channel_id)
-        await ctx.confirm()
+        query = "UPDATE boards SET title = $1 WHERE channel_id = $2 AND type = 'trophy' RETURNING message_id"
+        result = await ctx.db.fetchrow(query, title, channel.id)
 
-    @edit_trophyboard.command(name='sort')
-    async def edit_trophyboard_sort(self, ctx, *, sort_by: SortByConverter):
-        """Change which column the trophyboard is sorted by.
+        if not result:
+            return await ctx.send(
+                f"I couldn't find a trophyboard setup in {channel}. Either #mention a valid board channel, or set one up with `+help add trophyboard`.")
+
+        await self.bot.donationboard.update_board(message_id=result['message_id'])
+        await ctx.send(f":white_check_mark: Title updated.")
+
+    @edit_trophyboard.command(name='perpage')
+    async def edit_trophyboard_per_page(self, ctx, channel: typing.Optional[discord.TextChannel], per_page: int):
+        """Change how many players are displayed on each page of a trophyboard.
+
+        By default, it is 15 for the first and second pages, then 20, 25, 25, 50 etc.
+        You can restore the default settings by running `+edit trophyboard perpage 0`.
 
         **Parameters**
-        :key: Column to sort by (must be either `trophies`, `gain` or `loss` (opposite gain)).
+        :key: A channel where the trophyboard is located (#mention)
+        :key: The number of players per page. Must be a number (25).
 
         **Format**
-        :information_source: `+edit trophyboard sort COLUMN`
+        :information_source: `+edit trophyboard perpage #CHANNEL NUMBER`
 
         **Example**
-        :white_check_mark: `+edit trophyboard sort trophies`
-        :white_check_mark: `+edit trophyboard sort gain`
-        :white_check_mark: `+edit trophyboard sort loss`
+        :white_check_mark: `+edit trophyboard perpage #dt-boards 15`
+        :white_check_mark: `+edit trophyboard perpage #dt-boards 50`
 
         **Required Permissions**
         :warning: Manage Server
         """
-        if sort_by not in ['trophies', 'gain', 'loss']:
-            return await ctx.send("Oops, that didn't look right! Try `trophies`, `gain` or `loss` instead.")
+        channel = channel or ctx.channel
+        if per_page < 0:
+            return await ctx.send("You can't have a negative number of players per page!")
 
-        query = "UPDATE boards SET sort_by = $1 WHERE channel_id = $2"
-        await ctx.db.execute(query, sort_by, ctx.config.channel_id)
-        await self.bot.donationboard.update_board(ctx.config.channel_id)
-        await ctx.confirm()
+        query = "UPDATE boards SET per_page = $1 WHERE channel_id = $2 AND type = 'trophy' RETURNING message_id"
+        result = await ctx.db.fetchrow(query, per_page, channel.id)
+
+        if not result:
+            return await ctx.send(f"I couldn't find a trophyboard setup in {channel}. Either #mention a valid board channel, or set one up with `+help add trophyboard`.")
+
+        await self.bot.donationboard.update_board(message_id=result['message_id'])
+        await ctx.send(f":white_check_mark: Per-page count updated.")
+
+    @edit.group(name="lastonlineboard")
+    async def edit_lastonlineboard(self, ctx):
+        return await ctx.send("Last-online boards are deprecated. Please use a donation or trophyboard instead, or better, both! See `+help add boards`")
 
     @edit.group(name='donationlog')
     @manage_guild()
-    @requires_config('donationlog', invalidate=True)
     async def edit_donationlog(self, ctx):
         """[Group] Edit the donationlog settings."""
         if ctx.invoked_subcommand is None:
@@ -429,22 +359,26 @@ class Edit(commands.Cog):
         **Required Permissions**
         :warning: Manage Server
         """
-        if not ctx.config:
-            return await ctx.send('Oops! It doesn\'t look like a donationlog is setup here. '
-                                  'Try `+info` to find where the registered channels are!')
+        channel = channel or ctx.channel
 
         query = """UPDATE logs
                    SET interval = ($1 ||' minutes')::interval
                    WHERE channel_id=$2
                    AND type = $3
+                   RETURNING id;
                 """
-        await ctx.db.execute(query, str(minutes), ctx.config.channel_id, 'donation')
-        await ctx.send(f'Logs for {ctx.config.channel.mention} have been changed to {minutes} minutes. '
-                       f'Find which clans this affects with `+info {ctx.config.channel}`')
+        fetch = await ctx.db.fetchrow(query, str(minutes), channel.id, 'donation')
+        if not fetch:
+            return await ctx.send(
+                "Oops! It doesn't look like a donationlog is setup here. "
+                "Try `+info` to find where the registered channels are!"
+            )
+
+        await ctx.send(f'Logs for {channel.mention} have been changed to {minutes} minutes.')
 
     @edit_donationlog.command(name='toggle')
-    async def edit_donationlog_toggle(self, ctx):
-        """Toggle the donation log on and off.
+    async def edit_donationlog_toggle(self, ctx, channel: discord.TextChannel = None):
+        """Toggle the donation log on.
 
         **Format**
         :information_source: `+edit donationlog toggle`
@@ -455,26 +389,67 @@ class Edit(commands.Cog):
         **Required Permissions**
         :warning: Manage Server
         """
-        if not ctx.config:
-            return await ctx.send('Oops! It doesn\'t look like a donationlog is setup here. '
-                                  'Try `+info` to find where the registered channels are!')
+        channel = channel or ctx.channel
 
         query = """UPDATE logs
-                   SET toggle = NOT toggle
+                   SET toggle = TRUE
                    WHERE channel_id=$1
                    AND type = $2
                    RETURNING toggle
                 """
-        toggle = await ctx.db.fetch(query, ctx.config.channel_id, 'donation')
-        if toggle:
-            condition = 'on'
+        toggle = await ctx.db.fetchrow(query, channel.id, 'donation')
+        if not toggle:
+            return await ctx.send(
+                "Oops! It doesn't look like a donationlog is setup here. "
+                "Try `+info` to find where the registered channels are!"
+            )
+
+        await ctx.send(f'Logs for {channel.mention} have been turned on.')
+
+    @edit_donationlog.command(name='style')
+    async def edit_donationlog_style(self, ctx, channel: discord.TextChannel = None):
+        """Toggle the donation style. This alternates between detailed and basic versions.
+
+        **Format**
+        :information_source: `+edit donationlog style`
+
+        **Example**
+        :white_check_mark: `+edit donationlog style`
+
+        **Required Permissions**
+        :warning: Manage Server
+        """
+        channel = channel or ctx.channel
+
+        query = """UPDATE logs
+                   SET detailed = NOT detailed
+                   WHERE channel_id = $1
+                   AND type = $2
+                   RETURNING detailed;
+                """
+        detailed = await ctx.db.fetchrow(query, channel.id, 'donation')
+        if not detailed:
+            return await ctx.send(
+                "Oops! It doesn't look like a donationlog is setup here. "
+                "Try `+info` to find where the registered channels are!"
+            )
+
+        if detailed['detailed']:
+            embed = discord.Embed(
+                description=f"Donationlog has been set to maximum detail. An example is below. Use `{ctx.prefix}edit donationlog style` to change to the basic version."
+            )
+            embed.set_image(url="https://cdn.discordapp.com/attachments/681438398455742536/681438506857398307/demo_detailed.JPG")
+
         else:
-            condition = 'off'
-        await ctx.send(f'Logs for {ctx.config.channel.mention} have been turned {condition}.')
+            embed = discord.Embed(
+                description=f"Donationlog has been set to basic detail. An example is below. Use `{ctx.prefix}edit donationlog style` to change to maximum detail version."
+            )
+            embed.set_image(url="https://cdn.discordapp.com/attachments/681438398455742536/681438471805861926/demo_basic.JPG")
+
+        return await ctx.send(embed=embed)
 
     @edit.group(name='trophylog')
     @manage_guild()
-    @requires_config('trophylog', invalidate=True)
     async def edit_trophylog(self, ctx):
         """[Group] Edit the trophylog settings."""
         if not ctx.invoked_subcommand:
@@ -497,21 +472,24 @@ class Edit(commands.Cog):
         **Required Permissions**
         :warning: Manage Server
         """
-        if not ctx.config:
-            return await ctx.send('Oops! It doesn\'t look like a trophylog is setup here. '
-                                  'Try `+info` to find where the registered channels are!')
-
+        channel = channel or ctx.channel
         query = """UPDATE logs
                    SET interval = ($1 ||' minutes')::interval
                    WHERE channel_id=$2
                    AND type = $3
+                   RETURNING id
                 """
-        await ctx.db.execute(query, str(minutes), ctx.config.channel_id, 'trophy')
-        await ctx.send(f'Logs for {ctx.config.channel.mention} have been changed to {minutes} minutes. '
-                       f'Find which clans this affects with `+info {ctx.config.channel}`')
+        fetch = await ctx.db.fetchrow(query, str(minutes), channel.id, 'trophy')
+        if not fetch:
+            return await ctx.send(
+                "Oops! It doesn't look like a trophylog is setup here. "
+                "Try `+info` to find where the registered channels are!"
+            )
+
+        await ctx.send(f'Logs for {channel.mention} have been changed to {minutes} minutes.')
 
     @edit_trophylog.command(name='toggle')
-    async def edit_trophylog_toggle(self, ctx):
+    async def edit_trophylog_toggle(self, ctx, channel: discord.TextChannel = None):
         """Toggle the trophy log on and off.
 
         **Format**
@@ -523,22 +501,22 @@ class Edit(commands.Cog):
         **Required Permissions**
         :warning: Manage Server
         """
-        if not ctx.config:
-            return await ctx.send('Oops! It doesn\'t look like a trophylog is setup here. '
-                                  'Try `+info` to find where the registered channels are!')
+        channel = channel or ctx.channel
 
         query = """UPDATE logs
-                   SET toggle = NOT toggle
+                   SET toggle = TRUE
                    WHERE channel_id=$1
                    AND type = $2
                    RETURNING toggle
                 """
-        toggle = await ctx.db.execute(query, ctx.config.channel_id, 'trophy')
-        if toggle:
-            condition = 'on'
-        else:
-            condition = 'off'
-        await ctx.send(f'Logs for {ctx.config.channel.mention} have been turned {condition}.')
+        toggle = await ctx.db.fetchrow(query, channel.id, 'trophy')
+        if not toggle:
+            return await ctx.send(
+                "Oops! It doesn't look like a trophylog is setup here. "
+                "Try `+info` to find where the registered channels are!"
+            )
+
+        await ctx.send(f'Trophy logs for {channel.mention} have been turned on.')
 
     @edit.command(name='event')
     @manage_guild()
@@ -733,16 +711,53 @@ class Edit(commands.Cog):
             await ctx.send(embed=e)
             self.bot.dispatch('event_register')
 
+    @commands.command(hidden=True)
+    @commands.is_owner()
+    async def globalrefresh(self, ctx):
+        query = "SELECT DISTINCT(clan_tag) FROM clans"
+        fetch = await ctx.db.fetch(query)
+
+        player_data = []
+        async for clan in self.bot.coc.get_clans((n[0] for n in fetch)):
+            for player in clan.members:
+                player_data.append({
+                    "player_tag": player.tag,
+                    "donations": player.donations,
+                    "received": player.received,
+                    "trophies": player.trophies,
+                    "clan_tag": clan.tag,
+                    "player_name": player.name
+                })
+
+        query = """
+        UPDATE players SET donations = public.get_don_rec_max(x.donations, x.donations, COALESCE(players.donations, 0)), 
+                           received  = public.get_don_rec_max(x.received, x.received, COALESCE(players.received, 0)), 
+                           trophies  = x.trophies,
+                           clan_tag  = x.clan_tag,
+                           player_name = x.player_name
+        FROM(
+            SELECT x.player_tag, x.donations, x.received, x.trophies, x.clan_tag, x.player_name
+                FROM jsonb_to_recordset($1::jsonb)
+            AS x(player_tag TEXT, 
+                 donations INTEGER,
+                 received INTEGER,
+                 trophies INTEGER,
+                 clan_tag TEXT,
+                 player_name TEXT)
+            )
+        AS x
+        WHERE players.player_tag = x.player_tag
+        AND players.season_id=$2
+        """
+        await ctx.db.execute(query, player_data, await self.bot.seasonconfig.get_season_id())
+        await ctx.tick()
+
     @commands.command()
-    @checks.manage_guild()
-    @requires_config('event')
-    @commands.cooldown(1, 43200, commands.BucketType.guild)
+    @commands.cooldown(1, 60 * 60, commands.BucketType.guild)
     async def refresh(self, ctx, *, clans: ClanConverter = None):
         """Manually refresh all players in the database with current donations and received.
 
-        Note: it will only update their donations if the
-              amount recorded in-game is more than in the database.
-              Ie. if they have left and re-joined it won't update them, usually.
+        Note: this will update all players in the clan based on achievement counts at the season start.
 
         **Parameters**
         :key: Clan - tag, name or `all`.
@@ -757,59 +772,68 @@ class Edit(commands.Cog):
         :white_check_mark: `+refresh Rock Throwers`
         :white_check_mark: `+refresh all`
 
-        **Required Permissions**
-        :warning: Manage Server
-
         **Cooldowns**
-        :hourglass: You can only call this command once every **12 hours**
+        :hourglass: You can only call this command once every **1 hour**
         """
+        query = """UPDATE players SET donations   = public.get_don_rec_max(x.donations, x.donations, players.donations),
+                                      received    = public.get_don_rec_max(x.received, x.received, players.received),
+                                      trophies    = x.trophies,
+                                      player_name = x.player_name,
+                                      clan_tag    = x.clan_tag
+                   FROM (
+                      SELECT x.player_tag, x.donations, x.received, x.trophies, x.player_name, x.clan_tag
+                      FROM jsonb_to_recordset($1::jsonb)
+                      AS x(
+                         player_tag TEXT,
+                         donations INTEGER,
+                         received INTEGER,
+                         trophies INTEGER,
+                         player_name TEXT,
+                         clan_tag TEXT
+                      )
+                   )
+                   AS x
+                   WHERE players.player_tag = x.player_tag
+                   AND players.season_id = $2                      
+                """
+        query3 = "UPDATE players SET clan_tag = NULL WHERE clan_tag = ANY($1::TEXT[]) AND NOT player_tag = ANY($2::TEXT[])"
+        players = []
         async with ctx.typing():
             if not clans:
                 clans = await ctx.get_clans()
-            query = """UPDATE players 
-                       SET donations = $1
-                       WHERE player_tag = $2
-                       AND donations <= $1
-                       AND season_id = $3
-                       RETURNING player_tag;
-                    """
-            query2 = """UPDATE players 
-                        SET received = $1
-                        WHERE player_tag = $2
-                        AND received <= $1  
-                        AND season_id = $3
-                        RETURNING player_tag;
-                     """
-            query3 = """UPDATE players
-                        SET trophies = $1
-                        WHERE player_tag = $2
-                        AND trophies != $1
-                        AND season_id = $3
-                        RETURNING player_tag;               
-                     """
-            query4 = """UPDATE eventplayers
-                        SET live=TRUE
-                        WHERE player_tag = ANY($1::TEXT[])
-                        AND event_id = $2
-                    """
+
             season_id = await self.bot.seasonconfig.get_season_id()
+            player_tags = []
             for clan in clans:
-                for member in clan.members:
-                    await ctx.db.execute(query, member.donations, member.tag, season_id)
-                    await ctx.db.execute(query2, member.received, member.tag, season_id)
-                    await ctx.db.execute(query3, member.trophies, member.tag, season_id)
-                if ctx.config:
-                    await ctx.db.execute(query4, [m.tag for m in clan.members], ctx.config.id)
+                for player in clan.members:
+                    players.append({
+                        "player_tag": player.tag,
+                        "donations": player.donations,
+                        "received": player.received,
+                        "trophies": player.trophies,
+                        "player_name": player.name,
+                        "clan_tag": player.clan and player.clan.tag
+                    })
+                    player_tags.append(player.tag)
+
+            await ctx.db.execute(query3, [n.tag for n in clans], player_tags)
+
+            await ctx.db.execute(query, players, season_id)
 
             dboard_channels = await self.bot.utils.get_board_channels(ctx.guild.id, 'donation')
-            for id_ in dboard_channels:
-                await self.bot.donationboard.update_board(int(id_))
-
             tboard_channels = await self.bot.utils.get_board_channels(ctx.guild.id, 'trophy')
-            for id_ in tboard_channels:
-                await self.bot.donationboard.update_board(int(id_))
+            for id_ in (*dboard_channels, *tboard_channels):
+                await self.bot.donationboard.update_board(message_id=int(id_))
 
             await ctx.send('All done - I\'ve force updated the boards too!')
+
+    @commands.command(hidden=True)
+    @commands.is_owner()
+    async def nuke(self, ctx, clan_tag: str = None):
+        query = "UPDATE players SET donations = 0, received = 0 WHERE clan_tag = $1 AND season_id = $2"
+        await ctx.db.execute(query, clan_tag, await self.bot.seasonconfig.get_season_id())
+        ctx.config = None
+        await ctx.invoke(self.refresh, clans=[await self.bot.coc.get_clan(clan_tag)])
 
     @commands.command(hidden=True)
     @commands.is_owner()

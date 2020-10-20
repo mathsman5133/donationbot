@@ -7,16 +7,156 @@ import textwrap
 import importlib
 from contextlib import redirect_stdout
 import io
+import itertools
 import os
 import re
 import sys
 import copy
 import time
 import subprocess
+import logging
 from typing import Union, Optional
+import shlex
 
 from cogs.utils.formatters import TabularData
 from cogs.utils.converters import GlobalChannel
+import asyncio
+import io
+
+log = logging.getLogger(__name__)
+
+
+class HTMLImages:
+    def __init__(self, players, title=None, image=None):
+        self.players = players
+
+        self.title = title or "Donation Leaderboard"
+        self.image = image or "https://cdn.discordapp.com/attachments/641594147374891029/767306860306759680/dc0f83c3eba7fad4cbe8de3799708e93.jpg"
+
+        self.html = ""
+
+    def get_readable(self, delta):
+        hours, remainder = divmod(int(delta.total_seconds()), 3600)
+        minutes, seconds = divmod(remainder, 60)
+        days, hours = divmod(hours, 24)
+
+        if delta.days:
+            return f"{days}d {hours}h"
+        else:
+            return f"{hours}h {minutes}m"
+
+    def add_style(self):
+        self.html += """
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+img {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 100%;
+  z-index:-1;
+  opacity:0.9;
+}
+table {
+  font-family: Helvetica, Verdana,courier,arial,helvetica;
+  border-collapse: seperate;
+  border-spacing: 0 12px;
+  width: 100%;
+  padding-bottom: 30px;
+  padding-left: 30px;
+  padding-right: 30px
+}
+
+td, th {
+  text-align: center;
+  letter-spacing: 1px;
+  font-size: 42px;
+  padding: 7px;
+  box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+}
+
+th {
+  border: 1px solid #404040;
+  background-color: rgba(185, 147, 108, 0.6);
+}
+
+
+tr:nth-child(even) {
+  background-color: rgba(166, 179, 196, 0.8);
+}
+tr:nth-child(odd) {
+  background-color: rgba(196, 186, 133, 0.8);
+}
+
+header {
+  background:-webkit-gradient(linear,left bottom,left top,color-stop(20%,rgb(196, 183, 166)),color-stop(80%,rgb(220, 207, 186)));
+  font-size: 70px;
+  margin-left: auto;
+  margin-right: auto;
+  text-align: center;
+  font-style: bold;
+  font-weight: 200;
+  letter-spacing: 1.5px;
+  opacity: 1;
+}
+</style>
+        """
+
+    def add_body(self):
+        self.html += '<body>'
+
+    def add_title(self):
+        self.html += f"<header>{self.title}</header>"
+
+    def add_image(self):
+        self.html += f'<img src="{self.image}" alt="Test"></img>'
+
+    def add_table(self):
+        to_add = "<table>"
+
+        headers = ("#", "Player Name", "Dons", "Rec", "Ratio", "Last On")
+        to_add += "<tr>" + "".join(f"<th>{column}</th>" for column in headers) + "</tr>"
+
+        for player in self.players:
+            to_add += "<tr>" + "".join(f"<td>{cell}</td>" for cell in player) + "</tr>"
+
+        to_add += "</table>"
+        self.html += to_add
+
+    def end_html(self):
+        self.html += "</body></html>"
+
+    def parse_players(self):
+        self.players = [(str(i) + ".", p['player_name'], p['donations'], p['received'], round(p['donations'] / (p['received'] or 1), 2),
+                        self.get_readable(p['last_online'])) for i, p in enumerate(self.players, start=1)]
+
+    async def make(self):
+        s = time.perf_counter()
+        self.parse_players()
+        self.add_style()
+        self.add_body()
+        self.add_title()
+        self.add_image()
+        self.add_table()
+        self.end_html()
+        log.info((time.perf_counter() - s)*1000)
+
+        s = time.perf_counter()
+        proc = await asyncio.create_subprocess_shell(
+            "wkhtmltoimage - -", stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
+            stdin=asyncio.subprocess.PIPE,
+        )
+        log.info((time.perf_counter() - s)*1000)
+        s = time.perf_counter()
+        stdout, stderr = await proc.communicate(input=self.html.encode('utf-8'))
+        print(stdout, stderr)
+        log.info((time.perf_counter() - s)*1000)
+        b = io.BytesIO(stdout)
+        b.seek(0)
+        return b
 
 # to expose to the eval command
 import datetime
@@ -119,6 +259,44 @@ class Admin(commands.Cog):
                     coll = ""
                 coll += line
             await ctx.send(coll)
+
+    @commands.command(hidden=True)
+    async def loadapi(self, ctx, num: int = 20):
+        tasks = []
+        async def run(item, *args, **kwargs):
+            for _ in range(num):
+                try:
+                    await item(*args, **kwargs)
+                except:
+                    continue
+
+        client = self.bot.coc
+        for call in (
+            client.get_clan,
+            client.get_members,
+            client.get_warlog,
+            client.get_clan_war,
+            client.get_league_group,
+            client.get_current_war,
+        ):
+            tasks.append(asyncio.ensure_future(run(call, "#G88CYQP")))
+        
+        for call in (
+            client.search_locations,
+            client.search_leagues,
+            client.get_clan_labels,
+            client.get_player_labels,
+            client.get_location_clans,
+            client.get_location_players,
+            client.get_location_clans_versus,
+            client.get_location_players_versus,
+        ):
+            tasks.append(asyncio.ensure_future(run(call)))
+
+        tasks.append(asyncio.ensure_future(run(client.get_player, "#JY9J2Y99")))
+        tasks.append(asyncio.ensure_future(run(client.get_clan, "Reddit")))
+        await asyncio.gather(*tasks)
+        await ctx.send('\N{OK HAND SIGN}')
 
     @commands.command(hidden=True)
     async def load(self, ctx, *, module):
@@ -415,6 +593,36 @@ class Admin(commands.Cog):
         return await self.safe_send(ctx, fmt)
 
     @commands.command(hidden=True)
+    async def sqlite(self, ctx, *, query: str):
+        """Run some SQLite."""
+        # the imports are here because I imagine some people would want to use
+        # this cog as a base for their other cog, and since this one is kinda
+        # odd and unnecessary for most people, I will make it easy to remove
+        # for those people.
+        query = self.cleanup_code(query)
+
+        try:
+            start = time.perf_counter()
+            cursor = self.bot.sqlite.execute(query)
+            results = cursor.fetchall()
+            dt = (time.perf_counter() - start) * 1000.0
+        except Exception:
+            return await ctx.send(f'```py\n{traceback.format_exc()}\n```')
+
+        rows = len(results)
+        if rows == 0:
+            return await ctx.send(f'`{dt:.2f}ms: {results}`')
+
+        headers = [f"header {i}" for i in range(len(results[0]))]
+        table = TabularData()
+        table.set_columns(headers)
+        table.add_rows(list(r) for r in results)
+        render = table.render()
+
+        fmt = f'```\n{render}\n```\n*Returned {rows} rows in {dt:.2f}ms*'
+        return await self.safe_send(ctx, fmt)
+
+    @commands.command(hidden=True)
     async def sql_table(self, ctx, *, table_name: str):
         """Runs a query describing the table schema."""
         query = """SELECT column_name, data_type, column_default, is_nullable
@@ -563,6 +771,37 @@ class Admin(commands.Cog):
             success = True
 
         await ctx.send(f'Status: {ctx.tick(success)} Time: {(end - start) * 1000:.2f}ms')
+
+    @commands.command()
+    async def rb(self, ctx, limit: int = 15):
+        query = """
+        SELECT DISTINCT player_name,
+                        donations,
+                        received,
+                        trophies,
+                        now() - last_updated AS "last_online",
+                        donations / NULLIF(received, 0) AS "ratio",
+                        trophies - start_trophies AS "gain"
+       FROM players
+       INNER JOIN clans
+       ON clans.clan_tag = players.clan_tag
+       WHERE clans.channel_id = (SELECT channel_id FROM clans OFFSET random() LIMIT 1)
+       AND season_id = 16
+       ORDER BY donations DESC
+       NULLS LAST
+       LIMIT $1
+       """
+        s = time.perf_counter()
+        f = await ctx.db.fetch(query, limit)
+        # players = [(i, p['player_name'], p['donations'], p['received'], round(p['donations'] / p['received'], 2), p['last_online']) for i, p in enumerate(f)]
+        e = (time.perf_counter() - s)*1000
+
+        s = time.perf_counter()
+        b = await HTMLImages(players=f).make()
+        # await ctx.send(im)
+        f = (time.perf_counter() - s) * 1000
+
+        await ctx.send(f"q: {e}, s: {f}", file=discord.File(b, filename="donationboard.png"))
 
 def setup(bot):
     bot.add_cog(Admin(bot))
