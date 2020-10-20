@@ -415,7 +415,10 @@ class Stats(commands.Cog):
             show_tags = True
 
         argument = await ConvertToPlayers().convert(ctx, argument)
-
+        
+        if not argument:
+            return await ctx.send("I couldn't find any players. Perhaps try adding a clan?")
+        
         title = "Accounts Added"
         emojis = await self._get_emojis(ctx.guild.id)
         description = self._get_description(emojis, argument)
