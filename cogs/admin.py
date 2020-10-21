@@ -154,7 +154,7 @@ header {
         self.html += "</body></html>"
 
     def parse_players(self):
-        self.players = [(str(i) + ".", p['player_name'], p['donations'], p['received'], round(p['donations'] / p['received'], 2),
+        self.players = [(str(i) + ".", p['player_name'], p['donations'], p['received'], round(p['donations'] / (p['received'] or 1), 2),
                         self.get_readable(p['last_online'])) for i, p in enumerate(self.players, start=1)]
 
     async def make(self):
@@ -175,7 +175,7 @@ header {
 
         s = time.perf_counter()
         proc = await asyncio.create_subprocess_shell(
-            "wkhtmltoimage.exe - -", stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
+            "wkhtmltoimage - -", stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
             stdin=asyncio.subprocess.PIPE,
         )
         log.info((time.perf_counter() - s)*1000)
