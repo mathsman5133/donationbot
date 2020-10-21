@@ -57,12 +57,14 @@ body {
 width: 2500px;
 }
 """
+            width = "width: 50%"
         else:
             body = """
 body {
-width: 1500px;
+width: 1200px;
 }
 """
+            width = "width: 100%"
 
         self.html += """
 <!DOCTYPE html>
@@ -83,7 +85,7 @@ table {
   font-family: Helvetica, Verdana,courier,arial,helvetica;
   border-collapse: seperate;
   border-spacing: 0 12px;
-  width: 50%;
+""" + width + """
   padding-bottom: 30px;
   padding-left: 30px;
   padding-right: 30px;
