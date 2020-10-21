@@ -27,13 +27,18 @@ log = logging.getLogger(__name__)
 
 
 class HTMLImages:
-    def __init__(self, players, title=None, image=None):
+    def __init__(self, players, title=None, image=None, sort_by=None):
         self.players = players
 
         self.title = title or "Donation Leaderboard"
         self.image = image or "https://cdn.discordapp.com/attachments/641594147374891029/767306860306759680/dc0f83c3eba7fad4cbe8de3799708e93.jpg"
 
         self.html = ""
+        if sort_by:
+            columns = ("#", "Player Name", "donations", "received", "ratio", "last_online")
+            self.selected_index = [1, columns.index(sort_by)]
+        else:
+            self.selected_index = []
 
     def get_readable(self, delta):
         hours, remainder = divmod(int(delta.total_seconds()), 3600)
@@ -46,11 +51,21 @@ class HTMLImages:
             return f"{hours}h {minutes}m"
 
     def add_style(self):
+        if len(self.players) > 30:
+            body = """
+body {
+width: 2500px;
+}
+"""
+        else:
+            body = ""
+
         self.html += """
 <!DOCTYPE html>
 <html>
 <head>
 <style>
+""" + body + """
 img {
   position: fixed;
   top: 0;
@@ -64,10 +79,11 @@ table {
   font-family: Helvetica, Verdana,courier,arial,helvetica;
   border-collapse: seperate;
   border-spacing: 0 12px;
-  width: 100%;
+  width: 50%;
   padding-bottom: 30px;
   padding-left: 30px;
-  padding-right: 30px
+  padding-right: 30px;
+  float: left
 }
 
 td, th {
@@ -82,7 +98,9 @@ th {
   border: 1px solid #404040;
   background-color: rgba(185, 147, 108, 0.6);
 }
-
+.selected {
+  background-color: #ace;
+}
 
 tr:nth-child(even) {
   background-color: rgba(166, 179, 196, 0.8);
@@ -114,14 +132,20 @@ header {
     def add_image(self):
         self.html += f'<img src="{self.image}" alt="Test"></img>'
 
-    def add_table(self):
+    def add_table(self, players):
         to_add = "<table>"
 
         headers = ("#", "Player Name", "Dons", "Rec", "Ratio", "Last On")
-        to_add += "<tr>" + "".join(f"<th>{column}</th>" for column in headers) + "</tr>"
+        to_add += "<tr>" + "".join(
+            f"<th{' class=selected' if i in self.selected_index else ''}>{column}</th>"
+            for i, column in enumerate(headers)
+        ) + "</tr>"
 
-        for player in self.players:
-            to_add += "<tr>" + "".join(f"<td>{cell}</td>" for cell in player) + "</tr>"
+        for player in players:
+            to_add += "<tr>" + "".join(
+                f"<td{' class=selected' if i in self.selected_index else ''}>{cell}</td>"
+                for i, cell in enumerate(player)
+            ) + "</tr>"
 
         to_add += "</table>"
         self.html += to_add
@@ -140,7 +164,12 @@ header {
         self.add_body()
         self.add_title()
         self.add_image()
-        self.add_table()
+        if len(self.players) > 30:
+            self.add_table(self.players[:int(len(self.players)/2)])
+            self.add_table(self.players[int(len(self.players)/2)])
+        else:
+            self.add_table(self.players)
+
         self.end_html()
         log.info((time.perf_counter() - s)*1000)
 
