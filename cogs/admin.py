@@ -51,7 +51,7 @@ class HTMLImages:
             return f"{hours}h {minutes}m"
 
     def add_style(self):
-        if len(self.players) > 30:
+        if len(self.players) >= 30:
             body = """
 body {
 width: 2500px;
@@ -60,7 +60,7 @@ width: 2500px;
         else:
             body = """
 body {
-width: 1000px;
+width: 1500px;
 }
 """
 
@@ -168,7 +168,7 @@ header {
         self.add_body()
         self.add_title()
         self.add_image()
-        if len(self.players) > 30:
+        if len(self.players) >= 30:
             self.add_table(self.players[:int(len(self.players)/2)])
             self.add_table(self.players[int(len(self.players)/2):])
         else:
