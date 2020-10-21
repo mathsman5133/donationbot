@@ -57,14 +57,14 @@ body {
 width: 2500px;
 }
 """
-            width = "width: 50%"
+            width = "width: 50%;"
         else:
             body = """
 body {
 width: 1200px;
 }
 """
-            width = "width: 100%"
+            width = "width: 100%;"
 
         self.html += """
 <!DOCTYPE html>
