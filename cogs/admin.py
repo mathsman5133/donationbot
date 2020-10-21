@@ -58,7 +58,11 @@ width: 2500px;
 }
 """
         else:
-            body = ""
+            body = """
+body {
+width: 1000px;
+}
+"""
 
         self.html += """
 <!DOCTYPE html>
