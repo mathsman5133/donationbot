@@ -166,7 +166,7 @@ header {
         self.add_image()
         if len(self.players) > 30:
             self.add_table(self.players[:int(len(self.players)/2)])
-            self.add_table(self.players[int(len(self.players)/2)])
+            self.add_table(self.players[int(len(self.players)/2):])
         else:
             self.add_table(self.players)
 
@@ -824,9 +824,9 @@ class Admin(commands.Cog):
         f = await ctx.db.fetch(query, limit)
         # players = [(i, p['player_name'], p['donations'], p['received'], round(p['donations'] / p['received'], 2), p['last_online']) for i, p in enumerate(f)]
         e = (time.perf_counter() - s)*1000
-
+        import random
         s = time.perf_counter()
-        b = await HTMLImages(players=f).make()
+        b = await HTMLImages(players=f, sort_by=random.choice(['last_online', 'donations', 'received'])).make()
         # await ctx.send(im)
         f = (time.perf_counter() - s) * 1000
 
