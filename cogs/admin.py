@@ -18,7 +18,6 @@ import logging
 from typing import Union, Optional
 import shlex
 
-from cogs.boards import HTMLImages
 from cogs.utils.formatters import TabularData
 from cogs.utils.converters import GlobalChannel
 import asyncio
@@ -641,36 +640,6 @@ class Admin(commands.Cog):
 
         await ctx.send(f'Status: {ctx.tick(success)} Time: {(end - start) * 1000:.2f}ms')
 
-    @commands.command()
-    async def rb(self, ctx, limit: int = 15):
-        query = """
-        SELECT DISTINCT player_name,
-                        donations,
-                        received,
-                        trophies,
-                        now() - last_updated AS "last_online",
-                        donations / NULLIF(received, 0) AS "ratio",
-                        trophies - start_trophies AS "gain"
-       FROM players
-       INNER JOIN clans
-       ON clans.clan_tag = players.clan_tag
-       WHERE clans.channel_id = (SELECT channel_id FROM clans OFFSET random() LIMIT 1)
-       AND season_id = 16
-       ORDER BY donations DESC
-       NULLS LAST
-       LIMIT $1
-       """
-        s = time.perf_counter()
-        f = await ctx.db.fetch(query, limit)
-        # players = [(i, p['player_name'], p['donations'], p['received'], round(p['donations'] / p['received'], 2), p['last_online']) for i, p in enumerate(f)]
-        e = (time.perf_counter() - s)*1000
-        import random
-        s = time.perf_counter()
-        b = await HTMLImages(players=f, sort_by=random.choice(['last_online', 'donations', 'received'])).make()
-        # await ctx.send(im)
-        f = (time.perf_counter() - s) * 1000
-
-        await ctx.send(f"q: {e}, s: {f}", file=discord.File(b, filename="donationboard.png"))
 
 def setup(bot):
     bot.add_cog(Admin(bot))
