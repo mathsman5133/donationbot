@@ -100,6 +100,7 @@ img {
   opacity:0.9;
 }
 table {
+  font-family: Helvetica, Verdana,courier,arial,symbola;
   border-collapse: seperate;
   border-spacing: 0 12px;
 """ + width + """
