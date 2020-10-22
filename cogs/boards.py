@@ -177,7 +177,7 @@ class DonationBoard(commands.Cog):
             fetch = await self.bot.pool.fetchrow('UPDATE boards SET page = page + 1, toggle=True WHERE message_id = $1 RETURNING *', payload.message_id)
 
         elif payload.emoji == LEFT_EMOJI:
-            fetch = await self.bot.pool.fetchrow('UPDATE boards SET page = page - 1, toggle=True WHERE message_id = $1 AND page > 1 RETURNING *', payload.message_id)
+            fetch = await self.bot.pool.fetchrow('UPDATE boards SET page = page - 1, toggle=True WHERE message_id = $1 AND page >= 1 RETURNING *', payload.message_id)
 
         elif payload.emoji == REFRESH_EMOJI:
             original_sort = 'donations' if fetch['type'] == 'donation' else 'trophies'

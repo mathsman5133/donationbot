@@ -39,8 +39,8 @@ class HTMLImages:
 
         self.donationboard = donationboard
         self.offset = offset or 1
-        self.title = title or "Donation Leaderboard" if donationboard else "Trophy Leaderboard"
-        self.image = image or "https://cdn.discordapp.com/attachments/641594147374891029/767306860306759680/dc0f83c3eba7fad4cbe8de3799708e93.jpg" if donationboard else "https://cdn.discordapp.com/attachments/681438398455742536/768649037250560060/clash_cliffs2-min.png"
+        self.title = title or ("Donation Leaderboard" if donationboard else "Trophy Leaderboard")
+        self.image = image or ("https://cdn.discordapp.com/attachments/681438398455742536/768684688100687882/snowyfield2.png" if donationboard else "https://cdn.discordapp.com/attachments/681438398455742536/768649037250560060/clash_cliffs2-min.png")
         self.footer = footer
         self.fonts = fonts or "symbola, Helvetica, Verdana,courier,arial,symbola"
 
