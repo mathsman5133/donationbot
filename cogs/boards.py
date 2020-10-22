@@ -446,8 +446,12 @@ class DonationBoard(commands.Cog):
             page = int(message.embeds[0]._footer['text'].split(";")[0].split(" ")[1])
             season_id = int(message.embeds[0]._footer['text'].split(";")[1].split(" ")[1])
         except (AttributeError, KeyError, ValueError, IndexError):
-            page = 1
-            season_id = await self.bot.seasonconfig.get_season_id()
+            try:
+                page = int(message.content.split(";")[0].split(" ")[1])
+                season_id = int(message.content.split(";")[1].split(" ")[1])
+            except (AttributeError, KeyError, ValueError, IndexError):
+                page = 1
+                season_id = await self.bot.seasonconfig.get_season_id()
 
         if page + add_pages < 1:
             return  # don't bother about page 0's
@@ -558,139 +562,7 @@ class DonationBoard(commands.Cog):
         await self.bot.background.log_message_send(config.message_id, config.channel_id,  config.guild_id, config.type + 'board')
 
         if donationboard:
-            await message.edit(content=f"{logged_board_message.attachments[0].url}\nPage {page + add_pages};Season {season_id};")
-        else:
-            e = discord.Embed(colour=discord.Colour.blue() if donationboard else discord.Colour.green())
-            e.set_image(url=logged_board_message.attachments[0].url)
-            e.set_footer(text=f"Page {page + add_pages};Season {season_id};").timestamp = datetime.utcnow()
-            await message.edit(content=None, embed=e)
-
-    async def mpl_boards(self, config, add_pages=0, season_offset=0, reset=False, update_global_board=False):
-        if config.channel_id == GLOBAL_BOARDS_CHANNEL_ID and not update_global_board:
-            return
-
-        donationboard = config.type == 'donation'
-        start = time.perf_counter()
-        message = await self.bot.utils.get_message(config.channel, config.message_id)
-        if not message:
-            try:
-                message = await config.channel.send("Placeholder.... do not delete me!")
-            except (discord.Forbidden, discord.NotFound):
-                await self.bot.pool.execute("UPDATE boards SET toggle = FALSE WHERE channel_id = $1", config.channel_id)
-                return
-
-            await message.add_reaction(REFRESH_EMOJI)
-            await message.add_reaction(LEFT_EMOJI)
-            await message.add_reaction(RIGHT_EMOJI)
-            if donationboard:
-                await message.add_reaction(PERCENTAGE_EMOJI)
-            else:
-                await message.add_reaction(GAIN_EMOJI)
-
-            await message.add_reaction(LAST_ONLINE_EMOJI)
-            await message.add_reaction(HISTORICAL_EMOJI)
-            await self.bot.pool.execute("UPDATE boards SET message_id = $1 WHERE channel_id = $2 AND type = $3", message.id, config.channel_id, config.type)
-
-        try:
-            page = int(message.content.split(";")[0].split(" ")[1])
-            season_id = int(message.content.split(";")[1].split(" ")[1])
-        except (AttributeError, KeyError, ValueError, IndexError):
-            page = 1
-            season_id = await self.bot.seasonconfig.get_season_id()
-
-        if page + add_pages < 1:
-            return  # don't bother about page 0's
-
-        offset = 0
-
-        if reset:
-            offset = 0
-            page = 1
-            season_id = await self.bot.seasonconfig.get_season_id()
-        else:
-            for i in range(1, page + add_pages):
-                offset += self.get_next_per_page(i, config.per_page)
-            season_id += season_offset
-
-        if season_id < 1:
-            season_id = await self.bot.seasonconfig.get_season_id()
-        if offset < 0:
-            offset = 0
-
-        if config.channel_id == GLOBAL_BOARDS_CHANNEL_ID:
-            query = f"""SELECT DISTINCT player_name,
-                                        donations,
-                                        received,
-                                        trophies,
-                                        cast(donations as decimal) / NULLIF(received, 0) AS "ratio",
-                                        now() - last_updated AS "last_online",
-                                        trophies - start_trophies AS "gain"
-                       FROM players
-                       INNER JOIN clans
-                       ON clans.clan_tag = players.clan_tag
-                       WHERE season_id = $1
-                       ORDER BY {'donations' if config.sort_by == 'donation' else config.sort_by} DESC
-                       NULLS LAST
-                       LIMIT $2
-                       OFFSET $3
-                    """
-            fetch = await self.bot.pool.fetch(
-                query,
-                season_id,
-                self.get_next_per_page(page + add_pages, config.per_page),
-                offset
-            )
-        else:
-            query = f"""SELECT DISTINCT player_name,
-                                        donations,
-                                        received,
-                                        trophies,
-                                        CAST(donations as decimal) / NULLIF(received, 0) AS "ratio",
-                                        now() - last_updated AS "last_online",
-                                        trophies - start_trophies AS "gain"
-                       FROM players
-                       INNER JOIN clans
-                       ON clans.clan_tag = players.clan_tag
-                       WHERE clans.channel_id = $1
-                       AND season_id = $2
-                       ORDER BY {'donations' if config.sort_by == 'donation' else config.sort_by} DESC
-                       NULLS LAST
-                       LIMIT $3
-                       OFFSET $4
-                    """
-            fetch = await self.bot.pool.fetch(
-                query,
-                config.channel_id,
-                season_id,
-                self.get_next_per_page(page + add_pages, config.per_page),
-                offset
-            )
-
-        if not fetch:
-            return  # they scrolled too far
-
-        # fetch = await self.bot.pool.fetchrow("SELECT start, finish FROM seasons WHERE id = $1", season_id)
-        # season_start, season_finish = fetch[0].strftime('%d-%b-%Y'), fetch[1].strftime('%d-%b-%Y')
-
-        if donationboard:
-            table = HTMLImages(players=fetch, title=config.title, image=config.icon_url, sort_by=config.sort_by)
-            render = await table.make()
-        else:
-            table = TrophyBoardTable(config.title, offset)
-            table.add_rows(fetch)
-            render = await self.bot.loop.run_in_executor(None, table.render)
-
-        logged_board_message = await next(self.webhooks).send(
-            f"Perf: {(time.perf_counter() - start) * 1000}ms\n"
-            f"Channel: {config.channel_id}\n"
-            f"Guild: {config.guild_id}",
-            file=discord.File(render, f'{config.type}board.png'),
-            wait=True
-        )
-        await self.bot.background.log_message_send(config.message_id, config.channel_id,  config.guild_id, config.type + 'board')
-
-        if donationboard:
-            await message.edit(content=f"{logged_board_message.attachments[0].url}\nPage {page + add_pages};Season {season_id};")
+            await message.edit(content=f"{logged_board_message.attachments[0].url}\nPage {page + add_pages};Season {season_id};", embed=None)
         else:
             e = discord.Embed(colour=discord.Colour.blue() if donationboard else discord.Colour.green())
             e.set_image(url=logged_board_message.attachments[0].url)
