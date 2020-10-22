@@ -31,7 +31,7 @@ log = logging.getLogger(__name__)
 loop = asyncio.get_event_loop()
 pool = loop.run_until_complete(Table.create_pool(creds.postgres))
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 
 
 class HTMLImages:
@@ -191,8 +191,14 @@ header {
         self.html += "</body></html>"
 
     def parse_players(self):
-        self.players = [(str(i) + ".", p['player_name'], p['donations'], p['received'], round(p['donations'] / (p['received'] or 1), 2),
-                        self.get_readable(p['last_online'])) for i, p in enumerate(self.players, start=self.offset)]
+        if self.donationboard:
+            self.players = [(str(i) + ".", p['player_name'], p['donations'], p['received'], round(p['donations'] / (p['received'] or 1), 2),
+                            self.get_readable(p['last_online'])) for i, p in enumerate(self.players, start=self.offset)]
+        else:
+            self.players = [
+                (str(i) + ".", p['player_name'], p['trophies'], p['gain'], self.get_readable(p['last_online']))
+                for i, p in enumerate(self.players, start=self.offset)
+            ]
 
     async def make(self):
         s = time.perf_counter()
@@ -209,19 +215,17 @@ header {
 
         self.add_footer()
         self.end_html()
-        log.info((time.perf_counter() - s)*1000)
+        log.debug((time.perf_counter() - s)*1000)
 
         s = time.perf_counter()
         proc = await asyncio.create_subprocess_shell(
             "wkhtmltoimage - -", stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
             stdin=asyncio.subprocess.PIPE,
         )
-        log.info((time.perf_counter() - s)*1000)
+        log.debug((time.perf_counter() - s)*1000)
         s = time.perf_counter()
-        print(self.html)
         stdout, stderr = await proc.communicate(input=self.html.encode('utf-8'))
-        print(stdout, stderr)
-        log.info((time.perf_counter() - s)*1000)
+        log.debug((time.perf_counter() - s)*1000)
         b = io.BytesIO(stdout)
         b.seek(0)
         return b
@@ -381,13 +385,14 @@ class SyncBoards:
         render = await table.make()
         s2 = time.perf_counter() - s1
 
+        perf_log = f"Perf: {(time.perf_counter() - start) * 1000}ms\n" \
+                   f"Build Image Perf: {s2 * 1000}ms\n" \
+                   f"Channel: {config.channel_id}\n" \
+                   f"Guild: {config.guild_id}"
+
+        log.info(perf_log)
         logged_board_message = await next(self.webhooks).send(
-            f"Perf: {(time.perf_counter() - start) * 1000}ms\n"
-            f"Build Image Perf: {s2 * 1000}ms\n"
-            f"Channel: {config.channel_id}\n"
-            f"Guild: {config.guild_id}",
-            file=discord.File(render, f'{config.type}board.png'),
-            wait=True
+            perf_log, file=discord.File(render, f'{config.type}board.png'), wait=True
         )
 
         try:
