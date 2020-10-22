@@ -7,6 +7,7 @@ import time
 from datetime import datetime
 
 import aiohttp
+import coc
 import discord
 
 from discord.ext import tasks
@@ -242,6 +243,8 @@ class SyncBoards:
 
         self.webhooks = None
         self.session = aiohttp.ClientSession()
+        self.throttler = coc.BatchThrottler(120, 60.0)
+
         bot.loop.create_task(self.on_init())
         self.update_board_loops.start()
 
@@ -269,13 +272,19 @@ class SyncBoards:
 
         fetch = await pool.fetch("UPDATE boards SET need_to_update=False WHERE need_to_update=True AND toggle=True RETURNING *")
 
+        current_tasks = []
         for n in fetch:
             try:
                 config = BoardConfig(bot=self.bot, record=n)
-                await self.update_board(config)
-                self.last_updated_channels[n['channel_id']] = datetime.utcnow()
+                current_tasks.append(self.bot.loop.create_task(self.run_board(config)))
             except:
                 log.exception(f"old board failed...\nChannel ID: {n['channel_id']}")
+
+        await asyncio.gather(*current_tasks)
+
+    async def run_board(self, config):
+        async with self.throttler:
+            await self.update_board(config)
 
     async def set_new_message(self, config):
         try:
