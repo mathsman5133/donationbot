@@ -35,7 +35,7 @@ logging.basicConfig(level=logging.INFO)
 
 
 class HTMLImages:
-    def __init__(self, players, title=None, image=None, sort_by=None, footer=None, offset=None, donationboard=True):
+    def __init__(self, players, title=None, image=None, sort_by=None, footer=None, offset=None, donationboard=None):
         self.players = players
 
         self.donationboard = donationboard
@@ -251,7 +251,6 @@ class SyncBoards:
                 payload['id'], payload['token'], adapter=discord.AsyncWebhookAdapter(session=self.session)
             ) for payload in await self.bot.http.guild_webhooks(691779140059267084)
         ]
-        print(self.webhooks)
         self.webhooks = itertools.cycle(self.webhooks)
 
     async def get_season_meta(self, season_id):
