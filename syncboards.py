@@ -52,7 +52,7 @@ class HTMLImages:
 
         if sort_by and donationboard:
             sort_columns = ("#", "Player Name", "donations", "received", "ratio", "last_online ASC, player_name")
-            self.selected_index = [1, sort_columns.index(sort_by)]
+            self.selected_index = [1, sort_columns.index('donations' if sort_by == 'donation' else sort_by)]
         elif sort_by:
             sort_columns = ("#", "Player Name", "trophies", "gain", "last_online ASC, player_name")
             self.selected_index = [1, sort_columns.index(sort_by.replace('donations', 'trophies'))]
