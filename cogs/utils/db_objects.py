@@ -60,7 +60,7 @@ class LogConfig:
 
 class BoardConfig:
     __slots__ = ('bot', 'guild_id', 'channel_id', 'icon_url', 'title',
-                 'render', 'sort_by', 'toggle', 'type', 'in_event', 'message_id', 'per_page')
+                 'sort_by', 'toggle', 'type', 'in_event', 'message_id', 'per_page', 'page', 'season_id')
 
     def __init__(self, *, bot, record):
         self.bot = bot
@@ -69,13 +69,14 @@ class BoardConfig:
         self.channel_id: int = record['channel_id']
         self.icon_url: str = record['icon_url']
         self.title: str = record['title']
-        self.render: int = record['render']
         self.sort_by: str = record['sort_by']
         self.toggle: bool = record['toggle']
         self.type: str = record['type']
         self.in_event: bool = record['in_event']
         self.message_id: int = record['message_id']
         self.per_page: int = record['per_page']
+        self.page: int = record['page']
+        self.season_id: int = record['season_id']
 
     @property
     def guild(self) -> discord.Guild:

@@ -233,7 +233,7 @@ class DonationBoard(commands.Cog):
         self._data_batch = {}
 
         self.update_board_loops.add_exception_type(asyncpg.PostgresConnectionError, coc.ClashOfClansException)
-        self.update_board_loops.start()
+        # self.update_board_loops.start()
 
         self.update_global_board.add_exception_type(asyncpg.PostgresConnectionError, coc.ClashOfClansException)
         self.update_global_board.start()
@@ -417,6 +417,7 @@ class DonationBoard(commands.Cog):
         return config_per_page
 
     async def new_donationboard_updater(self, config, add_pages=0, season_offset=0, reset=False, update_global_board=False):
+        return
         if config.channel_id == GLOBAL_BOARDS_CHANNEL_ID and not update_global_board:
             return
 
@@ -629,10 +630,12 @@ class DonationBoard(commands.Cog):
         update_globalboards = False
 
         if payload.emoji == RIGHT_EMOJI:
+            await self.bot.pool.execute('UPDATE boards SET page = page + 1 WHERE message_id = $1 RETURNING *', payload.message_id)
             offset = 1
             update_globalboards = True
 
         elif payload.emoji == LEFT_EMOJI:
+            await self.bot.pool.execute('UPDATE boards SET page = page - 1 WHERE message_id = $1 RETURNING *', payload.message_id)
             offset = -1
             update_globalboards = True
 
@@ -659,12 +662,13 @@ class DonationBoard(commands.Cog):
             update_globalboards = True
 
         elif payload.emoji == HISTORICAL_EMOJI:
+            await self.bot.pool.execute('UPDATE boards SET season_id = season_id - 1 WHERE message_id = $1 RETURNING *', payload.message_id)
             season_offset = -1
             update_globalboards = True
 
         config = BoardConfig(bot=self.bot, record=fetch)
         await self.new_donationboard_updater(config, offset, season_offset=season_offset, reset=hard_reset, update_global_board=update_globalboards)
-
+        await self.bot.pool.execute('UPDATE boards SET need_to_update=True WHERE message_id=$1', payload.message_id)
 
 def setup(bot):
     bot.add_cog(DonationBoard(bot))
