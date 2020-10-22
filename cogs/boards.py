@@ -174,30 +174,30 @@ class DonationBoard(commands.Cog):
             return
 
         if payload.emoji == RIGHT_EMOJI:
-            await self.bot.pool.execute('UPDATE boards SET page = page + 1 WHERE message_id = $1 RETURNING *', payload.message_id)
+            fetch = await self.bot.pool.execute('UPDATE boards SET page = page + 1, toggle=True WHERE message_id = $1 RETURNING *', payload.message_id)
 
         elif payload.emoji == LEFT_EMOJI:
-            await self.bot.pool.execute('UPDATE boards SET page = page - 1 WHERE message_id = $1 RETURNING *', payload.message_id)
+            fetch = await self.bot.pool.execute('UPDATE boards SET page = page - 1, toggle=True WHERE message_id = $1 AND page > 1 RETURNING *', payload.message_id)
 
         elif payload.emoji == REFRESH_EMOJI:
             original_sort = 'donations' if fetch['type'] == 'donation' else 'trophies'
-            query = "UPDATE boards SET sort_by = $1, page=1, season_id=0 WHERE message_id = $2 RETURNING *"
+            query = "UPDATE boards SET sort_by = $1, page=1, season_id=0, toggle=True WHERE message_id = $2 RETURNING *"
             fetch = await self.bot.pool.fetchrow(query, original_sort, payload.message_id)
 
         elif payload.emoji == PERCENTAGE_EMOJI:
-            query = "UPDATE boards SET sort_by = 'ratio' WHERE message_id = $1 RETURNING *"
+            query = "UPDATE boards SET sort_by = 'ratio', toggle=True WHERE message_id = $1 RETURNING *"
             fetch = await self.bot.pool.fetchrow(query, payload.message_id)
 
         elif payload.emoji == GAIN_EMOJI:
-            query = "UPDATE boards SET sort_by = 'gain' WHERE message_id = $1 RETURNING *"
+            query = "UPDATE boards SET sort_by = 'gain', toggle=True WHERE message_id = $1 RETURNING *"
             fetch = await self.bot.pool.fetchrow(query, payload.message_id)
 
         elif payload.emoji == LAST_ONLINE_EMOJI:
-            query = "UPDATE boards SET sort_by = 'last_online ASC, player_name' WHERE message_id = $1 RETURNING *"
+            query = "UPDATE boards SET sort_by = 'last_online ASC, player_name', toggle=True WHERE message_id = $1 RETURNING *"
             fetch = await self.bot.pool.fetchrow(query, payload.message_id)
 
         elif payload.emoji == HISTORICAL_EMOJI:
-            await self.bot.pool.execute('UPDATE boards SET season_id = season_id - 1 WHERE message_id = $1 RETURNING *', payload.message_id)
+            await self.bot.pool.execute('UPDATE boards SET season_id = season_id - 1, toggle=True WHERE message_id = $1 RETURNING *', payload.message_id)
 
         config = BoardConfig(bot=self.bot, record=fetch)
         await self.update_board(None, config=config)

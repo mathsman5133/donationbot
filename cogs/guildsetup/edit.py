@@ -139,11 +139,11 @@ class Edit(commands.Cog):
         """
         channel = channel or ctx.channel
 
-        if not url or not url_validator.match(url):
-            attachments = ctx.message.attachments
-            if not attachments:
-                return await ctx.send('You must pass in a url or upload an attachment.')
-            url = attachments[0].url
+        # if not url or not url_validator.match(url):
+        #     attachments = ctx.message.attachments
+        #     if not attachments:
+        #         return await ctx.send('You must pass in a url or upload an attachment.')
+        #     url = attachments[0].url
 
         if url == 'https://catsareus/thecrazycatbot/123.jpg':
             return await ctx.send('Uh oh! That\'s an example URL - it doesn\'t work!')
