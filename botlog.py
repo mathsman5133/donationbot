@@ -18,7 +18,7 @@ def setup_logging(bot, test_syncer=False):
     logging.getLogger('discord.state').setLevel(logging.WARNING)
     logging.getLogger('websockets.protocol').setLevel(logging.WARNING)
     logging.getLogger('coc').setLevel(logging.INFO)
-    logging.getLogger('coc.http').setLevel(logging.WARNING)
+    logging.getLogger('coc.http').setLevel(logging.INFO)
 
     log = logging.getLogger()
     log.setLevel(logging.INFO)
@@ -26,11 +26,11 @@ def setup_logging(bot, test_syncer=False):
     stream_handler.setLevel(logging.INFO)
     dt_fmt = '%d-%m-%Y %H:%M:%S'
     fmt = logging.Formatter('[{asctime}] [{levelname:<7}] {name}: {message}', dt_fmt, style='{')
-    if creds.live:
-        handler = logging.FileHandler(filename='donationtracker.log', encoding='utf-8', mode='w')
-        handler.setLevel(logging.INFO)
-        handler.setFormatter(fmt)
-        log.addHandler(handler)
+    # if creds.live:
+    #     handler = logging.FileHandler(filename='donationtracker.log', encoding='utf-8', mode='w')
+    #     handler.setLevel(logging.INFO)
+    #     handler.setFormatter(fmt)
+    #     log.addHandler(handler)
 
     stream_handler.setFormatter(fmt)
     log.addHandler(stream_handler)
