@@ -46,7 +46,9 @@ class Utils(commands.Cog):
                           type,
                           in_event,
                           message_id,
-                          per_page
+                          per_page,
+                          page,
+                          season_id
                    FROM boards
                    WHERE message_id = $1
                 """
@@ -74,7 +76,9 @@ class Utils(commands.Cog):
                           type,
                           in_event,
                           message_id,
-                          per_page
+                          per_page,
+                          page,
+                          season_id
                    FROM boards
                    WHERE channel_id = $1
                    AND type = $2
