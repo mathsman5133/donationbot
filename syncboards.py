@@ -263,7 +263,7 @@ class SyncBoards:
             self.season_meta[season_id] = (season_start, season_finish)
             return (season_start, season_finish)
 
-    @tasks.loop(seconds=60.0)
+    @tasks.loop(seconds=5.0)
     async def update_board_loops(self):
         if not self.webhooks:
             return
