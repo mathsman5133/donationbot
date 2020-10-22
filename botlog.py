@@ -18,12 +18,12 @@ def setup_logging(bot, test_syncer=False):
     logging.getLogger('discord.state').setLevel(logging.WARNING)
     logging.getLogger('websockets.protocol').setLevel(logging.WARNING)
     logging.getLogger('coc').setLevel(logging.INFO)
-    logging.getLogger('coc.http').setLevel(logging.INFO)
+    logging.getLogger('coc.http').setLevel(logging.DEBUG)
 
     log = logging.getLogger()
     log.setLevel(logging.INFO)
     stream_handler = logging.StreamHandler()
-    stream_handler.setLevel(logging.INFO)
+    stream_handler.setLevel(logging.DEBUG)
     dt_fmt = '%d-%m-%Y %H:%M:%S'
     fmt = logging.Formatter('[{asctime}] [{levelname:<7}] {name}: {message}', dt_fmt, style='{')
     # if creds.live:

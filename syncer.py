@@ -774,5 +774,4 @@ if __name__ == "__main__":
 
     send_stats.add_exception_type(Exception, BaseException)
     send_stats.start()
-
     coc_client.run_forever()
