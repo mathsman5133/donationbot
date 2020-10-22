@@ -246,6 +246,8 @@ class SyncBoards:
         self.throttler = coc.BatchThrottler(120, 60.0)
 
         bot.loop.create_task(self.on_init())
+
+        self.update_board_loops.add_exception_type(Exception)
         self.update_board_loops.start()
 
     async def on_init(self):
@@ -274,17 +276,17 @@ class SyncBoards:
 
         current_tasks = []
         for n in fetch:
-            try:
-                config = BoardConfig(bot=self.bot, record=n)
-                current_tasks.append(self.bot.loop.create_task(self.run_board(config)))
-            except:
-                log.exception(f"old board failed...\nChannel ID: {n['channel_id']}")
+            config = BoardConfig(bot=self.bot, record=n)
+            current_tasks.append(self.bot.loop.create_task(self.run_board(config)))
 
         await asyncio.gather(*current_tasks)
 
     async def run_board(self, config):
-        async with self.throttler:
-            await self.update_board(config)
+        try:
+            async with self.throttler:
+                await self.update_board(config)
+        except:
+            log.exception("board error.... CHANNEL ID: %s", config.channel_id)
 
     async def set_new_message(self, config):
         try:
