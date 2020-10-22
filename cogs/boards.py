@@ -529,6 +529,7 @@ class DonationBoard(commands.Cog):
         season_start, season_finish = await self.get_season_meta(season_id)
 
         if donationboard:
+            s1 = time.perf_counter()
             table = HTMLImages(
                 players=fetch,
                 title=config.title,
@@ -538,6 +539,7 @@ class DonationBoard(commands.Cog):
                 offset=offset,
             )
             render = await table.make()
+            s2 = s1 - time.perf_counter()
         else:
             if config.icon_url:
                 try:
@@ -549,12 +551,15 @@ class DonationBoard(commands.Cog):
             else:
                 icon = None
 
+            s1 = time.perf_counter()
             image = TrophyBoardImage(config.title, icon, season_start, season_finish)
             await self.bot.loop.run_in_executor(None, image.add_players, players)
             render = await self.bot.loop.run_in_executor(None, image.render)
+            s2 = s1 - time.perf_counter()
 
         logged_board_message = await next(self.webhooks).send(
             f"Perf: {(time.perf_counter() - start) * 1000}ms\n"
+            f"Build Image Perf: {s2 * 1000}ms"
             f"Channel: {config.channel_id}\n"
             f"Guild: {config.guild_id}",
             file=discord.File(render, f'{config.type}board.png'),
