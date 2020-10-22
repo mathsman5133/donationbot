@@ -4,8 +4,6 @@ import itertools
 import logging
 import time
 
-from datetime import datetime
-
 import aiohttp
 import coc
 import discord
@@ -233,7 +231,7 @@ header {
 
 
 class SyncBoards:
-    def __init__(self, bot):
+    def __init__(self, bot, start_loop=False):
         self.bot = bot
 
         self.season_id = 16
@@ -247,8 +245,9 @@ class SyncBoards:
 
         bot.loop.create_task(self.on_init())
 
-        self.update_board_loops.add_exception_type(Exception)
-        self.update_board_loops.start()
+        if start_loop:
+            self.update_board_loops.add_exception_type(Exception)
+            self.update_board_loops.start()
 
     async def on_init(self):
         self.webhooks = [
@@ -411,7 +410,8 @@ class SyncBoards:
             await self.set_new_message(config)
 
 
-stateless_bot = discord.Client()
-loop.run_until_complete(stateless_bot.login(creds.bot_token))
-SyncBoards(stateless_bot)
-loop.run_forever()
+if __name__ == "__main__":
+    stateless_bot = discord.Client()
+    loop.run_until_complete(stateless_bot.login(creds.bot_token))
+    SyncBoards(stateless_bot, start_loop=True)
+    loop.run_forever()
