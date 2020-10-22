@@ -36,6 +36,189 @@ HISTORICAL_EMOJI = discord.PartialEmoji(name="historical", id=694812540290465832
 GLOBAL_BOARDS_CHANNEL_ID = 663683345108172830
 
 
+class HTMLImages:
+    def __init__(self, players, title=None, image=None, sort_by=None, footer=None):
+        self.players = players
+
+        self.title = title or "Donation Leaderboard"
+        self.image = image or "https://cdn.discordapp.com/attachments/641594147374891029/767306860306759680/dc0f83c3eba7fad4cbe8de3799708e93.jpg"
+        self.footer = footer
+
+        self.html = ""
+        if sort_by:
+            columns = ("#", "Player Name", "donations", "received", "ratio", "last_online")
+            self.selected_index = [1, columns.index(sort_by)]
+        else:
+            self.selected_index = []
+
+    def get_readable(self, delta):
+        hours, remainder = divmod(int(delta.total_seconds()), 3600)
+        minutes, seconds = divmod(remainder, 60)
+        days, hours = divmod(hours, 24)
+
+        if delta.days:
+            return f"{days}d {hours}h"
+        else:
+            return f"{hours}h {minutes}m"
+
+    def add_style(self):
+        if len(self.players) >= 30:
+            body = """
+body {
+width: 2500px;
+}
+"""
+            width = "width: 50%;"
+        else:
+            body = """
+body {
+width: 1200px;
+}
+"""
+            width = "width: 100%;"
+
+        self.html += """
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+""" + body + """
+img {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 100%;
+  z-index:-1;
+  opacity:0.9;
+}
+table {
+  font-family: Helvetica, Verdana,courier,arial,helvetica;
+  border-collapse: seperate;
+  border-spacing: 0 12px;
+""" + width + """
+  padding-bottom: 30px;
+  padding-left: 30px;
+  padding-right: 30px;
+  float: left
+}
+
+td, th {
+  text-align: center;
+  letter-spacing: 1px;
+  font-size: 42px;
+  padding: 7px;
+  box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+}
+
+th {
+  border: 1px solid #404040;
+  background-color: rgba(185, 147, 108, 0.6);
+}
+.selected {
+  background-color: #ace;
+}
+.footer {
+  float: left;
+  text-align: left;
+  font-size: 30px;
+  font-style: bold;
+  padding: 2px;
+  top: 0;
+  margin-top:0;
+  margin-bottom:0;
+}
+
+tr:nth-child(even) {
+  background-color: rgba(166, 179, 196, 0.8);
+}
+tr:nth-child(odd) {
+  background-color: rgba(196, 186, 133, 0.8);
+}
+
+header {
+  background:-webkit-gradient(linear,left bottom,left top,color-stop(20%,rgb(196, 183, 166)),color-stop(80%,rgb(220, 207, 186)));
+  font-size: 70px;
+  margin-left: auto;
+  margin-right: auto;
+  text-align: center;
+  font-style: bold;
+  font-weight: 200;
+  letter-spacing: 1.5px;
+  opacity: 1;
+}
+</style>
+        """
+
+    def add_body(self):
+        self.html += '<body>'
+
+    def add_title(self):
+        self.html += f"<header>{self.title}</header>"
+
+    def add_image(self):
+        self.html += f'<img src="{self.image}" alt="Test"></img>'
+
+    def add_table(self, players):
+        to_add = "<table>"
+
+        headers = ("#", "Player Name", "Dons", "Rec", "Ratio", "Last On")
+        to_add += "<tr>" + "".join(
+            f"<th{' class=selected' if i in self.selected_index else ''}>{column}</th>"
+            for i, column in enumerate(headers)
+        ) + "</tr>"
+
+        for player in players:
+            to_add += "<tr>" + "".join(
+                f"<td{' class=selected' if i in self.selected_index else ''}>{cell}</td>"
+                for i, cell in enumerate(player)
+            ) + "</tr>"
+
+        to_add += "</table>"
+        self.html += to_add
+
+    def add_footer(self):
+        if self.footer:
+            self.html += f'<h6 class="footer">{self.footer}</h6>'
+
+    def end_html(self):
+        self.html += "</body></html>"
+
+    def parse_players(self):
+        self.players = [(str(i) + ".", p['player_name'], p['donations'], p['received'], round(p['donations'] / (p['received'] or 1), 2),
+                        self.get_readable(p['last_online'])) for i, p in enumerate(self.players, start=1)]
+
+    async def make(self):
+        s = time.perf_counter()
+        self.parse_players()
+        self.add_style()
+        self.add_body()
+        self.add_title()
+        self.add_image()
+        if len(self.players) >= 30:
+            self.add_table(self.players[:int(len(self.players)/2)])
+            self.add_table(self.players[int(len(self.players)/2):])
+        else:
+            self.add_table(self.players)
+
+        self.add_footer()
+        self.end_html()
+        log.info((time.perf_counter() - s)*1000)
+
+        s = time.perf_counter()
+        proc = await asyncio.create_subprocess_shell(
+            "wkhtmltoimage - -", stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
+            stdin=asyncio.subprocess.PIPE,
+        )
+        log.info((time.perf_counter() - s)*1000)
+        s = time.perf_counter()
+        stdout, stderr = await proc.communicate(input=self.html.encode('utf-8'))
+        log.info((time.perf_counter() - s)*1000)
+        b = io.BytesIO(stdout)
+        b.seek(0)
+        return b
+
+
 class DonationBoard(commands.Cog):
     """Contains all DonationBoard Configurations.
     """
@@ -59,6 +242,7 @@ class DonationBoard(commands.Cog):
         self.last_updated_tags = {}
         self.last_updated_channels = {}
         self._board_channels = []
+        self.season_meta = {}
 
     def cog_unload(self):
         self.update_board_loops.cancel()
@@ -73,6 +257,15 @@ class DonationBoard(commands.Cog):
         if not self._board_channels:
             self._board_channels = itertools.cycle(n for n in self.bot.get_guild(691779140059267084).text_channels)
         return self._board_channels
+
+    async def get_season_meta(self, season_id):
+        try:
+            return self.season_meta[season_id]
+        except KeyError:
+            fetch = await self.bot.pool.fetchrow("SELECT start, finish FROM seasons WHERE id = $1", season_id)
+            season_start, season_finish = fetch[0].strftime('%d-%b-%Y'), fetch[1].strftime('%d-%b-%Y')
+            self.season_meta[season_id] = (season_start, season_finish)
+            return (season_start, season_finish)
 
     @tasks.loop(seconds=60.0)
     async def update_board_loops(self):
@@ -328,26 +521,31 @@ class DonationBoard(commands.Cog):
         if not players:
             return  # they scrolled too far
 
-        if config.icon_url:
-            try:
-                icon_bytes = await self.bot.http.get_from_cdn(config.icon_url)
-                icon = Image.open(io.BytesIO(icon_bytes)).resize((180, 180))
-            except (discord.Forbidden, UnidentifiedImageError):
-                await self.bot.pool.execute("UPDATE boards SET icon_url = NULL WHERE message_id = $1", message.id)
-                icon = None
-        else:
-            icon = None
-
-        fetch = await self.bot.pool.fetchrow("SELECT start, finish FROM seasons WHERE id = $1", season_id)
-        season_start, season_finish = fetch[0].strftime('%d-%b-%Y'), fetch[1].strftime('%d-%b-%Y')
+        season_start, season_finish = await self.get_season_meta(season_id)
 
         if donationboard:
-            image = DonationBoardImage(config.title, icon, season_start, season_finish)
+            table = HTMLImages(
+                players=fetch,
+                title=config.title,
+                image=config.icon_url,
+                sort_by=config.sort_by,
+                footer=f"Season: {season_start} - {season_finish}."
+            )
+            render = await table.make()
         else:
-            image = TrophyBoardImage(config.title, icon, season_start, season_finish)
+            if config.icon_url:
+                try:
+                    icon_bytes = await self.bot.http.get_from_cdn(config.icon_url)
+                    icon = Image.open(io.BytesIO(icon_bytes)).resize((180, 180))
+                except (discord.Forbidden, UnidentifiedImageError):
+                    await self.bot.pool.execute("UPDATE boards SET icon_url = NULL WHERE message_id = $1", message.id)
+                    icon = None
+            else:
+                icon = None
 
-        await self.bot.loop.run_in_executor(None, image.add_players, players)
-        render = await self.bot.loop.run_in_executor(None, image.render)
+            image = TrophyBoardImage(config.title, icon, season_start, season_finish)
+            await self.bot.loop.run_in_executor(None, image.add_players, players)
+            render = await self.bot.loop.run_in_executor(None, image.render)
 
         logged_board_message = await next(self.webhooks).send(
             f"Perf: {(time.perf_counter() - start) * 1000}ms\n"
@@ -358,10 +556,13 @@ class DonationBoard(commands.Cog):
         )
         await self.bot.background.log_message_send(config.message_id, config.channel_id,  config.guild_id, config.type + 'board')
 
-        e = discord.Embed(colour=discord.Colour.blue() if donationboard else discord.Colour.green())
-        e.set_image(url=logged_board_message.attachments[0].url)
-        e.set_footer(text=f"Page {page + add_pages};Season {season_id};").timestamp = datetime.utcnow()
-        await message.edit(content=None, embed=e)
+        if donationboard:
+            await message.edit(content=f"{logged_board_message.attachments[0].url}\nPage {page + add_pages};Season {season_id};")
+        else:
+            e = discord.Embed(colour=discord.Colour.blue() if donationboard else discord.Colour.green())
+            e.set_image(url=logged_board_message.attachments[0].url)
+            e.set_footer(text=f"Page {page + add_pages};Season {season_id};").timestamp = datetime.utcnow()
+            await message.edit(content=None, embed=e)
 
     async def mpl_boards(self, config, add_pages=0, season_offset=0, reset=False, update_global_board=False):
         if config.channel_id == GLOBAL_BOARDS_CHANNEL_ID and not update_global_board:
@@ -390,8 +591,8 @@ class DonationBoard(commands.Cog):
             await self.bot.pool.execute("UPDATE boards SET message_id = $1 WHERE channel_id = $2 AND type = $3", message.id, config.channel_id, config.type)
 
         try:
-            page = int(message.embeds[0]._footer['text'].split(";")[0].split(" ")[1])
-            season_id = int(message.embeds[0]._footer['text'].split(";")[1].split(" ")[1])
+            page = int(message.content.split(";")[0].split(" ")[1])
+            season_id = int(message.content.split(";")[1].split(" ")[1])
         except (AttributeError, KeyError, ValueError, IndexError):
             page = 1
             season_id = await self.bot.seasonconfig.get_season_id()
@@ -419,8 +620,10 @@ class DonationBoard(commands.Cog):
             query = f"""SELECT DISTINCT player_name,
                                         donations,
                                         received,
-                                        donations / NULLIF(received, 0) AS "ratio",
-                                        now() - last_updated AS "last_online"
+                                        trophies,
+                                        cast(donations as decimal) / NULLIF(received, 0) AS "ratio",
+                                        now() - last_updated AS "last_online",
+                                        trophies - start_trophies AS "gain"
                        FROM players
                        INNER JOIN clans
                        ON clans.clan_tag = players.clan_tag
@@ -440,8 +643,10 @@ class DonationBoard(commands.Cog):
             query = f"""SELECT DISTINCT player_name,
                                         donations,
                                         received,
-                                        donations / NULLIF(received, 0) AS "ratio",
-                                        now() - last_updated AS "last_online"
+                                        trophies,
+                                        CAST(donations as decimal) / NULLIF(received, 0) AS "ratio",
+                                        now() - last_updated AS "last_online",
+                                        trophies - start_trophies AS "gain"
                        FROM players
                        INNER JOIN clans
                        ON clans.clan_tag = players.clan_tag
@@ -463,26 +668,16 @@ class DonationBoard(commands.Cog):
         if not fetch:
             return  # they scrolled too far
 
-        if config.icon_url:
-            try:
-                icon_bytes = await self.bot.http.get_from_cdn(config.icon_url)
-                #icon = Image.open(io.BytesIO(icon_bytes)).resize((180, 180))
-            except (discord.Forbidden, UnidentifiedImageError):
-                await self.bot.pool.execute("UPDATE boards SET icon_url = NULL WHERE message_id = $1", message.id)
-                icon = None
-        else:
-            icon = None
-
         # fetch = await self.bot.pool.fetchrow("SELECT start, finish FROM seasons WHERE id = $1", season_id)
         # season_start, season_finish = fetch[0].strftime('%d-%b-%Y'), fetch[1].strftime('%d-%b-%Y')
 
         if donationboard:
-            table = DonationBoardTable(config.title, offset)
+            table = HTMLImages(players=fetch, title=config.title, image=config.icon_url, sort_by=config.sort_by)
+            render = await table.make()
         else:
             table = TrophyBoardTable(config.title, offset)
-
-        table.add_rows(fetch)
-        render = await self.bot.loop.run_in_executor(None, table.render)
+            table.add_rows(fetch)
+            render = await self.bot.loop.run_in_executor(None, table.render)
 
         logged_board_message = await next(self.webhooks).send(
             f"Perf: {(time.perf_counter() - start) * 1000}ms\n"
@@ -493,10 +688,13 @@ class DonationBoard(commands.Cog):
         )
         await self.bot.background.log_message_send(config.message_id, config.channel_id,  config.guild_id, config.type + 'board')
 
-        e = discord.Embed(colour=discord.Colour.blue() if donationboard else discord.Colour.green())
-        e.set_image(url=logged_board_message.attachments[0].url)
-        e.set_footer(text=f"Page {page + add_pages};Season {season_id};").timestamp = datetime.utcnow()
-        await message.edit(content=None, embed=e)
+        if donationboard:
+            await message.edit(content=f"{logged_board_message.attachments[0].url}\nPage {page + add_pages};Season {season_id};")
+        else:
+            e = discord.Embed(colour=discord.Colour.blue() if donationboard else discord.Colour.green())
+            e.set_image(url=logged_board_message.attachments[0].url)
+            e.set_footer(text=f"Page {page + add_pages};Season {season_id};").timestamp = datetime.utcnow()
+            await message.edit(content=None, embed=e)
 
     @commands.command(hidden=True)
     @commands.is_owner()
