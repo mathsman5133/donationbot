@@ -50,7 +50,7 @@ class DonationBoard(commands.Cog):
     async def rb(self, ctx, *, fonts: str = None):
         fetch = await ctx.db.fetchrow("SELECT * FROM boards OFFSET random() LIMIT 1")
         config = BoardConfig(bot=self.bot, record=fetch)
-        await self.update_board(None, config, fonts=fonts)
+        await self.update_board(None, config, fonts=fonts, send_to_channel=ctx.channel.id)
 
     @commands.Cog.listener()
     async def on_guild_channel_delete(self, channel):

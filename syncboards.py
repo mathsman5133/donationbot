@@ -315,7 +315,7 @@ class SyncBoards:
 
         return config_per_page
 
-    async def update_board(self, config, update_global=False, fonts=None):
+    async def update_board(self, config, update_global=False, fonts=None, send_to_channel=None):
         if config.channel_id == GLOBAL_BOARDS_CHANNEL_ID and not update_global:
             return
 
@@ -406,7 +406,7 @@ class SyncBoards:
         )
 
         try:
-            await self.bot.http.edit_message(config.channel_id, config.message_id, content=logged_board_message.attachments[0].url, embed=None)
+            await self.bot.http.edit_message(send_to_channel or config.channel_id, config.message_id, content=logged_board_message.attachments[0].url, embed=None)
         except discord.NotFound:
             await self.set_new_message(config)
 
