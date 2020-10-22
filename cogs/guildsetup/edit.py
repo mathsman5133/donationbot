@@ -125,13 +125,14 @@ class Edit(commands.Cog):
 
         **Parameters**
         :key: A channel where the donationboard is located (#mention)
-        :key: A URL (jpeg, jpg or png only).
+        :key: A URL (jpeg, jpg or png only). Use `default` to remove any background and use the bot default one.
 
         **Format**
         :information_source: `+edit donationboard background #CHANNEL URL`
 
         **Example**
         :white_check_mark: `+edit donationboard background #dt-boards https://catsareus/thecrazycatbot/123.jpg`
+        :white_check_mark: `+edit donationboard background #dt-boards default`
 
         **Required Permissions**
         :warning: Manage Server
@@ -143,6 +144,9 @@ class Edit(commands.Cog):
         #     if not attachments:
         #         return await ctx.send('You must pass in a url or upload an attachment.')
         #     url = attachments[0].url
+
+        if url in ['default', 'none', 'remove']:
+            url = None
 
         if url == 'https://catsareus/thecrazycatbot/123.jpg':
             return await ctx.send('Uh oh! That\'s an example URL - it doesn\'t work!')
@@ -233,13 +237,14 @@ class Edit(commands.Cog):
 
         **Parameters**
         :key: A channel where the trophyboard is located (#mention)
-        :key: A URL (jpeg, jpg or png only).
+        :key: A URL (jpeg, jpg or png only). Use `default` to remove any background and use the bot default.
 
         **Format**
         :information_source: `+edit trophyboard background #CHANNEL URL`
 
         **Example**
         :white_check_mark: `+edit tropyboard background #dt-boards https://catsareus/thecrazycatbot/123.jpg`
+        :white_check_mark: `+edit tropyboard background #dt-boards default`
 
         **Required Permissions**
         :warning: Manage Server
@@ -251,6 +256,9 @@ class Edit(commands.Cog):
         #     if not attachments:
         #         return await ctx.send('You must pass in a url or upload an attachment.')
         #     url = attachments[0].url
+
+        if url in ['none', 'remove', 'default']:
+            url = None
 
         if url == 'https://catsareus/thecrazycatbot/123.jpg':
             return await ctx.send('Uh oh! That\'s an example URL - it doesn\'t work!')
@@ -328,10 +336,6 @@ class Edit(commands.Cog):
 
         await self.bot.donationboard.update_board(message_id=result['message_id'])
         await ctx.send(f":white_check_mark: Per-page count updated.")
-
-    @edit.group(name="lastonlineboard")
-    async def edit_lastonlineboard(self, ctx):
-        return await ctx.send("Last-online boards are deprecated. Please use a donation or trophyboard instead, or better, both! See `+help add boards`")
 
     @edit.group(name='donationlog')
     @manage_guild()

@@ -12,6 +12,7 @@ from discord.ext import tasks
 
 import creds
 
+from cogs.guildsetup.add import BOARD_PLACEHOLDER
 from cogs.utils.db import Table
 from cogs.utils.db_objects import BoardConfig
 
@@ -52,10 +53,10 @@ class HTMLImages:
 
         if sort_by and donationboard:
             sort_columns = ("#", "Player Name", "donations", "received", "ratio", "last_online ASC, player_name")
-            self.selected_index = [1, sort_columns.index('donations' if sort_by == 'donation' else sort_by)]
+            self.selected_index = [sort_columns.index('donations' if sort_by == 'donation' else sort_by)]
         elif sort_by:
             sort_columns = ("#", "Player Name", "trophies", "gain", "last_online ASC, player_name")
-            self.selected_index = [1, sort_columns.index(sort_by.replace('donations', 'trophies'))]
+            self.selected_index = [sort_columns.index(sort_by.replace('donations', 'trophies'))]
         else:
             self.selected_index = []
 
@@ -123,7 +124,7 @@ th {
   background-color: rgba(185, 147, 108, 0.6);
 }
 .selected {
-  background-color: #ace;
+  background-color: rgba(170,204,238,0.8);
 }
 .footer {
   float: left;
@@ -289,7 +290,7 @@ class SyncBoards:
 
     async def set_new_message(self, config):
         try:
-            message = await self.bot.http.send_message(config.channel_id, content="Placeholder.... do not delete me!")
+            message = await self.bot.http.send_message(config.channel_id, content=BOARD_PLACEHOLDER.format(board=config.type))
         except (discord.Forbidden, discord.NotFound):
             await pool.execute("UPDATE boards SET toggle = FALSE WHERE channel_id = $1", config.channel_id)
             return
@@ -333,7 +334,9 @@ class SyncBoards:
                                         received,
                                         trophies,
                                         now() - last_updated AS "last_online",
-                                        cast(donations as decimal) / NULLIF(received, 0) AS "ratio",
+                                        CASE WHEN received = 0 THEN cast(donations as decimal)
+                                             ELSE cast(donations as decimal) / received
+                                        END ratio,
                                         trophies - start_trophies AS "gain"
                        FROM players
                        INNER JOIN clans
@@ -356,7 +359,9 @@ class SyncBoards:
                                         received,
                                         trophies,
                                         now() - last_updated AS "last_online",
-                                        cast(donations as decimal) / NULLIF(received, 0) AS "ratio",
+                                        CASE WHEN received = 0 THEN cast(donations as decimal)
+                                             ELSE cast(donations as decimal) / received
+                                        END ratio,
                                         trophies - start_trophies AS "gain"
                        FROM players
                        INNER JOIN clans

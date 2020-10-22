@@ -5,6 +5,7 @@ import logging
 from collections import namedtuple
 from discord.ext import commands
 
+from cogs.guildsetup.add import BOARD_PLACEHOLDER
 from cogs.utils.db_objects import DatabaseMessage, BoardConfig
 from syncboards import SyncBoards
 
@@ -110,7 +111,7 @@ class DonationBoard(commands.Cog):
             return
 
         try:
-            new_msg = await channel.send('Placeholder')
+            new_msg = await channel.send(BOARD_PLACEHOLDER.format(board=board_type))
         except (discord.NotFound, discord.Forbidden):
             return
 

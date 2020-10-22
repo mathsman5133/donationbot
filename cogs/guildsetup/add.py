@@ -22,6 +22,16 @@ unicode_emoji = re.compile(
 custom_emoji = re.compile("<(?P<animated>a?):(?P<name>[a-zA-Z0-9_]{2,32}):(?P<id>[0-9]{18,22})>")
 
 
+BOARD_PLACEHOLDER = """
+This is a Placeholder message for your {board} board.
+
+Please don't delete this message, otherwise the board will be deleted.
+This message should be replaced shortly by your {board} board.
+
+If a board doesn't appear, please make sure you have `+add clan #clantag #dt-boards` properly, by using `+info`.
+"""
+
+
 class Add(commands.Cog):
     """Add clans, players, trophy and donationboards, logs and more."""
 
@@ -472,12 +482,11 @@ class Add(commands.Cog):
                                                               overwrites=overwrites,
                                                               reason=reason)
             except discord.Forbidden:
-                return await ctx.send(
-                    'I do not have permissions to create the trophyboard channel.')
+                return await ctx.send('I do not have permissions to create the trophyboard channel.')
             except discord.HTTPException:
                 return await ctx.send('Creating the channel failed. Try checking the name?')
 
-        msg = await channel.send('Trophyboard Placeholder. Please do not delete me!')
+        msg = await channel.send(BOARD_PLACEHOLDER.format(board="trophy"))
         await msg.add_reaction("<:refresh:694395354841350254>")
         await msg.add_reaction("\N{BLACK LEFT-POINTING TRIANGLE}\ufe0f")
         await msg.add_reaction("\N{BLACK RIGHT-POINTING TRIANGLE}\ufe0f")
@@ -559,7 +568,7 @@ class Add(commands.Cog):
             except discord.HTTPException:
                 return await ctx.send('Creating the channel failed. Try checking the name?')
 
-        msg = await channel.send('Donationboard Placeholder. Please don\'t delete me!')
+        msg = await channel.send(BOARD_PLACEHOLDER.format(board="donation"))
         await msg.add_reaction("<:refresh:694395354841350254>")
         await msg.add_reaction("\N{BLACK LEFT-POINTING TRIANGLE}\ufe0f")
         await msg.add_reaction("\N{BLACK RIGHT-POINTING TRIANGLE}\ufe0f")
