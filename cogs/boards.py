@@ -37,10 +37,10 @@ GLOBAL_BOARDS_CHANNEL_ID = 663683345108172830
 
 
 class HTMLImages:
-    def __init__(self, players, title=None, image=None, sort_by=None, footer=None, offset=1):
+    def __init__(self, players, title=None, image=None, sort_by=None, footer=None, offset=None):
         self.players = players
 
-        self.offset = offset
+        self.offset = offset or 1
         self.title = title or "Donation Leaderboard"
         self.image = image or "https://cdn.discordapp.com/attachments/641594147374891029/767306860306759680/dc0f83c3eba7fad4cbe8de3799708e93.jpg"
         self.footer = footer
@@ -98,7 +98,6 @@ table {
   border-collapse: seperate;
   border-spacing: 0 12px;
 """ + width + """
-  padding-bottom: 30px;
   padding-left: 30px;
   padding-right: 30px;
   float: left
@@ -122,7 +121,7 @@ th {
 .footer {
   float: left;
   text-align: left;
-  font-size: 30px;
+  font-size: 40px;
   font-style: bold;
   padding: 2px;
   top: 0;
