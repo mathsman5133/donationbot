@@ -244,12 +244,13 @@ class DonationBoard(commands.Cog):
         self._board_channels = []
         self.season_meta = {}
 
+        self.bot.loop.create_task(self.on_init())
+
     def cog_unload(self):
         self.update_board_loops.cancel()
         self.update_global_board.cancel()
 
-    @commands.Cog.listener()
-    async def on_ready(self):
+    async def on_init(self):
         self.webhooks = itertools.cycle(n for n in await self.bot.get_guild(691779140059267084).webhooks())
 
     @property
