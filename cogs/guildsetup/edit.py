@@ -119,20 +119,19 @@ class Edit(commands.Cog):
         if not ctx.invoked_subcommand:
             await ctx.send_help(ctx.command)
 
-    @edit_donationboard.command(name='icon')
+    @edit_donationboard.command(name='background', aliases=['icon', 'bg'])
     async def edit_donationboard_icon(self, ctx, channel: typing.Optional[discord.TextChannel], *, url: str = None):
-        """Change or add an icon for a donationboard.
+        """Change or add an background for a donationboard.
 
         **Parameters**
         :key: A channel where the donationboard is located (#mention)
-        :key: A URL (jpeg, jpg or png only) or uploaded attachment.
+        :key: A URL (jpeg, jpg or png only).
 
         **Format**
-        :information_source: `+edit donationboard icon #CHANNEL URL`
+        :information_source: `+edit donationboard background #CHANNEL URL`
 
         **Example**
-        :white_check_mark: `+edit donationboard icon #dt-boards https://catsareus/thecrazycatbot/123.jpg`
-        :white_check_mark: `+edit donationboard icon #dt-boards` (with an attached image)
+        :white_check_mark: `+edit donationboard background #dt-boards https://catsareus/thecrazycatbot/123.jpg`
 
         **Required Permissions**
         :warning: Manage Server
@@ -228,31 +227,30 @@ class Edit(commands.Cog):
         if not ctx.invoked_subcommand:
             await ctx.send_help(ctx.command)
 
-    @edit_trophyboard.command(name='icon')
+    @edit_trophyboard.command(name='background', aliases=['bg', 'icon'])
     async def edit_trophyboard_icon(self, ctx, channel: typing.Optional[discord.TextChannel], *, url: str = None):
-        """Add or change the icon for a trophyboard.
+        """Add or change the background for a trophyboard.
 
         **Parameters**
         :key: A channel where the trophyboard is located (#mention)
-        :key: A URL (jpeg, jpg or png only) or uploaded attachment.
+        :key: A URL (jpeg, jpg or png only).
 
         **Format**
-        :information_source: `+edit trophyboard icon #CHANNEL URL`
+        :information_source: `+edit trophyboard background #CHANNEL URL`
 
         **Example**
-        :white_check_mark: `+edit tropyboard icon #dt-boards https://catsareus/thecrazycatbot/123.jpg`
-        :white_check_mark: `+edit trophyboard icon #dt-boards` (with an attached image)
+        :white_check_mark: `+edit tropyboard background #dt-boards https://catsareus/thecrazycatbot/123.jpg`
 
         **Required Permissions**
         :warning: Manage Server
         """
         channel = channel or ctx.channel
 
-        if not url or not url_validator.match(url):
-            attachments = ctx.message.attachments
-            if not attachments:
-                return await ctx.send('You must pass in a url or upload an attachment.')
-            url = attachments[0].url
+        # if not url or not url_validator.match(url):
+        #     attachments = ctx.message.attachments
+        #     if not attachments:
+        #         return await ctx.send('You must pass in a url or upload an attachment.')
+        #     url = attachments[0].url
 
         if url == 'https://catsareus/thecrazycatbot/123.jpg':
             return await ctx.send('Uh oh! That\'s an example URL - it doesn\'t work!')

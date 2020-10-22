@@ -174,10 +174,10 @@ class DonationBoard(commands.Cog):
             return
 
         if payload.emoji == RIGHT_EMOJI:
-            fetch = await self.bot.pool.execute('UPDATE boards SET page = page + 1, toggle=True WHERE message_id = $1 RETURNING *', payload.message_id)
+            fetch = await self.bot.pool.fetchrow('UPDATE boards SET page = page + 1, toggle=True WHERE message_id = $1 RETURNING *', payload.message_id)
 
         elif payload.emoji == LEFT_EMOJI:
-            fetch = await self.bot.pool.execute('UPDATE boards SET page = page - 1, toggle=True WHERE message_id = $1 AND page > 1 RETURNING *', payload.message_id)
+            fetch = await self.bot.pool.fetchrow('UPDATE boards SET page = page - 1, toggle=True WHERE message_id = $1 AND page > 1 RETURNING *', payload.message_id)
 
         elif payload.emoji == REFRESH_EMOJI:
             original_sort = 'donations' if fetch['type'] == 'donation' else 'trophies'
@@ -197,7 +197,7 @@ class DonationBoard(commands.Cog):
             fetch = await self.bot.pool.fetchrow(query, payload.message_id)
 
         elif payload.emoji == HISTORICAL_EMOJI:
-            await self.bot.pool.execute('UPDATE boards SET season_id = season_id - 1, toggle=True WHERE message_id = $1 RETURNING *', payload.message_id)
+            fetch = await self.bot.pool.fetchrow('UPDATE boards SET season_id = season_id - 1, toggle=True WHERE message_id = $1 RETURNING *', payload.message_id)
 
         config = BoardConfig(bot=self.bot, record=fetch)
         await self.update_board(None, config=config)
