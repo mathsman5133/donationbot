@@ -50,17 +50,13 @@ class HTMLImages:
         else:
             self.columns = ("#", "Player Name", "Cups", "Gain", "Last On")
 
-        try:
-            if sort_by and donationboard:
-                sort_columns = ("#", "Player Name", "donations", "received", "ratio", "last_online ASC, player_name")
-                self.selected_index = [1, sort_columns.index(sort_by.replace('donation', 'donations'))]
-            elif sort_by:
-                sort_columns = ("#", "Player Name", "trophies", "gain", "last_online ASC, player_name")
-                self.selected_index = [1, sort_columns.index(sort_by.replace('donations', 'trophies'))]
-            else:
-                self.selected_index = []
-        except ValueError:
-            log.exception(sort_by)
+        if sort_by and donationboard:
+            sort_columns = ("#", "Player Name", "donations", "received", "ratio", "last_online ASC, player_name")
+            self.selected_index = [1, sort_columns.index(sort_by)]
+        elif sort_by:
+            sort_columns = ("#", "Player Name", "trophies", "gain", "last_online ASC, player_name")
+            self.selected_index = [1, sort_columns.index(sort_by.replace('donations', 'trophies'))]
+        else:
             self.selected_index = []
 
     def get_readable(self, delta):
