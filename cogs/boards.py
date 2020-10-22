@@ -37,9 +37,10 @@ GLOBAL_BOARDS_CHANNEL_ID = 663683345108172830
 
 
 class HTMLImages:
-    def __init__(self, players, title=None, image=None, sort_by=None, footer=None):
+    def __init__(self, players, title=None, image=None, sort_by=None, footer=None, offset=1):
         self.players = players
 
+        self.offset = offset
         self.title = title or "Donation Leaderboard"
         self.image = image or "https://cdn.discordapp.com/attachments/641594147374891029/767306860306759680/dc0f83c3eba7fad4cbe8de3799708e93.jpg"
         self.footer = footer
@@ -186,7 +187,7 @@ header {
 
     def parse_players(self):
         self.players = [(str(i) + ".", p['player_name'], p['donations'], p['received'], round(p['donations'] / (p['received'] or 1), 2),
-                        self.get_readable(p['last_online'])) for i, p in enumerate(self.players, start=1)]
+                        self.get_readable(p['last_online'])) for i, p in enumerate(self.players, start=self.offset)]
 
     async def make(self):
         s = time.perf_counter()
@@ -534,7 +535,8 @@ class DonationBoard(commands.Cog):
                 title=config.title,
                 image=config.icon_url,
                 sort_by=config.sort_by,
-                footer=f"Season: {season_start} - {season_finish}."
+                footer=f"Season: {season_start} - {season_finish}.",
+                offset=offset,
             )
             render = await table.make()
         else:
