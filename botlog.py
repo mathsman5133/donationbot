@@ -18,7 +18,7 @@ def setup_logging(bot, test_syncer=False):
     logging.getLogger('discord.state').setLevel(logging.WARNING)
     logging.getLogger('websockets.protocol').setLevel(logging.WARNING)
     logging.getLogger('coc').setLevel(logging.INFO)
-    logging.getLogger('coc.http').setLevel(logging.DEBUG)
+    logging.getLogger('coc.http').setLevel(logging.INFO)
 
     log = logging.getLogger()
     log.setLevel(logging.INFO)
