@@ -242,7 +242,7 @@ class SyncBoards:
 
         self.webhooks = None
         self.session = aiohttp.ClientSession()
-        self.throttler = coc.BasicThrottler(0.5)
+        self.throttler = coc.BasicThrottler(1)
 
         bot.loop.create_task(self.on_init())
 
