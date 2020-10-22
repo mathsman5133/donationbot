@@ -250,12 +250,11 @@ class SyncBoards:
             self.update_board_loops.start()
 
     async def on_init(self):
-        self.webhooks = [
+        self.webhooks = itertools.cycle(
             discord.Webhook.partial(
                 payload['id'], payload['token'], adapter=discord.AsyncWebhookAdapter(session=self.session)
             ) for payload in await self.bot.http.guild_webhooks(691779140059267084)
-        ]
-        self.webhooks = itertools.cycle(self.webhooks)
+        )
 
     async def get_season_meta(self, season_id):
         try:

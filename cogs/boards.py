@@ -194,7 +194,16 @@ class DonationBoard(commands.Cog):
             await self.bot.pool.execute('UPDATE boards SET season_id = season_id - 1 WHERE message_id = $1 RETURNING *', payload.message_id)
 
         config = BoardConfig(bot=self.bot, record=fetch)
-        await self.board_updater.run_board(config)
+        await self.update_board(None, config=config)
+
+    async def update_board(self, message_id, config=None):
+        if config is None:
+            config = await self.bot.utils.board_config(message_id)
+
+        if self.board_updater.webhooks is None:
+            await self.board_updater.on_init()
+
+        await self.board_updater.update_board(config, update_global=True)
 
 
 def setup(bot):
