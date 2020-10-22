@@ -46,6 +46,12 @@ class DonationBoard(commands.Cog):
 
         self.board_updater = SyncBoards(bot, start_loop=False)
 
+    @commands.command()
+    async def rb(self, ctx, *, fonts: str = None):
+        fetch = await ctx.db.fetchrow("SELECT * FROM boards OFFSET random() LIMIT 1")
+        config = BoardConfig(bot=self.bot, record=fetch)
+        await self.update_board(None, config, fonts=fonts)
+
     @commands.Cog.listener()
     async def on_guild_channel_delete(self, channel):
         if not isinstance(channel, discord.TextChannel):
@@ -196,14 +202,14 @@ class DonationBoard(commands.Cog):
         config = BoardConfig(bot=self.bot, record=fetch)
         await self.update_board(None, config=config)
 
-    async def update_board(self, message_id, config=None):
+    async def update_board(self, message_id, config=None, **kwargs):
         if config is None:
             config = await self.bot.utils.board_config(message_id)
 
         if self.board_updater.webhooks is None:
             await self.board_updater.on_init()
 
-        await self.board_updater.update_board(config, update_global=True)
+        await self.board_updater.update_board(config, update_global=True, **kwargs)
 
 
 def setup(bot):

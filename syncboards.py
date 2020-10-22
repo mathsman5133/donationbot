@@ -34,7 +34,7 @@ logging.basicConfig(level=logging.INFO)
 
 
 class HTMLImages:
-    def __init__(self, players, title=None, image=None, sort_by=None, footer=None, offset=None, donationboard=None):
+    def __init__(self, players, title=None, image=None, sort_by=None, footer=None, offset=None, donationboard=None, fonts=None):
         self.players = players
 
         self.donationboard = donationboard
@@ -42,6 +42,7 @@ class HTMLImages:
         self.title = title or "Donation Leaderboard" if donationboard else "Trophy Leaderboard"
         self.image = image or "https://cdn.discordapp.com/attachments/641594147374891029/767306860306759680/dc0f83c3eba7fad4cbe8de3799708e93.jpg" if donationboard else "https://cdn.discordapp.com/attachments/681438398455742536/768649037250560060/clash_cliffs2-min.png"
         self.footer = footer
+        self.fonts = fonts or "symbola, Helvetica, Verdana,courier,arial,symbola"
 
         self.html = ""
         if donationboard:
@@ -100,7 +101,7 @@ img {
   opacity:0.9;
 }
 table {
-  font-family: Helvetica, Verdana,courier,arial,symbola;
+  font-family: """ + self.fonts + """;
   border-collapse: seperate;
   border-spacing: 0 12px;
 """ + width + """
@@ -314,7 +315,7 @@ class SyncBoards:
 
         return config_per_page
 
-    async def update_board(self, config, update_global=False):
+    async def update_board(self, config, update_global=False, fonts=None):
         if config.channel_id == GLOBAL_BOARDS_CHANNEL_ID and not update_global:
             return
 
@@ -388,7 +389,8 @@ class SyncBoards:
             sort_by=config.sort_by,
             footer=f"Season: {season_start} - {season_finish}.",
             offset=offset,
-            donationboard=donationboard
+            donationboard=donationboard,
+            fonts=fonts,
         )
         render = await table.make()
         s2 = time.perf_counter() - s1
