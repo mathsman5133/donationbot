@@ -333,7 +333,7 @@ class SyncBoards:
                                         received,
                                         trophies,
                                         now() - last_updated AS "last_online",
-                                        donations / NULLIF(received, 0) AS "ratio",
+                                        cast(donations as decimal) / NULLIF(received, 0) AS "ratio",
                                         trophies - start_trophies AS "gain"
                        FROM players
                        INNER JOIN clans
@@ -356,7 +356,7 @@ class SyncBoards:
                                         received,
                                         trophies,
                                         now() - last_updated AS "last_online",
-                                        donations / NULLIF(received, 0) AS "ratio",
+                                        cast(donations as decimal) / NULLIF(received, 0) AS "ratio",
                                         trophies - start_trophies AS "gain"
                        FROM players
                        INNER JOIN clans
