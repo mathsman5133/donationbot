@@ -69,6 +69,8 @@ last_updated_batch_lock = asyncio.Lock(loop=loop)
 last_updated_tags = set()
 last_updated_counter = Counter()
 
+boards_counter = Counter()
+
 @coc_client.event
 @coc.ClientEvents.event_error()
 async def on_event_error(exception):
@@ -250,7 +252,12 @@ async def bulk_board_insert():
         log.info(f'Registered donations/received to the database. Status Code {response}.')
         response = await pool.execute(query2, list(board_batch_data.values()))
         log.info(f'Registered donations/received to the events database. Status Code {response}.')
-        response = await pool.execute(query3, list(set(x['clan_tag'] for x in board_batch_data.values())))
+        async with last_updated_batch_lock:
+            tags = set(tag for (tag, counter) in boards_counter.items() if counter > 10)
+            response = await pool.execute(query3, list(tags))
+            for k in tags:
+                boards_counter.pop(k, None)
+
         log.info(f"updating boards for {response} channels")
         board_batch_data.clear()
 
@@ -550,6 +557,8 @@ async def update_db():
 
 async def update(player_tag, clan_tag):
     async with last_updated_batch_lock:
+        boards_counter[clan_tag] += 1
+
         if clan_tag:
             last_updated_counter[(player_tag, clan_tag)] += 1
         last_updated_tags.add(player_tag)
