@@ -406,7 +406,10 @@ class SyncBoards:
         )
 
         try:
-            await self.bot.http.edit_message(send_to_channel or config.channel_id, config.message_id, content=logged_board_message.attachments[0].url, embed=None)
+            if send_to_channel:
+                await self.bot.http.send_message(send_to_channel, content=logged_board_message.attachments[0].url)
+            else:
+                await self.bot.http.edit_message(config.channel_id, config.message_id, content=logged_board_message.attachments[0].url, embed=None)
         except discord.NotFound:
             await self.set_new_message(config)
 
