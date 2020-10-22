@@ -539,7 +539,7 @@ class DonationBoard(commands.Cog):
                 offset=offset,
             )
             render = await table.make()
-            s2 = s1 - time.perf_counter()
+            s2 = time.perf_counter() - s1
         else:
             if config.icon_url:
                 try:
@@ -555,7 +555,7 @@ class DonationBoard(commands.Cog):
             image = TrophyBoardImage(config.title, icon, season_start, season_finish)
             await self.bot.loop.run_in_executor(None, image.add_players, players)
             render = await self.bot.loop.run_in_executor(None, image.render)
-            s2 = s1 - time.perf_counter()
+            s2 = time.perf_counter() - s1
 
         logged_board_message = await next(self.webhooks).send(
             f"Perf: {(time.perf_counter() - start) * 1000}ms\n"
