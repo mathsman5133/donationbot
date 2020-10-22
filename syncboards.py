@@ -87,6 +87,7 @@ width: 1200px;
 
         self.html += """
 <!DOCTYPE html>
+<meta charset="UTF-8">
 <html>
 <head>
 <style>
@@ -101,7 +102,6 @@ img {
   opacity:0.9;
 }
 table {
-  font-family: """ + self.fonts + """;
   border-collapse: seperate;
   border-spacing: 0 12px;
 """ + width + """
