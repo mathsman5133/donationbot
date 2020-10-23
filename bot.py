@@ -59,7 +59,8 @@ coc_client = coc.login(
     key_names=key_names,
     throttle_limit=30,
     key_count=2,
-    key_scopes=creds.scopes
+    key_scopes=creds.scopes,
+    throttler=coc.BatchThrottler,
 )
 links_client = discordlinks.login(creds.links_username, creds.links_password)
 
