@@ -32,6 +32,7 @@ class AutoClaim(commands.Cog, name='\u200bAutoClaim'):
                             "WHERE player_tag = $2 AND user_id IS NULL AND season_id = $3"
                     await self.bot.pool.execute(query, user.id, player.tag,
                                                 await self.bot.seasonconfig.get_season_id())
+                    await self.bot.links.add_link(player.tag, user.id)
                 else:
                     return False
             return user
@@ -43,20 +44,24 @@ class AutoClaim(commands.Cog, name='\u200bAutoClaim'):
         if len(matches) == 0:
             return None
         for i, n in enumerate(matches):
-            query = "SELECT user_id FROM players WHERE player_tag = $1 AND season_id = $2"
-            m = clan.get_member(name=n[0])
-            fetch = await self.bot.pool.fetchrow(query, m.tag,
-                                                 await self.bot.seasonconfig.get_season_id())
-            if fetch is None:
+            m = clan.get_member_by(name=n[0])
+            link = await self.bot.links.get_link(m.tag)
+            if link is None:
                 continue
+            # query = "SELECT user_id FROM players WHERE player_tag = $1 AND season_id = $2"
+            # fetch = await self.bot.pool.fetchrow(query, m.tag,
+            #                                      await self.bot.seasonconfig.get_season_id())
+            # if fetch is None:
+            #     continue
             del matches[i]
 
         if len(matches) == 1 and claim is True:
-            player = clan.get_member(name=matches[0][0])
+            player = clan.get_member_by(name=matches[0][0])
             query = "UPDATE players SET user_id = $1 WHERE player_tag = $2 " \
                     "AND user_id IS NULL AND season_id = $3"
             await self.bot.pool.execute(query, member.id, player.tag,
                                         await self.bot.seasonconfig.get_season_id())
+            await self.bot.links.add_link(player.tag, member.id)
             return player
         elif len(matches) == 1:
             return True
@@ -134,14 +139,17 @@ class AutoClaim(commands.Cog, name='\u200bAutoClaim'):
                     del self.running_commands[ctx.guild.id]
                     return await ctx.send('autoclaim command stopped.')
 
-                query = """SELECT id 
-                           FROM players 
-                           WHERE player_tag = $1 
-                           AND user_id IS NOT NULL 
-                           AND season_id = $2;
-                        """
-                fetch = await ctx.db.fetchrow(query, member.tag, season_id)
-                if fetch:
+                # query = """SELECT id
+                #            FROM players
+                #            WHERE player_tag = $1
+                #            AND user_id IS NOT NULL
+                #            AND season_id = $2;
+                #         """
+                # fetch = await ctx.db.fetchrow(query, member.tag, season_id)
+                # if fetch:
+                #     continue
+                link = await self.bot.links.get_link(member.tag)
+                if link:
                     continue
 
                 results = await match_player(member, ctx.guild, prompt, ctx)
@@ -166,6 +174,7 @@ class AutoClaim(commands.Cog, name='\u200bAutoClaim'):
                 if isinstance(result, int):
                     query = "UPDATE players SET user_id = $1 WHERE player_tag = $2 AND season_id = $3"
                     await self.bot.pool.execute(query, results[result].id, member.tag, season_id)
+                    await self.bot.links.add_link(member.tag, results[result].id)
                 if result is None or result is False:
                     msg = await self.send(ctx, f'[auto-claim]: For player {member.name} ({member.tag})\n'
                                                f'Corresponding members found, none claimed:\n'
@@ -205,6 +214,7 @@ class AutoClaim(commands.Cog, name='\u200bAutoClaim'):
 
             query = "UPDATE players SET user_id = $1 WHERE player_tag = $2 AND season_id = $3"
             await self.bot.pool.execute(query, member.id, player.tag, season_id)
+            await self.bot.links.add_link(player.tag, member.id)
             try:
                 await fail_msg.edit(embed=discord.Embed(colour=discord.Colour.green(),
                                                         description=f'[auto-claim]: {player.name} ({player.tag}) '
