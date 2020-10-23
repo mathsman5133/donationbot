@@ -259,6 +259,7 @@ class Activity(commands.Cog):
             meanst = np.array(means, dtype=np.float64)
             sdt = np.array(stdev, dtype=np.float64)
             ax.plot(dates, means, label=name, color=colours[i])
+
             if name != "Bot Average":
                 ax.fill_between(dates, [max(0, n) for n in meanst - sdt], meanst + sdt, alpha=0.3, facecolor=colours[i])
                 if not min_date or dates[0] < min_date:
@@ -278,8 +279,7 @@ class Activity(commands.Cog):
         ax.set_title("Activity Change Over Time")
         ax.set_xlim(min_date, max_date)
 
-        if self.bot_wide_line:
-            data.pop(0)  # don't store bot-wide data in cache
+        data = [(n, v) for n, v in data if n != "Bot Average"]
 
         self.add_line_graph(ctx.channel.id, ctx.author.id, data)
 
