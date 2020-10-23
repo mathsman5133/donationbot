@@ -49,7 +49,7 @@ SEASON_ID = 16
 
 loop = asyncio.get_event_loop()
 pool = loop.run_until_complete(Table.create_pool(creds.postgres))
-coc_client = coc.login(creds.email, creds.password, client=coc.EventsClient, key_names="test2", throttle_limit=30, key_count=3, scopes=creds.scopes, events_batch_limit=2500, cache_max_size=None)
+coc_client = coc.login(creds.email, creds.password, client=coc.EventsClient, key_names="test2", throttle_limit=30, key_count=3, scopes=creds.scopes, cache_max_size=None)
 coc_client.clan_cls = CustomClan
 
 bot = commands.Bot(command_prefix="+", loop=loop)
