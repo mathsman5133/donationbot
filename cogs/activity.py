@@ -17,11 +17,16 @@ from cogs.utils.converters import ActivityBarConverter, ActivityLineConverter
 class Activity(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+
         self.graphs = {}
+        self.bot_wide_line = None
+
         self.clean_graph_cache.start()
+        self.load_bot_wide_data.start()
 
     def cog_unload(self):
         self.clean_graph_cache.cancel()
+        self.load_bot_wide_data.cancel()
 
     def add_bar_graph(self, channel_id, author_id, **data):
         key = ("bar", channel_id, author_id)
@@ -44,6 +49,32 @@ class Activity(commands.Cog):
             return data[0]
         except KeyError:
             return []
+
+    @tasks.loop(hours=24.0)
+    async def load_bot_wide_data(self):
+        query = """WITH cte AS (
+                            SELECT cast(SUM(counter) as decimal) / COUNT(distinct player_tag) AS counter, 
+                                   date_trunc('day', hour_time) AS "date" 
+                            FROM activity_query 
+                            WHERE hour_time < TIMESTAMP 'today'
+                            GROUP BY date 
+                        ),
+                        cte2 AS (
+                            SELECT stddev(counter) AS stdev, 
+                                   avg(counter) as avg, 
+                                   date_trunc('week', date) as week 
+                            FROM cte 
+                            GROUP BY week
+                        )
+                        SELECT cte.date, counter, stdev 
+                        FROM cte 
+                        INNER JOIN cte2 
+                        ON date_trunc('week', cte.date) = cte2.week 
+                        WHERE counter BETWEEN avg - stdev AND avg + stdev 
+                        ORDER BY date
+                """
+        fetch = await self.bot.pool.fetch(query)
+        self.bot_wide_line = ("Bot Average", fetch)
 
     @tasks.loop(minutes=1)
     async def clean_graph_cache(self):
@@ -206,6 +237,8 @@ class Activity(commands.Cog):
 
         existing = self.get_line_graph(ctx.channel.id, ctx.author.id)
         data = [*existing, *data]
+        if self.bot_wide_line:
+            data.insert(0, self.bot_wide_line)
 
         colours = sns.color_palette("hls", len(data))
 
@@ -226,17 +259,17 @@ class Activity(commands.Cog):
             meanst = np.array(means, dtype=np.float64)
             sdt = np.array(stdev, dtype=np.float64)
             ax.plot(dates, means, label=name, color=colours[i])
-            ax.fill_between(dates, [max(0, n) for n in meanst - sdt], meanst + sdt, alpha=0.3, facecolor=colours[i])
+            if name != "Bot Average":
+                ax.fill_between(dates, [max(0, n) for n in meanst - sdt], meanst + sdt, alpha=0.3, facecolor=colours[i])
+                if not min_date or dates[0] < min_date:
+                    min_date = dates[0]
+                if not max_date or dates[-1] > max_date:
+                    max_date = dates[-1]
 
             locator = mdates.AutoDateLocator(minticks=3, maxticks=10)
             formatter = mdates.ConciseDateFormatter(locator)
             ax.xaxis.set_major_locator(locator)
             ax.xaxis.set_major_formatter(formatter)
-
-            if not min_date or dates[0] < min_date:
-                min_date = dates[0]
-            if not max_date or dates[-1] > max_date:
-                max_date = dates[-1]
 
             ax.legend()
 
