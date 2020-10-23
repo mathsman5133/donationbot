@@ -277,6 +277,10 @@ class Activity(commands.Cog):
         ax.set_ylabel("Activity")
         ax.set_title("Activity Change Over Time")
         ax.set_xlim(min_date, max_date)
+
+        if self.bot_wide_line:
+            data.pop(0)  # don't store bot-wide data in cache
+
         self.add_line_graph(ctx.channel.id, ctx.author.id, data)
 
         b = io.BytesIO()
