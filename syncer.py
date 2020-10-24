@@ -86,42 +86,21 @@ class Syncer:
 
         listeners = (
             self.season_start,
-            self.send_donationlog_events,
             self.on_clan_member_donation,
             self.on_clan_member_received,
-            self.send_trophylog_events,
             self.on_clan_member_trophies_change,
             self.on_member_update,
             self.on_clan_member_join,
             self.on_clan_member_leave,
             self.maintenance_start,
             self.maintenance_completed,
+            self.dispatch_callbacks,
         )
         coc_client.add_events(*listeners)
 
-        self.tasks = (
-            self.update_clan_tags,
-            self.last_updated_loop,
-            self.board_insert_loop,
-            self.set_legend_trophies,
-            # self.send_stats,
-        )
-        for task in self.tasks:
-            task.error(self.task_error)
-            task.start()
+        self.set_legend_trophies.start()
 
-        try:
-            loop.run_forever()
-        finally:
-            for task in self.tasks:
-                task.cancel()
-            coc_client.close()
-
-    async def task_error(self, exception):
-        await self.safe_send(594286547449282587, str(exception))
-        for task in self.tasks:
-            if task.failed():
-                task.restart()
+        coc_client.run_forever()
 
     # @coc_client.event
     @coc.ClientEvents.event_error()
@@ -194,9 +173,146 @@ class Syncer:
         except:
             log.exception(f"{channel_id} failed to send {content} {embed}")
 
+    @tasks.loop(seconds=60.0)
+    async def set_legend_trophies(self):
+        try:
+            now = datetime.datetime.utcnow()
+            if now.hour >= 5:
+                tomorrow = (now + datetime.timedelta(days=1)).replace(hour=5, minute=0, second=0)
+            else:
+                tomorrow = now.replace(hour=5, minute=0, second=0)
+
+            await asyncio.sleep((tomorrow - now).total_seconds())
+            await pool.execute("UPDATE PLAYERS SET trophies = true_trophies WHERE season_id = $1 AND trophies > 4900", self.season_id)
+        except:
+            log.exception('setting legend trophies')
+
     # @coc_client.event
     @coc.ClientEvents.clan_loop_finish()
-    async def send_donationlog_events(self, clan_tags):
+    async def dispatch_callbacks(self, *args, **kwargs):
+        try:
+            s = time.perf_counter()
+            await self.send_donationlog_events()
+        except:
+            log.exception('sending donationlog events')
+        finally:
+            log.info('ran donationlog events, at perf: %sms', (time.perf_counter() - s)*1000)
+
+        try:
+            s = time.perf_counter()
+            await self.send_trophylog_events()
+        except:
+            log.exception('sending trophylog events')
+        finally:
+            log.info('ran trophylog events, at perf: %sms', (time.perf_counter() - s)*1000)
+
+        try:
+            async with self.board_batch_lock:
+                s = time.perf_counter()
+                await self.bulk_board_insert()
+        except:
+            log.exception('bulk insert into db')
+        finally:
+            log.info('ran insert board data, at perf: %sms', (time.perf_counter() - s)*1000)
+
+        try:
+            async with self.last_updated_batch_lock:
+                s = time.perf_counter()
+                await self.update_last_online()
+        except:
+            log.exception('last online into db')
+        finally:
+            log.info('ran insert last online, at perf: %sms', (time.perf_counter() - s)*1000)
+
+        try:
+            s = time.perf_counter()
+            fetch = await pool.fetch("SELECT DISTINCT(clan_tag) FROM clans")
+            log.info(f"Setting {len(fetch)} tags to update")
+            coc_client._clan_updates = [n[0] for n in fetch]
+        except:
+            log.exception("setting clan tags failed")
+        finally:
+            log.info('ran set clan tags, at perf: %sms', (time.perf_counter() - s)*1000)
+
+    async def update_last_online(self):
+        query = """UPDATE players 
+                     SET last_updated = now()
+                     WHERE player_tag = ANY($1::TEXT[])
+                     AND players.season_id = $2
+                  """
+        query2 = """
+                   WITH cte AS (
+                      SELECT DISTINCT clan_tag, activity_sync FROM clans INNER JOIN guilds ON clans.guild_id = guilds.guild_id
+                   )
+                   INSERT INTO activity_query (player_tag, clan_tag, counter, hour_digit, hour_time)
+                   SELECT x.player_tag, x.clan_tag, x.counter, date_part('HOUR', now()), date_trunc('HOUR', now())
+                   FROM jsonb_to_recordset($1::jsonb)
+                   AS x(player_tag TEXT, clan_tag TEXT, counter INTEGER)
+                   INNER JOIN cte ON cte.clan_tag = x.clan_tag
+                   WHERE cte.activity_sync = TRUE
+                   ON CONFLICT (player_tag, clan_tag, hour_time)
+                   DO UPDATE SET counter = activity_query.counter + excluded.counter
+                   """
+        # async with self.last_updated_batch_lock:
+        await pool.execute(query, list(self.last_updated_tags), self.season_id)
+        nice = [{"player_tag": player_tag, "clan_tag": clan_tag, "counter": counter} for
+                ((player_tag, clan_tag), counter) in self.last_updated_counter.most_common()]
+        await pool.execute(query2, nice)
+        self.last_updated_tags.clear()
+        self.last_updated_counter.clear()
+
+    async def send_trophylog_events(self):
+        query = """SELECT logs.channel_id, 
+                          clans.clan_tag,
+                          logs.guild_id, 
+                          "interval", 
+                          toggle,
+                          type,
+                          detailed 
+                   FROM logs 
+                   INNER JOIN clans 
+                   ON logs.channel_id = clans.channel_id 
+                   WHERE clan_tag = ANY($1::TEXT[]) 
+                   AND logs.toggle = TRUE
+                   AND logs.type = 'trophy'
+                """
+        data = copy.copy(self.trophylog_batch_data)
+        self.trophylog_batch_data.clear()
+        clan_tags = list(set(n['clan_tag'] for n in data))
+        fetch = await pool.fetch(query, clan_tags)
+
+        clan_tag_to_channel_data = {r['clan_tag']: LogConfig(bot=None, record=r) for r in fetch}
+        events = [
+            SlimTrophyEvent(
+                n['trophy_change'],
+                n['league_id'],
+                n['player_name'],
+                n['clan_tag'],
+                n['clan_name'],
+                clan_tag_to_channel_data.get(n['clan_tag'])
+            ) for n in data if clan_tag_to_channel_data.get(n['clan_tag'])
+        ]
+        events.sort(key=lambda n: n.log_config.channel_id)
+
+        for config, events in itertools.groupby(events, key=lambda n: n.log_config):
+            log.debug(f"running {config.channel_id}")
+            events = list(events)
+            messages = [format_trophy_log_message(x) for x in events]
+
+            group_batch = []
+            for i in range(math.ceil(len(messages) / 20)):
+                group_batch.append(messages[i * 20:(i + 1) * 20])
+
+            for x in group_batch:
+                if config.seconds > 0:
+                    await self.add_temp_events('trophy', config.channel_id, '\n'.join(x))
+                else:
+                    log.debug(f'Dispatching a log to channel '
+                              f'(ID {config.channel_id} type={config.type})')
+
+                    await self.safe_send(config.channel_id, '\n'.join(x))
+
+    async def send_donationlog_events(self):
         query = """SELECT logs.channel_id, 
                           clans.clan_tag,
                           logs.guild_id, 
@@ -273,22 +389,11 @@ class Syncer:
                     log.debug(f'Dispatching a detailed log to channel (ID {config.channel_id}), {x}')
                     await self.safe_send(channel_id, '\n'.join(x))
 
-    @tasks.loop(seconds=60.0)
-    async def board_insert_loop(self):
-        log.info('starting board loop')
-        async with self.board_batch_lock:
-            await self.bulk_board_insert()
-
-    @tasks.loop(seconds=60.0)
-    async def set_legend_trophies(self):
-        now = datetime.datetime.utcnow()
-        if now.hour >= 5:
-            tomorrow = (now + datetime.timedelta(days=1)).replace(hour=5, minute=0, second=0)
-        else:
-            tomorrow = now.replace(hour=5, minute=0, second=0)
-
-        await asyncio.sleep((tomorrow - now).total_seconds())
-        await pool.execute("UPDATE PLAYERS SET trophies = true_trophies WHERE season_id = $1 AND trophies > 4900", self.season_id)
+    # @tasks.loop(seconds=60.0)
+    # async def board_insert_loop(self):
+    #     log.info('starting board loop')
+    #     async with self.board_batch_lock:
+    #         await self.bulk_board_insert()
 
     async def bulk_board_insert(self):
         query = """UPDATE players SET donations = public.get_don_rec_max(x.old_dons, x.new_dons, COALESCE(players.donations, 0)), 
@@ -356,7 +461,6 @@ class Syncer:
         try:
             if self.board_batch_data:
                 # season_id = self.season_id
-                t = time.perf_counter()
                 # log.info('before pool')
                 # async with pool.acquire() as conn:
                 #     log.info('connection acquire is %s', conn)
@@ -369,9 +473,10 @@ class Syncer:
                 #             r = await conn.execute(trans_query, *player_dict.values(), tag, season_id)
                 #             log.info('players update db request returned %s in %s ms', r, (time.perf_counter() - start)*1000)
                 #         print('done out of transaction')
+                t = time.perf_counter()
                 response = await pool.execute(query, list(self.board_batch_data.values()), self.season_id)
-
                 log.info(f'Registered donations/received to the database. Resp: {response} Timing: {(time.perf_counter() - t)*1000}ms.')
+
                 # response = await pool.execute(query2, list(self.board_batch_data.values()))
                 # log.info(f'Registered donations/received to the events database. Status Code {response}.')
                 async with self.last_updated_batch_lock:
@@ -466,59 +571,6 @@ class Syncer:
                 }
 
         # await update(player.tag, player.clan and player.clan.tag)
-
-    # @coc_client.event
-    @coc.ClientEvents.clan_loop_finish()
-    async def send_trophylog_events(self, clan_tags):
-        query = """SELECT logs.channel_id, 
-                          clans.clan_tag,
-                          logs.guild_id, 
-                          "interval", 
-                          toggle,
-                          type,
-                          detailed 
-                   FROM logs 
-                   INNER JOIN clans 
-                   ON logs.channel_id = clans.channel_id 
-                   WHERE clan_tag = ANY($1::TEXT[]) 
-                   AND logs.toggle = TRUE
-                   AND logs.type = 'trophy'
-                """
-        data = copy.copy(self.trophylog_batch_data)
-        self.trophylog_batch_data.clear()
-        clan_tags = list(set(n['clan_tag'] for n in data))
-        fetch = await pool.fetch(query, clan_tags)
-
-        clan_tag_to_channel_data = {r['clan_tag']: LogConfig(bot=None, record=r) for r in fetch}
-        events = [
-            SlimTrophyEvent(
-                n['trophy_change'],
-                n['league_id'],
-                n['player_name'],
-                n['clan_tag'],
-                n['clan_name'],
-                clan_tag_to_channel_data.get(n['clan_tag'])
-            ) for n in data if clan_tag_to_channel_data.get(n['clan_tag'])
-        ]
-        events.sort(key=lambda n: n.log_config.channel_id)
-
-        for config, events in itertools.groupby(events, key=lambda n: n.log_config):
-            log.debug(f"running {config.channel_id}")
-            events = list(events)
-            messages = [format_trophy_log_message(x) for x in events]
-
-            group_batch = []
-            for i in range(math.ceil(len(messages) / 20)):
-                group_batch.append(messages[i * 20:(i + 1) * 20])
-
-            for x in group_batch:
-                if config.seconds > 0:
-                    await self.add_temp_events('trophy', config.channel_id, '\n'.join(x))
-                else:
-                    log.debug(f'Dispatching a log to channel '
-                              f'(ID {config.channel_id} type={config.type})')
-
-                    await self.safe_send(config.channel_id, '\n'.join(x))
 
     # @coc_client.event
     @coc.ClanEvents.member_trophies()
@@ -640,40 +692,12 @@ class Syncer:
     #         await self.safe_send(self.bot.get_channel(record['channel_id']), msg)
 
 
-    @tasks.loop(minutes=1.0)
-    async def last_updated_loop(self):
-        try:
-            await self.update_db()
-        except:
-            log.exception("last updated loop")
-
-    async def update_db(self):
-        query = """UPDATE players 
-                   SET last_updated = now()
-                   WHERE player_tag = ANY($1::TEXT[])
-                   AND players.season_id = $2
-                """
-        query2 = """
-                 WITH cte AS (
-                    SELECT DISTINCT clan_tag, activity_sync FROM clans INNER JOIN guilds ON clans.guild_id = guilds.guild_id
-                 )
-                 INSERT INTO activity_query (player_tag, clan_tag, counter, hour_digit, hour_time)
-                 SELECT x.player_tag, x.clan_tag, x.counter, date_part('HOUR', now()), date_trunc('HOUR', now())
-                 FROM jsonb_to_recordset($1::jsonb)
-                 AS x(player_tag TEXT, clan_tag TEXT, counter INTEGER)
-                 INNER JOIN cte ON cte.clan_tag = x.clan_tag
-                 WHERE cte.activity_sync = TRUE
-                 ON CONFLICT (player_tag, clan_tag, hour_time)
-                 DO UPDATE SET counter = activity_query.counter + excluded.counter
-                 """
-        async with self.last_updated_batch_lock:
-            await pool.execute(
-                query, list(self.last_updated_tags), self.season_id
-            )
-            nice = [{"player_tag": player_tag, "clan_tag": clan_tag, "counter": counter} for ((player_tag, clan_tag), counter) in self.last_updated_counter.most_common()]
-            await pool.execute(query2, nice)
-            self.last_updated_tags.clear()
-            self.last_updated_counter.clear()
+    # @tasks.loop(seconds=31.0)
+    # async def last_updated_loop(self):
+    #     try:
+    #         await self.update_db()
+    #     except:
+    #         log.exception("last updated loop")
 
     async def update(self, player_tag, clan_tag):
         async with self.last_updated_batch_lock:
@@ -822,16 +846,16 @@ class Syncer:
         query = "UPDATE players SET clan_tag = null where player_tag = $1 AND season_id = $2"
         await pool.execute(query, member.tag, self.season_id)
 
-    @tasks.loop(seconds=60.0)
-    async def update_clan_tags(self):
-        try:
-            query = "SELECT DISTINCT(clan_tag) FROM clans"
-            fetch = await pool.fetch(query)
-            log.info(f"Setting {len(fetch)} tags to update")
-            coc_client._clan_updates = [n[0] for n in fetch]
-        except:
-            log.exception("task failed?")
-            pass
+    # @tasks.loop(seconds=60.0)
+    # async def update_clan_tags(self):
+    #     try:
+    #         query = "SELECT DISTINCT(clan_tag) FROM clans"
+    #         fetch = await pool.fetch(query)
+    #         log.info(f"Setting {len(fetch)} tags to update")
+    #         coc_client._clan_updates = [n[0] for n in fetch]
+    #     except:
+    #         log.exception("task failed?")
+    #         pass
 
     # @coc_client.event
     @coc.ClientEvents.maintenance_start()
