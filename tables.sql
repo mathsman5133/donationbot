@@ -303,6 +303,21 @@ end;
 $function$
 ;
 
+CREATE OR REPLACE FUNCTION public.get_trophies(game_trophies integer, db_trophies integer)
+ RETURNS integer
+ LANGUAGE plpgsql
+AS $function$
+declare
+begin
+    if db_trophies >= 4900 then
+        return db_trophies;
+    else
+        return game_trophies;
+    end if;
+end;
+$function$
+;
+
 
 CREATE OR REPLACE FUNCTION public.get_don_rec_max(game_old_count integer, game_count integer, db_old_count integer)
  RETURNS integer

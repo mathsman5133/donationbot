@@ -293,10 +293,7 @@ class Syncer:
     async def bulk_board_insert(self):
         query = """UPDATE players SET donations = public.get_don_rec_max(x.old_dons, x.new_dons, COALESCE(players.donations, 0)), 
                                       received  = public.get_don_rec_max(x.old_rec, x.new_rec, COALESCE(players.received, 0)), 
-                                      trophies  = CASE 
-                                                    WHEN x.trophies > 4900 THEN trophies
-                                                    ELSE x.trophies
-                                                  END,
+                                      trophies  = public.get_trophies(x.trophies, players.trophies),
                                       true_trophies = x.trophies,
                                       clan_tag  = x.clan_tag,
                                       player_name = x.player_name
