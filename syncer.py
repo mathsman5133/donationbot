@@ -83,6 +83,22 @@ class Syncer:
         loop = asyncio.get_event_loop()
         loop.create_task(self.fetch_webhooks())
         print("STARTING")
+
+        listeners = (
+            self.season_start,
+            self.send_donationlog_events,
+            self.on_clan_member_donation,
+            self.on_clan_member_received,
+            self.send_trophylog_events,
+            self.on_clan_member_trophies_change,
+            self.on_member_update,
+            self.on_clan_member_join,
+            self.on_clan_member_leave,
+            self.maintenance_start,
+            self.maintenance_completed,
+        )
+        coc_client.add_events(*listeners)
+
         self.tasks = (
             self.update_clan_tags,
             self.last_updated_loop,
@@ -107,12 +123,12 @@ class Syncer:
             if task.failed():
                 task.restart()
 
-    @coc_client.event
+    # @coc_client.event
     @coc.ClientEvents.event_error()
     async def on_event_error(self, exception):
         log.exception("event failed", exc_info=exception)
 
-    @coc_client.event
+    # @coc_client.event
     @coc.ClientEvents.new_season_start()
     async def season_start(self):
         await self.safe_send(594286547449282587, "New season has started!")
@@ -178,7 +194,7 @@ class Syncer:
         except:
             log.exception(f"{channel_id} failed to send {content} {embed}")
 
-    @coc_client.event
+    # @coc_client.event
     @coc.ClientEvents.clan_loop_finish()
     async def send_donationlog_events(self, clan_tags):
         query = """SELECT logs.channel_id, 
@@ -343,7 +359,7 @@ class Syncer:
             log.info(f"updating boards for {response} channels")
             self.board_batch_data.clear()
 
-    @coc_client.event
+    # @coc_client.event
     @coc.ClanEvents.member_donations()
     async def on_clan_member_donation(self, old_player: CustomClanMember, player: CustomClanMember):
         log.debug(f'Received on_clan_member_donation event for player {player} of clan {player.clan}')
@@ -381,7 +397,7 @@ class Syncer:
                 }
         # await update(player.tag, player.clan and player.clan.tag)
 
-    @coc_client.event
+    # @coc_client.event
     @coc.ClanEvents.member_received()
     async def on_clan_member_received(self, old_player, player):
         old_received = old_player.received
@@ -423,7 +439,7 @@ class Syncer:
 
         # await update(player.tag, player.clan and player.clan.tag)
 
-    @coc_client.event
+    # @coc_client.event
     @coc.ClientEvents.clan_loop_finish()
     async def send_trophylog_events(self, clan_tags):
         query = """SELECT logs.channel_id, 
@@ -476,7 +492,7 @@ class Syncer:
 
                     await self.safe_send(config.channel_id, '\n'.join(x))
 
-    @coc_client.event
+    # @coc_client.event
     @coc.ClanEvents.member_trophies()
     async def on_clan_member_trophies_change(self, old_player, player):
         old_trophies = old_player.trophies
@@ -639,7 +655,7 @@ class Syncer:
                 self.last_updated_counter[(player_tag, clan_tag)] += 1
             self.last_updated_tags.add(player_tag)
 
-    @coc_client.event
+    # @coc_client.event
     @coc.ClanEvents.member_name()
     @coc.ClanEvents.member_donations()
     @coc.ClanEvents.member_versus_trophies()
@@ -650,7 +666,7 @@ class Syncer:
         log.debug("received update for clan members.")
         await self.update(player.tag, player.clan and player.clan.tag)
 
-    @coc_client.event
+    # @coc_client.event
     @coc.ClanEvents.member_join()
     async def on_clan_member_join(self, member, clan):
         player_query = """INSERT INTO players (
@@ -772,7 +788,7 @@ class Syncer:
             log.debug(f'New member {member} joined clan {clan}. '
                       f'Performed a query to insert them into eventplayers. Status Code: {response}')
 
-    @coc_client.event
+    # @coc_client.event
     @coc.ClanEvents.member_leave()
     async def on_clan_member_leave(self, member, clan):
         query = "UPDATE players SET clan_tag = null where player_tag = $1 AND season_id = $2"
@@ -789,12 +805,12 @@ class Syncer:
             log.exception("task failed?")
             pass
 
-    @coc_client.event
+    # @coc_client.event
     @coc.ClientEvents.maintenance_start()
     async def maintenance_start(self):
         await self.safe_send(594286547449282587, "Maintenance has started!")
 
-    @coc_client.event
+    # @coc_client.event
     @coc.ClientEvents.maintenance_completion()
     async def maintenance_completed(self, start_time):
         await self.safe_send(594286547449282587, f"Maintenance has finished, started at {start_time}!")
