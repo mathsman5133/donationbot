@@ -411,14 +411,14 @@ class SyncBoards:
         logged_board_message = await next(self.webhooks).send(
             perf_log, file=discord.File(render, f'{config.type}board.png'), wait=True
         )
-        embed = discord.Embed(timestamp=datetime.utcnow())
+        embed = discord.Embed(timestamp=datetime.utcnow(), url=logged_board_message.attachments[0].url)
         embed.set_footer(text="Last Updated", icon_url="https://cdn.discordapp.com/avatars/427301910291415051/8fd702a4bbec20941c72bc651279c05c.webp?size=1024")
 
         try:
             if send_to_channel:
-                await self.bot.http.send_message(send_to_channel, content=logged_board_message.attachments[0].url, embed=embed.to_dict())
+                await self.bot.http.send_message(send_to_channel, content=None, embed=embed.to_dict())
             else:
-                await self.bot.http.edit_message(config.channel_id, config.message_id, content=logged_board_message.attachments[0].url, embed=embed.to_dict())
+                await self.bot.http.edit_message(config.channel_id, config.message_id, content=None, embed=embed.to_dict())
         except discord.NotFound:
             await self.set_new_message(config)
 
