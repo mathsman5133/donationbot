@@ -356,9 +356,13 @@ class Syncer:
         if self.board_batch_data:
             season_id = self.season_id
             t = time.perf_counter()
+            log.info('before pool')
             async with pool.acquire() as conn:
+                log.info('connection acquire is %s', conn)
                 async with conn.transaction():
+                    log.info('we"re in the transaction')
                     for tag, player_dict in self.board_batch_data.values():
+                        log.info('running for %s, %s', tag, player_dict)
                         start = time.perf_counter()
                         r = await conn.execute(trans_query, *player_dict.values(), tag, season_id)
                         log.info('players update db request returned %s in %s ms', r, (time.perf_counter() - start)*1000)
