@@ -363,7 +363,7 @@ class Syncer:
                     async with conn.transaction():
                         log.info('we"re in the transaction')
 
-                        for tag, player_dict in self.board_batch_data.values():
+                        for tag, player_dict in self.board_batch_data.items():
                             log.info('running for %s, %s', tag, player_dict)
                             start = time.perf_counter()
                             r = await conn.execute(trans_query, *player_dict.values(), tag, season_id)
