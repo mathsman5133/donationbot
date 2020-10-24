@@ -314,25 +314,25 @@ class Syncer:
                     AND players.season_id=$2
                 """
 
-        query2 = """UPDATE eventplayers SET donations = public.get_don_rec_max(x.old_dons, x.new_dons, eventplayers.donations), 
-                                            received  = public.get_don_rec_max(x.old_rec, x.new_rec, eventplayers.received),
-                                            trophies  = x.trophies   
-                        FROM(
-                            SELECT x.player_tag, x.old_dons, x.new_dons, x.old_rec, x.new_rec, x.trophies
-                            FROM jsonb_to_recordset($1::jsonb)
-                            AS x(player_tag TEXT, 
-                                 old_dons INTEGER, 
-                                 new_dons INTEGER,
-                                 old_rec INTEGER,
-                                 new_rec INTEGER, 
-                                 trophies INTEGER,
-                                 clan_tag TEXT,
-                                 player_name TEXT)
-                            )
-                    AS x
-                    WHERE eventplayers.player_tag = x.player_tag
-                    AND eventplayers.live = true                    
-                """
+        # query2 = """UPDATE eventplayers SET donations = public.get_don_rec_max(x.old_dons, x.new_dons, eventplayers.donations),
+        #                                     received  = public.get_don_rec_max(x.old_rec, x.new_rec, eventplayers.received),
+        #                                     trophies  = x.trophies
+        #                 FROM(
+        #                     SELECT x.player_tag, x.old_dons, x.new_dons, x.old_rec, x.new_rec, x.trophies
+        #                     FROM jsonb_to_recordset($1::jsonb)
+        #                     AS x(player_tag TEXT,
+        #                          old_dons INTEGER,
+        #                          new_dons INTEGER,
+        #                          old_rec INTEGER,
+        #                          new_rec INTEGER,
+        #                          trophies INTEGER,
+        #                          clan_tag TEXT,
+        #                          player_name TEXT)
+        #                     )
+        #             AS x
+        #             WHERE eventplayers.player_tag = x.player_tag
+        #             AND eventplayers.live = true
+        #         """
         query3 = """UPDATE boards 
                     SET need_to_update = TRUE 
                     FROM(
@@ -343,12 +343,29 @@ class Syncer:
                     AS x 
                     WHERE boards.channel_id = x.channel_id
                 """
+        trans_query = """UPDATE players 
+                         SET donations = public.get_don_rec_max($1, $2, COALESCE(players.donations, 0)), 
+                             received  = public.get_don_rec_max($3, $4, COALESCE(players.received, 0)), 
+                             trophies  = public.get_trophies($5, players.trophies),
+                             true_trophies = $5,
+                             clan_tag  = $6,
+                             player_name = $7
+                         WHERE player_tag = $8
+                         AND season_id = $9
+                      """
         if self.board_batch_data:
-            log.info('before first query')
-            response = await pool.execute(query, list(self.board_batch_data.values()), self.season_id)
-            log.info(f'Registered donations/received to the database. Status Code {response}.')
-            response = await pool.execute(query2, list(self.board_batch_data.values()))
-            log.info(f'Registered donations/received to the events database. Status Code {response}.')
+            season_id = self.season_id
+            t = time.perf_counter()
+            async with pool.acquire() as conn:
+                async with conn.transaction():
+                    for tag, player_dict in self.board_batch_data.values():
+                        r = await conn.execute(trans_query, *player_dict.values(), tag, season_id)
+                        log.debug('players update db request returned %s', r)
+                        # response = await pool.execute(query, list(self.board_batch_data.values()), self.season_id)
+
+            log.info(f'Registered donations/received to the database. Timing: {(time.perf_counter() - t)*1000}ms.')
+            # response = await pool.execute(query2, list(self.board_batch_data.values()))
+            # log.info(f'Registered donations/received to the events database. Status Code {response}.')
             async with self.last_updated_batch_lock:
                 tags = set(tag for (tag, counter) in self.boards_counter.items() if counter > 10)
                 response = await pool.execute(query3, list(tags))
@@ -387,7 +404,6 @@ class Syncer:
                 self.board_batch_data[player.tag]['new_dons'] = player.donations
             except KeyError:
                 self.board_batch_data[player.tag] = {
-                    'player_tag': player.tag,
                     'old_dons': old_player.donations,
                     'new_dons': player.donations,
                     'old_rec': player.received,
@@ -395,6 +411,7 @@ class Syncer:
                     'trophies': player.trophies,
                     'clan_tag': player.clan and player.clan.tag,
                     'player_name': player.name,
+                    # 'player_tag': player.tag,
                 }
         # await update(player.tag, player.clan and player.clan.tag)
 
@@ -428,7 +445,7 @@ class Syncer:
                 self.board_batch_data[player.tag]['new_rec'] = new_received
             except KeyError:
                 self.board_batch_data[player.tag] = {
-                    'player_tag': player.tag,
+                    # 'player_tag': player.tag,
                     'old_dons': player.donations,
                     'new_dons': player.donations,
                     'old_rec': old_received,
@@ -518,7 +535,7 @@ class Syncer:
                 self.board_batch_data[player.tag]['trophies'] = new_trophies
             except KeyError:
                 self.board_batch_data[player.tag] = {
-                    'player_tag': player.tag,
+                    # 'player_tag': player.tag,
                     'old_dons': player.donations,
                     'new_dons': player.donations,
                     'old_rec': player.received,
