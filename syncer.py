@@ -359,8 +359,9 @@ class Syncer:
             async with pool.acquire() as conn:
                 async with conn.transaction():
                     for tag, player_dict in self.board_batch_data.values():
+                        start = time.perf_counter()
                         r = await conn.execute(trans_query, *player_dict.values(), tag, season_id)
-                        log.debug('players update db request returned %s', r)
+                        log.info('players update db request returned %s in %s ms', r, (time.perf_counter() - start)*1000)
                         # response = await pool.execute(query, list(self.board_batch_data.values()), self.season_id)
 
             log.info(f'Registered donations/received to the database. Timing: {(time.perf_counter() - t)*1000}ms.')
