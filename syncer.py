@@ -212,7 +212,7 @@ class Syncer:
                    AND logs.type = 'donation'
                 """
         clan_tags = list(set(n['clan_tag'] for n in self.donationlog_batch_data))
-        log.info(f"clan tags {clan_tags}")
+        log.info(f"clan tags: {len(clan_tags)}")
         fetch = await pool.fetch(query, clan_tags)
 
         clan_tag_to_channel_data = {}
