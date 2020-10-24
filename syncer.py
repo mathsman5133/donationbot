@@ -347,6 +347,7 @@ class Syncer:
                     WHERE boards.channel_id = x.channel_id
                 """
         if self.board_batch_data:
+            log.info('before first query')
             response = await pool.execute(query, list(self.board_batch_data.values()), self.season_id)
             log.info(f'Registered donations/received to the database. Status Code {response}.')
             response = await pool.execute(query2, list(self.board_batch_data.values()))
