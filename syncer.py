@@ -355,23 +355,23 @@ class Syncer:
                       """
         try:
             if self.board_batch_data:
-                season_id = self.season_id
+                # season_id = self.season_id
                 t = time.perf_counter()
-                log.info('before pool')
-                async with pool.acquire() as conn:
-                    log.info('connection acquire is %s', conn)
-                    async with conn.transaction():
-                        log.info('we"re in the transaction')
+                # log.info('before pool')
+                # async with pool.acquire() as conn:
+                #     log.info('connection acquire is %s', conn)
+                #     async with conn.transaction():
+                #         log.info('we"re in the transaction')
+                #
+                #         for tag, player_dict in self.board_batch_data.items():
+                #             log.info('running for %s, %s', tag, player_dict)
+                #             start = time.perf_counter()
+                #             r = await conn.execute(trans_query, *player_dict.values(), tag, season_id)
+                #             log.info('players update db request returned %s in %s ms', r, (time.perf_counter() - start)*1000)
+                #         print('done out of transaction')
+                response = await pool.execute(query, list(self.board_batch_data.values()), self.season_id)
 
-                        for tag, player_dict in self.board_batch_data.items():
-                            log.info('running for %s, %s', tag, player_dict)
-                            start = time.perf_counter()
-                            r = await conn.execute(trans_query, *player_dict.values(), tag, season_id)
-                            log.info('players update db request returned %s in %s ms', r, (time.perf_counter() - start)*1000)
-                            # response = await pool.execute(query, list(self.board_batch_data.values()), self.season_id)
-                        print('done out of transaction')
-
-                log.info(f'Registered donations/received to the database. Timing: {(time.perf_counter() - t)*1000}ms.')
+                log.info(f'Registered donations/received to the database. Resp: {response} Timing: {(time.perf_counter() - t)*1000}ms.')
                 # response = await pool.execute(query2, list(self.board_batch_data.values()))
                 # log.info(f'Registered donations/received to the events database. Status Code {response}.')
                 async with self.last_updated_batch_lock:
@@ -421,7 +421,7 @@ class Syncer:
                     'trophies': player.trophies,
                     'clan_tag': player.clan and player.clan.tag,
                     'player_name': player.name,
-                    # 'player_tag': player.tag,
+                    'player_tag': player.tag,
                 }
         # await update(player.tag, player.clan and player.clan.tag)
 
@@ -455,14 +455,14 @@ class Syncer:
                 self.board_batch_data[player.tag]['new_rec'] = new_received
             except KeyError:
                 self.board_batch_data[player.tag] = {
-                    # 'player_tag': player.tag,
                     'old_dons': player.donations,
                     'new_dons': player.donations,
                     'old_rec': old_received,
                     'new_rec': new_received,
                     'trophies': player.trophies,
                     'clan_tag': player.clan and player.clan.tag,
-                    'player_name': player.name
+                    'player_name': player.name,
+                    'player_tag': player.tag,
                 }
 
         # await update(player.tag, player.clan and player.clan.tag)
@@ -545,7 +545,7 @@ class Syncer:
                 self.board_batch_data[player.tag]['trophies'] = new_trophies
             except KeyError:
                 self.board_batch_data[player.tag] = {
-                    # 'player_tag': player.tag,
+                    'player_tag': player.tag,
                     'old_dons': player.donations,
                     'new_dons': player.donations,
                     'old_rec': player.received,
