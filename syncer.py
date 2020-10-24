@@ -275,6 +275,7 @@ class Syncer:
 
     @tasks.loop(seconds=60.0)
     async def board_insert_loop(self):
+        log.info('starting board loop')
         async with self.board_batch_lock:
             await self.bulk_board_insert()
 
