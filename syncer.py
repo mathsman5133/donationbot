@@ -353,38 +353,41 @@ class Syncer:
                          WHERE player_tag = $8
                          AND season_id = $9
                       """
-        if self.board_batch_data:
-            season_id = self.season_id
-            t = time.perf_counter()
-            log.info('before pool')
-            async with pool.acquire() as conn:
-                log.info('connection acquire is %s', conn)
-                async with conn.transaction():
-                    log.info('we"re in the transaction')
-                    for tag in self.board_batch_data:
-                        print(tag)
+        try:
+            if self.board_batch_data:
+                season_id = self.season_id
+                t = time.perf_counter()
+                log.info('before pool')
+                async with pool.acquire() as conn:
+                    log.info('connection acquire is %s', conn)
+                    async with conn.transaction():
+                        log.info('we"re in the transaction')
+                        for tag in self.board_batch_data:
+                            print(tag)
 
-                    for tag, player_dict in self.board_batch_data.values():
-                        log.info('running for %s, %s', tag, player_dict)
-                        start = time.perf_counter()
-                        r = await conn.execute(trans_query, *player_dict.values(), tag, season_id)
-                        log.info('players update db request returned %s in %s ms', r, (time.perf_counter() - start)*1000)
-                        # response = await pool.execute(query, list(self.board_batch_data.values()), self.season_id)
-                    print('done out of transaction')
+                        for tag, player_dict in self.board_batch_data.values():
+                            log.info('running for %s, %s', tag, player_dict)
+                            start = time.perf_counter()
+                            r = await conn.execute(trans_query, *player_dict.values(), tag, season_id)
+                            log.info('players update db request returned %s in %s ms', r, (time.perf_counter() - start)*1000)
+                            # response = await pool.execute(query, list(self.board_batch_data.values()), self.season_id)
+                        print('done out of transaction')
 
-            log.info(f'Registered donations/received to the database. Timing: {(time.perf_counter() - t)*1000}ms.')
-            # response = await pool.execute(query2, list(self.board_batch_data.values()))
-            # log.info(f'Registered donations/received to the events database. Status Code {response}.')
-            async with self.last_updated_batch_lock:
-                tags = set(tag for (tag, counter) in self.boards_counter.items() if counter > 10)
-                response = await pool.execute(query3, list(tags))
-                for k in tags:
-                    self.boards_counter.pop(k, None)
+                log.info(f'Registered donations/received to the database. Timing: {(time.perf_counter() - t)*1000}ms.')
+                # response = await pool.execute(query2, list(self.board_batch_data.values()))
+                # log.info(f'Registered donations/received to the events database. Status Code {response}.')
+                async with self.last_updated_batch_lock:
+                    tags = set(tag for (tag, counter) in self.boards_counter.items() if counter > 10)
+                    response = await pool.execute(query3, list(tags))
+                    for k in tags:
+                        self.boards_counter.pop(k, None)
 
-            log.info(f"updating boards for {response} channels")
-            self.board_batch_data.clear()
-        else:
-            log.info('no new board stuff')
+                log.info(f"updating boards for {response} channels")
+                self.board_batch_data.clear()
+            else:
+                log.info('no new board stuff')
+        except:
+            log.exception('failed')
 
     # @coc_client.event
     @coc.ClanEvents.member_donations()
