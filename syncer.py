@@ -362,8 +362,6 @@ class Syncer:
                     log.info('connection acquire is %s', conn)
                     async with conn.transaction():
                         log.info('we"re in the transaction')
-                        for tag in self.board_batch_data:
-                            print(tag)
 
                         for tag, player_dict in self.board_batch_data.values():
                             log.info('running for %s, %s', tag, player_dict)
