@@ -188,17 +188,34 @@ async def send_donationlog_events(clan_tags):
             for x in messages:
                 log.debug(f'Dispatching a detailed log to channel (ID {config.channel_id}), {x}')
                 await safe_send(channel_id, '\n'.join(x))
-        
+
+
 @tasks.loop(seconds=60.0)
 async def board_insert_loop():
     async with board_batch_lock:
         await bulk_board_insert()
 
 
+@tasks.loop(seconds=60.0)
+async def set_legend_trophies():
+    now = datetime.datetime.utcnow()
+    if now.hour >= 5:
+        tomorrow = (now + datetime.timedelta(days=1)).replace(hour=5, minute=0, second=0)
+    else:
+        tomorrow = now.replace(hour=5, minute=0, second=0)
+
+    await asyncio.sleep((tomorrow - now).total_seconds())
+    await pool.execute("UPDATE PLAYERS SET trophies = true_trophies WHERE season_id = $1 AND trophies > 4900", SEASON_ID)
+
+
 async def bulk_board_insert():
     query = """UPDATE players SET donations = public.get_don_rec_max(x.old_dons, x.new_dons, COALESCE(players.donations, 0)), 
                                   received  = public.get_don_rec_max(x.old_rec, x.new_rec, COALESCE(players.received, 0)), 
-                                  trophies  = x.trophies,
+                                  trophies  = CASE 
+                                                WHEN x.trophies > 4900 THEN trophies
+                                                ELSE x.trophies
+                                              END,
+                                  true_trophies = x.trophies,
                                   clan_tag  = x.clan_tag,
                                   player_name = x.player_name
                     FROM(
@@ -771,6 +788,8 @@ if __name__ == "__main__":
     last_updated_loop.start()
     board_insert_loop.add_exception_type(Exception, BaseException)
     board_insert_loop.start()
+    set_legend_trophies.add_exception_type(Exception, BaseException)
+    set_legend_trophies.start()
 
     send_stats.add_exception_type(Exception, BaseException)
     # send_stats.start()
