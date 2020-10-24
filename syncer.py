@@ -360,6 +360,8 @@ class Syncer:
 
             log.info(f"updating boards for {response} channels")
             self.board_batch_data.clear()
+        else:
+            log.info('no new board stuff')
 
     # @coc_client.event
     @coc.ClanEvents.member_donations()
