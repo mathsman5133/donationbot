@@ -176,7 +176,7 @@ class Syncer:
         except:
             log.exception(f"{channel_id} failed to send {content} {embed}")
 
-    @tasks.loop(seconds=0.0)
+    @tasks.loop(seconds=60.0)
     async def set_legend_trophies(self):
         log.info('running legend trophies')
         now = datetime.datetime.utcnow()
@@ -188,7 +188,7 @@ class Syncer:
         self.legend_day = (tomorrow - datetime.timedelta(days=1)).isoformat()
 
         try:
-            await asyncio.sleep((tomorrow - now).total_seconds())
+            # await asyncio.sleep((tomorrow - now).total_seconds())
             await pool.execute("UPDATE PLAYERS SET trophies = true_trophies WHERE season_id = $1 AND league_id = 29000022", self.season_id)
             await pool.execute(
                 """UPDATE legend_days 
@@ -202,7 +202,7 @@ class Syncer:
                 self.season_id,
                 self.legend_day,
             )
-            self.loop.create_task(self.send_legend_logs())
+            # self.loop.create_task(self.send_legend_logs())
 
         except:
             log.exception('setting legend trophies')
