@@ -220,7 +220,7 @@ class Syncer:
         fetch = await pool.fetch(query)
         clans_to_channel = {k: list(v) for k, v in itertools.groupby(fetch, key=lambda r: r['clan_tag'])}
 
-        query = """SELECT legend_days.player_tag, players.player_name, starting, gain, loss, finishing 
+        query = """SELECT legend_days.player_tag, players.player_name, starting, gain, loss, finishing, players.clan_tag
                    FROM legend_days 
                    INNER JOIN players 
                    ON players.player_tag = legend_days.player_tag
@@ -229,23 +229,29 @@ class Syncer:
                    AND players.clan_tag = ANY($3::TEXT[])
                    ORDER BY players.clan_tag
                 """
-        fetch = await pool.fetch(query, self.legend_day, self.season_id, list(clans_to_channel.keys()))
+        fetch = await pool.fetch(query, datetime.datetime.fromisoformat(self.legend_day), self.season_id, list(clans_to_channel.keys()))
         for clan, players in itertools.groupby(fetch, key=lambda r: r['clan_tag']):
             renders = [get_legend_log(player) for player in players]
+            embed = discord.Embed(colour=discord.Colour.purple(), timestamp=datetime.datetime.utcnow())
+            embed.set_author(name="Daily Legend Log Report", icon_url=bot.user.avatar_url)
+
             current = ""
             for render in renders:
-                if len(render) + len(current) > 1995:
-                    for channel in clans_to_channel[clan]:
-                        await self.safe_send(channel['channel_id'], current)
-
-                    current = ""
-
+                if not embed.description and len(render) + len(current) < 2040:
+                    current += "\n" + render
+                elif not embed.description:
+                    embed.description = current
+                elif embed.description and len(render) + len(current) < 1020:
+                    current += "\n" + render
                 else:
-                    current += "\n\n" + render
+                    embed.add_field(name="\u200b", value=current)
+
             else:
                 if current:
-                    for channel in clans_to_channel[clan]:
-                        await self.safe_send(channel['channel_id'], current)
+                    embed.add_field(name="\u200b", value=current)
+
+            for channel in clans_to_channel[clan]:
+                await self.safe_send(channel['channel_id'], embed=embed)
 
     # @coc_client.event
     @coc.ClientEvents.clan_loop_finish()

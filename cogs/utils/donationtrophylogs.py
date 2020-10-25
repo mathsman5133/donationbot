@@ -190,12 +190,12 @@ async def get_basic_log(events):
 
 def get_legend_log(player):
     fmt = """
-Player: {name} ({tag})
-Initial Trophies: {initial}
-Attack Gain: {gain}
-Defense Loss: {loss}
-Final Trophies: {final}
-    """
+**{name} ({tag})**
+<:legend_initial:769849086215716875>: {initial}
+<:legend_gain:769852832496877570>: {gain}
+<:legend_loss:769854698168516608>: {loss}
+<:legend_final:769851375881814076>: {final}
+"""
     return fmt.format(
         name=player['player_name'],
         tag=player['player_tag'],
