@@ -435,7 +435,7 @@ class Syncer:
                        loss integer                    
                    )   
                    ON CONFLICT (player_tag, day)
-                   DO UPDATE SET gain = gain + x.gain, loss = loss + x.loss
+                   DO UPDATE SET gain = legend_days.gain + excluded.gain, loss = legend_days.loss + excluded.loss
                 """
         await pool.execute(query, list(self.legend_data.values()))
         self.legend_data.clear()
