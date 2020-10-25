@@ -91,6 +91,11 @@ async def before_invoke(ctx):
             ctx.bot.utils.log_config.invalidate(ctx.bot.utils, channel.id, 'trophy')
         ctx.config = await ctx.bot.utils.log_config(channel.id, 'trophy')
 
+    elif config_type == 'legendlog':
+        if invalidate:
+            ctx.bot.utils.log_config.invalidate(ctx.bot.utils, channel.id, 'legend')
+        ctx.config = await ctx.bot.utils.log_config(channel.id, 'legend')
+
     if error and not ctx.config:
         raise NoConfigFailure(f'Please create a {config_type} with `+help add {config_type}`')
 
@@ -111,6 +116,8 @@ async def after_invoke(ctx):
         ctx.bot.utils.log_config.invalidate(ctx.bot.utils, ctx.config.channel_id, 'donation')
     elif config_type == 'trophylog':
         ctx.bot.utils.log_config.invalidate(ctx.bot.utils, ctx.config.channel_id, 'trophy')
+    elif config_type == 'legendlog':
+        ctx.bot.utils.log_config.invalidate(ctx.bot.utils, ctx.config.channel_id, 'legend')
     elif config_type == 'event':
         ctx.bot.utils.event_config.invalidate(ctx.bot.utils, ctx.guild.id)
     return ctx

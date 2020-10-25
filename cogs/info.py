@@ -238,6 +238,7 @@ class Info(commands.Cog, name='\u200bInfo'):
                     "[add|edit|remove] trophyboard",
                     "[add|edit|remove] donationlog",
                     "[add|edit|remove] trophylog",
+                    "[add|remove] legendlog",
                     "[add|remove] clan",
                     "[add|remove] discord",
                     "add emoji",

@@ -739,6 +739,78 @@ class Add(commands.Cog):
                               'See all clans claimed with `+info clans`. '
                               'Please note that only clans claimed to this channel will appear in the log.')
 
+    @add.command(name='legendlog')
+    @requires_config('legendlog', invalidate=True)
+    @manage_guild()
+    async def add_legendlog(self, ctx, channel: discord.TextChannel = None):
+        """Create a legend log for your server.
+
+        **Parameters**
+        :key: Discord channel (mention etc.)
+
+        **Format**
+        :information_source: `+add legendlog #CHANNEL`
+
+        **Example**
+        :white_check_mark: `+add legendlog #logging`
+
+        **Required Permissions**
+        :warning: Manage Server
+        """
+        if not channel:
+            channel = ctx.channel
+
+        board_config = await self.bot.utils.board_config(channel.id)
+        if board_config:
+            return await ctx.send('You can\'t have the same channel for a board and log!')
+
+        if not (channel.permissions_for(ctx.me).send_messages or channel.permissions_for(
+                ctx.me).read_messages):
+            return await ctx.send('I need permission to send and read messages here!')
+
+        query = """INSERT INTO logs (
+                                    guild_id,
+                                    channel_id,
+                                    toggle,
+                                    type
+                                    )
+                    VALUES ($1, $2, True, $3) 
+                    ON CONFLICT (channel_id, type)
+                    DO UPDATE SET channel_id = $2;
+                    """
+        await ctx.db.execute(query, ctx.guild.id, channel.id, 'legend')
+
+        prompt = await ctx.prompt(
+            f'Would you like me to add all clans claimed on the server to this legendlog?\n'
+            f'Else you can manually add clans with `+add clan #CLAN_TAG` to this channel.\n')
+        if not prompt:
+            return await ctx.send(f'{channel.mention} has been added as a legendlog channel.\n'
+                                  f'Please note that only clans claimed to {channel.mention} will appear in this log.')
+
+        query = """INSERT INTO clans (
+                                clan_tag, 
+                                guild_id, 
+                                channel_id, 
+                                clan_name, 
+                                in_event
+                                ) 
+                       SELECT 
+                            clan_tag,
+                            guild_id,
+                            $2,
+                            clan_name,
+                            in_event
+
+                       FROM clans
+                       WHERE guild_id = $1
+                       ON CONFLICT (channel_id, clan_tag)
+                       DO NOTHING;
+                    """
+        await ctx.db.execute(query, ctx.guild.id, channel.id)
+        return await ctx.send(f'{channel.mention} has been added as a legendlog channel. '
+                              'See all clans claimed with `+info clans`. '
+                              'Please note that only clans claimed to this channel will appear in the log.')
+
     @commands.command()
     async def verify(self, ctx, *, player_tag: str):
         """Verify your clash account in order to add clans to the bot.

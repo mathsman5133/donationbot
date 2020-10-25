@@ -20,7 +20,7 @@ import creds
 
 from botlog import setup_logging
 from cogs.utils.db import Table
-from cogs.utils.donationtrophylogs import SlimDonationEvent2, SlimTrophyEvent, get_basic_log, get_detailed_log, format_trophy_log_message
+from cogs.utils.donationtrophylogs import SlimDonationEvent2, SlimTrophyEvent, get_basic_log, get_detailed_log, format_trophy_log_message, get_legend_log
 from cogs.utils.db_objects import LogConfig
 
 log = logging.getLogger(__name__)
@@ -84,7 +84,7 @@ class Syncer:
         self.season_id = fetch['id']
 
     def start(self):
-        loop = asyncio.get_event_loop()
+        self.loop = loop = asyncio.get_event_loop()
         loop.create_task(self.fetch_webhooks())
         self.set_legend_trophies.start()
 
@@ -202,8 +202,50 @@ class Syncer:
                 self.season_id,
                 self.legend_day,
             )
+            self.loop.create_task(self.send_legend_logs())
+
         except:
             log.exception('setting legend trophies')
+
+    async def send_legend_logs(self):
+        query = """SELECT logs.channel_id, 
+                          clans.clan_tag
+                   FROM logs 
+                   INNER JOIN clans 
+                   ON logs.channel_id = clans.channel_id 
+                   WHERE logs.toggle = TRUE
+                   AND logs.type = 'legend'
+                   ORDER BY clans.clan_tag
+                """
+        fetch = await pool.fetch(query)
+        clans_to_channel = {k: list(v) for k, v in itertools.groupby(fetch, key=lambda r: r['clan_tag'])}
+
+        query = """SELECT legend_days.player_tag, players.player_name, starting, gain, loss, finishing 
+                   FROM legend_days 
+                   INNER JOIN players 
+                   ON players.player_tag = legend_days.player_tag
+                   WHERE day = $1
+                   AND season_id = $2
+                   AND players.clan_tag = ANY($3::TEXT[])
+                   ORDER BY players.clan_tag
+                """
+        fetch = await pool.fetch(query, self.legend_day, self.season_id, list(clans_to_channel.keys()))
+        for clan, players in itertools.groupby(fetch, key=lambda r: r['clan_tag']):
+            renders = [get_legend_log(player) for player in players]
+            current = ""
+            for render in renders:
+                if len(render) + len(current) > 1995:
+                    for channel in clans_to_channel[clan]:
+                        await self.safe_send(channel['channel_id'], current)
+
+                    current = ""
+
+                else:
+                    current += "\n\n" + render
+            else:
+                if current:
+                    for channel in clans_to_channel[clan]:
+                        await self.safe_send(channel['channel_id'], current)
 
     # @coc_client.event
     @coc.ClientEvents.clan_loop_finish()

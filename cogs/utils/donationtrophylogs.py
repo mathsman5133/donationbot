@@ -186,3 +186,22 @@ async def get_basic_log(events):
         group_batch.append(messages[i * 20:(i + 1) * 20])
 
     return group_batch
+
+
+def get_legend_log(player):
+    fmt = """
+Player: {name} ({tag})
+Initial Trophies: {initial}
+Attack Gain: {gain}
+Defense Loss: {loss}
+Final Trophies: {final}
+    """
+    return fmt.format(
+        name=player['player_name'],
+        tag=player['player_tag'],
+        initial=player['starting'],
+        gain=player['gain'],
+        loss=player['loss'],
+        final=player['finishing']
+    )
+
