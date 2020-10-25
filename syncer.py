@@ -176,15 +176,16 @@ class Syncer:
         except:
             log.exception(f"{channel_id} failed to send {content} {embed}")
 
-    @tasks.loop(seconds=60.0)
+    @tasks.loop(seconds=0.0)
     async def set_legend_trophies(self):
+        log.info('running legend trophies')
         now = datetime.datetime.utcnow()
         if now.hour >= 5:
             tomorrow = (now + datetime.timedelta(days=1)).replace(hour=5, minute=0, second=0)
         else:
             tomorrow = now.replace(hour=5, minute=0, second=0)
 
-        self.legend_day = tomorrow - datetime.timedelta(days=1)
+        self.legend_day = (tomorrow - datetime.timedelta(days=1)).isoformat()
 
         try:
             await asyncio.sleep((tomorrow - now).total_seconds())
@@ -203,8 +204,6 @@ class Syncer:
             )
         except:
             log.exception('setting legend trophies')
-
-        self.legend_day = self.legend_day + datetime.timedelta(days=1)
 
     # @coc_client.event
     @coc.ClientEvents.clan_loop_finish()
