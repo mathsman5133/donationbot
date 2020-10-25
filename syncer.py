@@ -664,7 +664,7 @@ class Syncer:
                     else:
                         self.legend_data[player.tag]['loss'] += change
                 except KeyError:
-                    self.board_batch_data[player.tag] = {
+                    self.legend_data[player.tag] = {
                         'player_tag': player.tag,
                         'today': self.legend_day,
                         'starting': player.trophies,
