@@ -425,17 +425,18 @@ class Syncer:
 
     async def insert_legend_data(self):
         query = """INSERT INTO legend_days (player_tag, day, starting, gain, loss, finishing) 
-                   SELECT x.player_tag, x.today, x.starting, x.gain, x.loss, 0
+                   SELECT x.player_tag, x.today, x.starting, x.gain, x.loss, x.finishing
                    FROM jsonb_to_recordset($1::jsonb)
                    AS x(
                        player_tag TEXT,
                        today timestamp,
                        starting integer,
                        gain integer,
-                       loss integer                    
+                       loss integer,
+                       finishing integer                   
                    )   
                    ON CONFLICT (player_tag, day)
-                   DO UPDATE SET gain = legend_days.gain + excluded.gain, loss = legend_days.loss + excluded.loss
+                   DO UPDATE SET gain = legend_days.gain + excluded.gain, loss = legend_days.loss + excluded.loss, finishing = excluded.finishing
                 """
         await pool.execute(query, list(self.legend_data.values()))
         self.legend_data.clear()
@@ -678,6 +679,7 @@ class Syncer:
                         'starting': player.trophies,
                         'gain': change if change > 0 else 0,
                         'loss': change if change < 0 else 0,
+                        'finishing': player.trophies,
                     }
 
                 self.legend_counter[player.clan.tag] += 1
