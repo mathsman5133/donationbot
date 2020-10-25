@@ -734,7 +734,7 @@ class Edit(commands.Cog):
         query = """
         UPDATE players SET donations = public.get_don_rec_max(x.donations, x.donations, COALESCE(players.donations, 0)), 
                            received  = public.get_don_rec_max(x.received, x.received, COALESCE(players.received, 0)), 
-                           trophies  = x.trophies,
+                           trophies  = public.get_trophies(x.trophies, players.trophies, players.league_id),
                            clan_tag  = x.clan_tag,
                            player_name = x.player_name
         FROM(

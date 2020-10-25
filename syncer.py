@@ -73,6 +73,10 @@ class Syncer:
         self.last_updated_tags = set()
         self.last_updated_counter = Counter()
 
+        self.legend_data_lock = asyncio.Lock(loop=loop)
+        self.legend_data = {}
+        self.legend_day = None
+
         self.boards_counter = Counter()
 
     async def get_season_id(self):
@@ -82,6 +86,8 @@ class Syncer:
     def start(self):
         loop = asyncio.get_event_loop()
         loop.create_task(self.fetch_webhooks())
+        self.set_legend_trophies.start()
+
         print("STARTING")
 
         listeners = (
@@ -97,9 +103,6 @@ class Syncer:
             self.dispatch_callbacks,
         )
         coc_client.add_events(*listeners)
-
-        self.set_legend_trophies.start()
-
         coc_client.run_forever()
 
     # @coc_client.event
@@ -175,17 +178,33 @@ class Syncer:
 
     @tasks.loop(seconds=60.0)
     async def set_legend_trophies(self):
-        try:
-            now = datetime.datetime.utcnow()
-            if now.hour >= 5:
-                tomorrow = (now + datetime.timedelta(days=1)).replace(hour=5, minute=0, second=0)
-            else:
-                tomorrow = now.replace(hour=5, minute=0, second=0)
+        now = datetime.datetime.utcnow()
+        if now.hour >= 5:
+            tomorrow = (now + datetime.timedelta(days=1)).replace(hour=5, minute=0, second=0)
+        else:
+            tomorrow = now.replace(hour=5, minute=0, second=0)
 
+        self.legend_day = tomorrow - datetime.timedelta(days=1)
+
+        try:
             await asyncio.sleep((tomorrow - now).total_seconds())
-            await pool.execute("UPDATE PLAYERS SET trophies = true_trophies WHERE season_id = $1 AND trophies > 4900", self.season_id)
+            await pool.execute("UPDATE PLAYERS SET trophies = true_trophies WHERE season_id = $1 AND league_id = 29000022", self.season_id)
+            await pool.execute(
+                """UPDATE legend_days 
+                   SET finishing = players.trophies 
+                   FROM players 
+                   WHERE players.season_id = $1 
+                   AND players.player_tag = legend_days.player_tag 
+                   AND players.league_id = 29000022
+                   AND legend_days.day = $2
+                """,
+                self.season_id,
+                self.legend_day,
+            )
         except:
             log.exception('setting legend trophies')
+
+        self.legend_day = self.legend_day + datetime.timedelta(days=1)
 
     # @coc_client.event
     @coc.ClientEvents.clan_loop_finish()
@@ -195,7 +214,7 @@ class Syncer:
             await self.send_donationlog_events()
         except:
             log.exception('sending donationlog events')
-        finally:
+        else:
             log.info('ran donationlog events, at perf: %sms', (time.perf_counter() - s)*1000)
 
         try:
@@ -203,7 +222,7 @@ class Syncer:
             await self.send_trophylog_events()
         except:
             log.exception('sending trophylog events')
-        finally:
+        else:
             log.info('ran trophylog events, at perf: %sms', (time.perf_counter() - s)*1000)
 
         try:
@@ -212,7 +231,7 @@ class Syncer:
                 await self.bulk_board_insert()
         except:
             log.exception('bulk insert into db')
-        finally:
+        else:
             log.info('ran insert board data, at perf: %sms', (time.perf_counter() - s)*1000)
 
         try:
@@ -221,8 +240,17 @@ class Syncer:
                 await self.update_last_online()
         except:
             log.exception('last online into db')
-        finally:
+        else:
             log.info('ran insert last online, at perf: %sms', (time.perf_counter() - s)*1000)
+
+        try:
+            async with self.legend_data_lock:
+                s = time.perf_counter()
+                await self.insert_legend_data()
+        except:
+            log.exception('insert legend data into db')
+        else:
+            log.info('ran insert legend data, at perf: %sms', (time.perf_counter() - s)*1000)
 
         try:
             s = time.perf_counter()
@@ -231,7 +259,7 @@ class Syncer:
             coc_client._clan_updates = [n[0] for n in fetch]
         except:
             log.exception("setting clan tags failed")
-        finally:
+        else:
             log.info('ran set clan tags, at perf: %sms', (time.perf_counter() - s)*1000)
 
     async def update_last_online(self):
@@ -395,15 +423,33 @@ class Syncer:
     #     async with self.board_batch_lock:
     #         await self.bulk_board_insert()
 
+    async def insert_legend_data(self):
+        query = """INSERT INTO legend_days (player_tag, day, starting, gain, loss, finishing) 
+                   SELECT x.player_tag, x.today, x.starting, x.gain, x.loss, 0
+                   FROM jsonb_to_recordset($1::jsonb)
+                   AS x(
+                       player_tag TEXT,
+                       today timestamp,
+                       starting integer,
+                       gain integer,
+                       loss integer                    
+                   )   
+                   ON CONFLICT (player_tag, day)
+                   DO UPDATE SET gain = gain + x.gain, loss = loss + x.loss
+                """
+        await pool.execute(query, list(self.legend_data.values()))
+        self.legend_data.clear()
+
     async def bulk_board_insert(self):
         query = """UPDATE players SET donations = public.get_don_rec_max(x.old_dons, x.new_dons, COALESCE(players.donations, 0)), 
                                       received  = public.get_don_rec_max(x.old_rec, x.new_rec, COALESCE(players.received, 0)), 
-                                      trophies  = public.get_trophies(x.trophies, players.trophies),
+                                      trophies  = public.get_trophies(x.trophies, players.trophies, x.league_id),
                                       true_trophies = x.trophies,
+                                      league_id = x.league_id,
                                       clan_tag  = x.clan_tag,
                                       player_name = x.player_name
                         FROM(
-                            SELECT x.player_tag, x.old_dons, x.new_dons, x.old_rec, x.new_rec, x.trophies, x.clan_tag, x.player_name
+                            SELECT x.player_tag, x.old_dons, x.new_dons, x.old_rec, x.new_rec, x.trophies, x.league_id, x.clan_tag, x.player_name
                                 FROM jsonb_to_recordset($1::jsonb)
                             AS x(player_tag TEXT, 
                                  old_dons INTEGER, 
@@ -411,6 +457,7 @@ class Syncer:
                                  old_rec INTEGER, 
                                  new_rec INTEGER,
                                  trophies INTEGER,
+                                 league_id INTEGER,
                                  clan_tag TEXT,
                                  player_name TEXT)
                             )
@@ -524,6 +571,7 @@ class Syncer:
                     'old_rec': player.received,
                     'new_rec': player.received,
                     'trophies': player.trophies,
+                    'league_id': player.league_id,
                     'clan_tag': player.clan and player.clan.tag,
                     'player_name': player.name,
                     'player_tag': player.tag,
@@ -565,6 +613,7 @@ class Syncer:
                     'old_rec': old_received,
                     'new_rec': new_received,
                     'trophies': player.trophies,
+                    'league_id': player.league_id,
                     'clan_tag': player.clan and player.clan.tag,
                     'player_name': player.name,
                     'player_tag': player.tag,
@@ -603,9 +652,26 @@ class Syncer:
                     'old_rec': player.received,
                     'new_rec': player.received,
                     'trophies': new_trophies,
+                    'league_id': player.league_id,
                     'clan_tag': player.clan and player.clan.tag,
                     'player_name': player.name
                 }
+
+        if player.league_id == 29000022:
+            async with self.legend_data_lock:
+                try:
+                    if change > 0:
+                        self.legend_data[player.tag]['gain'] += change
+                    else:
+                        self.legend_data[player.tag]['loss'] += change
+                except KeyError:
+                    self.board_batch_data[player.tag] = {
+                        'player_tag': player.tag,
+                        'today': self.legend_day,
+                        'starting': player.trophies,
+                        'gain': change if change > 0 else 0,
+                        'loss': change if change < 0 else 0,
+                    }
 
         if new_trophies > old_trophies:
             await self.update(player.tag, player.clan and player.clan.tag)

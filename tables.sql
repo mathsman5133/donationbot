@@ -303,13 +303,13 @@ end;
 $function$
 ;
 
-CREATE OR REPLACE FUNCTION public.get_trophies(game_trophies integer, db_trophies integer)
+CREATE OR REPLACE FUNCTION public.get_trophies(game_trophies integer, db_trophies integer, league_id integer)
  RETURNS integer
  LANGUAGE plpgsql
 AS $function$
 declare
 begin
-    if db_trophies >= 4900 then
+    if league_id = 29000022 then
         return db_trophies;
     else
         return game_trophies;
