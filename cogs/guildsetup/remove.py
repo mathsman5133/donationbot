@@ -263,7 +263,7 @@ class Remove(commands.Cog):
         if not ctx.config:
             return await ctx.send(f"No legend log found for #{channel or ctx.channel}.")
 
-        query = "DELETE FROM logs WHERE channel_id = $1 AND type = $2"
+        query = "DELETE FROM boards WHERE channel_id = $1 AND type = $2"
         await ctx.db.execute(query, ctx.config.channel_id, 'legend')
         await ctx.confirm()
 

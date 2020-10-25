@@ -75,6 +75,7 @@ class Syncer:
 
         self.legend_data_lock = asyncio.Lock(loop=loop)
         self.legend_data = {}
+        self.legend_counter = Counter()
         self.legend_day = None
 
         self.boards_counter = Counter()
@@ -176,7 +177,7 @@ class Syncer:
         except:
             log.exception(f"{channel_id} failed to send {content} {embed}")
 
-    @tasks.loop(seconds=60.0)
+    @tasks.loop(seconds=0.0)
     async def set_legend_trophies(self):
         log.info('running legend trophies')
         now = datetime.datetime.utcnow()
@@ -188,7 +189,7 @@ class Syncer:
         self.legend_day = (tomorrow - datetime.timedelta(days=1)).isoformat()
 
         try:
-            # await asyncio.sleep((tomorrow - now).total_seconds())
+            await asyncio.sleep((tomorrow - now).total_seconds())
             await pool.execute("UPDATE PLAYERS SET trophies = true_trophies WHERE season_id = $1 AND league_id = 29000022", self.season_id)
             await pool.execute(
                 """UPDATE legend_days 
@@ -202,56 +203,8 @@ class Syncer:
                 self.season_id,
                 self.legend_day,
             )
-            # self.loop.create_task(self.send_legend_logs())
-
         except:
             log.exception('setting legend trophies')
-
-    async def send_legend_logs(self):
-        query = """SELECT logs.channel_id, 
-                          clans.clan_tag
-                   FROM logs 
-                   INNER JOIN clans 
-                   ON logs.channel_id = clans.channel_id 
-                   WHERE logs.toggle = TRUE
-                   AND logs.type = 'legend'
-                   ORDER BY clans.clan_tag
-                """
-        fetch = await pool.fetch(query)
-        clans_to_channel = {k: list(v) for k, v in itertools.groupby(fetch, key=lambda r: r['clan_tag'])}
-
-        query = """SELECT legend_days.player_tag, players.player_name, starting, gain, loss, finishing, players.clan_tag
-                   FROM legend_days 
-                   INNER JOIN players 
-                   ON players.player_tag = legend_days.player_tag
-                   WHERE day = $1
-                   AND season_id = $2
-                   AND players.clan_tag = ANY($3::TEXT[])
-                   ORDER BY players.clan_tag
-                """
-        fetch = await pool.fetch(query, datetime.datetime.fromisoformat(self.legend_day), self.season_id, list(clans_to_channel.keys()))
-        for clan, players in itertools.groupby(fetch, key=lambda r: r['clan_tag']):
-            renders = [get_legend_log(player) for player in players]
-            embed = discord.Embed(colour=discord.Colour.purple(), timestamp=datetime.datetime.utcnow())
-            embed.set_author(name="Daily Legend Log Report", icon_url=bot.user.avatar_url)
-
-            current = ""
-            for render in renders:
-                if not embed.description and len(render) + len(current) < 2040:
-                    current += "\n" + render
-                elif not embed.description:
-                    embed.description = current
-                elif embed.description and len(render) + len(current) < 1020:
-                    current += "\n" + render
-                else:
-                    embed.add_field(name="\u200b", value=current)
-
-            else:
-                if current:
-                    embed.add_field(name="\u200b", value=current)
-
-            for channel in clans_to_channel[clan]:
-                await self.safe_send(channel['channel_id'], embed=embed)
 
     # @coc_client.event
     @coc.ClientEvents.clan_loop_finish()
@@ -541,6 +494,7 @@ class Syncer:
                     ) 
                     AS x 
                     WHERE boards.channel_id = x.channel_id
+                    AND boards.type = ANY($2::TEXT[])
                 """
         trans_query = """UPDATE players 
                          SET donations = public.get_don_rec_max($1, $2, COALESCE(players.donations, 0)), 
@@ -575,9 +529,15 @@ class Syncer:
                 # log.info(f'Registered donations/received to the events database. Status Code {response}.')
                 async with self.last_updated_batch_lock:
                     tags = set(tag for (tag, counter) in self.boards_counter.items() if counter > 10)
-                    response = await pool.execute(query3, list(tags))
+                    response = await pool.execute(query3, list(tags), ['donation', 'trophy'])
                     for k in tags:
                         self.boards_counter.pop(k, None)
+
+                async with self.legend_data_lock:
+                    tags = set(tag for (tag, counter) in self.legend_counter.items() if counter > 3)
+                    response2 = await pool.execute(query3, list(tags), ['legend'])
+                    for k in tags:
+                        self.legend_counter.pop(k, None)
 
                 log.info(f"updating boards for {response} channels")
                 self.board_batch_data.clear()
@@ -719,6 +679,8 @@ class Syncer:
                         'gain': change if change > 0 else 0,
                         'loss': change if change < 0 else 0,
                     }
+
+                self.legend_counter[player.clan.tag] += 1
 
         if new_trophies > old_trophies:
             await self.update(player.tag, player.clan and player.clan.tag)

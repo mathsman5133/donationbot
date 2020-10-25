@@ -4,7 +4,7 @@ import itertools
 import logging
 import time
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import aiohttp
 import coc
@@ -27,6 +27,22 @@ GAIN_EMOJI = discord.PartialEmoji(name="gain", id=696280508933472256, animated=F
 LAST_ONLINE_EMOJI = discord.PartialEmoji(name="lastonline", id=696292732599271434, animated=False)
 HISTORICAL_EMOJI = discord.PartialEmoji(name="historical", id=694812540290465832, animated=False)
 
+emojis = {
+    "donation": (REFRESH_EMOJI, LEFT_EMOJI, RIGHT_EMOJI, PERCENTAGE_EMOJI, LAST_ONLINE_EMOJI, HISTORICAL_EMOJI),
+    "trophy": (REFRESH_EMOJI, LEFT_EMOJI, RIGHT_EMOJI, GAIN_EMOJI, LAST_ONLINE_EMOJI, HISTORICAL_EMOJI),
+    "legend": (REFRESH_EMOJI, LEFT_EMOJI, RIGHT_EMOJI),
+}
+backgrounds = {
+    "donation": "https://cdn.discordapp.com/attachments/681438398455742536/768684688100687882/snowyfield2.png",
+    "trophy": "https://cdn.discordapp.com/attachments/681438398455742536/768649037250560060/clash_cliffs2-min.png",
+    "legend": "https://cdn.discordapp.com/attachments/681438398455742536/770048574645469274/clashxmas_north_cloudsSky_v004.jpg",
+}
+titles = {
+    "donation": "Donation Leaderboard",
+    "trophy": "Trophy Leaderboard",
+    "legend": "Legend Leaderboard",
+}
+
 GLOBAL_BOARDS_CHANNEL_ID = 663683345108172830
 
 log = logging.getLogger(__name__)
@@ -37,25 +53,30 @@ logging.basicConfig(level=logging.INFO)
 
 
 class HTMLImages:
-    def __init__(self, players, title=None, image=None, sort_by=None, footer=None, offset=None, donationboard=None, fonts=None):
+    def __init__(self, players, title=None, image=None, sort_by=None, footer=None, offset=None, board_type='donation', fonts=None):
         self.players = players
 
-        self.donationboard = donationboard
         self.offset = offset or 1
-        self.title = title or ("Donation Leaderboard" if donationboard else "Trophy Leaderboard")
-        self.image = image or ("https://cdn.discordapp.com/attachments/681438398455742536/768684688100687882/snowyfield2.png" if donationboard else "https://cdn.discordapp.com/attachments/681438398455742536/768649037250560060/clash_cliffs2-min.png")
+        self.title = title or titles.get(board_type, backgrounds['donation'])
+        self.image = image or backgrounds.get(board_type, backgrounds['donation'])
         self.footer = footer
         self.fonts = fonts or "symbola, Helvetica, Verdana,courier,arial,symbola"
+        self.board_type = board_type
 
         self.html = ""
-        if donationboard:
+        if board_type == "donation":
             self.columns = ("#", "Player Name", "Dons", "Rec", "Ratio", "Last On")
+        elif board_type == "legend":
+            self.columns = ("#", "Player Name", "Initial", "Gain", "Loss", "Final")
         else:
             self.columns = ("#", "Player Name", "Cups", "Gain", "Last On")
 
-        if sort_by and donationboard:
+        if sort_by and board_type == "donation":
             sort_columns = ("#", "Player Name", "donations", "received", "ratio", "last_online ASC, player_name")
             self.selected_index = [sort_columns.index('donations' if sort_by == 'donation' else sort_by)]
+        elif sort_by and board_type == "legend":
+            sort_columns = ("#", "Player Name", "starting", "gain", "loss", "finishing")
+            self.selected_index = [sort_columns.index(sort_by)]
         elif sort_by:
             sort_columns = ("#", "Player Name", "trophies", "gain", "last_online ASC, player_name")
             self.selected_index = [sort_columns.index(sort_by.replace('donations', 'trophies'))]
@@ -194,9 +215,12 @@ header {
         self.html += "</body></html>"
 
     def parse_players(self):
-        if self.donationboard:
+        if self.board_type == 'donation':
             self.players = [(str(i) + ".", p['player_name'], p['donations'], p['received'], round(p['donations'] / (p['received'] or 1), 2),
                             self.get_readable(p['last_online'])) for i, p in enumerate(self.players, start=self.offset)]
+        elif self.board_type == 'legend':
+            self.players = [(str(i) + ".", p['player_name'], p['starting'], p['gain'], p['loss'], p['finishing'])
+                            for i, p in enumerate(self.players, start=self.offset)]
         else:
             self.players = [
                 (str(i) + ".", p['player_name'], p['trophies'], p['gain'], self.get_readable(p['last_online']))
@@ -216,7 +240,8 @@ header {
         else:
             self.add_table(self.players)
 
-        self.add_footer()
+        if not self.board_type == 'legend':
+            self.add_footer()
         self.end_html()
         log.debug((time.perf_counter() - s)*1000)
 
@@ -297,10 +322,12 @@ class SyncBoards:
             await pool.execute("UPDATE boards SET toggle = FALSE WHERE channel_id = $1", config.channel_id)
             return
 
-        for emoji in (REFRESH_EMOJI, LEFT_EMOJI, RIGHT_EMOJI, PERCENTAGE_EMOJI if config.type == 'donation' else GAIN_EMOJI, LAST_ONLINE_EMOJI, HISTORICAL_EMOJI):
+        for emoji in emojis[config.type]:
             await self.bot.http.add_reaction(message['channel_id'], message['message_id'], str(emoji))
 
-        await pool.execute("UPDATE boards SET message_id = $1 WHERE channel_id = $2 AND type = $3", int(message['message_id']), config.channel_id, config.type)
+        fetch = await pool.fetchrow("UPDATE boards SET message_id = $1 WHERE channel_id = $2 AND type = $3 RETURNING *", int(message['message_id']), config.channel_id, config.type)
+        if fetch:
+            return BoardConfig(record=fetch, bot=self.bot)
 
     @staticmethod
     def get_next_per_page(page_no, config_per_page):
@@ -321,8 +348,11 @@ class SyncBoards:
     async def update_board(self, config, update_global=False, fonts=None, send_to_channel=None):
         if config.channel_id == GLOBAL_BOARDS_CHANNEL_ID and not update_global:
             return
+        if not config.message_id:
+            config = await self.set_new_message(config)
+            if not config:
+                return
 
-        donationboard = config.type == 'donation'
         start = time.perf_counter()
 
         season_id = config.season_id or self.season_id
@@ -351,6 +381,28 @@ class SyncBoards:
                     """
             fetch = await pool.fetch(
                 query,
+                season_id,
+                self.get_next_per_page(config.page, config.per_page),
+                offset
+            )
+        elif config.type == "legend":
+            query = f"""SELECT DISTINCT players.player_name, starting, gain, loss, finishing
+                        FROM legend_days 
+                        INNER JOIN players 
+                        ON players.player_tag = legend_days.player_tag
+                        INNER JOIN clans
+                        ON clans.clan_tag = players.clan_tag
+                        WHERE day = (SELECT max(day) FROM legend_days)
+                        AND season_id = $1
+                        AND clans.channel_id = $2
+                        ORDER BY {config.sort_by} DESC
+                        NULLS LAST
+                        LIMIT $3
+                        OFFSET $4
+                    """
+            fetch = await pool.fetch(
+                query,
+                config.channel_id,
                 season_id,
                 self.get_next_per_page(config.page, config.per_page),
                 offset
@@ -396,7 +448,7 @@ class SyncBoards:
             sort_by=config.sort_by,
             footer=f"Season: {season_start} - {season_finish}.",
             offset=offset,
-            donationboard=donationboard,
+            board_type=config.type,
             fonts=fonts,
         )
         render = await table.make()
@@ -422,6 +474,32 @@ class SyncBoards:
                 await self.bot.http.edit_message(config.channel_id, config.message_id, content=None, embed=embed.to_dict())
         except discord.NotFound:
             await self.set_new_message(config)
+
+    @tasks.loop(seconds=0.0)
+    async def legend_board_reset(self):
+        log.info('running legend trophies')
+        now = datetime.utcnow()
+        if now.hour >= 5:
+            tomorrow = (now + timedelta(days=1)).replace(hour=5, minute=0, second=0, microsecond=0)
+        else:
+            tomorrow = now.replace(hour=5, minute=0, second=0, microsecond=0)
+
+        try:
+            await asyncio.sleep((tomorrow - now).total_seconds())
+
+            fetch = await pool.fetch("UPDATE boards SET sort_by = 'finishing', per_page=200, page=1 FROM boards WHERE type=$1 AND toggle=True RETURNING *", 'legend')
+            for row in fetch:
+                try:
+                    config = BoardConfig(record=row, bot=self.bot)
+                    await self.update_board(config)
+                    await self.bot.http.clear_reactions(row['channel_id'], row['message_id'])
+                except (discord.Forbidden, discord.NotFound, discord.HTTPException):
+                    continue
+
+            await pool.execute("UPDATE boards SET message_id=null, per_page=15 WHERE type=$1", 'legend')
+
+        except:
+            log.exception('resetting legend boards')
 
 
 if __name__ == "__main__":
