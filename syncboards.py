@@ -402,8 +402,8 @@ class SyncBoards:
                     """
             fetch = await pool.fetch(
                 query,
-                config.channel_id,
                 season_id,
+                config.channel_id,
                 self.get_next_per_page(config.page, config.per_page),
                 offset
             )
