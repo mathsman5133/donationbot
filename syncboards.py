@@ -368,6 +368,10 @@ class SyncBoards:
         start = time.perf_counter()
 
         season_id = config.season_id or self.season_id
+        if season_id < 0:
+            # default season id is null, which means historical will make it go negative, so just take it from current id.
+            season_id = self.season_id + season_id
+
         offset = 0
         for i in range(1, config.page):
             offset += self.get_next_per_page(i, config.per_page)
