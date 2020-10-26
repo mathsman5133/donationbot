@@ -87,6 +87,7 @@ class Syncer:
     def start(self):
         self.loop = loop = asyncio.get_event_loop()
         loop.create_task(self.fetch_webhooks())
+        loop.create_task(self.season_start())
         self.set_legend_trophies.start()
 
         print("STARTING")
@@ -112,7 +113,7 @@ class Syncer:
         log.exception("event failed", exc_info=exception)
 
     # @coc_client.event
-    @coc.ClientEvents.new_season_start()
+    # @coc.ClientEvents.new_season_start()
     async def season_start(self):
         await self.safe_send(594286547449282587, "New season has started!")
 
