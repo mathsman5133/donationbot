@@ -277,6 +277,8 @@ class SyncBoards:
         if start_loop:
             self.update_board_loops.add_exception_type(Exception)
             self.update_board_loops.start()
+            self.legend_board_reset.add_exception_type(Exception)
+            self.legend_board_reset.start()
 
     async def on_init(self):
         self.webhooks = itertools.cycle(
@@ -479,10 +481,10 @@ class SyncBoards:
     async def legend_board_reset(self):
         log.info('running legend trophies')
         now = datetime.utcnow()
-        if now.hour >= 5:
-            tomorrow = (now + timedelta(days=1)).replace(hour=5, minute=0, second=0, microsecond=0)
+        if now.hour > 5:
+            tomorrow = (now + timedelta(days=1)).replace(hour=5, minute=10, second=0, microsecond=0)
         else:
-            tomorrow = now.replace(hour=5, minute=0, second=0, microsecond=0)
+            tomorrow = now.replace(hour=5, minute=10, second=0, microsecond=0)
 
         try:
             await asyncio.sleep((tomorrow - now).total_seconds())
