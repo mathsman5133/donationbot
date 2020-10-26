@@ -93,7 +93,7 @@ class Syncer:
         print("STARTING")
 
         listeners = (
-            self.season_start,
+            # self.season_start,
             self.on_clan_member_donation,
             self.on_clan_member_received,
             self.on_clan_member_trophies_change,
