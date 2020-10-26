@@ -193,6 +193,16 @@ class Syncer:
             season_id = self.season_id
             await asyncio.sleep((tomorrow - now).total_seconds())
             await pool.execute("UPDATE PLAYERS SET trophies = true_trophies WHERE season_id = $1 AND league_id = 29000022", season_id)
+            query = """INSERT INTO legend_days (player_tag, day, starting, gain, loss, finishing) 
+                       SELECT player_tag, $1, trophies, 0, 0, trophies
+                       FROM players
+                       WHERE season_id = $2
+                       AND league_id = 29000022
+                       ON CONFLICT (player_tag, day)
+                       DO NOTHING;
+                    """
+            await pool.execute(query, tomorrow.isoformat(), season_id)
+
         except:
             log.exception('setting legend trophies')
 
