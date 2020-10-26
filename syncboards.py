@@ -286,6 +286,8 @@ class SyncBoards:
                 payload['id'], payload['token'], adapter=discord.AsyncWebhookAdapter(session=self.session)
             ) for payload in await self.bot.http.guild_webhooks(691779140059267084)
         )
+        fetch = await pool.fetchrow("SELECT id FROM seasons WHERE start < now() ORDER BY start DESC;")
+        self.season_id = fetch['id']
 
     async def get_season_meta(self, season_id):
         try:

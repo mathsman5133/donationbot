@@ -131,7 +131,8 @@ class Syncer:
                             user_id,
                             season_id,
                             player_name,
-                            start_trophies
+                            start_trophies,
+                            clan_tag
                             )
                     SELECT player_tag,
                            0,
@@ -139,7 +140,8 @@ class Syncer:
                            user_id,
                            season_id + 1,
                            player_name,
-                           trophies
+                           trophies,
+                           clan_tag
                     FROM players
                     WHERE season_id = $1
                 """
