@@ -491,19 +491,22 @@ class SyncBoards:
         except discord.NotFound:
             await self.set_new_message(config)
 
-    @tasks.loop(seconds=0.0)
+    @tasks.loop(seconds=5.0)
     async def legend_board_reset(self):
         log.info('running legend trophies')
         now = datetime.utcnow()
-        if now.hour >= 5 and now.minute >= 27:
-            tomorrow = (now + timedelta(days=1)).replace(hour=5, minute=27, second=0, microsecond=0)
+        if now.hour >= 5:
+            tomorrow = (now + timedelta(days=1)).replace(hour=5, minute=0, second=0, microsecond=0)
         else:
-            tomorrow = now.replace(hour=5, minute=27, second=0, microsecond=0)
+            tomorrow = now.replace(hour=5, minute=0, second=0, microsecond=0)
 
         try:
-            await asyncio.sleep((tomorrow - now).total_seconds())
+            seconds = (tomorrow - now).total_seconds()
+            log.info("Legend board resetter sleeping for %s seconds", seconds)
+            await asyncio.sleep(seconds)
 
             fetch = await pool.fetch("UPDATE boards SET sort_by = 'finishing', per_page=200, page=1 WHERE type=$1 AND toggle=True RETURNING *", 'legend')
+            log.info("Legend board resetting for %s boards", len(fetch))
             for row in fetch:
                 try:
                     config = BoardConfig(record=row, bot=self.bot)
