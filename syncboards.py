@@ -263,7 +263,7 @@ class SyncBoards:
     def __init__(self, bot, start_loop=False):
         self.bot = bot
 
-        self.season_id = 16
+        self.season_id = 17
 
         self.last_updated_channels = {}
         self.season_meta = {}
