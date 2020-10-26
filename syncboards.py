@@ -325,7 +325,7 @@ class SyncBoards:
             return
 
         for emoji in emojis[config.type]:
-            await self.bot.http.add_reaction(message['channel_id'], message['message_id'], str(emoji))
+            await self.bot.http.add_reaction(message['id'], message['message_id'], str(emoji))
 
         fetch = await pool.fetchrow("UPDATE boards SET message_id = $1 WHERE channel_id = $2 AND type = $3 RETURNING *", int(message['message_id']), config.channel_id, config.type)
         if fetch:
