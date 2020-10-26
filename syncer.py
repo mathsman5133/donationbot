@@ -189,20 +189,9 @@ class Syncer:
         self.legend_day = (tomorrow - datetime.timedelta(days=1)).isoformat()
 
         try:
+            season_id = self.season_id
             await asyncio.sleep((tomorrow - now).total_seconds())
-            await pool.execute("UPDATE PLAYERS SET trophies = true_trophies WHERE season_id = $1 AND league_id = 29000022", self.season_id)
-            await pool.execute(
-                """UPDATE legend_days 
-                   SET finishing = players.trophies 
-                   FROM players 
-                   WHERE players.season_id = $1 
-                   AND players.player_tag = legend_days.player_tag 
-                   AND players.league_id = 29000022
-                   AND legend_days.day = $2
-                """,
-                self.season_id,
-                self.legend_day,
-            )
+            await pool.execute("UPDATE PLAYERS SET trophies = true_trophies WHERE season_id = $1 AND league_id = 29000022", season_id)
         except:
             log.exception('setting legend trophies')
 
