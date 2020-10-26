@@ -327,7 +327,7 @@ class SyncBoards:
         for emoji in emojis[config.type]:
             await self.bot.http.add_reaction(message['channel_id'], message['id'], emoji._as_reaction())
 
-        fetch = await pool.fetchrow("UPDATE boards SET message_id = $1 WHERE channel_id = $2 AND type = $3 RETURNING *", int(message['message_id']), config.channel_id, config.type)
+        fetch = await pool.fetchrow("UPDATE boards SET message_id = $1 WHERE channel_id = $2 AND type = $3 RETURNING *", int(message['id']), config.channel_id, config.type)
         if fetch:
             return BoardConfig(record=fetch, bot=self.bot)
 
