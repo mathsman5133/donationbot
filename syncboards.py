@@ -273,12 +273,12 @@ class SyncBoards:
         self.throttler = coc.BasicThrottler(1)
 
         bot.loop.create_task(self.on_init())
+        bot.loop.create_task(self.set_season_id())
 
         if start_loop:
-            self.update_board_loops.add_exception_type(Exception)
-            self.update_board_loops.start()
-            self.legend_board_reset.add_exception_type(Exception)
-            self.legend_board_reset.start()
+            for task in (self.update_board_loops, self.legend_board_reset, self.reset_season_id):
+                task.add_exception_type(Exception)
+                task.start()
 
     async def on_init(self):
         self.webhooks = itertools.cycle(
@@ -286,6 +286,8 @@ class SyncBoards:
                 payload['id'], payload['token'], adapter=discord.AsyncWebhookAdapter(session=self.session)
             ) for payload in await self.bot.http.guild_webhooks(691779140059267084)
         )
+
+    async def set_season_id(self):
         fetch = await pool.fetchrow("SELECT id FROM seasons WHERE start < now() ORDER BY start DESC;")
         self.season_id = fetch['id']
 
@@ -297,6 +299,12 @@ class SyncBoards:
             season_start, season_finish = fetch[0].strftime('%d-%b-%Y'), fetch[1].strftime('%d-%b-%Y')
             self.season_meta[season_id] = (season_start, season_finish)
             return (season_start, season_finish)
+
+    @tasks.loop(seconds=5.0)
+    async def reset_season_id(self):
+        next_season = coc.utils.get_season_end()
+        await asyncio.sleep((datetime.utcnow() - next_season).total_seconds() + 1)  # allow some buffer
+        await self.set_season_id()
 
     @tasks.loop(seconds=5.0)
     async def update_board_loops(self):

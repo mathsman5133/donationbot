@@ -92,7 +92,7 @@ class Syncer:
         print("STARTING")
 
         listeners = (
-            # self.season_start,
+            self.season_start,
             self.on_clan_member_donation,
             self.on_clan_member_received,
             self.on_clan_member_trophies_change,
@@ -112,7 +112,7 @@ class Syncer:
         log.exception("event failed", exc_info=exception)
 
     # @coc_client.event
-    # @coc.ClientEvents.new_season_start()
+    @coc.ClientEvents.new_season_start()
     async def season_start(self):
         await self.safe_send(594286547449282587, "New season has started!")
 
@@ -132,7 +132,9 @@ class Syncer:
                             season_id,
                             player_name,
                             start_trophies,
-                            clan_tag
+                            trophies,
+                            clan_tag,
+                            league_id
                             )
                     SELECT player_tag,
                            0,
@@ -140,13 +142,13 @@ class Syncer:
                            user_id,
                            season_id + 1,
                            player_name,
-                           trophies,
-                           clan_tag
+                           LEAST(trophies, 5000),
+                           LEAST(trophies, 5000),
+                           league_id
                     FROM players
                     WHERE season_id = $1
                 """
         await pool.execute(query, self.season_id - 1)
-        await pool.execute("UPDATE players SET start_trophies = 5000 WHERE start_trophies > 5000 AND season_id = $1", self.season_id)
         await self.safe_send(594286547449282587, "Syncer has added players :ok_hand:")
 
     async def add_temp_events(self, log_type, channel_id, fmt):
@@ -191,8 +193,7 @@ class Syncer:
         self.legend_day = (tomorrow - datetime.timedelta(days=1)).isoformat()
 
         try:
-            season_id = self.season_id
-            await asyncio.sleep((tomorrow - now).total_seconds())
+            await asyncio.sleep((tomorrow - now).total_seconds() + 1)  # 1sec buffer for when it's a new season
             await pool.execute("UPDATE PLAYERS SET trophies = true_trophies WHERE season_id = $1 AND league_id = 29000022", season_id)
             query = """INSERT INTO legend_days (player_tag, day, starting, gain, loss, finishing) 
                        SELECT player_tag, $1, trophies, 0, 0, trophies
@@ -202,7 +203,7 @@ class Syncer:
                        ON CONFLICT (player_tag, day)
                        DO NOTHING;
                     """
-            await pool.execute(query, tomorrow.isoformat(), season_id)
+            await pool.execute(query, tomorrow.isoformat(), self.season_id)
 
         except:
             log.exception('setting legend trophies')

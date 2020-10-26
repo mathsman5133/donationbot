@@ -728,7 +728,8 @@ class Edit(commands.Cog):
                     "received": player.received,
                     "trophies": player.trophies,
                     "clan_tag": clan.tag,
-                    "player_name": player.name
+                    "player_name": player.name,
+                    "league_id": player.league and player.league.id
                 })
 
         query = """
@@ -736,16 +737,18 @@ class Edit(commands.Cog):
                            received  = public.get_don_rec_max(x.received, x.received, COALESCE(players.received, 0)), 
                            trophies  = public.get_trophies(x.trophies, players.trophies, players.league_id),
                            clan_tag  = x.clan_tag,
-                           player_name = x.player_name
+                           player_name = x.player_name,
+                           league_id = x.league_id
         FROM(
-            SELECT x.player_tag, x.donations, x.received, x.trophies, x.clan_tag, x.player_name
+            SELECT x.player_tag, x.donations, x.received, x.trophies, x.clan_tag, x.player_name, x.league_id
                 FROM jsonb_to_recordset($1::jsonb)
             AS x(player_tag TEXT, 
                  donations INTEGER,
                  received INTEGER,
                  trophies INTEGER,
                  clan_tag TEXT,
-                 player_name TEXT)
+                 player_name TEXT,
+                 league_id INTEGER)
             )
         AS x
         WHERE players.player_tag = x.player_tag
