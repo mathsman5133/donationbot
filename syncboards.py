@@ -481,10 +481,10 @@ class SyncBoards:
     async def legend_board_reset(self):
         log.info('running legend trophies')
         now = datetime.utcnow()
-        if now.hour > 5:
-            tomorrow = (now + timedelta(days=1)).replace(hour=5, minute=17, second=0, microsecond=0)
+        if now.hour >= 5 and now.minute >= 20:
+            tomorrow = (now + timedelta(days=1)).replace(hour=5, minute=20, second=0, microsecond=0)
         else:
-            tomorrow = now.replace(hour=5, minute=17, second=0, microsecond=0)
+            tomorrow = now.replace(hour=5, minute=20, second=0, microsecond=0)
 
         try:
             await asyncio.sleep((tomorrow - now).total_seconds())
