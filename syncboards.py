@@ -325,7 +325,7 @@ class SyncBoards:
             return
 
         for emoji in emojis[config.type]:
-            await self.bot.http.add_reaction(message['id'], message['message_id'], str(emoji))
+            await self.bot.http.add_reaction(message['channel_id'], message['id'], str(emoji))
 
         fetch = await pool.fetchrow("UPDATE boards SET message_id = $1 WHERE channel_id = $2 AND type = $3 RETURNING *", int(message['message_id']), config.channel_id, config.type)
         if fetch:
@@ -482,9 +482,9 @@ class SyncBoards:
         log.info('running legend trophies')
         now = datetime.utcnow()
         if now.hour > 5:
-            tomorrow = (now + timedelta(days=1)).replace(hour=5, minute=15, second=0, microsecond=0)
+            tomorrow = (now + timedelta(days=1)).replace(hour=5, minute=17, second=0, microsecond=0)
         else:
-            tomorrow = now.replace(hour=5, minute=15, second=0, microsecond=0)
+            tomorrow = now.replace(hour=5, minute=17, second=0, microsecond=0)
 
         try:
             await asyncio.sleep((tomorrow - now).total_seconds())
