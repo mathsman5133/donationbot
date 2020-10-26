@@ -489,7 +489,7 @@ class SyncBoards:
         try:
             await asyncio.sleep((tomorrow - now).total_seconds())
 
-            fetch = await pool.fetch("UPDATE boards SET sort_by = 'finishing', per_page=200, page=1 FROM boards WHERE type=$1 AND toggle=True RETURNING *", 'legend')
+            fetch = await pool.fetch("UPDATE boards SET sort_by = 'finishing', per_page=200, page=1 WHERE type=$1 AND toggle=True RETURNING *", 'legend')
             for row in fetch:
                 try:
                     config = BoardConfig(record=row, bot=self.bot)
