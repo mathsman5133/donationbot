@@ -482,9 +482,9 @@ class SyncBoards:
         log.info('running legend trophies')
         now = datetime.utcnow()
         if now.hour > 5:
-            tomorrow = (now + timedelta(days=1)).replace(hour=5, minute=10, second=0, microsecond=0)
+            tomorrow = (now + timedelta(days=1)).replace(hour=5, minute=11, second=0, microsecond=0)
         else:
-            tomorrow = now.replace(hour=5, minute=10, second=0, microsecond=0)
+            tomorrow = now.replace(hour=5, minute=11, second=0, microsecond=0)
 
         try:
             await asyncio.sleep((tomorrow - now).total_seconds())
