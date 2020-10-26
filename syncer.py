@@ -87,7 +87,6 @@ class Syncer:
     def start(self):
         self.loop = loop = asyncio.get_event_loop()
         loop.create_task(self.fetch_webhooks())
-        loop.create_task(self.season_start())
         self.set_legend_trophies.start()
 
         print("STARTING")
