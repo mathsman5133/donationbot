@@ -739,11 +739,11 @@ class Add(commands.Cog):
                               'See all clans claimed with `+info clans`. '
                               'Please note that only clans claimed to this channel will appear in the log.')
 
-    @add.command(name='legendlog')
-    @requires_config('legendlog', invalidate=True)
+    @add.command(name='legendboard')
+    @requires_config('legendboard', invalidate=True)
     @manage_guild()
-    async def add_legendlog(self, ctx, channel: discord.TextChannel = None):
-        """Create a legend log for your server.
+    async def add_legendboard(self, ctx, channel: discord.TextChannel = None):
+        """Create a legend board for your server.
 
         This is a mini-board (like a donation or trophyboard) that will update when legend players attack,
         archiving itself at the end of the day and sending a new board for the next legend day.
@@ -752,10 +752,10 @@ class Add(commands.Cog):
         :key: Discord channel (mention etc.)
 
         **Format**
-        :information_source: `+add legendlog #CHANNEL`
+        :information_source: `+add legendboard #CHANNEL`
 
         **Example**
-        :white_check_mark: `+add legendlog #logging`
+        :white_check_mark: `+add legendboard #logging`
 
         **Required Permissions**
         :warning: Manage Server
@@ -771,8 +771,8 @@ class Add(commands.Cog):
             f'Would you like me to add all clans claimed on the server to this legendlog?\n'
             f'Else you can manually add clans with `+add clan #CLAN_TAG` to this channel.\n')
         if not prompt:
-            await ctx.send(f'{channel.mention} has been added as a legendlog channel.\n'
-                           f'Please note that only clans claimed to {channel.mention} will appear in this log.')
+            await ctx.send(f'{channel.mention} has been added as a legend board channel.\n'
+                           f'Please note that only clans claimed to {channel.mention} will appear in this board.')
         else:
             query = """INSERT INTO clans (
                                     clan_tag, 
@@ -794,9 +794,9 @@ class Add(commands.Cog):
                            DO NOTHING;
                         """
             await ctx.db.execute(query, ctx.guild.id, channel.id)
-            await ctx.send(f'{channel.mention} has been added as a legendlog channel. '
+            await ctx.send(f'{channel.mention} has been added as a legendboard channel. '
                                   'See all clans claimed with `+info clans`. '
-                                  'Please note that only clans claimed to this channel will appear in the log.')
+                                  'Please note that only clans claimed to this channel will appear in the board.')
 
         msg = await channel.send(BOARD_PLACEHOLDER.format(board="legend"))
         await msg.add_reaction("<:refresh:694395354841350254>")

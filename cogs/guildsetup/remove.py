@@ -242,19 +242,19 @@ class Remove(commands.Cog):
         await ctx.db.execute(query, ctx.config.channel_id, 'trophy')
         await ctx.confirm()
 
-    @remove.command(name='legendlog')
+    @remove.command(name='legendboard')
     @manage_guild()
-    async def remove_legendlog(self, ctx, channel: TextChannel = None):
-        """Removes a channel's legend log.
+    async def remove_legendboard(self, ctx, channel: TextChannel = None):
+        """Removes a channel's legend board.
 
         **Parameters**
-        :key: A discord channel to remove the legend log from.
+        :key: A discord channel to remove the legend board from.
 
         **Format**
-        :information_source: `+remove legendlog #CHANNEL`
+        :information_source: `+remove legendboard #CHANNEL`
 
         **Example**
-        :white_check_mark: `+remove legendlog #logging`
+        :white_check_mark: `+remove legendboard #logging`
 
         **Required Permissions**
         :warning: Manage Server
@@ -263,13 +263,13 @@ class Remove(commands.Cog):
         query = "DELETE FROM boards WHERE channel_id = $1 AND type = $2 RETURNING channel_id, message_id"
         fetch = await ctx.db.fetchrow(query, channel.id, 'legend')
         if not fetch:
-            return await ctx.send(f"No legend log found for {channel.mention}.")
+            return await ctx.send(f"No legendboard found for {channel.mention}.")
         try:
             await self.bot.http.delete_message(fetch['channel_id'], fetch['message_id'])
         except (discord.Forbidden, discord.NotFound, discord.HTTPException):
             pass
 
-        await ctx.send(f"👌 Legend log successfully deleted.")
+        await ctx.send(f"👌 Legend board successfully deleted.")
 
     @remove.command(name='event')
     @manage_guild()

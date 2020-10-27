@@ -223,6 +223,121 @@ class Edit(commands.Cog):
         await self.bot.donationboard.update_board(message_id=result['message_id'])
         await ctx.send(f":white_check_mark: Per-page count updated.")
 
+    @edit.group(name='legendboard')
+    @manage_guild()
+    async def edit_legendboard(self, ctx):
+        """[Group] Edit a legendboard. See the subcommands for more info.
+        """
+        if not ctx.invoked_subcommand:
+            await ctx.send_help(ctx.command)
+
+    @edit_legendboard.command(name='background', aliases=['bg', 'icon'])
+    async def edit_legendboard_icon(self, ctx, channel: typing.Optional[discord.TextChannel], *, url: str = None):
+        """Add or change the background for a legendboard.
+
+        **Parameters**
+        :key: A channel where the legendboard is located (#mention)
+        :key: A URL (jpeg, jpg or png only). Use `default` to remove any background and use the bot default.
+
+        **Format**
+        :information_source: `+edit legendboard background #CHANNEL URL`
+
+        **Example**
+        :white_check_mark: `+edit legendboard background #legend-board https://catsareus/thecrazycatbot/123.jpg`
+        :white_check_mark: `+edit legendboard background #legend-board default`
+
+        **Required Permissions**
+        :warning: Manage Server
+        """
+        channel = channel or ctx.channel
+
+        # if not url or not url_validator.match(url):
+        #     attachments = ctx.message.attachments
+        #     if not attachments:
+        #         return await ctx.send('You must pass in a url or upload an attachment.')
+        #     url = attachments[0].url
+
+        if url in ['none', 'remove', 'default']:
+            url = None
+
+        if url == 'https://catsareus/thecrazycatbot/123.jpg':
+            return await ctx.send('Uh oh! That\'s an example URL - it doesn\'t work!')
+
+        query = "UPDATE boards SET icon_url = $1 WHERE channel_id = $2 AND type = 'legend' RETURNING message_id"
+        result = await ctx.db.fetchrow(query, url, channel.id)
+        if not result:
+            return await ctx.send(
+                f"I couldn't find a trophyboard setup in {channel}. Either #mention a valid board channel, or set one up with `+help add legendboard`.")
+
+        await self.bot.donationboard.update_board(message_id=result['message_id'])
+        await ctx.send(f":white_check_mark: Icon URL updated.")
+
+    @edit_legendboard.command(name='title')
+    async def edit_legendboard_title(self, ctx, channel: typing.Optional[discord.TextChannel], *, title: str):
+        """Change the title for a legendboard.
+
+        **Parameters**
+        :key: A channel where the legendboard is located (#mention)
+        :key: Title (must be less than 50 characters).
+
+        **Format**
+        :information_source: `+edit legendboard title #CHANNEL TITLE`
+
+        **Example**
+        :white_check_mark: `+edit legendboard title #legend-boards The Crazy Cat Bot Title`
+
+        **Required Permissions**
+        :warning: Manage Server
+        """
+        channel = channel or ctx.channel
+        if len(title) >= 50:
+            return await ctx.send('Titles must be less than 50 characters.')
+
+        query = "UPDATE boards SET title = $1 WHERE channel_id = $2 AND type = 'legend' RETURNING message_id"
+        result = await ctx.db.fetchrow(query, title, channel.id)
+
+        if not result:
+            return await ctx.send(
+                f"I couldn't find a legendboard setup in {channel}. Either #mention a valid board channel, or set one up with `+help add legendboard`.")
+
+        await self.bot.donationboard.update_board(message_id=result['message_id'])
+        await ctx.send(f":white_check_mark: Title updated.")
+
+    @edit_legendboard.command(name='perpage')
+    async def edit_trophyboard_per_page(self, ctx, channel: typing.Optional[discord.TextChannel], per_page: int):
+        """Change how many players are displayed on each page of a legendboard.
+
+        By default, it is 15 for the first and second pages, then 20, 25, 25, 50 etc.
+        You can restore the default settings by running `+edit legendboard perpage 0`.
+
+        **Parameters**
+        :key: A channel where the legendboard is located (#mention)
+        :key: The number of players per page. Must be a number (25).
+
+        **Format**
+        :information_source: `+edit legendboard perpage #CHANNEL NUMBER`
+
+        **Example**
+        :white_check_mark: `+edit legendboard perpage #legend-boards 15`
+        :white_check_mark: `+edit legendboard perpage #legend-boards 50`
+
+        **Required Permissions**
+        :warning: Manage Server
+        """
+        channel = channel or ctx.channel
+        if per_page < 0:
+            return await ctx.send("You can't have a negative number of players per page!")
+
+        query = "UPDATE boards SET per_page = $1 WHERE channel_id = $2 AND type = 'legend' RETURNING message_id"
+        result = await ctx.db.fetchrow(query, per_page, channel.id)
+
+        if not result:
+            return await ctx.send(f"I couldn't find a legendboard setup in {channel}. Either #mention a valid board channel, or set one up with `+help add legendboard`.")
+
+        await self.bot.donationboard.update_board(message_id=result['message_id'])
+        await ctx.send(f":white_check_mark: Per-page count updated.")
+
+
     @edit.group(name='trophyboard')
     @manage_guild()
     async def edit_trophyboard(self, ctx):
@@ -336,6 +451,7 @@ class Edit(commands.Cog):
 
         await self.bot.donationboard.update_board(message_id=result['message_id'])
         await ctx.send(f":white_check_mark: Per-page count updated.")
+
 
     @edit.group(name='donationlog')
     @manage_guild()
