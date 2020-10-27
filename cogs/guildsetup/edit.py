@@ -304,7 +304,7 @@ class Edit(commands.Cog):
         await ctx.send(f":white_check_mark: Title updated.")
 
     @edit_legendboard.command(name='perpage')
-    async def edit_trophyboard_per_page(self, ctx, channel: typing.Optional[discord.TextChannel], per_page: int):
+    async def edit_legendboard_per_page(self, ctx, channel: typing.Optional[discord.TextChannel], *, per_page: int):
         """Change how many players are displayed on each page of a legendboard.
 
         By default, it is 15 for the first and second pages, then 20, 25, 25, 50 etc.
@@ -336,7 +336,6 @@ class Edit(commands.Cog):
 
         await self.bot.donationboard.update_board(message_id=result['message_id'])
         await ctx.send(f":white_check_mark: Per-page count updated.")
-
 
     @edit.group(name='trophyboard')
     @manage_guild()
