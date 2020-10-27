@@ -243,7 +243,6 @@ class Remove(commands.Cog):
         await ctx.confirm()
 
     @remove.command(name='legendlog')
-    @requires_config('legendlog', invalidate=True)
     @manage_guild()
     async def remove_legendlog(self, ctx, channel: TextChannel = None):
         """Removes a channel's legend log.
@@ -260,12 +259,12 @@ class Remove(commands.Cog):
         **Required Permissions**
         :warning: Manage Server
         """
-        if not ctx.config:
-            return await ctx.send(f"No legend log found for #{channel or ctx.channel}.")
-
-        query = "DELETE FROM boards WHERE channel_id = $1 AND type = $2"
-        await ctx.db.execute(query, ctx.config.channel_id, 'legend')
-        await ctx.confirm()
+        channel = channel or ctx.channel
+        query = "DELETE FROM boards WHERE channel_id = $1 AND type = $2 RETURNING id"
+        fetch = await ctx.db.fetchrow(query, channel.id, 'legend')
+        if not fetch:
+            return await ctx.send(f"No legend log found for {channel.mention}.")
+        await ctx.send(f"👌 Legend log successfully deleted.")
 
     @remove.command(name='event')
     @manage_guild()

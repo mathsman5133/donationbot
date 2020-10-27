@@ -2,3 +2,9 @@ discord.py
 coc.py
 asyncpg
 python-dateutil
+psutil
+uvloop
+beautifulsoup4
+matplotlib
+numpy
+sentry-sdk
