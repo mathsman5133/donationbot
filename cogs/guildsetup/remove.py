@@ -260,10 +260,15 @@ class Remove(commands.Cog):
         :warning: Manage Server
         """
         channel = channel or ctx.channel
-        query = "DELETE FROM boards WHERE channel_id = $1 AND type = $2 RETURNING id"
+        query = "DELETE FROM boards WHERE channel_id = $1 AND type = $2 RETURNING channel_id, message_id"
         fetch = await ctx.db.fetchrow(query, channel.id, 'legend')
         if not fetch:
             return await ctx.send(f"No legend log found for {channel.mention}.")
+        try:
+            await self.bot.http.delete_message(fetch['channel_id'], fetch['message_id'])
+        except (discord.Forbidden, discord.NotFound, discord.HTTPException):
+            pass
+
         await ctx.send(f"👌 Legend log successfully deleted.")
 
     @remove.command(name='event')
