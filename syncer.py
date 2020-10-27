@@ -186,15 +186,15 @@ class Syncer:
         log.info('running legend trophies')
         now = datetime.datetime.utcnow()
         if now.hour >= 5:
-            tomorrow = (now + datetime.timedelta(days=1)).replace(hour=5, minute=5, second=0, microsecond=0)
+            tomorrow = (now + datetime.timedelta(days=1)).replace(hour=5, minute=6, second=0, microsecond=0)
         else:
-            tomorrow = now.replace(hour=5, minute=5, second=0, microsecond=0)
+            tomorrow = now.replace(hour=5, minute=6, second=0, microsecond=0)
 
         self.legend_day = (tomorrow - datetime.timedelta(days=1)).isoformat()
 
         try:
             await asyncio.sleep((tomorrow - now).total_seconds() + 1)  # 1sec buffer for when it's a new season
-            await pool.execute("UPDATE PLAYERS SET trophies = true_trophies WHERE season_id = $1 AND league_id = 29000022", season_id)
+            await pool.execute("UPDATE PLAYERS SET trophies = true_trophies WHERE season_id = $1 AND league_id = 29000022", self.season_id)
             query = """INSERT INTO legend_days (player_tag, day, starting, gain, loss, finishing) 
                        SELECT player_tag, $1, trophies, 0, 0, trophies
                        FROM players
