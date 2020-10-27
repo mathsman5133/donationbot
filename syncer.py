@@ -186,9 +186,9 @@ class Syncer:
         log.info('running legend trophies')
         now = datetime.datetime.utcnow()
         if now.hour >= 5:
-            tomorrow = (now + datetime.timedelta(days=1)).replace(hour=5, minute=0, second=0, microsecond=0)
+            tomorrow = (now + datetime.timedelta(days=1)).replace(hour=5, minute=5, second=0, microsecond=0)
         else:
-            tomorrow = now.replace(hour=5, minute=0, second=0, microsecond=0)
+            tomorrow = now.replace(hour=5, minute=5, second=0, microsecond=0)
 
         self.legend_day = (tomorrow - datetime.timedelta(days=1)).isoformat()
 

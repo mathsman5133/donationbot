@@ -8,3 +8,5 @@ beautifulsoup4
 matplotlib
 numpy
 sentry-sdk
+lru-dict
+pytz
