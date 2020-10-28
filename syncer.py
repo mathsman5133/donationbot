@@ -170,7 +170,7 @@ class Syncer:
 
     async def safe_send(self, channel_id, content=None, embed=None):
         if content and len(content) > 2000:
-            log.debug(f"{channel_id} content {content} is too long; didn't try to send")
+            log.info(f"{channel_id} content {content} is too long; didn't try to send")
             return
         try:
             log.debug(f'sending message to {channel_id}')
@@ -191,22 +191,7 @@ class Syncer:
             tomorrow = now.replace(hour=5, minute=0, second=0, microsecond=0)
 
         self.legend_day = (tomorrow - datetime.timedelta(days=1)).isoformat()
-
-        try:
-            await asyncio.sleep((tomorrow - now).total_seconds() + 1)  # 1sec buffer for when it's a new season
-            await pool.execute("UPDATE PLAYERS SET trophies = true_trophies WHERE season_id = $1 AND league_id = 29000022", self.season_id)
-            query = """INSERT INTO legend_days (player_tag, day, starting, gain, loss, finishing) 
-                       SELECT player_tag, $1, trophies, 0, 0, trophies
-                       FROM players
-                       WHERE season_id = $2
-                       AND league_id = 29000022
-                       ON CONFLICT (player_tag, day)
-                       DO NOTHING;
-                    """
-            await pool.execute(query, tomorrow, self.season_id)
-
-        except:
-            log.exception('setting legend trophies')
+        await asyncio.sleep((tomorrow - now).total_seconds())
 
     # @coc_client.event
     @coc.ClientEvents.clan_loop_finish()
@@ -358,7 +343,7 @@ class Syncer:
                    AND logs.type = 'donation'
                 """
         clan_tags = list(set(n['clan_tag'] for n in self.donationlog_batch_data))
-        log.info(f"clan tags: {len(clan_tags)}")
+        log.debug(f"clan tags: {clan_tags}")
         fetch = await pool.fetch(query, clan_tags)
 
         clan_tag_to_channel_data = {}

@@ -4,14 +4,25 @@ import discord
 import logging
 import logging.handlers
 import math
-import sqlite3
 import itertools
+import sys
+from google.cloud import logging as glogging
+from oauth2client.service_account import ServiceAccountCredentials
 
 def setup_logging(bot, test_syncer=False):
-    if test_syncer:
-        db = sqlite3.connect("errors.sqlite")
-        db.execute("create table if not exists errors (script text, level integer, message text, time timestamp, module text);")
-        db.commit()
+    google_log_client = glogging.Client(project='donationbot')
+    google_log_client.setup_logging()
+
+    bot.message_log = google_log_client.logger('messages')
+
+    if 'bot' in sys.argv[0]:
+        bot.command_log = google_log_client.logger('commands')
+        bot.guild_log = google_log_client.logger('guilds')
+        bot.clan_log = google_log_client.logger('clans')
+    elif 'syncer' in sys.argv[0]:
+        bot.google_logger = google_log_client.logger('syncer')
+    elif 'boards' in sys.argv[0]:
+        bot.board_log = google_log_client.logger('boards')
 
     logging.getLogger('discord').setLevel(logging.INFO)
     logging.getLogger('discord.http').setLevel(logging.WARNING)

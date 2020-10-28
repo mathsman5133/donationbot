@@ -501,7 +501,19 @@ class BackgroundManagement(commands.Cog):
 
     @commands.Cog.listener()
     async def on_command(self, ctx):
-        await self.log_message_send(ctx.message.id, ctx.channel.id, ctx.guild.id, 'command')
+        self.bot.command_log.log_struct(
+            dict(
+                guild_id=ctx.guild.id,
+                guild_name=ctx.guild.name,
+                channel_id=ctx.channel.id,
+                channel_name=ctx.channel.name,
+                author=str(ctx.author).replace(',', ';').replace('\n', ';'),
+                author_id=ctx.author.id,
+                command=ctx.invoked_with.lower(),
+                shard=ctx.guild.shard_id
+            )
+        )
+
         command = ctx.command.qualified_name
         self.bot.command_stats[command] += 1
         message = ctx.message
@@ -514,20 +526,20 @@ class BackgroundManagement(commands.Cog):
                                VALUES ($1, $2, $3, $4, $5, $6)
                 """
 
-        e = discord.Embed(title='Command', colour=discord.Colour.green())
-        e.add_field(name='Name', value=ctx.command.qualified_name)
-        e.add_field(name='Author', value=f'{ctx.author} (ID: {ctx.author.id})')
-
-        fmt = f'Channel: {ctx.channel} (ID: {ctx.channel.id})'
-        if ctx.guild:
-            fmt = f'{fmt}\nGuild: {ctx.guild} (ID: {ctx.guild.id})'
-
-        e.add_field(name='Location', value=fmt, inline=False)
-        e.add_field(name='Content', value=textwrap.shorten(ctx.message.content, width=512))
-
-        e.timestamp = datetime.datetime.utcnow()
-        if not await self.bot.is_owner(ctx.author):
-            await self.bot.command_webhook.send(embed=e)
+        # e = discord.Embed(title='Command', colour=discord.Colour.green())
+        # e.add_field(name='Name', value=ctx.command.qualified_name)
+        # e.add_field(name='Author', value=f'{ctx.author} (ID: {ctx.author.id})')
+        #
+        # fmt = f'Channel: {ctx.channel} (ID: {ctx.channel.id})'
+        # if ctx.guild:
+        #     fmt = f'{fmt}\nGuild: {ctx.guild} (ID: {ctx.guild.id})'
+        #
+        # e.add_field(name='Location', value=fmt, inline=False)
+        # e.add_field(name='Content', value=textwrap.shorten(ctx.message.content, width=512))
+        #
+        # e.timestamp = datetime.datetime.utcnow()
+        # if not await self.bot.is_owner(ctx.author):
+        #     await self.bot.command_webhook.send(embed=e)
 
         await self.bot.pool.execute(query, guild_id, ctx.channel.id, ctx.author.id,
                                     message.created_at, ctx.prefix, command
@@ -546,6 +558,15 @@ class BackgroundManagement(commands.Cog):
         await self.bot.background.sync_temp_event_tasks()
 
     async def send_guild_stats(self, e, guild):
+        self.bot.guild_log.log_struct(
+            dict(
+                guild_id=guild.id,
+                guild_name=guild.name,
+                shard=guild.shard_id,
+                added='New Guild' in e.title,
+            )
+        )
+
         e.add_field(name='Name', value=guild.name)
         e.add_field(name='ID', value=guild.id)
         e.add_field(name='Owner', value=f'{guild.owner} (ID: {guild.owner and guild.owner.id})')
@@ -566,6 +587,18 @@ class BackgroundManagement(commands.Cog):
         await self.bot.join_log_webhook.send(embed=e)
 
     async def send_claim_clan_stats(self, e, clan, guild):
+        self.bot.clan_log.log_struct(
+            dict(
+                clan_name=clan.name,
+                clan_tag=clan.tag,
+                guild_id=guild.id,
+                guild_name=guild.name,
+                shard=guild.shard_id,
+                added='Claimed' in e.title,
+                bot_added=guild.me.joined_at
+            )
+        )
+
         e.add_field(name='Name', value=clan.name)
         e.add_field(name='Tag', value=clan.tag)
 
@@ -690,6 +723,15 @@ class BackgroundManagement(commands.Cog):
                             embeds.append(e)
 
                     for n in embeds:
+                        self.bot.message_log.log_struct(
+                            dict(
+                                guild_id=config.guild_id,
+                                channel_id=channel_id,
+                                guild_name=config.guild and config.guild.name,
+                                shard=config.guild and config.guild.shard_id,
+                                type='{}log'.format(type_),
+                            )
+                        )
                         asyncio.ensure_future(self.bot.utils.safe_send(config.channel_id, embed=n))
 
                 else:
@@ -700,6 +742,15 @@ class BackgroundManagement(commands.Cog):
                     for n in fetch:
                         p.add_lines(n[0].split("\n"))
                     for page in p.pages:
+                        self.bot.message_log.log_struct(
+                            dict(
+                                guild_id=config.guild_id,
+                                channel_id=channel_id,
+                                guild_name=config.guild and config.guild.name,
+                                shard=config.guild and config.guild.shard_id,
+                                type='{}log'.format(type_),
+                            )
+                        )
                         asyncio.ensure_future(self.bot.utils.safe_send(config.channel_id, page))
 
         except asyncio.CancelledError:

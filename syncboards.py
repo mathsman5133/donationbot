@@ -14,6 +14,8 @@ from discord.ext import tasks
 
 import creds
 
+from botlog import setup_logging
+
 from cogs.guildsetup.add import BOARD_PLACEHOLDER
 from cogs.utils.db import Table
 from cogs.utils.db_objects import BoardConfig
@@ -474,8 +476,14 @@ class SyncBoards:
                    f"Build Image Perf: {s2 * 1000}ms\n" \
                    f"Channel: {config.channel_id}\n" \
                    f"Guild: {config.guild_id}"
-
-        log.info(perf_log)
+        self.bot.board_log.log_struct(dict(
+            perf_counter=(time.perf_counter() - start) * 1000,
+            build_image_perf=s2*1000,
+            channel_id=config.channel_id,
+            guild_id=config.guild_id,
+            type=config.type
+        ))
+        # log.info(perf_log)
         logged_board_message = await next(self.webhooks).send(
             perf_log, file=discord.File(render, f'{config.type}board.png'), wait=True
         )
@@ -515,7 +523,23 @@ class SyncBoards:
                 except (discord.Forbidden, discord.NotFound, discord.HTTPException):
                     continue
 
-            await pool.execute("UPDATE boards SET message_id=null, per_page=15 WHERE type=$1", 'legend')
+            try:
+                await pool.execute("UPDATE boards SET message_id=null, per_page=15 WHERE type=$1", 'legend')
+            except:
+                log.info('setting board ids to none')
+
+            query = """INSERT INTO legend_days (player_tag, day, starting, gain, loss, finishing) 
+                                   SELECT player_tag, $1, trophies, 0, 0, trophies
+                                   FROM players
+                                   WHERE season_id = $2
+                                   AND league_id = 29000022
+                                   ON CONFLICT (player_tag, day)
+                                   DO NOTHING;
+                                """
+            try:
+                await pool.execute(query, tomorrow, self.season_id)
+            except:
+                log.exception('resetting legend players trophies')
 
         except:
             log.exception('resetting legend boards')
@@ -523,6 +547,7 @@ class SyncBoards:
 
 if __name__ == "__main__":
     stateless_bot = discord.Client()
+    setup_logging(stateless_bot)
     loop.run_until_complete(stateless_bot.login(creds.bot_token))
     SyncBoards(stateless_bot, start_loop=True)
     loop.run_forever()
