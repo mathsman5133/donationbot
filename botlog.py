@@ -15,14 +15,11 @@ def setup_logging(bot, test_syncer=False):
 
     bot.message_log = google_log_client.logger('messages')
 
-    if 'bot' in sys.argv[0]:
-        bot.command_log = google_log_client.logger('commands')
-        bot.guild_log = google_log_client.logger('guilds')
-        bot.clan_log = google_log_client.logger('clans')
-    elif 'syncer' in sys.argv[0]:
-        bot.google_logger = google_log_client.logger('syncer')
-    elif 'boards' in sys.argv[0]:
-        bot.board_log = google_log_client.logger('boards')
+    bot.command_log = google_log_client.logger('commands')
+    bot.guild_log = google_log_client.logger('guilds')
+    bot.clan_log = google_log_client.logger('clans')
+    bot.google_logger = google_log_client.logger('syncer')
+    bot.board_log = google_log_client.logger('boards')
 
     logging.getLogger('discord').setLevel(logging.INFO)
     logging.getLogger('discord.http').setLevel(logging.WARNING)
