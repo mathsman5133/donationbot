@@ -547,6 +547,7 @@ class SyncBoards:
 
 if __name__ == "__main__":
     stateless_bot = discord.Client()
+    stateless_bot.session = aiohttp.ClientSession()
     setup_logging(stateless_bot)
     loop.run_until_complete(stateless_bot.login(creds.bot_token))
     SyncBoards(stateless_bot, start_loop=True)
