@@ -272,7 +272,7 @@ class Remove(commands.Cog):
         await ctx.send(f"👌 Legend board successfully deleted.")
 
     @remove.command(name='legendlog', aliases=['legendlogs'])
-    async def edit_legendboard_logs(self, ctx, board_channel: discord.TextChannel = None):
+    async def remove_legendlog(self, ctx, board_channel: discord.TextChannel = None):
         """Remove the legend log channel.
 
         **Parameters**
