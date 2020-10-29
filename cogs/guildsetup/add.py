@@ -421,7 +421,7 @@ class Add(commands.Cog):
             channel = await ctx.guild.create_text_channel(name="dt-boards", overwrites=overwrites, reason=reason)
         except discord.Forbidden:
             return await ctx.send(
-                'I do not have permissions to create the trophyboard channel.')
+                'I do not have permissions to create the boards channel.')
         except discord.HTTPException:
             return await ctx.send('Creating the channel failed. Try checking the name?')
 
@@ -432,6 +432,13 @@ class Add(commands.Cog):
 
         await ctx.invoke(self.add_donationboard, channel=channel, use_channel=True)
         await ctx.invoke(self.add_trophyboard, channel=channel, use_channel=True)
+        # check if any legend players
+        f = await ctx.db.fetchrow('SELECT players.id FROM players INNER JOIN clans '
+                                  'ON clans.clan_tag = players.clan_tag '
+                                  'WHERE clans.guild_id = $1 AND players.season_id = $2 '
+                                  'AND players.league_id = 29000022')
+        if f:
+            await ctx.invoke(self.add_legendboard, channel=channel, use_channel=True)
 
     @add.command(name="trophyboard")
     @manage_guild()
@@ -596,6 +603,92 @@ class Add(commands.Cog):
             f"and use `+add clan #{channel.name} #clantag` to add more clans."
         )
 
+    @add.command(name='legendboard')
+    @manage_guild()
+    async def add_legendboard(self, ctx, channel: discord.TextChannel = None, use_channel=False):
+        """Create a legend board for your server.
+
+        This is a mini-board (like a donation or trophyboard) that will update when legend players attack,
+        archiving itself at the end of the day and sending a new board for the next legend day.
+
+        **Parameters**
+        :key: Discord channel (mention etc.)
+
+        **Format**
+        :information_source: `+add legendboard #CHANNEL`
+
+        **Example**
+        :white_check_mark: `+add legendboard #logging`
+
+        **Required Permissions**
+        :warning: Manage Server
+        """
+        if channel and not use_channel:
+            fetch = await ctx.db.fetch("SELECT type FROM boards WHERE channel_id = $1", channel.id)
+            if not fetch:
+                log.info('+add legendboard with a non-board channel')
+                return await ctx.send("I cannot setup a board here, because the bot didn't create the channel! "
+                                      "Try again with `+add boards`.")
+            if any(n['type'] == 'legend' for n in fetch):
+                log.info('+add legendboard with a an existing legend board channel')
+                return await ctx.send("A legend board is already setup here.")
+
+        elif not channel:
+            if not ctx.me.guild_permissions.manage_channels:
+                log.info('+add legendboard no create channel permissions')
+                return await ctx.send('I need manage channels permission to create your board channel!')
+
+            overwrites = {
+                ctx.me: discord.PermissionOverwrite(read_messages=True, send_messages=True,
+                                                    read_message_history=True, embed_links=True,
+                                                    manage_messages=True),
+                ctx.guild.default_role: discord.PermissionOverwrite(read_messages=True,
+                                                                    send_messages=False,
+                                                                    read_message_history=True)
+            }
+            reason = f'{str(ctx.author)} created a boards channel.'
+
+            try:
+                channel = await ctx.guild.create_text_channel(name="dt-boards", overwrites=overwrites, reason=reason)
+            except discord.Forbidden:
+                log.info('+add legendboard no channel permissions (HTTP exception caught)')
+                return await ctx.send('I do not have permissions to create the boards channel.')
+            except discord.HTTPException:
+                log.info('+add legendboard creating channel failed')
+                return await ctx.send('Creating the channel failed. Try checking the name?')
+
+        msg = await channel.send(BOARD_PLACEHOLDER.format(board="legend"))
+        await msg.add_reaction("<:refresh:694395354841350254>")
+        await msg.add_reaction("\N{BLACK LEFT-POINTING TRIANGLE}\ufe0f")
+        await msg.add_reaction("\N{BLACK RIGHT-POINTING TRIANGLE}\ufe0f")
+
+        log.info('+add legendlog new log created, channel_id: %s, message_id: %s', channel.id, msg.id)
+        query = """INSERT INTO boards (
+                        guild_id, 
+                        channel_id, 
+                        message_id,
+                        type,
+                        title,
+                        sort_by
+                    ) 
+                VALUES ($1, $2, $3, $4, $5, $6) 
+                ON CONFLICT (channel_id, type) 
+                DO UPDATE SET message_id = $3, toggle = True;
+                """
+        await ctx.db.execute(query, ctx.guild.id, channel.id, msg.id, 'legend', "Legend Leaderboard", 'finishing')
+        await self.bot.donationboard.update_board(message_id=msg.id)
+
+        await channel.send(f'At the end of the day, the bot will create a new legend board message '
+                           f'and the old one will be archived. If you wish to divert these archived '
+                           f'boards (recommended) to a different channel, please use '
+                           f'`+edit legendboard logs #board-channel #log-channel`.')
+
+        await ctx.send(
+            f"Your board channel: {channel} now has a registered donationboard. "
+            f"Please use `+info` to see which clans are registered, "
+            f"and use `+add clan #{channel.name} #clantag` to add more clans."
+        )
+
     @add.command(name='donationlog')
     @requires_config('donationlog', invalidate=True)
     @manage_guild()
@@ -738,85 +831,6 @@ class Add(commands.Cog):
         return await ctx.send(f'{channel.mention} has been added as a trophylog channel. '
                               'See all clans claimed with `+info clans`. '
                               'Please note that only clans claimed to this channel will appear in the log.')
-
-    @add.command(name='legendboard')
-    @requires_config('legendboard', invalidate=True)
-    @manage_guild()
-    async def add_legendboard(self, ctx, channel: discord.TextChannel = None):
-        """Create a legend board for your server.
-
-        This is a mini-board (like a donation or trophyboard) that will update when legend players attack,
-        archiving itself at the end of the day and sending a new board for the next legend day.
-
-        **Parameters**
-        :key: Discord channel (mention etc.)
-
-        **Format**
-        :information_source: `+add legendboard #CHANNEL`
-
-        **Example**
-        :white_check_mark: `+add legendboard #logging`
-
-        **Required Permissions**
-        :warning: Manage Server
-        """
-        if not channel:
-            channel = ctx.channel
-
-        if not (channel.permissions_for(ctx.me).send_messages or channel.permissions_for(
-                ctx.me).read_messages):
-            return await ctx.send('I need permission to send and read messages here!')
-
-        prompt = await ctx.prompt(
-            f'Would you like me to add all clans claimed on the server to this legendlog?\n'
-            f'Else you can manually add clans with `+add clan #CLAN_TAG` to this channel.\n')
-        if not prompt:
-            await ctx.send(f'{channel.mention} has been added as a legend board channel.\n'
-                           f'Please note that only clans claimed to {channel.mention} will appear in this board.')
-        else:
-            query = """INSERT INTO clans (
-                                    clan_tag, 
-                                    guild_id, 
-                                    channel_id, 
-                                    clan_name, 
-                                    in_event
-                                    ) 
-                           SELECT 
-                                clan_tag,
-                                guild_id,
-                                $2,
-                                clan_name,
-                                in_event
-    
-                           FROM clans
-                           WHERE guild_id = $1
-                           ON CONFLICT (channel_id, clan_tag)
-                           DO NOTHING;
-                        """
-            await ctx.db.execute(query, ctx.guild.id, channel.id)
-            await ctx.send(f'{channel.mention} has been added as a legendboard channel. '
-                                  'See all clans claimed with `+info clans`. '
-                                  'Please note that only clans claimed to this channel will appear in the board.')
-
-        msg = await channel.send(BOARD_PLACEHOLDER.format(board="legend"))
-        await msg.add_reaction("<:refresh:694395354841350254>")
-        await msg.add_reaction("\N{BLACK LEFT-POINTING TRIANGLE}\ufe0f")
-        await msg.add_reaction("\N{BLACK RIGHT-POINTING TRIANGLE}\ufe0f")
-
-        query = """INSERT INTO boards (
-                        guild_id, 
-                        channel_id, 
-                        message_id,
-                        type,
-                        title,
-                        sort_by
-                    ) 
-                VALUES ($1, $2, $3, $4, $5, $6) 
-                ON CONFLICT (channel_id, type) 
-                DO UPDATE SET message_id = $3, toggle = True;
-                """
-        await ctx.db.execute(query, ctx.guild.id, channel.id, msg.id, 'legend', "Legend Leaderboard", 'finishing')
-        await self.bot.donationboard.update_board(message_id=msg.id)
 
     @commands.command()
     async def verify(self, ctx, *, player_tag: str):

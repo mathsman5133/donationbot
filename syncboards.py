@@ -336,8 +336,11 @@ class SyncBoards:
             await pool.execute("UPDATE boards SET toggle = FALSE WHERE channel_id = $1", config.channel_id)
             return
 
-        for emoji in emojis[config.type]:
-            await self.bot.http.add_reaction(message['channel_id'], message['id'], emoji._as_reaction())
+        try:
+            for emoji in emojis[config.type]:
+                await self.bot.http.add_reaction(message['channel_id'], message['id'], emoji._as_reaction())
+        except:
+            log.info('failed to add reactions for message_id %s', message['id'])
 
         fetch = await pool.fetchrow("UPDATE boards SET message_id = $1 WHERE channel_id = $2 AND type = $3 RETURNING *", int(message['id']), config.channel_id, config.type)
         if fetch:
@@ -359,10 +362,10 @@ class SyncBoards:
 
         return config_per_page
 
-    async def update_board(self, config, update_global=False, fonts=None, send_to_channel=None):
+    async def update_board(self, config, update_global=False, divert_to=None):
         if config.channel_id == GLOBAL_BOARDS_CHANNEL_ID and not update_global:
             return
-        if not config.message_id:
+        if not config.message_id and not divert_to:
             config = await self.set_new_message(config)
             if not config:
                 return
@@ -467,7 +470,6 @@ class SyncBoards:
             footer=f"Season: {season_start} - {season_finish}.",
             offset=offset,
             board_type=config.type,
-            fonts=fonts,
         )
         render = await table.make()
         s2 = time.perf_counter() - s1
@@ -483,6 +485,11 @@ class SyncBoards:
             guild_id=config.guild_id,
             type=config.type
         ))
+        if divert_to:
+            log.info('diverting board to %s channel_id', divert_to)
+            await self.bot.http.send_files(channel_id=divert_to, files=[discord.File(render, f'{config.type}board.png')])
+            return
+
         # log.info(perf_log)
         logged_board_message = await next(self.webhooks).send(
             perf_log, file=discord.File(render, f'{config.type}board.png'), wait=True
@@ -492,10 +499,7 @@ class SyncBoards:
         embed.set_footer(text="Last Updated", icon_url="https://cdn.discordapp.com/avatars/427301910291415051/8fd702a4bbec20941c72bc651279c05c.webp?size=1024")
 
         try:
-            if send_to_channel:
-                await self.bot.http.send_message(send_to_channel, content=None, embed=embed.to_dict())
-            else:
-                await self.bot.http.edit_message(config.channel_id, config.message_id, content=None, embed=embed.to_dict())
+            await self.bot.http.edit_message(config.channel_id, config.message_id, content=None, embed=embed.to_dict())
         except discord.NotFound:
             await self.set_new_message(config)
 
@@ -513,29 +517,29 @@ class SyncBoards:
             log.info("Legend board resetter sleeping for %s seconds", seconds)
             await asyncio.sleep(seconds)
 
-            fetch = await pool.fetch("UPDATE boards SET sort_by = 'finishing', per_page=200, page=1 WHERE type=$1 AND toggle=True RETURNING *", 'legend')
+            fetch = await pool.fetch("SELECT * FROM boards WHERE toggle=True AND type=$1", 'legend')
             log.info("Legend board resetting for %s boards", len(fetch))
             for row in fetch:
                 try:
                     config = BoardConfig(record=row, bot=self.bot)
-                    await self.update_board(config)
-                    await self.bot.http.clear_reactions(row['channel_id'], row['message_id'])
+                    # we just want to fool the update function to show all the players.
+                    config.page = 1
+                    config.per_page = 200
+                    config.sort_by = 'finishing'
+
+                    await self.update_board(config, divert_to=row['divert_to_channel_id'] or config.channel_id)
+
                 except (discord.Forbidden, discord.NotFound, discord.HTTPException):
                     continue
 
-            try:
-                await pool.execute("UPDATE boards SET message_id=null, per_page=15 WHERE type=$1", 'legend')
-            except:
-                log.info('setting board ids to none')
-
             query = """INSERT INTO legend_days (player_tag, day, starting, gain, loss, finishing) 
-                                   SELECT player_tag, $1, trophies, 0, 0, trophies
-                                   FROM players
-                                   WHERE season_id = $2
-                                   AND league_id = 29000022
-                                   ON CONFLICT (player_tag, day)
-                                   DO NOTHING;
-                                """
+                       SELECT player_tag, $1, trophies, 0, 0, trophies
+                       FROM players
+                       WHERE season_id = $2
+                       AND league_id = 29000022
+                       ON CONFLICT (player_tag, day)
+                       DO NOTHING;
+                    """
             try:
                 await pool.execute(query, tomorrow, self.season_id)
             except:
