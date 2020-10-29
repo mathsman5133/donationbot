@@ -722,7 +722,7 @@ class Add(commands.Cog):
 
         for channel in channels:
             if await validate_channel(channel.id):
-                board_channel = channel
+                b_channel = channel
                 channels.remove(channel)
                 break
         else:
@@ -730,17 +730,17 @@ class Add(commands.Cog):
                                   "and couldn't find the board channel. Please try again.")
 
         if not channels:
-            log_channel = board_channel
+            l_channel = b_channel
         else:
-            log_channel = channels[0]
+            l_channel = channels[0]
 
-        perms = log_channel.permissions_for(ctx.me)
+        perms = l_channel.permissions_for(ctx.me)
         if not perms.send_messages and perms.read_messages and perms.attach_files:
-            return await ctx.send(f"I need permission to send and read messages, and attach files in {log_channel.mention}. Please try again.")
+            return await ctx.send(f"I need permission to send and read messages, and attach files in {l_channel.mention}. Please try again.")
 
         query = "UPDATE boards SET divert_to_channel_id = $1 WHERE channel_id = $2 AND type = 'legend'"
-        await ctx.db.execute(query, log_channel.id, board_channel.id)
-        await ctx.send(f":white_check_mark: Legend board logs will now be diverted to {log_channel.mention}.")
+        await ctx.db.execute(query, l_channel.id, b_channel.id)
+        await ctx.send(f":white_check_mark: Legend board logs will now be diverted to {l_channel.mention}.")
 
     @add.command(name='donationlog')
     @requires_config('donationlog', invalidate=True)
