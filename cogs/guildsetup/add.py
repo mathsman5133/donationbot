@@ -684,7 +684,7 @@ class Add(commands.Cog):
                            f'`+edit legendboard logs #board-channel #log-channel`.')
 
         await ctx.send(
-            f"Your board channel: {channel} now has a registered donationboard. "
+            f"Your board channel: {channel} now has a registered legendboard. "
             f"Please use `+info` to see which clans are registered, "
             f"and use `+add clan #{channel.name} #clantag` to add more clans."
         )
