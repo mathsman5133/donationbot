@@ -290,7 +290,7 @@ class Remove(commands.Cog):
         """
         channel = board_channel or ctx.channel
         query = "UPDATE boards SET divert_to_channel_id = null WHERE channel_id = $1 AND type = 'legend' RETURNING id"
-        fetch = await ctx.db.execute(query, channel.id)
+        fetch = await ctx.db.fetchrow(query, channel.id)
         if fetch:
             await ctx.send(f":white_check_mark: Legend board log channel removed. No logs will be posted.")
         else:
