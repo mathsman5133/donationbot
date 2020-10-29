@@ -713,12 +713,14 @@ class Add(commands.Cog):
         async def validate_channel(id_):
             return await ctx.db.fetchrow('SELECT id FROM boards WHERE channel_id = $1 AND type = $2', id_, 'legend')
 
-        channels = [board_channel, log_channel]
-        if not channels or len(channels) > 2:
+        if board_channel and log_channel:
+            channels = [board_channel, log_channel]
+        elif board_channel:
+            channels = [board_channel, ctx.channel]
+        elif log_channel:
+            channels = [ctx.channel, log_channel]
+        else:
             return await ctx.send("I only expected 2 channels in your command: the board channel and the log channel. Please try again.")
-        elif len(channels) == 1:
-            # they only mentioned 1 channel, so lets assume the other is ctx.channel.
-            channels.append(ctx.channel)
 
         for channel in channels:
             if await validate_channel(channel.id):
