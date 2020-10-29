@@ -51,8 +51,6 @@ log = logging.getLogger(__name__)
 loop = asyncio.get_event_loop()
 pool = loop.run_until_complete(Table.create_pool(creds.postgres))
 
-logging.basicConfig(level=logging.INFO)
-
 
 class HTMLImages:
     def __init__(self, players, title=None, image=None, sort_by=None, footer=None, offset=None, board_type='donation', fonts=None):
