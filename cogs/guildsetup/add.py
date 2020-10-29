@@ -678,16 +678,69 @@ class Add(commands.Cog):
         await ctx.db.execute(query, ctx.guild.id, channel.id, msg.id, 'legend', "Legend Leaderboard", 'finishing')
         await self.bot.donationboard.update_board(message_id=msg.id)
 
-        await channel.send(f'At the end of the day, the bot will create a new legend board message '
-                           f'and the old one will be archived. If you wish to divert these archived '
-                           f'boards (recommended) to a different channel, please use '
-                           f'`+edit legendboard logs #board-channel #log-channel`.')
+        await channel.send(f'At the end of each day at 5AM GMT, the bot will reset the legend board. '
+                           f'If you wish for the bot to post a log of the board each day in a different channel '
+                           f'before resetting it, please use `+add legendlog #{channel} #logs-channel`.')
 
         await ctx.send(
             f"Your board channel: {channel} now has a registered legendboard. "
             f"Please use `+info` to see which clans are registered, "
             f"and use `+add clan #{channel.name} #clantag` to add more clans."
         )
+
+    @add.command(name='legendlog', aliases=['legendlogs'])
+    async def edit_legendboard_logs(self, ctx, board_channel: discord.TextChannel = None, log_channel: discord.TextChannel = None):
+        """Add a channel where legend board logs are sent at the end of each legend day.
+
+        It is suggested to make this channel different from #dt-boards, in order to improve readability of other boards.
+
+        The bot must have `Send Messages` and `Attach Files` permissions in this channel.
+
+        **Parameters**
+        :key: A channel where the legendboard is located (#mention).
+        :key: A channel where you wish to divert logs (#mention).
+
+        **Format**
+        :information_source: `+add legendlog #BOARD-CHANNEL #LOG-CHANNEL`
+
+        **Example**
+        :white_check_mark: `+add legendlog #legend-boards #legend-logs`
+        :white_check_mark: `+add legendlog #dt-boards #legend-archives`
+
+        **Required Permissions**
+        :warning: Manage Server
+        """
+        async def validate_channel(id_):
+            return await ctx.db.fetchrow('SELECT id FROM boards WHERE channel_id = $1 AND type = $2', id_, 'legend')
+
+        channels = [board_channel, log_channel]
+        if not channels or len(channels) > 2:
+            return await ctx.send("I only expected 2 channels in your command: the board channel and the log channel. Please try again.")
+        elif len(channels) == 1:
+            # they only mentioned 1 channel, so lets assume the other is ctx.channel.
+            channels.append(ctx.channel)
+
+        for channel in channels:
+            if await validate_channel(channel.id):
+                board_channel = channel
+                channels.remove(channel)
+                break
+        else:
+            return await ctx.send("I expected 2 channels in your command: the board channel and the log channel, "
+                                  "and couldn't find the board channel. Please try again.")
+
+        if not channels:
+            log_channel = board_channel
+        else:
+            log_channel = channels[0]
+
+        perms = log_channel.permissions_for(ctx.me)
+        if not perms.send_messages and perms.read_messages and perms.attach_files:
+            return await ctx.send(f"I need permission to send and read messages, and attach files in {log_channel.mention}. Please try again.")
+
+        query = "UPDATE boards SET divert_to_channel_id = $1 WHERE channel_id = $2 AND type = 'legend'"
+        await ctx.db.execute(query, log_channel.id, board_channel.id)
+        await ctx.send(f":white_check_mark: Legend board logs will now be diverted to {log_channel.mention}.")
 
     @add.command(name='donationlog')
     @requires_config('donationlog', invalidate=True)

@@ -271,6 +271,31 @@ class Remove(commands.Cog):
 
         await ctx.send(f"👌 Legend board successfully deleted.")
 
+    @remove.command(name='legendlog', aliases=['legendlogs'])
+    async def edit_legendboard_logs(self, ctx, board_channel: discord.TextChannel = None):
+        """Remove the legend log channel.
+
+        **Parameters**
+        :key: A channel where the legendboard is located (#mention).
+
+        **Format**
+        :information_source: `+remove legendlog #BOARD-CHANNEL`
+
+        **Example**
+        :white_check_mark: `+remove legendlog #legend-boards`
+        :white_check_mark: `+remove legendlog #dt-boards`
+
+        **Required Permissions**
+        :warning: Manage Server
+        """
+        channel = board_channel or ctx.channel
+        query = "UPDATE boards SET divert_to_channel_id = null WHERE channel_id = $1 AND type = 'legend' RETURNING id"
+        fetch = await ctx.db.execute(query, channel.id)
+        if fetch:
+            await ctx.send(f":white_check_mark: Legend board log channel removed. No logs will be posted.")
+        else:
+            await ctx.send(f":x: No Legend board found in {channel.mention}. Please try again.")
+
     @remove.command(name='event')
     @manage_guild()
     async def remove_event(self, ctx, *, event_name: str = None):

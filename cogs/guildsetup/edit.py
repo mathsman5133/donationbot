@@ -337,60 +337,6 @@ class Edit(commands.Cog):
         await self.bot.donationboard.update_board(message_id=result['message_id'])
         await ctx.send(f":white_check_mark: Per-page count updated.")
 
-    @edit_legendboard.command(name='logs', aliases=['log'])
-    async def edit_legendboard_logs(self, ctx, *channels: discord.TextChannel):
-        """Change where legend board logs are sent at the end of each legend day.
-
-        It is suggested to make this channel different from #dt-boards, in order to improve readability of other boards.
-
-        The bot must have `Send Messages` and `Attach Files` permissions in this channel.
-
-        **Parameters**
-        :key: A channel where the legendboard is located (#mention).
-        :key: A channel where you wish to divert logs (#mention).
-
-        **Format**
-        :information_source: `+edit legendboard logs #BOARD-CHANNEL #LOG-CHANNEL`
-
-        **Example**
-        :white_check_mark: `+edit legendboard logs #legend-boards #legend-logs`
-        :white_check_mark: `+edit legendboard logs #dt-boards #legend-archives`
-
-        **Required Permissions**
-        :warning: Manage Server
-        """
-        async def validate_channel(id_):
-            return await ctx.db.fetchrow('SELECT id FROM boards WHERE channel_id = $1 AND type = $2', id_, 'legend')
-
-        channels = list(channels)
-        if not channels or len(channels) > 2:
-            return await ctx.send("I only expected 2 channels in your command: the board channel and the log channel. Please try again.")
-        elif len(channels) == 1:
-            # they only mentioned 1 channel, so lets assume the other is ctx.channel.
-            channels.append(ctx.channel)
-
-        for channel in channels:
-            if await validate_channel(channel.id):
-                board_channel = channel
-                channels.remove(channel)
-                break
-        else:
-            return await ctx.send("I expected 2 channels in your command: the board channel and the log channel, "
-                                  "and couldn't find the board channel. Please try again.")
-
-        if not channels:
-            log_channel = board_channel
-        else:
-            log_channel = channels[0]
-
-        perms = log_channel.permissions_for(ctx.me)
-        if not perms.send_messages and perms.read_messages and perms.attach_files:
-            return await ctx.send(f"I need permission to send and read messages, and attach files in {log_channel.mention}. Please try again.")
-
-        query = "UPDATE boards SET divert_to_channel_id = $1 WHERE channel_id = $2 AND type = 'legend'"
-        await ctx.db.execute(query, log_channel.id, board_channel.id)
-        await ctx.send(f":white_check_mark: Legend board logs will now be diverted to {log_channel.mention}.")
-
     @edit.group(name='trophyboard')
     @manage_guild()
     async def edit_trophyboard(self, ctx):
