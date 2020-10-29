@@ -436,7 +436,7 @@ class Add(commands.Cog):
         f = await ctx.db.fetchrow('SELECT players.id FROM players INNER JOIN clans '
                                   'ON clans.clan_tag = players.clan_tag '
                                   'WHERE clans.guild_id = $1 AND players.season_id = $2 '
-                                  'AND players.league_id = 29000022')
+                                  'AND players.league_id = 29000022', ctx.guild.id, await self.bot.seasonconfig.get_season_id())
         if f:
             await ctx.invoke(self.add_legendboard, channel=channel, use_channel=True)
 
