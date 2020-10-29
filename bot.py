@@ -8,6 +8,7 @@ import creds
 import sqlite3
 import sys
 import itertools
+import logging
 
 import sentry_sdk
 
@@ -71,6 +72,9 @@ intents.guild_messages = True
 intents.guild_reactions = True
 intents.members = True
 intents.emojis = True
+
+
+log = logging.getLogger()
 
 
 async def get_pref(bot, message):
@@ -240,7 +244,10 @@ class DonationBot(commands.AutoShardedBot):
         return await self.coc.get_clans(n[0].strip() for n in fetch).flatten()
 
     async def on_command_error(self, context, exception):
-        return await error_handler(context, exception)
+        try:
+            return await error_handler(context, exception)
+        except Exception as exc:
+            log.exception('exception when logging command error', exc_info=exc)
 
     async def on_error(self, event_method, *args, **kwargs):
         return await discord_event_error(self, event_method, *args, **kwargs)

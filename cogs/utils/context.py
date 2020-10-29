@@ -45,10 +45,6 @@ class Context(commands.Context):
         output.append('```')
         await self.send('\n'.join(output))
 
-    def __repr__(self):
-        # we need this for our cache key strategy
-        return '<Context>'
-
     @property
     def session(self):
         return self.bot.session

@@ -2,7 +2,10 @@ import datetime
 import discord
 import textwrap
 import traceback
+import logging
 import io
+
+import coc
 
 from cogs.utils import formatters, paginator, checks
 
@@ -10,11 +13,18 @@ from discord.ext import commands
 
 import creds
 
+log = logging.getLogger()
+
 
 async def error_handler(ctx, error):
     error = getattr(error, 'original', error)
 
+    if isinstance(error, (commands.MissingPermissions, RuntimeError, discord.Forbidden)):
+        log.info('command raised no bot permissions: %s, author: %s, error: %s', ctx.invoked_with, ctx.author.id, error)
+        return await ctx.send(str(error) if error else "Please double-check the bot's permissions and try again.")
+
     if isinstance(error, (checks.NoConfigFailure, paginator.CannotPaginate, commands.CheckFailure)):
+        log.info('command raised checks failure: %s, author: %s', ctx.invoked_with, ctx.author.id)
         return await ctx.send(str(error))
 
     if isinstance(error, (commands.BadArgument, commands.BadUnionArgument)):
@@ -23,13 +33,19 @@ async def error_handler(ctx, error):
         else:
             return
     if isinstance(error, commands.MissingRequiredArgument):
+        log.info('command missing required argument: %s, author: %s', ctx.invoked_with, ctx.author.id)
         return await ctx.send(f'Oops! That didn\'t look right... '
                               f'please see how to use the command with `+help {ctx.command.qualified_name}`')
     if isinstance(error, commands.CommandOnCooldown):
         if await ctx.bot.is_owner(ctx.author):
             return await ctx.reinvoke()
         time = formatters.readable_time(error.retry_after)
+        log.info('command raised cooldown error: %s', ctx.invoked_with)
         return await ctx.send(f'You\'re on cooldown. Please try again in: {time}')
+    if isinstance(error, coc.HTTPException):
+        log.info('coc api raised %s for command %s', error, ctx.invoked_with)
+        return await ctx.send(f"The COC API returned {error.message}. "
+                              f"If this persists, please join the support server and let us know!")
 
     ctx.command.reset_cooldown(ctx)
 
@@ -49,6 +65,8 @@ async def error_handler(ctx, error):
 
     exc = ''.join(
         traceback.format_exception(type(error), error, error.__traceback__, chain=False))
+
+    log.exception('unhandled error occured, command: %s, author: %s', ctx.invoked_with, ctx.author.id, exc_info=error)
 
     if len(exc) > 2000:
         fp = io.BytesIO(exc.encode('utf-8'))
