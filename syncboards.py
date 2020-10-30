@@ -515,7 +515,7 @@ class SyncBoards:
             log.info("Legend board resetter sleeping for %s seconds", seconds)
             await asyncio.sleep(seconds)
 
-            fetch = await pool.fetch("SELECT * FROM boards WHERE toggle=True AND type='legend' AND divert_to_channel_id != null")
+            fetch = await pool.fetch("SELECT * FROM boards WHERE toggle=True AND type='legend' AND divert_to_channel_id is not null")
             log.info("Legend board archiving for %s boards", len(fetch))
             for row in fetch:
                 try:
