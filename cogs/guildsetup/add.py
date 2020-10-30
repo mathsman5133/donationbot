@@ -410,7 +410,8 @@ class Add(commands.Cog):
                 send_messages=True,
                 read_message_history=True,
                 embed_links=True,
-                manage_messages=True
+                manage_messages=True,
+                add_reactions=True,
             ),
             ctx.guild.default_role: discord.PermissionOverwrite(read_messages=True, send_messages=False,
                                                                 read_message_history=True)
@@ -477,7 +478,7 @@ class Add(commands.Cog):
             overwrites = {
                 ctx.me: discord.PermissionOverwrite(read_messages=True, send_messages=True,
                                                     read_message_history=True, embed_links=True,
-                                                    manage_messages=True),
+                                                    manage_messages=True, add_reactions=True),
                 ctx.guild.default_role: discord.PermissionOverwrite(read_messages=True,
                                                                     send_messages=False,
                                                                     read_message_history=True)
@@ -558,7 +559,7 @@ class Add(commands.Cog):
             overwrites = {
                 ctx.me: discord.PermissionOverwrite(read_messages=True, send_messages=True,
                                                     read_message_history=True, embed_links=True,
-                                                    manage_messages=True),
+                                                    manage_messages=True, add_reactions=True),
                 ctx.guild.default_role: discord.PermissionOverwrite(read_messages=True,
                                                                     send_messages=False,
                                                                     read_message_history=True)
@@ -641,7 +642,7 @@ class Add(commands.Cog):
             overwrites = {
                 ctx.me: discord.PermissionOverwrite(read_messages=True, send_messages=True,
                                                     read_message_history=True, embed_links=True,
-                                                    manage_messages=True),
+                                                    manage_messages=True, add_reactions=True),
                 ctx.guild.default_role: discord.PermissionOverwrite(read_messages=True,
                                                                     send_messages=False,
                                                                     read_message_history=True)

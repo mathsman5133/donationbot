@@ -485,7 +485,10 @@ class SyncBoards:
         ))
         if divert_to:
             log.info('diverting board to %s channel_id', divert_to)
-            await self.bot.http.send_files(channel_id=divert_to, files=[discord.File(render, f'{config.type}board.png')])
+            try:
+                await self.bot.http.send_files(channel_id=divert_to, files=[discord.File(render, f'{config.type}board.png')])
+            except:
+                log.info('failed to send legend log to channel %s', config.channel_id)
             return
 
         # log.info(perf_log)
@@ -500,6 +503,10 @@ class SyncBoards:
             await self.bot.http.edit_message(config.channel_id, config.message_id, content=None, embed=embed.to_dict())
         except discord.NotFound:
             await self.set_new_message(config)
+        except discord.Forbidden:
+            await pool.execute("UPDATE boards SET toggle = FALSE WHERE channel_id = $1", config.channel_id)
+        except:
+            log.exception('trying to send board for %s', config.channel_id)
 
     @tasks.loop(seconds=5.0)
     async def legend_board_reset(self):
