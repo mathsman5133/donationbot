@@ -501,6 +501,8 @@ class BackgroundManagement(commands.Cog):
 
     @commands.Cog.listener()
     async def on_command(self, ctx):
+        command = ctx.command.qualified_name
+
         self.bot.command_log.log_struct(
             dict(
                 guild_id=ctx.guild.id,
@@ -509,12 +511,11 @@ class BackgroundManagement(commands.Cog):
                 channel_name=ctx.channel.name,
                 author=str(ctx.author).replace(',', ';').replace('\n', ';'),
                 author_id=ctx.author.id,
-                command=ctx.invoked_with.lower(),
+                command=command,
                 shard=ctx.guild.shard_id
             )
         )
 
-        command = ctx.command.qualified_name
         self.bot.command_stats[command] += 1
         message = ctx.message
         if ctx.guild is None:
