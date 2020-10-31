@@ -890,6 +890,8 @@ class Edit(commands.Cog):
         **Cooldowns**
         :hourglass: You can only call this command once every **1 hour**
         """
+        await ctx.trigger_typing()
+
         query = """UPDATE players SET donations   = public.get_don_rec_max(x.donations, x.donations, players.donations),
                                       received    = public.get_don_rec_max(x.received, x.received, players.received),
                                       trophies    = x.trophies,
@@ -922,42 +924,41 @@ class Edit(commands.Cog):
 
         log.info('running +refresh for %s', clan_tags)
 
-        async with ctx.typing():
-            season_id = await self.bot.seasonconfig.get_season_id()
-            player_tags = []
-            players = []
+        season_id = await self.bot.seasonconfig.get_season_id()
+        player_tags = []
+        players = []
 
-            s = pc()
-            async for clan in self.bot.coc.get_clans(clan_tags):
-                player_tags.extend(m.tag for m in clan.members)
-            log.info('+refresh took %sms to fetch %s clans', (pc() - s)*1000, len(fetch))
+        s = pc()
+        async for clan in self.bot.coc.get_clans(clan_tags):
+            player_tags.extend(m.tag for m in clan.members)
+        log.info('+refresh took %sms to fetch %s clans', (pc() - s)*1000, len(fetch))
 
-            s = pc()
-            async for player in self.bot.coc.get_players(player_tags):
-                players.append({
-                    "player_tag": player.tag,
-                    "donations": player.donations,
-                    "received": player.received,
-                    "trophies": player.trophies,
-                    "player_name": player.name,
-                    "clan_tag": player.clan and player.clan.tag,
-                    "best_trophies": player.best_trophies,
-                    "legend_trophies": player.legend_statistics and player.legend_statistics.legend_trophies or 0,
-                })
-            log.info('+refresh took %sms to fetch %s players', (pc() - s)*1000, len(player_tags))
+        s = pc()
+        async for player in self.bot.coc.get_players(player_tags):
+            players.append({
+                "player_tag": player.tag,
+                "donations": player.donations,
+                "received": player.received,
+                "trophies": player.trophies,
+                "player_name": player.name,
+                "clan_tag": player.clan and player.clan.tag,
+                "best_trophies": player.best_trophies,
+                "legend_trophies": player.legend_statistics and player.legend_statistics.legend_trophies or 0,
+            })
+        log.info('+refresh took %sms to fetch %s players', (pc() - s)*1000, len(player_tags))
 
-            s = pc()
-            query3 = "UPDATE players SET clan_tag = '' WHERE clan_tag = ANY($1::TEXT[]) AND NOT player_tag = ANY($2::TEXT[]) AND season_id=$3"
-            fetch = await ctx.db.execute(query3, clan_tags, player_tags, season_id)
-            log.info('+refresh took %sms to set clan tags to null for %s', (pc() - s)*1000, fetch)
+        s = pc()
+        query3 = "UPDATE players SET clan_tag = '' WHERE clan_tag = ANY($1::TEXT[]) AND NOT player_tag = ANY($2::TEXT[]) AND season_id=$3"
+        fetch = await ctx.db.execute(query3, clan_tags, player_tags, season_id)
+        log.info('+refresh took %sms to set clan tags to null for %s', (pc() - s)*1000, fetch)
 
-            s = pc()
-            fetch = await ctx.db.execute(query, players, season_id)
-            log.info('+refresh took %sms to update %s players', (pc() - s)*1000, fetch)
+        s = pc()
+        fetch = await ctx.db.execute(query, players, season_id)
+        log.info('+refresh took %sms to update %s players', (pc() - s)*1000, fetch)
 
-            await ctx.db.execute("UPDATE boards SET need_to_update=True WHERE guild_id=$1", ctx.guild.id)
+        await ctx.db.execute("UPDATE boards SET need_to_update=True WHERE guild_id=$1", ctx.guild.id)
 
-            await ctx.send("All done - I've queued the boards to be updated soon, too.")
+        await ctx.send("All done - I've queued the boards to be updated soon, too.")
 
     @commands.command(hidden=True)
     @commands.is_owner()
