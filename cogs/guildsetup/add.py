@@ -124,17 +124,29 @@ class Add(commands.Cog):
                                         trophies, 
                                         start_trophies, 
                                         season_id,
-                                        start_update,
                                         clan_tag,
-                                        player_name
+                                        player_name,
+                                        best_trophies,
+                                        legend_trophies
                                         ) 
-                    VALUES ($1,$2,$3,$4,$4,$5,True, $6, $7) 
+                    VALUES ($1,$2,$3,$4,$4,$5,$6,$7,$8,$9) 
                     ON CONFLICT (player_tag, season_id) 
                     DO UPDATE SET clan_tag = $6
                 """
         async with ctx.db.transaction():
-            for member in clan.members:
-                await ctx.db.execute(query, member.tag, member.donations, member.received, member.trophies, season_id, clan.tag, member.name)
+            async for member in clan.get_detailed_members():
+                await ctx.db.execute(
+                    query,
+                    member.tag,
+                    member.donations,
+                    member.received,
+                    member.trophies,
+                    season_id,
+                    clan.tag,
+                    member.name,
+                    member.best_trophies,
+                    member.legend_statistics and member.legend_statistics.legend_trophies or 0
+                )
 
         await ctx.send(f"👌 {clan} ({clan.tag}) successfully added to {channel.mention}.")
         ctx.channel = channel  # modify for `on_clan_claim` listener
