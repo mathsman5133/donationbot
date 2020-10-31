@@ -503,8 +503,13 @@ class SyncBoards:
             await self.bot.http.edit_message(config.channel_id, config.message_id, content=None, embed=embed.to_dict())
         except discord.NotFound:
             await self.set_new_message(config)
-        except discord.Forbidden:
+        except discord.HTTPException:
             await pool.execute("UPDATE boards SET toggle = FALSE WHERE channel_id = $1", config.channel_id)
+            await self.bot.http.edit_message(
+                config.channel_id,
+                config.message_id,
+                content="Please enable `Embed Links` permission for me to update your board."
+            )
         except:
             log.exception('trying to send board for %s', config.channel_id)
 

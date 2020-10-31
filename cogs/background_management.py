@@ -461,6 +461,19 @@ class BackgroundManagement(commands.Cog):
             await self.safe_send(self.bot.get_channel(record['channel_id']), msg)
 
     @commands.Cog.listener()
+    async def on_guild_channel_update(self, before, after):
+        if before.overwrites == after.overwrites:
+            return
+
+        me = after.guild.get_member(self.bot.user.id)
+        p_before, p_after = before.permissions_for(me), after.permissions_for(me)
+        # they pulled their finger out and fixed board channel permissions for me
+        permissions = ("add_reactions", "read_messages", "send_messages", "embed_links", "attach_files", "read_message_history")
+        if any(getattr(p_after, p) and not getattr(p_before, p) for p in permissions):
+            await self.bot.pool.execute("UPDATE boards SET toggle=True WHERE channel_id=$1", after.id)
+            await self.bot.pool.execute("UPDATE logs SET toggle=True WHERE channel_id=$1", after.id)
+
+    @commands.Cog.listener()
     async def on_guild_join(self, guild):
         e = discord.Embed(colour=0x53dda4, title='New Guild')  # green colour
         await self.send_guild_stats(e, guild)
