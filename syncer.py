@@ -793,15 +793,17 @@ class Syncer:
                                             trophies, 
                                             start_trophies, 
                                             season_id,
-                                            start_update,
                                             clan_tag,
-                                            player_name
+                                            player_name,
+                                            best_trophies,
+                                            legend_trophies
                                             ) 
-                        VALUES ($1,$2,$3,$4,$4,$5,True, $6, $7) 
+                        VALUES ($1,$2,$3,$4,$4,$5, $6,$7,$8,$9) 
                         ON CONFLICT (player_tag, season_id) 
-                        DO UPDATE SET clan_tag = $6
+                        DO UPDATE SET clan_tag = $6, best_trophies = $8, legend_trophies = $9
                     """
 
+        member = await coc_client.get_player(member.tag)
         response = await pool.execute(
             player_query,
             member.tag,
@@ -810,7 +812,9 @@ class Syncer:
             member.trophies,
             self.season_id,
             clan.tag,
-            member.name
+            member.name,
+            member.best_trophies,
+            member.legend_statistics and member.legend_statistics.legend_trophies or 0
         )
         log.debug(f"ran player joined for player {member} of clan {clan}")
         return
