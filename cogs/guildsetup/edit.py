@@ -850,7 +850,7 @@ class Edit(commands.Cog):
         query = """
         UPDATE players SET donations = public.get_don_rec_max(x.donations, x.donations, COALESCE(players.donations, 0)), 
                            received  = public.get_don_rec_max(x.received, x.received, COALESCE(players.received, 0)), 
-                           trophies  = public.get_trophies(x.trophies, players.trophies, players.league_id),
+                           trophies  = x.trophies,
                            clan_tag  = x.clan_tag,
                            player_name = x.player_name,
                            league_id = x.league_id
@@ -899,7 +899,9 @@ class Edit(commands.Cog):
                                       received    = public.get_don_rec_max(x.received, x.received, players.received),
                                       trophies    = x.trophies,
                                       player_name = x.player_name,
-                                      clan_tag    = x.clan_tag
+                                      clan_tag    = x.clan_tag,
+                                      best_trophies = x.best_trophies,
+                                      legend_trophies = x.legend_trophies
                    FROM (
                       SELECT x.player_tag, x.donations, x.received, x.trophies, x.player_name, x.clan_tag
                       FROM jsonb_to_recordset($1::jsonb)
@@ -909,7 +911,9 @@ class Edit(commands.Cog):
                          received INTEGER,
                          trophies INTEGER,
                          player_name TEXT,
-                         clan_tag TEXT
+                         clan_tag TEXT,
+                         best_trophies INTEGER,
+                         legend_trophies INTEGER
                       )
                    )
                    AS x
@@ -932,7 +936,9 @@ class Edit(commands.Cog):
                         "received": player.received,
                         "trophies": player.trophies,
                         "player_name": player.name,
-                        "clan_tag": player.clan and player.clan.tag
+                        "clan_tag": player.clan and player.clan.tag,
+                        "best_trophies": player.best_trophies,
+                        "legend_trophies": player.legend_statistics and player.legend_statistics.legend_trophies or 0,
                     })
                     player_tags.append(player.tag)
 
@@ -942,7 +948,8 @@ class Edit(commands.Cog):
 
             dboard_channels = await self.bot.utils.get_board_channels(ctx.guild.id, 'donation')
             tboard_channels = await self.bot.utils.get_board_channels(ctx.guild.id, 'trophy')
-            for id_ in (*dboard_channels, *tboard_channels):
+            lboard_channels = await self.bot.utils.get_board_channels(ctx.guild.id, 'legend')
+            for id_ in (*dboard_channels, *tboard_channels, *lboard_channels):
                 await self.bot.donationboard.update_board(message_id=int(id_))
 
             await ctx.send('All done - I\'ve force updated the boards too!')

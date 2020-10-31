@@ -431,11 +431,12 @@ class Syncer:
     async def bulk_board_insert(self):
         query = """UPDATE players SET donations = public.get_don_rec_max(x.old_dons, x.new_dons, COALESCE(players.donations, 0)), 
                                       received  = public.get_don_rec_max(x.old_rec, x.new_rec, COALESCE(players.received, 0)), 
-                                      trophies  = public.get_trophies(x.trophies, players.trophies, x.league_id),
-                                      true_trophies = x.trophies,
+                                      trophies  = x.trophies,
                                       league_id = x.league_id,
                                       clan_tag  = x.clan_tag,
-                                      player_name = x.player_name
+                                      player_name = x.player_name,
+                                      best_tropheis = public.get_best_trophies(x.trophies, players.best_trophies),
+                                      legend_trophies = players.legend_trophies + public.get_legend_trophies(x.trophies, players.trophies, players.league_id)
                         FROM(
                             SELECT x.player_tag, x.old_dons, x.new_dons, x.old_rec, x.new_rec, x.trophies, x.league_id, x.clan_tag, x.player_name
                                 FROM jsonb_to_recordset($1::jsonb)
@@ -447,7 +448,8 @@ class Syncer:
                                  trophies INTEGER,
                                  league_id INTEGER,
                                  clan_tag TEXT,
-                                 player_name TEXT)
+                                 player_name TEXT
+                                 )
                             )
                     AS x
                     WHERE players.player_tag = x.player_tag
@@ -487,8 +489,7 @@ class Syncer:
         trans_query = """UPDATE players 
                          SET donations = public.get_don_rec_max($1, $2, COALESCE(players.donations, 0)), 
                              received  = public.get_don_rec_max($3, $4, COALESCE(players.received, 0)), 
-                             trophies  = public.get_trophies($5, players.trophies),
-                             true_trophies = $5,
+                             trophies  = $5,
                              clan_tag  = $6,
                              player_name = $7
                          WHERE player_tag = $8

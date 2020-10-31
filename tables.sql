@@ -319,6 +319,37 @@ $function$
 ;
 
 
+CREATE OR REPLACE FUNCTION public.get_best_trophies(game_trophies integer, db_best_trophies integer)
+ RETURNS integer
+ LANGUAGE plpgsql
+AS $function$
+declare
+begin
+    if game_trophies > db_best_trophies then
+        return game_trophies;
+    else
+        return db_best_trophies;
+    end if;
+end;
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.get_legend_trophies(game_trophies integer, db_trophies integer, league_id integer)
+ RETURNS integer
+ LANGUAGE plpgsql
+AS $function$
+declare
+begin
+    if league_id = 29000022 and game_trophies > db_trophies then
+        return game_trophies - db_trophies;
+    else
+        return 0;
+    end if;
+end;
+$function$
+;
+
+
 CREATE OR REPLACE FUNCTION public.get_don_rec_max(game_old_count integer, game_count integer, db_old_count integer)
  RETURNS integer
  LANGUAGE plpgsql
