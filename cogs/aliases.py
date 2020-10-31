@@ -43,8 +43,7 @@ class Aliases(commands.Cog, name='\u200bAliases'):
 
     @commands.command(name='multiclaim')
     @requires_config('event')
-    async def multi_claim(self, ctx, user: discord.Member,
-                          players: commands.Greedy[PlayerConverter]):
+    async def multi_claim(self, ctx, user: discord.Member, *players: str):
         """Helper command to link many clash accounts to a user's discord.
 
         Note: unlike `+claim`, a discord mention **is not optional** - mention yourself if you want.
@@ -68,7 +67,7 @@ class Aliases(commands.Cog, name='\u200bAliases'):
         await ctx.invoke(cmd, user=user, players=players)
 
     @commands.command()
-    async def unclaim(self, ctx, *, player: PlayerConverter):
+    async def unclaim(self, ctx, *, player: str):
         """Unlink a clash account from your discord account.
 
         If you have not claimed the account, you must have `Manage Server` permissions.
