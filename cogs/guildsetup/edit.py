@@ -903,7 +903,7 @@ class Edit(commands.Cog):
                                       best_trophies = x.best_trophies,
                                       legend_trophies = x.legend_trophies
                    FROM (
-                      SELECT x.player_tag, x.donations, x.received, x.trophies, x.player_name, x.clan_tag
+                      SELECT x.player_tag, x.donations, x.received, x.trophies, x.player_name, x.clan_tag, x.best_trophies, x.legend_trophies
                       FROM jsonb_to_recordset($1::jsonb)
                       AS x(
                          player_tag TEXT,
