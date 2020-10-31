@@ -67,7 +67,7 @@ class HTMLImages:
         if board_type == "donation":
             self.columns = ("#", "Player Name", "Dons", "Rec", "Ratio", "Last On")
         elif board_type == "legend":
-            self.columns = ("#", "Player Name", "Initial", "Gain", "Loss", "Final", "Best", "Total")
+            self.columns = ("#", "Player Name", "Initial", "Gain", "Loss", "Final", "Best")
         else:
             self.columns = ("#", "Player Name", "Cups", "Gain", "Last On")
 
@@ -219,7 +219,7 @@ header {
             self.players = [(str(i) + ".", p['player_name'], p['donations'], p['received'], round(p['donations'] / (p['received'] or 1), 2),
                             self.get_readable(p['last_online'])) for i, p in enumerate(self.players, start=self.offset)]
         elif self.board_type == 'legend':
-            self.players = [(str(i) + ".", p['player_name'], p['starting'], p['gain'], p['loss'], p['finishing'], p['best_trophies'], p['legend_trophies'])
+            self.players = [(str(i) + ".", p['player_name'], p['starting'], p['gain'], p['loss'], p['finishing'], p['best_trophies'])
                             for i, p in enumerate(self.players, start=self.offset)]
         else:
             self.players = [
@@ -405,7 +405,7 @@ class SyncBoards:
                 offset
             )
         elif config.type == "legend":
-            query = f"""SELECT DISTINCT players.player_name, starting, gain, loss, finishing, best_trophies, legend_trophies
+            query = f"""SELECT DISTINCT players.player_name, starting, gain, loss, finishing, best_trophies
                         FROM legend_days 
                         INNER JOIN players 
                         ON players.player_tag = legend_days.player_tag
