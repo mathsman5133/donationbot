@@ -435,7 +435,7 @@ class Syncer:
                                       league_id = x.league_id,
                                       clan_tag  = x.clan_tag,
                                       player_name = x.player_name,
-                                      best_tropheis = public.get_best_trophies(x.trophies, players.best_trophies),
+                                      best_trophies = public.get_best_trophies(x.trophies, players.best_trophies),
                                       legend_trophies = players.legend_trophies + public.get_legend_trophies(x.trophies, players.trophies, players.league_id)
                         FROM(
                             SELECT x.player_tag, x.old_dons, x.new_dons, x.old_rec, x.new_rec, x.trophies, x.league_id, x.clan_tag, x.player_name
