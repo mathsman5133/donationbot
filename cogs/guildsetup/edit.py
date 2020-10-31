@@ -921,29 +921,29 @@ class Edit(commands.Cog):
                    AND players.season_id = $2                      
                 """
         query3 = "UPDATE players SET clan_tag = NULL WHERE clan_tag = ANY($1::TEXT[]) AND NOT player_tag = ANY($2::TEXT[])"
-        players = []
         async with ctx.typing():
             if not clans:
                 clans = await ctx.get_clans()
 
             season_id = await self.bot.seasonconfig.get_season_id()
             player_tags = []
+            players = []
             for clan in clans:
-                async for player in clan.get_detailed_members():
-                    players.append({
-                        "player_tag": player.tag,
-                        "donations": player.donations,
-                        "received": player.received,
-                        "trophies": player.trophies,
-                        "player_name": player.name,
-                        "clan_tag": player.clan and player.clan.tag,
-                        "best_trophies": player.best_trophies,
-                        "legend_trophies": player.legend_statistics and player.legend_statistics.legend_trophies or 0,
-                    })
-                    player_tags.append(player.tag)
+                player_tags.extend(m.tag for m in clan.members)
+
+            async for player in self.bot.coc.get_players(player_tags):
+                players.append({
+                    "player_tag": player.tag,
+                    "donations": player.donations,
+                    "received": player.received,
+                    "trophies": player.trophies,
+                    "player_name": player.name,
+                    "clan_tag": player.clan and player.clan.tag,
+                    "best_trophies": player.best_trophies,
+                    "legend_trophies": player.legend_statistics and player.legend_statistics.legend_trophies or 0,
+                })
 
             await ctx.db.execute(query3, [n.tag for n in clans], player_tags)
-
             await ctx.db.execute(query, players, season_id)
 
             dboard_channels = await self.bot.utils.get_board_channels(ctx.guild.id, 'donation')
