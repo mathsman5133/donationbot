@@ -949,16 +949,21 @@ class Edit(commands.Cog):
 
         s = pc()
         query3 = "UPDATE players SET clan_tag = '' WHERE clan_tag = ANY($1::TEXT[]) AND NOT player_tag = ANY($2::TEXT[]) AND season_id=$3"
-        fetch = await ctx.db.execute(query3, clan_tags, player_tags, season_id)
-        log.info('+refresh took %sms to set clan tags to null for %s', (pc() - s)*1000, fetch)
+        left_clan_count = await ctx.db.execute(query3, clan_tags, player_tags, season_id)
+        log.info('+refresh took %sms to set clan tags to null for %s', (pc() - s)*1000, left_clan_count)
 
         s = pc()
-        fetch = await ctx.db.execute(query, players, season_id)
-        log.info('+refresh took %sms to update %s players', (pc() - s)*1000, fetch)
+        update_players_count = await ctx.db.execute(query, players, season_id)
+        log.info('+refresh took %sms to update %s players', (pc() - s)*1000, update_players_count)
 
-        await ctx.db.execute("UPDATE boards SET need_to_update=True WHERE guild_id=$1", ctx.guild.id)
+        boards = await ctx.db.execute("UPDATE boards SET need_to_update=True WHERE guild_id=$1", ctx.guild.id)
 
-        await ctx.send("All done - I've queued the boards to be updated soon, too.")
+        await ctx.send("All done - I've queued the boards to be updated soon, too.\n\n"
+                       f"I updated:\n"
+                       f"- {len(clan_tags)} Clans\n"
+                       f"- {len(players)} Players\n"
+                       f"- {boards.split(' ')[-1]} Boards\n"
+                       )
 
     @commands.command(hidden=True)
     @commands.is_owner()
