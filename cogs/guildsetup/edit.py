@@ -955,15 +955,9 @@ class Edit(commands.Cog):
             fetch = await ctx.db.execute(query, players, season_id)
             log.info('+refresh took %sms to update %s players', (pc() - s)*1000, fetch)
 
-            s = pc()
-            dboard_channels = await self.bot.utils.get_board_channels(ctx.guild.id, 'donation')
-            tboard_channels = await self.bot.utils.get_board_channels(ctx.guild.id, 'trophy')
-            lboard_channels = await self.bot.utils.get_board_channels(ctx.guild.id, 'legend')
-            for id_ in (*dboard_channels, *tboard_channels, *lboard_channels):
-                await self.bot.donationboard.update_board(message_id=int(id_))
-            log.info('+refresh took %sms to update %s boards', (pc() - s)*1000, len(dboard_channels) + len(tboard_channels) + len(lboard_channels))
+            await ctx.db.execute("UPDATE boards SET need_to_update=True WHERE guild_id=$1", ctx.guild.id)
 
-            await ctx.send('All done - I\'ve force updated the boards too!')
+            await ctx.send("All done - I've queued the boards to be updated soon, too.")
 
     @commands.command(hidden=True)
     @commands.is_owner()
