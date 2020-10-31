@@ -5,6 +5,8 @@ import datetime
 import re
 import logging
 
+from time import perf_counter as pc
+
 from discord.ext import commands
 from cogs.utils.checks import requires_config, manage_guild
 from cogs.utils.formatters import CLYTable
@@ -874,23 +876,16 @@ class Edit(commands.Cog):
 
     @commands.command()
     @commands.cooldown(1, 60 * 60, commands.BucketType.guild)
-    async def refresh(self, ctx, *, clans: ClanConverter = None):
-        """Manually refresh all players in the database with current donations and received.
+    async def refresh(self, ctx):
+        """Manually refresh all players in the database with current statistics from the API.
 
-        Note: this will update all players in the clan based on achievement counts at the season start.
-
-        **Parameters**
-        :key: Clan - tag, name or `all`.
+        Note: this command may take some time, as it will fetch every player from each clan on the server individually.
 
         **Format**
-        :information_source: `+refresh CLAN_TAG` or
-        :information_source: `+refresh CLAN NAME` or
-        :information_source: `+refresh all`
+        :information_source: `+refresh`
 
         **Example**
-        :white_check_mark: `+refresh #P0LYJC8C`
-        :white_check_mark: `+refresh Rock Throwers`
-        :white_check_mark: `+refresh all`
+        :white_check_mark: `+refresh`
 
         **Cooldowns**
         :hourglass: You can only call this command once every **1 hour**
@@ -920,17 +915,24 @@ class Edit(commands.Cog):
                    WHERE players.player_tag = x.player_tag
                    AND players.season_id = $2                      
                 """
-        query3 = "UPDATE players SET clan_tag = NULL WHERE clan_tag = ANY($1::TEXT[]) AND NOT player_tag = ANY($2::TEXT[])"
-        async with ctx.typing():
-            if not clans:
-                clans = await ctx.get_clans()
+        fetch = await ctx.db.fetch("SELECT DISTINCT clan_tag FROM clans WHERE guild_id=$1", ctx.guild.id)
+        if not fetch:
+            return await ctx.send("Uh oh, it seems you don't have any clans added. Please add a clan and try again.")
+        clan_tags = [row['clan_tag'] for row in fetch]
 
+        log.info('running +refresh for %s', clan_tags)
+
+        async with ctx.typing():
             season_id = await self.bot.seasonconfig.get_season_id()
             player_tags = []
             players = []
-            for clan in clans:
-                player_tags.extend(m.tag for m in clan.members)
 
+            s = pc()
+            async for clan in self.bot.coc.get_clans(clan_tags):
+                player_tags.extend(m.tag for m in clan.members)
+            log.info('+refresh took %sms to fetch %s clans', (pc() - s)*1000, len(fetch))
+
+            s = pc()
             async for player in self.bot.coc.get_players(player_tags):
                 players.append({
                     "player_tag": player.tag,
@@ -942,15 +944,24 @@ class Edit(commands.Cog):
                     "best_trophies": player.best_trophies,
                     "legend_trophies": player.legend_statistics and player.legend_statistics.legend_trophies or 0,
                 })
+            log.info('+refresh took %sms to fetch %s players', (pc() - s)*1000, len(player_tags))
 
-            await ctx.db.execute(query3, [n.tag for n in clans], player_tags)
-            await ctx.db.execute(query, players, season_id)
+            s = pc()
+            query3 = "UPDATE players SET clan_tag = '' WHERE clan_tag = ANY($1::TEXT[]) AND NOT player_tag = ANY($2::TEXT[]) AND season_id=$3"
+            fetch = await ctx.db.execute(query3, clan_tags, player_tags, season_id)
+            log.info('+refresh took %sms to set clan tags to null for %s', (pc() - s)*1000, fetch)
 
+            s = pc()
+            fetch = await ctx.db.execute(query, players, season_id)
+            log.info('+refresh took %sms to update %s players', (pc() - s)*1000, fetch)
+
+            s = pc()
             dboard_channels = await self.bot.utils.get_board_channels(ctx.guild.id, 'donation')
             tboard_channels = await self.bot.utils.get_board_channels(ctx.guild.id, 'trophy')
             lboard_channels = await self.bot.utils.get_board_channels(ctx.guild.id, 'legend')
             for id_ in (*dboard_channels, *tboard_channels, *lboard_channels):
                 await self.bot.donationboard.update_board(message_id=int(id_))
+            log.info('+refresh took %sms to update %s boards', (pc() - s)*1000, len(dboard_channels) + len(tboard_channels) + len(lboard_channels))
 
             await ctx.send('All done - I\'ve force updated the boards too!')
 
