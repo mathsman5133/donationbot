@@ -922,7 +922,7 @@ class Edit(commands.Cog):
 
         log.info('running +refresh for %s', clan_tags)
 
-        async with ctx.typing(), ctx.acquire():
+        async with ctx.typing():
             season_id = await self.bot.seasonconfig.get_season_id()
             player_tags = []
             players = []
