@@ -67,6 +67,7 @@ class Add(commands.Cog):
         **Required Permissions**
         :warning: Manage Server
         """
+        await ctx.trigger_typing()
         if channel:
             pass  # it's been invoked from another command
         elif not ctx.message.channel_mentions:
