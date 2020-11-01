@@ -5,7 +5,7 @@ import logging
 from collections import namedtuple
 from discord.ext import commands
 
-from cogs.guildsetup.add import BOARD_PLACEHOLDER
+from cogs.add import BOARD_PLACEHOLDER
 from cogs.utils.db_objects import DatabaseMessage, BoardConfig
 from syncboards import SyncBoards
 
@@ -66,7 +66,7 @@ class DonationBoard(commands.Cog):
         for q in (query, query2, query3, query4):
             await self.bot.pool.execute(q, channel.id)
 
-        self.bot.utils.board_config.invalidate(self.bot.utils, channel.id)
+        # self.bot.utils.board_config.invalidate(self.bot.utils, channel.id)
 
     @commands.Cog.listener()
     async def on_raw_message_delete(self, payload):
@@ -80,7 +80,7 @@ class DonationBoard(commands.Cog):
             self._to_be_deleted.discard(payload.message_id)
             return
 
-        self.bot.utils.get_message.invalidate(self.bot.utils, payload.message_id)
+        self.bot.utils._messages.pop(payload.message_id, None)
 
         message = await self.safe_delete(message_id=payload.message_id, delete_message=False)
         if message:
@@ -100,7 +100,7 @@ class DonationBoard(commands.Cog):
                 self._to_be_deleted.discard(n)
                 continue
 
-            self.bot.utils.get_message.invalidate(self, n)
+            self.bot.utils._messages.pop(n, None)
 
             message = await self.safe_delete(message_id=n, delete_message=False)
             if message:

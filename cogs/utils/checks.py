@@ -66,34 +66,23 @@ async def before_invoke(ctx):
     if not config_type:
         return
 
-    invalidate = getattr(ctx, 'invalidate', False)
+    # invalidate = getattr(ctx, 'invalidate', False)
     error = getattr(ctx, 'error_without_config', False)
     channel = getattr(ctx, 'custom_channel', ctx.channel)
 
     if config_type in ['donationboard', 'trophyboard', 'lastonlineboard']:
-        if invalidate:
-            ctx.bot.utils.board_config.invalidate(ctx.bot.utils, channel.id)
         ctx.config = await ctx.bot.utils.board_config(channel.id)
 
     elif config_type == 'event':
-        if invalidate:
-            ctx.bot.utils.event_config.invalidate(ctx.bot.utils, ctx.guild.id)
-
         ctx.config = await ctx.bot.utils.event_config(ctx.guild.id)
 
     elif config_type == 'donationlog':
-        if invalidate:
-            ctx.bot.utils.log_config.invalidate(ctx.bot.utils, channel.id, 'donation')
         ctx.config = await ctx.bot.utils.log_config(channel.id, 'donation')
 
     elif config_type == 'trophylog':
-        if invalidate:
-            ctx.bot.utils.log_config.invalidate(ctx.bot.utils, channel.id, 'trophy')
         ctx.config = await ctx.bot.utils.log_config(channel.id, 'trophy')
 
     elif config_type == 'legendlog':
-        if invalidate:
-            ctx.bot.utils.log_config.invalidate(ctx.bot.utils, channel.id, 'legend')
         ctx.config = await ctx.bot.utils.log_config(channel.id, 'legend')
 
     if error and not ctx.config:
@@ -109,26 +98,14 @@ async def after_invoke(ctx):
 
     if not getattr(ctx, 'config', None):
         return
-
-    if config_type in ['donationboard', 'trophyboard']:
-        ctx.bot.utils.board_config.invalidate(ctx.bot.utils, ctx.config.channel_id)
-    if config_type == 'donationlog':
-        ctx.bot.utils.log_config.invalidate(ctx.bot.utils, ctx.config.channel_id, 'donation')
-    elif config_type == 'trophylog':
-        ctx.bot.utils.log_config.invalidate(ctx.bot.utils, ctx.config.channel_id, 'trophy')
-    elif config_type == 'legendlog':
-        ctx.bot.utils.log_config.invalidate(ctx.bot.utils, ctx.config.channel_id, 'legend')
-    elif config_type == 'event':
-        ctx.bot.utils.event_config.invalidate(ctx.bot.utils, ctx.guild.id)
     return ctx
 
 
-def requires_config(config_type, invalidate=False, error=False):
+def requires_config(config_type, error=False):
     async def pred(ctx):
         ctx.before_invoke = before_invoke
         ctx.after_invoke = after_invoke
         ctx.config_type = config_type
-        ctx.invalidate = invalidate
         ctx.error_without_config = error
         return True
     return commands.check(pred)

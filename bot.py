@@ -9,15 +9,16 @@ import sqlite3
 import sys
 import itertools
 import logging
+import json
 
+import asyncpg
 import sentry_sdk
 
 from coc.ext import discordlinks
 from discord.ext import commands
 
 from botlog import setup_logging, add_hooks
-from cogs.utils import context, category
-from cogs.utils.db import Table
+from cogs.utils import context
 from cogs.utils.error_handler import error_handler, discord_event_error
 
 sentry_sdk.init(creds.SENTRY_KEY)
@@ -32,6 +33,9 @@ initial_extensions = [
     'cogs.info',
     'cogs.reset_season',
     'cogs.activity',
+    'cogs.remove',
+    'cogs.add',
+    'cogs.edit'
 ]
 beta = "beta" in sys.argv
 
@@ -90,13 +94,23 @@ async def get_pref(bot, message):
     return commands.when_mentioned_or(prefix)(bot, message)
 
 
+async def setup_db():
+    def _encode_jsonb(value):
+        return json.dumps(value)
+
+    def _decode_jsonb(value):
+        return json.loads(value)
+
+    async def init(con):
+        await con.set_type_codec('jsonb', schema='pg_catalog', encoder=_encode_jsonb, decoder=_decode_jsonb, format='text')
+    return await asyncpg.create_pool(creds.postgres, init=init)
+
+
 class DonationBot(commands.AutoShardedBot):
     def __init__(self):
         super().__init__(command_prefix=get_pref, case_insensitive=True,
                          description=description, pm_help=None, help_attrs=dict(hidden=True),
                          intents=intents, chunk_guilds_at_startup=False)
-
-        self.categories = {}
 
         self.prefixes = dict()
 
@@ -140,58 +154,6 @@ class DonationBot(commands.AutoShardedBot):
     @property
     def background(self):
         return self.get_cog('BackgroundManagement')
-
-    def get_category(self, name) -> category.Category:
-        return self.categories.get(name)
-
-    def unload_extension(self, name):
-        names = name.split('.')
-        category = self.get_category(names[-1])
-        if category:
-            for n in category.cogs:
-                # requirement: cog name = file name
-                super().unload_extension(f"{name}.{n.qualified_name.lower()}")
-            return
-
-        category = self.get_category(names[-2])
-        if category:
-            category.remove_cog(self.get_cog(name))
-            return
-
-        super().unload_extension(name)
-
-    def load_extension(self, name):
-        names = name.split('.')
-        category = self.get_category(names[-1])
-        if category:
-            for n in category.cogs:
-                # requirement: cog name = file name
-                super().load_extension(f"{name}.{n.qualified_name.lower()}")
-            return
-
-        category = self.get_category(names[-2])
-        if category:
-            category.add_cog(self.get_cog(name))
-            return
-
-        super().load_extension(name)
-
-    def reload_extension(self, name):
-        names = name.split('.')
-        category = self.get_category(names[-1])
-        if category:
-            for n in category.cogs:
-                # requirement: cog name = file name
-                super().reload_extension(f"{name}.{n.qualified_name.lower()}")
-            return
-
-        category = self.get_category(names[-2])
-        if category:
-            category.remove_cog(self.get_cog(name))
-            category.add_cog(self.get_cog(name))
-            return
-
-        super().reload_extension(name)
 
     async def before_command_invoke(self, ctx):
         if hasattr(ctx, 'before_invoke'):
@@ -262,11 +224,8 @@ if __name__ == '__main__':
     loop = asyncio.get_event_loop()
 
     try:
-        # configure the database connection
-        pool = loop.run_until_complete(Table.create_pool(creds.postgres))
-
         bot = DonationBot()
-        bot.pool = pool  # add db as attribute
+        bot.pool = loop.run_until_complete(setup_db())  # add db as attribute
         setup_logging(bot)
         bot.run(creds.bot_token)  # run bot
 

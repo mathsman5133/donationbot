@@ -193,7 +193,7 @@ class BackgroundManagement(commands.Cog):
         slim_config = SlimEventConfig(
             event['id'], event['start'], event['finish'], event['event_name'], event['channel_id'], event['guild_id']
         )
-        self.bot.utils.board_config.invalidate(self.bot.utils, slim_config.channel_id)
+        # self.bot.utils.board_config.invalidate(self.bot.utils, slim_config.channel_id)
 
         if event['until_start'].total_seconds() < 0:
             await self.on_event_finish(slim_config)

@@ -1,3 +1,4 @@
+import time
 import math
 
 import coc
@@ -5,9 +6,7 @@ import coc
 from discord.ext import commands
 from discord.ext.commands.core import _CaseInsensitiveDict
 
-from cogs.utils.cache import ExpiringCache
 from cogs.utils.converters import ConvertToPlayers
-from cogs.utils.emoji_lookup import misc
 from cogs.utils.paginator import StatsAttacksPaginator, StatsDefensesPaginator, StatsTrophiesPaginator, StatsDonorsPaginator, StatsGainsPaginator, StatsLastOnlinePaginator, StatsAchievementPaginator, StatsAccountsPaginator
 
 
@@ -26,6 +25,30 @@ class CustomPlayer(coc.Player):
     def get_ach_value(self, name):
         ach = self.get_caseinsensitive_achievement(name)
         return ach and ach.value or 0
+
+
+class ExpiringCache(dict):
+    def __init__(self, seconds):
+        self.ttl = seconds
+        super().__init__()
+
+    def clean_old(self):
+        # Have to do this in two steps...
+        current_time = time.monotonic()
+        to_remove = [k for (k, (v, t)) in self.items() if current_time > (t + self.ttl)]
+        for k in to_remove:
+            del self[k]
+
+    def __getitem__(self, key):
+        self.clean_old()
+        return super().__getitem__(key)[1]
+
+    def __setitem__(self, key, value):
+        super().__setitem__(key, (value, time.monotonic()))
+
+    def __contains__(self, key):
+        self.clean_old()
+        return super().__contains__(key)
 
 
 class Stats(commands.Cog):

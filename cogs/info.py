@@ -603,7 +603,7 @@ class Info(commands.Cog, name='\u200bInfo'):
         await ctx.send(embed=e)
 
     @info.command(name='event')
-    @requires_config('event', invalidate=True, error=True)
+    @requires_config('event', error=True)
     async def info_event(self, ctx, id_: int = None):
         """Gives you info about guild's event"""
         if not ctx.config and not (id_ and await self.bot.is_owner(ctx.author)):

@@ -33,7 +33,7 @@ class Edit(commands.Cog):
 
     @edit.command(name='prefix')
     @checks.manage_guild()
-    async def edit_prefix(self, ctx, new_prefix: str = None):
+    async def edit_prefix(self, ctx, new_prefix: str):
         """Allows a user to select a custom prefix for the bot.
 
         **Format**
@@ -47,13 +47,9 @@ class Edit(commands.Cog):
         **Required Permissions**
         :warning: Manage Server
         """
-        if not new_prefix:
-            return await ctx.send_help(ctx.command)
-
-        query = "UPDATE guilds SET prefix = $1 WHERE guild_id = $2"
-        await self.bot.pool.execute(query, new_prefix, ctx.guild.id)
+        await self.bot.pool.execute("UPDATE guilds SET prefix = $1 WHERE guild_id = $2", new_prefix, ctx.guild.id)
         self.bot.prefixes[ctx.guild.id] = new_prefix
-        await ctx.send(f"The prefix for the bot has been changed to `{new_prefix}`")
+        await ctx.send(f"👌 The prefix for the bot has been changed to `{new_prefix}`")
 
     @edit.command(name='timezone', aliases=['tz'])
     async def edit_timezone(self, ctx, offset: int = 0):
@@ -75,9 +71,10 @@ class Edit(commands.Cog):
         if not -12 <= offset <= 12:
             return await ctx.send("Your offset must be between -12 and 12 hours away from UTC.")
 
-        query = "INSERT INTO user_config (user_id, timezone_offset) VALUES ($1, $2) ON CONFLICT (user_id) DO UPDATE SET timezone_offset = $2"
+        query = "INSERT INTO user_config (user_id, timezone_offset) VALUES ($1, $2) " \
+                "ON CONFLICT (user_id) DO UPDATE SET timezone_offset = $2"
         await ctx.db.execute(query, ctx.author.id, offset)
-        await ctx.send(":ok_hand: Updated server timezone offset.")
+        await ctx.send("👌 Updated server timezone offset.")
 
     @edit.command(name='darkmode')
     async def edit_darkmode(self, ctx):
@@ -102,7 +99,52 @@ class Edit(commands.Cog):
                    RETURNING dark_mode
                 """
         fetch = await ctx.db.fetchrow(query, ctx.author.id)
-        await ctx.send(f":ok_hand: Updated dark mode to: {'on' if fetch['dark_mode'] else 'off'}")
+        await ctx.send(f"👌 Updated dark mode to: {'on' if fetch['dark_mode'] else 'off'}")
+
+
+    async def do_edit_board_url(self, ctx, channel, url, type_):
+        if url in ['default', 'none', 'remove']:
+            url = None
+
+        if url == 'https://catsareus/thecrazycatbot/123.jpg':
+            return await ctx.send('Uh oh! That\'s an example URL - it doesn\'t work!')
+
+        query = "UPDATE boards SET icon_url = $1 WHERE channel_id = $2 AND type = $3 RETURNING message_id"
+        result = await ctx.db.fetchrow(query, url, channel.id, type_)
+        if not result:
+            return await ctx.send(f":x: I couldn't find a {type_}board setup in {channel.mention}. "
+                                  f"Either #mention a valid board channel, or set one up with `+help add boards`.")
+
+        await self.bot.donationboard.update_board(message_id=result['message_id'])
+        await ctx.send(f"👌 Icon URL updated.")
+
+    async def do_edit_board_title(self, ctx, channel, title, type_):
+        if len(title) >= 50:
+            return await ctx.send('Titles must be less than 50 characters.')
+
+        query = "UPDATE boards SET title = $1 WHERE channel_id = $2 AND type = $3 RETURNING message_id"
+        result = await ctx.db.fetchrow(query, title, channel.id, type_)
+
+        if not result:
+            return await ctx.send(f"I couldn't find a {type_}board setup in {channel.mention}. "
+                                  f"Either #mention a valid board channel, or set one up with `+help add boards`.")
+
+        await self.bot.donationboard.update_board(message_id=result['message_id'])
+        await ctx.send(f"👌 Title updated.")
+
+    async def do_edit_board_perpage(self, ctx, channel, per_page, type_):
+        if per_page < 0:
+            return await ctx.send("You can't have a negative number of players per page!")
+
+        query = "UPDATE boards SET per_page = $1 WHERE channel_id = $2 AND type = $3 RETURNING message_id"
+        result = await ctx.db.fetchrow(query, per_page, channel.id, type_)
+
+        if not result:
+            return await ctx.send(f"I couldn't find a {type_}board setup in {channel.mention}. "
+                                  f"Either #mention a valid board channel, or set one up with `+help add boards`.")
+
+        await self.bot.donationboard.update_board(message_id=result['message_id'])
+        await ctx.send(f"👌 Per-page count updated.")
 
     @edit.group(name='donationboard')
     @checks.manage_guild()
@@ -139,27 +181,7 @@ class Edit(commands.Cog):
         **Required Permissions**
         :warning: Manage Server
         """
-        channel = channel or ctx.channel
-
-        # if not url or not url_validator.match(url):
-        #     attachments = ctx.message.attachments
-        #     if not attachments:
-        #         return await ctx.send('You must pass in a url or upload an attachment.')
-        #     url = attachments[0].url
-
-        if url in ['default', 'none', 'remove']:
-            url = None
-
-        if url == 'https://catsareus/thecrazycatbot/123.jpg':
-            return await ctx.send('Uh oh! That\'s an example URL - it doesn\'t work!')
-
-        query = "UPDATE boards SET icon_url = $1 WHERE channel_id = $2 AND type = 'donation' RETURNING message_id"
-        result = await ctx.db.fetchrow(query, url, channel.id)
-        if not result:
-            return await ctx.send(f"I couldn't find a donationboard setup in {channel}. Either #mention a valid board channel, or set one up with `+help add donationboard`.")
-
-        await self.bot.donationboard.update_board(message_id=result['message_id'])
-        await ctx.send(f":white_check_mark: Icon URL updated.")
+        await self.do_edit_board_url(ctx, channel or ctx.channel, url, 'donation')
 
     @edit_donationboard.command(name='title')
     async def edit_donationboard_title(self, ctx, channel: typing.Optional[discord.TextChannel], *, title: str):
@@ -178,18 +200,7 @@ class Edit(commands.Cog):
         **Required Permissions**
         :warning: Manage Server
         """
-        channel = channel or ctx.channel
-        if len(title) >= 50:
-            return await ctx.send('Titles must be less than 50 characters.')
-
-        query = "UPDATE boards SET title = $1 WHERE channel_id = $2 AND type = 'donation' RETURNING message_id"
-        result = await ctx.db.fetchrow(query, title, channel.id)
-
-        if not result:
-            return await ctx.send(f"I couldn't find a donationboard setup in {channel}. Either #mention a valid board channel, or set one up with `+help add donationboard`.")
-
-        await self.bot.donationboard.update_board(message_id=result['message_id'])
-        await ctx.send(f":white_check_mark: Title updated.")
+        await self.do_edit_board_title(ctx, channel or ctx.channel, title, 'donation')
 
     @edit_donationboard.command(name='perpage')
     async def edit_donationboard_per_page(self, ctx, channel: typing.Optional[discord.TextChannel], per_page: int):
@@ -212,18 +223,7 @@ class Edit(commands.Cog):
         **Required Permissions**
         :warning: Manage Server
         """
-        channel = channel or ctx.channel
-        if per_page < 0:
-            return await ctx.send("You can't have a negative number of players per page!")
-
-        query = "UPDATE boards SET per_page = $1 WHERE channel_id = $2 AND type = 'donation' RETURNING message_id"
-        result = await ctx.db.fetchrow(query, per_page, channel.id)
-
-        if not result:
-            return await ctx.send(f"I couldn't find a donationboard setup in {channel}. Either #mention a valid board channel, or set one up with `+help add donationboard`.")
-
-        await self.bot.donationboard.update_board(message_id=result['message_id'])
-        await ctx.send(f":white_check_mark: Per-page count updated.")
+        await self.do_edit_board_perpage(ctx, channel or ctx.channel, per_page, 'donation')
 
     @edit.group(name='legendboard')
     @manage_guild()
@@ -251,28 +251,7 @@ class Edit(commands.Cog):
         **Required Permissions**
         :warning: Manage Server
         """
-        channel = channel or ctx.channel
-
-        # if not url or not url_validator.match(url):
-        #     attachments = ctx.message.attachments
-        #     if not attachments:
-        #         return await ctx.send('You must pass in a url or upload an attachment.')
-        #     url = attachments[0].url
-
-        if url in ['none', 'remove', 'default']:
-            url = None
-
-        if url == 'https://catsareus/thecrazycatbot/123.jpg':
-            return await ctx.send('Uh oh! That\'s an example URL - it doesn\'t work!')
-
-        query = "UPDATE boards SET icon_url = $1 WHERE channel_id = $2 AND type = 'legend' RETURNING message_id"
-        result = await ctx.db.fetchrow(query, url, channel.id)
-        if not result:
-            return await ctx.send(
-                f"I couldn't find a trophyboard setup in {channel}. Either #mention a valid board channel, or set one up with `+help add legendboard`.")
-
-        await self.bot.donationboard.update_board(message_id=result['message_id'])
-        await ctx.send(f":white_check_mark: Icon URL updated.")
+        await self.do_edit_board_url(ctx, channel or ctx.channel, url, 'legend')
 
     @edit_legendboard.command(name='title')
     async def edit_legendboard_title(self, ctx, channel: typing.Optional[discord.TextChannel], *, title: str):
@@ -291,19 +270,7 @@ class Edit(commands.Cog):
         **Required Permissions**
         :warning: Manage Server
         """
-        channel = channel or ctx.channel
-        if len(title) >= 50:
-            return await ctx.send('Titles must be less than 50 characters.')
-
-        query = "UPDATE boards SET title = $1 WHERE channel_id = $2 AND type = 'legend' RETURNING message_id"
-        result = await ctx.db.fetchrow(query, title, channel.id)
-
-        if not result:
-            return await ctx.send(
-                f"I couldn't find a legendboard setup in {channel}. Either #mention a valid board channel, or set one up with `+help add legendboard`.")
-
-        await self.bot.donationboard.update_board(message_id=result['message_id'])
-        await ctx.send(f":white_check_mark: Title updated.")
+        await self.do_edit_board_title(ctx, channel or ctx.channel, title, 'legend')
 
     @edit_legendboard.command(name='perpage')
     async def edit_legendboard_per_page(self, ctx, channel: typing.Optional[discord.TextChannel], *, per_page: int):
@@ -326,18 +293,7 @@ class Edit(commands.Cog):
         **Required Permissions**
         :warning: Manage Server
         """
-        channel = channel or ctx.channel
-        if per_page < 0:
-            return await ctx.send("You can't have a negative number of players per page!")
-
-        query = "UPDATE boards SET per_page = $1 WHERE channel_id = $2 AND type = 'legend' RETURNING message_id"
-        result = await ctx.db.fetchrow(query, per_page, channel.id)
-
-        if not result:
-            return await ctx.send(f"I couldn't find a legendboard setup in {channel}. Either #mention a valid board channel, or set one up with `+help add legendboard`.")
-
-        await self.bot.donationboard.update_board(message_id=result['message_id'])
-        await ctx.send(f":white_check_mark: Per-page count updated.")
+        await self.do_edit_board_perpage(ctx, channel or ctx.channel, per_page, 'legend')
 
     @edit.group(name='trophyboard')
     @manage_guild()
@@ -365,28 +321,7 @@ class Edit(commands.Cog):
         **Required Permissions**
         :warning: Manage Server
         """
-        channel = channel or ctx.channel
-
-        # if not url or not url_validator.match(url):
-        #     attachments = ctx.message.attachments
-        #     if not attachments:
-        #         return await ctx.send('You must pass in a url or upload an attachment.')
-        #     url = attachments[0].url
-
-        if url in ['none', 'remove', 'default']:
-            url = None
-
-        if url == 'https://catsareus/thecrazycatbot/123.jpg':
-            return await ctx.send('Uh oh! That\'s an example URL - it doesn\'t work!')
-
-        query = "UPDATE boards SET icon_url = $1 WHERE channel_id = $2 AND type = 'trophy' RETURNING message_id"
-        result = await ctx.db.fetchrow(query, url, channel.id)
-        if not result:
-            return await ctx.send(
-                f"I couldn't find a trophyboard setup in {channel}. Either #mention a valid board channel, or set one up with `+help add trophyboard`.")
-
-        await self.bot.donationboard.update_board(message_id=result['message_id'])
-        await ctx.send(f":white_check_mark: Icon URL updated.")
+        await self.do_edit_board_url(ctx, channel or ctx.channel, url, 'trophy')
 
     @edit_trophyboard.command(name='title')
     async def edit_trophyboard_title(self, ctx, channel: typing.Optional[discord.TextChannel], *, title: str):
@@ -405,19 +340,7 @@ class Edit(commands.Cog):
         **Required Permissions**
         :warning: Manage Server
         """
-        channel = channel or ctx.channel
-        if len(title) >= 50:
-            return await ctx.send('Titles must be less than 50 characters.')
-
-        query = "UPDATE boards SET title = $1 WHERE channel_id = $2 AND type = 'trophy' RETURNING message_id"
-        result = await ctx.db.fetchrow(query, title, channel.id)
-
-        if not result:
-            return await ctx.send(
-                f"I couldn't find a trophyboard setup in {channel}. Either #mention a valid board channel, or set one up with `+help add trophyboard`.")
-
-        await self.bot.donationboard.update_board(message_id=result['message_id'])
-        await ctx.send(f":white_check_mark: Title updated.")
+        await self.do_edit_board_title(ctx, channel or ctx.channel, title, 'trophy')
 
     @edit_trophyboard.command(name='perpage')
     async def edit_trophyboard_per_page(self, ctx, channel: typing.Optional[discord.TextChannel], per_page: int):
@@ -440,19 +363,35 @@ class Edit(commands.Cog):
         **Required Permissions**
         :warning: Manage Server
         """
-        channel = channel or ctx.channel
-        if per_page < 0:
-            return await ctx.send("You can't have a negative number of players per page!")
+        await self.do_edit_board_perpage(ctx, channel or ctx.channel, per_page, 'trophy')
 
-        query = "UPDATE boards SET per_page = $1 WHERE channel_id = $2 AND type = 'trophy' RETURNING message_id"
-        result = await ctx.db.fetchrow(query, per_page, channel.id)
+    async def do_edit_log_interval(self, ctx, channel, interval, type_):
+        query = """UPDATE logs
+                   SET interval = ($1 ||' minutes')::interval
+                   WHERE channel_id=$2
+                   AND type = $3
+                   RETURNING id;
+                """
+        fetch = await ctx.db.fetchrow(query, str(interval), channel.id, type_)
+        if not fetch:
+            await ctx.send(f"I couldn't find a {type_}log setup in {channel.mention}. "
+                           f"Either #mention a valid log channel, or set one up with `+help add {type_}log`.")
+        else:
+            await ctx.send(f"👌 Logs for {channel.mention} have been changed to {interval} minutes.")
 
-        if not result:
-            return await ctx.send(f"I couldn't find a trophyboard setup in {channel}. Either #mention a valid board channel, or set one up with `+help add trophyboard`.")
-
-        await self.bot.donationboard.update_board(message_id=result['message_id'])
-        await ctx.send(f":white_check_mark: Per-page count updated.")
-
+    async def do_edit_log_toggle(self, ctx, channel, type_):
+        query = """UPDATE logs
+                   SET toggle = TRUE
+                   WHERE channel_id=$1
+                   AND type = $2
+                   RETURNING toggle
+                """
+        fetch = await ctx.db.fetchrow(query, channel.id, type_)
+        if not fetch:
+            await ctx.send(f":x: I couldn't find a {type_}log setup in {channel.mention}. "
+                           f"Either #mention a valid log channel, or set one up with `+help add {type_}log`.")
+        else:
+            await ctx.send(f"👌 Logs for {channel.mention} have been turned on.")
 
     @edit.group(name='donationlog')
     @manage_guild()
@@ -478,22 +417,7 @@ class Edit(commands.Cog):
         **Required Permissions**
         :warning: Manage Server
         """
-        channel = channel or ctx.channel
-
-        query = """UPDATE logs
-                   SET interval = ($1 ||' minutes')::interval
-                   WHERE channel_id=$2
-                   AND type = $3
-                   RETURNING id;
-                """
-        fetch = await ctx.db.fetchrow(query, str(minutes), channel.id, 'donation')
-        if not fetch:
-            return await ctx.send(
-                "Oops! It doesn't look like a donationlog is setup here. "
-                "Try `+info` to find where the registered channels are!"
-            )
-
-        await ctx.send(f'Logs for {channel.mention} have been changed to {minutes} minutes.')
+        await self.do_edit_log_interval(ctx, channel or ctx.channel, minutes, 'donation')
 
     @edit_donationlog.command(name='toggle')
     async def edit_donationlog_toggle(self, ctx, channel: discord.TextChannel = None):
@@ -508,22 +432,7 @@ class Edit(commands.Cog):
         **Required Permissions**
         :warning: Manage Server
         """
-        channel = channel or ctx.channel
-
-        query = """UPDATE logs
-                   SET toggle = TRUE
-                   WHERE channel_id=$1
-                   AND type = $2
-                   RETURNING toggle
-                """
-        toggle = await ctx.db.fetchrow(query, channel.id, 'donation')
-        if not toggle:
-            return await ctx.send(
-                "Oops! It doesn't look like a donationlog is setup here. "
-                "Try `+info` to find where the registered channels are!"
-            )
-
-        await ctx.send(f'Logs for {channel.mention} have been turned on.')
+        await self.do_edit_log_toggle(ctx, channel or ctx.channel, 'donation')
 
     @edit_donationlog.command(name='style')
     async def edit_donationlog_style(self, ctx, channel: discord.TextChannel = None):
@@ -591,21 +500,7 @@ class Edit(commands.Cog):
         **Required Permissions**
         :warning: Manage Server
         """
-        channel = channel or ctx.channel
-        query = """UPDATE logs
-                   SET interval = ($1 ||' minutes')::interval
-                   WHERE channel_id=$2
-                   AND type = $3
-                   RETURNING id
-                """
-        fetch = await ctx.db.fetchrow(query, str(minutes), channel.id, 'trophy')
-        if not fetch:
-            return await ctx.send(
-                "Oops! It doesn't look like a trophylog is setup here. "
-                "Try `+info` to find where the registered channels are!"
-            )
-
-        await ctx.send(f'Logs for {channel.mention} have been changed to {minutes} minutes.')
+        await self.do_edit_log_interval(ctx, channel or ctx.channel, minutes, 'trophy')
 
     @edit_trophylog.command(name='toggle')
     async def edit_trophylog_toggle(self, ctx, channel: discord.TextChannel = None):
@@ -620,26 +515,11 @@ class Edit(commands.Cog):
         **Required Permissions**
         :warning: Manage Server
         """
-        channel = channel or ctx.channel
-
-        query = """UPDATE logs
-                   SET toggle = TRUE
-                   WHERE channel_id=$1
-                   AND type = $2
-                   RETURNING toggle
-                """
-        toggle = await ctx.db.fetchrow(query, channel.id, 'trophy')
-        if not toggle:
-            return await ctx.send(
-                "Oops! It doesn't look like a trophylog is setup here. "
-                "Try `+info` to find where the registered channels are!"
-            )
-
-        await ctx.send(f'Trophy logs for {channel.mention} have been turned on.')
+        await self.do_edit_log_toggle(ctx, channel or ctx.channel, 'trophy')
 
     @edit.command(name='event')
     @manage_guild()
-    @requires_config('event', invalidate=True)
+    @requires_config('event')
     async def edit_event(self, ctx, *, event_name: str = None):
         """Edit a variety of settings for the current event.
 

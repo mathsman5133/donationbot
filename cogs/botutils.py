@@ -5,7 +5,7 @@ import logging
 from discord.ext import commands
 from typing import Union, List
 
-from cogs.utils.cache import cache
+from aiocache import cached
 from cogs.utils.db_objects import LogConfig, BoardConfig, SlimEventConfig
 
 
@@ -16,7 +16,8 @@ class Utils(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @cache()
+        self._messages = {}
+
     async def log_config(self, channel_id: int, log_type: str) -> Union[LogConfig, None]:
         query = """SELECT guild_id, 
                           channel_id, 
@@ -34,7 +35,6 @@ class Utils(commands.Cog):
 
         return LogConfig(bot=self.bot, record=fetch)
 
-    @cache()
     async def board_config(self, message_id: int) -> Union[BoardConfig, None]:
         query = """SELECT guild_id, 
                           channel_id,
@@ -59,7 +59,6 @@ class Utils(commands.Cog):
 
         return BoardConfig(bot=self.bot, record=fetch)
 
-    @cache()
     async def get_board_channels(self, guild_id: int, board_type: str) -> Union[List[int], None]:
         query = "SELECT message_id FROM boards WHERE guild_id = $1 AND type = $2 AND toggle = True;"
         fetch = await self.bot.pool.fetch(query, guild_id, board_type)
@@ -90,10 +89,7 @@ class Utils(commands.Cog):
 
         return BoardConfig(bot=self.bot, record=fetch)
 
-    async def get_board_configs(self, guild_id: int, board_type: str, invalidate=False) -> List[BoardConfig]:
-        if invalidate:
-            self.get_board_channels.invalidate(self, guild_id, board_type)
-
+    async def get_board_configs(self, guild_id: int, board_type: str) -> List[BoardConfig]:
         message_ids = await self.get_board_channels(guild_id, board_type)
 
         if not message_ids:
@@ -104,14 +100,10 @@ class Utils(commands.Cog):
         configs = list()
 
         for n in message_ids:
-            if invalidate:
-                self.board_config.invalidate(self, n)
-
             configs.append(await self.board_config(n))
 
         return configs
 
-    @cache()
     async def event_config(self, guild_id: int) -> Union[SlimEventConfig, None]:
         query = """SELECT id,
                           start,
@@ -133,37 +125,19 @@ class Utils(commands.Cog):
                                fetch['finish'], fetch['event_name'],
                                fetch['channel_id'], fetch['guild_id'])
 
-    @cache()
-    async def get_clan_name(self, guild_id: int, tag: str) -> str:
-        query = "SELECT clan_name FROM clans WHERE clan_tag=$1 AND guild_id=$2"
-        fetch = await self.bot.pool.fetchrow(query, tag, guild_id)
-        if not fetch:
-            return 'Unknown'
-        return fetch[0]
-
-    @cache()
     async def get_message(self, channel: discord.TextChannel, message_id: int) -> Union[discord.Message, None]:
         try:
-            o = discord.Object(id=message_id + 1)
-            # don't wanna use get_message due to poor rate limit (1/1s) vs (50/1s)
-            msg = await channel.history(limit=1, before=o).next()
-
-            if msg.id != message_id:
-                return None
-
+            return self._messages[message_id]
+        except KeyError:
+            msg = self._messages[message_id] = await channel.fetch_message(message_id)
             return msg
-        except Exception:
-            return None
 
     async def safe_send(self, channel_id, content=None, embed=None):
         channel = self.bot.get_channel(channel_id)
         try:
             return await channel.send(content, embed=embed)
         except (discord.Forbidden, discord.NotFound, AttributeError):
-            await self.bot.pool.execute("UPDATE logs SET toggle = FALSE WHERE channel_id = $1", channel_id)
-            self.log_config.invalidate(channel_id, 'donation')
-            self.log_config.invalidate(channel_id, 'trophy')
-            return
+            return await self.bot.pool.execute("UPDATE logs SET toggle = FALSE WHERE channel_id = $1", channel_id)
         except:
             log.exception(f"{channel} failed to send {content} {embed}")
 
