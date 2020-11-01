@@ -544,11 +544,10 @@ class SyncBoards:
         try:
             self.legend_day = tomorrow - timedelta(days=1)
             seconds = (tomorrow - now).total_seconds()
-            if not self.start_loops:
-                return
-
             log.info("Legend board resetter sleeping for %s seconds", seconds)
             await asyncio.sleep(seconds)
+            if not self.start_loops:
+                return
 
             fetch = await pool.fetch("SELECT * FROM boards WHERE toggle=True AND type='legend' AND divert_to_channel_id is not null")
             log.info("Legend board archiving for %s boards", len(fetch))
