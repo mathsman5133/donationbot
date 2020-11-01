@@ -5,7 +5,6 @@ import logging
 from discord.ext import commands
 from typing import Union, List
 
-from aiocache import cached
 from cogs.utils.db_objects import LogConfig, BoardConfig, SlimEventConfig
 
 
