@@ -134,7 +134,8 @@ class Syncer:
                             start_trophies,
                             trophies,
                             clan_tag,
-                            league_id
+                            league_id,
+                            legend_trophies
                             )
                     SELECT player_tag,
                            0,
@@ -144,11 +145,13 @@ class Syncer:
                            player_name,
                            LEAST(trophies, 5000),
                            LEAST(trophies, 5000),
-                           league_id
+                           league_id,
+                           CASE WHEN league_id = 29000022 AND trophies > 5000 THEN legend_trophies + trophies - 5000 ELSE legend_trophies END
                     FROM players
                     WHERE season_id = $1
                 """
         await pool.execute(query, self.season_id - 1)
+
         await self.safe_send(594286547449282587, "Syncer has added players :ok_hand:")
 
     async def add_temp_events(self, log_type, channel_id, fmt):
@@ -435,8 +438,7 @@ class Syncer:
                                       league_id = x.league_id,
                                       clan_tag  = x.clan_tag,
                                       player_name = x.player_name,
-                                      best_trophies = public.get_best_trophies(x.trophies, players.best_trophies),
-                                      legend_trophies = players.legend_trophies + public.get_legend_trophies(x.trophies, players.trophies, players.league_id)
+                                      best_trophies = public.get_best_trophies(x.trophies, players.best_trophies)
                         FROM(
                             SELECT x.player_tag, x.old_dons, x.new_dons, x.old_rec, x.new_rec, x.trophies, x.league_id, x.clan_tag, x.player_name
                                 FROM jsonb_to_recordset($1::jsonb)

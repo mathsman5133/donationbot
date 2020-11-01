@@ -940,7 +940,11 @@ class Add(commands.Cog):
         except asyncio.TimeoutError:
             return await ctx.send("You took too long. Please try again.")
 
-        response = await self.bot.coc.http.request(coc.http.Route("POST", f"/players/{tag}/verifytoken", {}), json={"token": message.content.strip()})
+        try:
+            response = await self.bot.coc.http.request(coc.http.Route("POST", f"/players/{tag}/verifytoken", {}), json={"token": message.content.strip()})
+        except coc.HTTPException:
+            return await ctx.send("Sorry, the Clash API is having some issues. Please try again later.")
+
         if response and response['status'] == "ok":
             await ctx.db.execute(
                 "INSERT INTO players (player_tag, user_id, season_id, verified) VALUES ($1, $2, $3, True)"
@@ -954,6 +958,7 @@ class Add(commands.Cog):
             await ctx.send(f"👌 Player successfully verified.")
         else:
             await ctx.send("Sorry, that token wasn't correct. Please run the command again.")
+
 
 def setup(bot):
     bot.add_cog(Add(bot))
