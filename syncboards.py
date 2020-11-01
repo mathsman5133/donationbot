@@ -16,7 +16,7 @@ import creds
 
 from botlog import setup_logging
 
-from cogs.guildsetup.add import BOARD_PLACEHOLDER
+from cogs.add import BOARD_PLACEHOLDER
 from cogs.utils.db import Table
 from cogs.utils.db_objects import BoardConfig
 
@@ -43,6 +43,11 @@ titles = {
     "donation": "Donation Leaderboard",
     "trophy": "Trophy Leaderboard",
     "legend": "Legend Leaderboard",
+}
+default_sort_by = {
+    "donation": "donations",
+    "trophy": "trophies",
+    "legend": "finishing"
 }
 
 GLOBAL_BOARDS_CHANNEL_ID = 663683345108172830
@@ -275,10 +280,14 @@ class SyncBoards:
         bot.loop.create_task(self.on_init())
         bot.loop.create_task(self.set_season_id())
 
+        self.start_loops = start_loop
         if start_loop:
-            for task in (self.update_board_loops, self.legend_board_reset, self.reset_season_id):
+            for task in (self.update_board_loops, self.reset_season_id):
                 task.add_exception_type(Exception)
                 task.start()
+
+        self.legend_board_reset.add_exception_type(Exception)
+        self.legend_board_reset.start()
 
     async def on_init(self):
         self.webhooks = itertools.cycle(
@@ -411,16 +420,17 @@ class SyncBoards:
                         ON players.player_tag = legend_days.player_tag
                         INNER JOIN clans
                         ON clans.clan_tag = players.clan_tag
-                        WHERE day = (SELECT max(day) FROM legend_days)
-                        AND season_id = $1
-                        AND clans.channel_id = $2
+                        WHERE day = $1
+                        AND season_id = $2
+                        AND clans.channel_id = $3
                         ORDER BY {config.sort_by} DESC
                         NULLS LAST
-                        LIMIT $3
-                        OFFSET $4
+                        LIMIT $4
+                        OFFSET $5
                     """
             fetch = await pool.fetch(
                 query,
+                self.legend_day,
                 season_id,
                 config.channel_id,
                 self.get_next_per_page(config.page, config.per_page),
@@ -523,7 +533,11 @@ class SyncBoards:
             tomorrow = now.replace(hour=5, minute=0, second=0, microsecond=0)
 
         try:
+            self.legend_day = (tomorrow - timedelta(days=1)).isoformat()
             seconds = (tomorrow - now).total_seconds()
+            if not self.start_loops:
+                return
+
             log.info("Legend board resetter sleeping for %s seconds", seconds)
             await asyncio.sleep(seconds)
 
