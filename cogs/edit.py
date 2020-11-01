@@ -401,8 +401,10 @@ class Edit(commands.Cog):
             await ctx.send_help(ctx.command)
 
     @edit_donationlog.command(name='interval')
-    async def edit_donationlog_interval(self, ctx, channel: typing.Optional[TextChannel], minutes: int = 1):
+    async def edit_donationlog_interval(self, ctx, channel: typing.Optional[TextChannel], minutes: int):
         """Update the interval (in minutes) for which the bot will log your donations.
+
+        Passing `0` for minutes will ensure the bot will post logs as fast as possible.
 
         **Parameters**
         :key: Discord Channel (mention etc.)
@@ -413,6 +415,7 @@ class Edit(commands.Cog):
 
         **Example**
         :white_check_mark: `+edit donationlog interval #logging 5`
+        :white_check_mark: `+edit donationlog interval #logging 0`
 
         **Required Permissions**
         :warning: Manage Server
@@ -484,8 +487,10 @@ class Edit(commands.Cog):
             await ctx.send_help(ctx.command)
 
     @edit_trophylog.command(name='interval')
-    async def edit_trophylog_interval(self, ctx, channel: typing.Optional[TextChannel], minutes: int = 1):
+    async def edit_trophylog_interval(self, ctx, channel: typing.Optional[TextChannel], minutes: int):
         """Update the interval (in minutes) for which the bot will log your trophies.
+
+        Passing `0` for minutes will ensure the bot will post logs as fast as possible.
 
         **Parameters**
         :key: Discord Channel (mention etc.)
@@ -496,6 +501,7 @@ class Edit(commands.Cog):
 
         **Example**
         :white_check_mark: `+edit trophylog interval #logging 5`
+        :white_check_mark: `+edit trophylog interval #logging 0`
 
         **Required Permissions**
         :warning: Manage Server
