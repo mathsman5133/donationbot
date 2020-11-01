@@ -542,7 +542,7 @@ class SyncBoards:
             tomorrow = now.replace(hour=5, minute=0, second=0, microsecond=0)
 
         try:
-            self.legend_day = (tomorrow - timedelta(days=1)).isoformat()
+            self.legend_day = tomorrow - timedelta(days=1)
             seconds = (tomorrow - now).total_seconds()
             if not self.start_loops:
                 return
