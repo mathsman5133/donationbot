@@ -8,7 +8,7 @@ import logging
 
 from discord.ext import commands
 
-from syncboards import emojis, titles, default_sort_by
+from syncboards import emojis, titles, default_sort_by, BOARD_PLACEHOLDER
 from cogs.utils.checks import manage_guild, helper_check
 from cogs.utils import checks
 
@@ -51,16 +51,6 @@ unicode_emoji = re.compile(
     "\u27b0|\u27bf|\u2934|\u2935|\u2b1b|\u2b1c|\u2b50|\u2b55|\u3030|\u303d|\u3297|\u3299|[#|0-9]\u20e3"
 )
 custom_emoji = re.compile("<(?P<animated>a?):(?P<name>[a-zA-Z0-9_]{2,32}):(?P<id>[0-9]{18,22})>")
-
-
-BOARD_PLACEHOLDER = """
-This is a Placeholder message for your {board} board.
-
-Please don't delete this message, otherwise the board will be deleted.
-This message should be replaced shortly by your {board} board.
-
-If a board doesn't appear, please make sure you have `+add clan #clantag #dt-boards` properly, by using `+info`.
-"""
 
 
 class Add(commands.Cog):

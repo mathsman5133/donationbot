@@ -16,8 +16,7 @@ import creds
 
 from botlog import setup_logging
 
-from cogs.add import BOARD_PLACEHOLDER
-from cogs.utils.db import Table
+from bot import setup_db
 from cogs.utils.db_objects import BoardConfig
 
 
@@ -50,11 +49,21 @@ default_sort_by = {
     "legend": "finishing"
 }
 
+
+BOARD_PLACEHOLDER = """
+This is a Placeholder message for your {board} board.
+
+Please don't delete this message, otherwise the board will be deleted.
+This message should be replaced shortly by your {board} board.
+
+If a board doesn't appear, please make sure you have `+add clan #clantag #dt-boards` properly, by using `+info`.
+"""
+
 GLOBAL_BOARDS_CHANNEL_ID = 663683345108172830
 
 log = logging.getLogger(__name__)
 loop = asyncio.get_event_loop()
-pool = loop.run_until_complete(Table.create_pool(creds.postgres))
+pool = loop.run_until_complete(setup_db())
 
 
 class HTMLImages:
