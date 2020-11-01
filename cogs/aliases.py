@@ -202,7 +202,7 @@ class Aliases(commands.Cog, name='\u200bAliases'):
                             DO UPDATE SET clan_tag = $6
                         """
         async with ctx.db.transaction():
-            for member in clan.members:
+            async for member in clan.get_detailed_members():
                 await ctx.db.execute(query, member.tag, member.donations, member.received, member.trophies, season_id,
                                      clan.tag, member.name, member.best_trophies, member.legend_statistics and member.legend_statistics.legend_trophies or 0
         )
