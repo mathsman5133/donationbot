@@ -45,7 +45,7 @@ class Remove(commands.Cog):
         """
         clan_tag = channel  # need to fool the help parser
         channel = ctx.message.channel_mentions and ctx.message.channel_mentions[0] or ctx.channel
-        clan_tag = coc.utils.correct_tag(clan_tag)
+        clan_tag = coc.utils.correct_tag(clan_tag.replace(channel and channel.mention or "", ""))
 
         fetch = await ctx.db.fetchrow("DELETE FROM clans WHERE clan_tag=$1 AND channel_id=$2 RETURNING clan_name", clan_tag, channel.id)
         if fetch:
