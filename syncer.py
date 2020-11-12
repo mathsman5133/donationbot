@@ -19,7 +19,7 @@ from matplotlib import pyplot as plt
 import creds
 
 from botlog import setup_logging
-from cogs.utils.db import Table
+from bot import setup_db
 from cogs.utils.donationtrophylogs import SlimDonationEvent2, SlimTrophyEvent, get_basic_log, get_detailed_log, format_trophy_log_message, get_legend_log
 from cogs.utils.db_objects import LogConfig
 
@@ -49,7 +49,7 @@ coc_client = coc.login(creds.email, creds.password, client=coc.EventsClient, key
 coc_client.clan_cls = CustomClan
 bot = commands.Bot(command_prefix="+")
 bot.session = aiohttp.ClientSession()
-pool = asyncio.get_event_loop().run_until_complete(Table.create_pool(creds.postgres))
+pool = asyncio.get_event_loop().run_until_complete(setup_db())
 setup_logging(bot)
 
 
@@ -414,8 +414,8 @@ class Syncer:
     #         await self.bulk_board_insert()
 
     async def insert_legend_data(self):
-        query = """INSERT INTO legend_days (player_tag, day, starting, gain, loss, finishing) 
-                   SELECT x.player_tag, x.today, x.starting, x.gain, x.loss, x.finishing
+        query = """INSERT INTO legend_days (player_tag, day, starting, gain, loss, finishing, attacks, defenses) 
+                   SELECT x.player_tag, x.today, x.starting, x.gain, x.loss, x.finishing, x.attacks, x.defenses
                    FROM jsonb_to_recordset($1::jsonb)
                    AS x(
                        player_tag TEXT,
@@ -423,10 +423,12 @@ class Syncer:
                        starting integer,
                        gain integer,
                        loss integer,
-                       finishing integer                   
+                       finishing integer,
+                       attacks integer,
+                       defenses integer                 
                    )   
                    ON CONFLICT (player_tag, day)
-                   DO UPDATE SET gain = legend_days.gain + excluded.gain, loss = legend_days.loss + excluded.loss, finishing = excluded.finishing
+                   DO UPDATE SET gain = legend_days.gain + excluded.gain, loss = legend_days.loss + excluded.loss, finishing = excluded.finishing, attacks = attacks + excluded.attacks, defenses = defenses + excluded.defenses
                 """
         await pool.execute(query, list(self.legend_data.values()))
         self.legend_data.clear()
@@ -660,8 +662,10 @@ class Syncer:
                 try:
                     if change > 0:
                         self.legend_data[player.tag]['gain'] += change
+                        self.legend_data[player.tag]['attacks'] += 1
                     else:
                         self.legend_data[player.tag]['loss'] += change
+                        self.legend_data[player.tag]['defenses'] += 1
                 except KeyError:
                     self.legend_data[player.tag] = {
                         'player_tag': player.tag,
@@ -670,6 +674,8 @@ class Syncer:
                         'gain': change if change > 0 else 0,
                         'loss': change if change < 0 else 0,
                         'finishing': player.trophies,
+                        'attacks': 0,
+                        'defenses': 0
                     }
 
                 self.legend_counter[player.clan.tag] += 1

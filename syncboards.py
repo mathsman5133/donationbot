@@ -63,7 +63,6 @@ GLOBAL_BOARDS_CHANNEL_ID = 663683345108172830
 
 log = logging.getLogger(__name__)
 loop = asyncio.get_event_loop()
-pool = loop.run_until_complete(setup_db())
 
 
 class HTMLImages:
@@ -233,7 +232,7 @@ header {
             self.players = [(str(i) + ".", p['player_name'], p['donations'], p['received'], round(p['donations'] / (p['received'] or 1), 2),
                             self.get_readable(p['last_online'])) for i, p in enumerate(self.players, start=self.offset)]
         elif self.board_type == 'legend':
-            self.players = [(str(i) + ".", p['player_name'], p['starting'], p['gain'], p['loss'], p['finishing'], p['best_trophies'])
+            self.players = [(str(i) + ".", p['player_name'], p['starting'], f"{p['gain']} <sub>({p['attacks']})</sub>", f"{p['loss']} <sub>({p['defenses']})</sub>", p['finishing'], p['best_trophies'])
                             for i, p in enumerate(self.players, start=self.offset)]
         else:
             self.players = [
@@ -274,8 +273,9 @@ header {
 
 
 class SyncBoards:
-    def __init__(self, bot, start_loop=False):
+    def __init__(self, bot, start_loop=False, pool=None):
         self.bot = bot
+        self.pool = pool or bot.pool
 
         self.season_id = 17
 
@@ -306,14 +306,14 @@ class SyncBoards:
         )
 
     async def set_season_id(self):
-        fetch = await pool.fetchrow("SELECT id FROM seasons WHERE start < now() ORDER BY start DESC;")
+        fetch = await self.pool.fetchrow("SELECT id FROM seasons WHERE start < now() ORDER BY start DESC;")
         self.season_id = fetch['id']
 
     async def get_season_meta(self, season_id):
         try:
             return self.season_meta[season_id]
         except KeyError:
-            fetch = await pool.fetchrow("SELECT start, finish FROM seasons WHERE id = $1", season_id)
+            fetch = await self.pool.fetchrow("SELECT start, finish FROM seasons WHERE id = $1", season_id)
             season_start, season_finish = fetch[0].strftime('%d-%b-%Y'), fetch[1].strftime('%d-%b-%Y')
             self.season_meta[season_id] = (season_start, season_finish)
             return (season_start, season_finish)
@@ -329,7 +329,7 @@ class SyncBoards:
         if not self.webhooks:
             return
 
-        fetch = await pool.fetch("UPDATE boards SET need_to_update=False WHERE need_to_update=True AND toggle=True RETURNING *")
+        fetch = await self.pool.fetch("UPDATE boards SET need_to_update=False WHERE need_to_update=True AND toggle=True RETURNING *")
 
         current_tasks = []
         for n in fetch:
@@ -349,7 +349,7 @@ class SyncBoards:
         try:
             message = await self.bot.http.send_message(config.channel_id, content=BOARD_PLACEHOLDER.format(board=config.type))
         except (discord.Forbidden, discord.NotFound):
-            await pool.execute("UPDATE boards SET toggle = FALSE WHERE channel_id = $1", config.channel_id)
+            await self.pool.execute("UPDATE boards SET toggle = FALSE WHERE channel_id = $1", config.channel_id)
             return
 
         try:
@@ -358,7 +358,7 @@ class SyncBoards:
         except:
             log.info('failed to add reactions for message_id %s', message['id'])
 
-        fetch = await pool.fetchrow("UPDATE boards SET message_id = $1 WHERE channel_id = $2 AND type = $3 RETURNING *", int(message['id']), config.channel_id, config.type)
+        fetch = await self.pool.fetchrow("UPDATE boards SET message_id = $1 WHERE channel_id = $2 AND type = $3 RETURNING *", int(message['id']), config.channel_id, config.type)
         if fetch:
             return BoardConfig(record=fetch, bot=self.bot)
 
@@ -416,14 +416,14 @@ class SyncBoards:
                        LIMIT $2
                        OFFSET $3
                     """
-            fetch = await pool.fetch(
+            fetch = await self.pool.fetch(
                 query,
                 season_id,
                 self.get_next_per_page(config.page, config.per_page),
                 offset
             )
         elif config.type == "legend":
-            query = f"""SELECT DISTINCT players.player_name, starting, gain, loss, finishing, best_trophies
+            query = f"""SELECT DISTINCT players.player_name, starting, gain, loss, finishing, best_trophies, legend_days.attacks, legend_days.defenses
                         FROM legend_days 
                         INNER JOIN players 
                         ON players.player_tag = legend_days.player_tag
@@ -437,7 +437,7 @@ class SyncBoards:
                         LIMIT $4
                         OFFSET $5
                     """
-            fetch = await pool.fetch(
+            fetch = await self.pool.fetch(
                 query,
                 self.legend_day,
                 season_id,
@@ -465,7 +465,7 @@ class SyncBoards:
                        LIMIT $3
                        OFFSET $4
                     """
-            fetch = await pool.fetch(
+            fetch = await self.pool.fetch(
                 query,
                 config.channel_id,
                 season_id,
@@ -523,7 +523,7 @@ class SyncBoards:
         except discord.NotFound:
             await self.set_new_message(config)
         except discord.HTTPException:
-            await pool.execute("UPDATE boards SET toggle = FALSE WHERE channel_id = $1", config.channel_id)
+            await self.pool.execute("UPDATE boards SET toggle = FALSE WHERE channel_id = $1", config.channel_id)
             await self.bot.http.edit_message(
                 config.channel_id,
                 config.message_id,
@@ -549,7 +549,7 @@ class SyncBoards:
             if not self.start_loops:
                 return
 
-            fetch = await pool.fetch("SELECT * FROM boards WHERE toggle=True AND type='legend' AND divert_to_channel_id is not null")
+            fetch = await self.pool.fetch("SELECT * FROM boards WHERE toggle=True AND type='legend' AND divert_to_channel_id is not null")
             log.info("Legend board archiving for %s boards", len(fetch))
             for row in fetch:
                 try:
@@ -573,7 +573,7 @@ class SyncBoards:
                        DO NOTHING;
                     """
             try:
-                await pool.execute(query, tomorrow, self.season_id)
+                await self.pool.execute(query, tomorrow, self.season_id)
             except:
                 log.exception('resetting legend players trophies')
 
@@ -584,6 +584,7 @@ class SyncBoards:
 if __name__ == "__main__":
     stateless_bot = discord.Client()
     stateless_bot.session = aiohttp.ClientSession()
+    stateless_bot.pool = loop.run_until_complete(setup_db())
     setup_logging(stateless_bot)
     loop.run_until_complete(stateless_bot.login(creds.bot_token))
     SyncBoards(stateless_bot, start_loop=True)
