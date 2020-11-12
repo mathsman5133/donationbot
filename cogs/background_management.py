@@ -649,6 +649,7 @@ class BackgroundManagement(commands.Cog):
         await self.bot.join_log_webhook.send(embed=e)
 
     async def sync_temp_event_tasks(self):
+        await self.bot.wait_until_ready()
         query = """SELECT channel_id, type 
                    FROM logs 
                    WHERE toggle = True 

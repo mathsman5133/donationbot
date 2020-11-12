@@ -430,7 +430,7 @@ class SyncBoards:
                         INNER JOIN clans
                         ON clans.clan_tag = players.clan_tag
                         WHERE day = $1
-                        AND season_id = $2
+                        AND season_id = $2in
                         AND clans.channel_id = $3
                         ORDER BY {config.sort_by} DESC
                         NULLS LAST
