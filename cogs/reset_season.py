@@ -7,7 +7,6 @@ import pytz
 import discord
 import time
 
-from cogs.utils.season_reset import next_season_start
 from cogs.utils.db_objects import BoardConfig
 
 from discord.ext import commands, tasks
@@ -29,9 +28,6 @@ class SeasonConfig(commands.Cog, command_attrs=dict(hidden=True)):
         self.season_id = 0
         #self.start_new_season.start()
 
-    def cog_unload(self):
-        self.start_new_season.cancel()
-
     @staticmethod
     def next_last_monday():
         now = datetime.utcnow()
@@ -39,13 +35,6 @@ class SeasonConfig(commands.Cog, command_attrs=dict(hidden=True)):
                                                 weekday=relativedelta.MO(-1))
         day.replace(hour=6, minute=0, second=0, microsecond=0)
         return day
-
-    @tasks.loop()
-    async def start_new_season(self):
-        log.debug('Starting season reset loop.')
-        next_start = next_season_start()
-        await asyncio.sleep((next_start - datetime.now(tz=pytz.utc)).total_seconds() + 1)
-        await self._new_season()
 
     async def _new_season(self):
         log.critical('New season starting - via loop.')
