@@ -22,6 +22,7 @@ url_validator = re.compile(r"^(?:http(s)?://)?[\w.-]+(?:.[\w.-]+)+[\w\-_~:/?#[\]
                            r"(.jpg|.jpeg|.png|.gif)+[\w\-_~:/?#[\]@!$&'()*+,;=.]*$")
 
 custom_emoji = re.compile("<(?P<animated>a?):(?P<name>[a-zA-Z0-9_]{2,32}):(?P<id>[0-9]{18,22})>")
+unicode_regex = re.compile(u'(' + u'|'.join(re.escape(u)  for u in sorted(pckgemoji.unicode_codes.EMOJI_ALIAS_UNICODE_ENGLISH.values(), key=len, reverse=True)) + u')')
 
 
 class Add(commands.Cog):
@@ -29,14 +30,6 @@ class Add(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
-        self.unicode_regex = None
-
-        bot.loop.create_task(self.on_init())
-
-    async def on_init(self):
-        await self.bot.wait_until_ready()
-        resp = await self.bot.session.get("https://gist.githubusercontent.com/Vexs/a8fd95377ca862ca13fe6d0f0e42737e/raw")
-        self.unicode_regex = re.compile(await resp.text() + r"|[\U00000031-\U00000039]|\U0001f51f")
 
     @commands.group()
     async def add(self, ctx):
@@ -178,13 +171,12 @@ class Add(commands.Cog):
             emoji = self.bot.get_emoji(int(custom.group('id')))
             emoji_id = emoji.id
         else:
-            find = pckgemoji.emoji_lis(clan)
-            if len(find) == 0:
-                return await ctx.send("I couldn't find an emoji in your message!")
-            if len(find) > 1:
-                return await ctx.send("I detected more than 1 emoji in your message. Please try again with only 1 emoji.")
 
-            emoji = find[0]['emoji']
+            find = unicode_regex.search(clan)
+            if not find:
+                return await ctx.send("I couldn't find an emoji in your message!")
+
+            emoji = find[0]
             emoji_id = emoji
 
         if not emoji:
