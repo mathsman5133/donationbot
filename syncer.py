@@ -674,8 +674,8 @@ class Syncer:
                         'gain': change if change > 0 else 0,
                         'loss': change if change < 0 else 0,
                         'finishing': player.trophies,
-                        'attacks': 0,
-                        'defenses': 0
+                        'attacks': 1 if change > 0 else 0,
+                        'defenses': 1 if change < 0 else 0,
                     }
 
                 self.legend_counter[player.clan.tag] += 1
