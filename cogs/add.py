@@ -34,7 +34,7 @@ class Add(commands.Cog):
     async def on_init(self):
         await self.bot.wait_until_ready()
         resp = await self.bot.session.get("https://gist.githubusercontent.com/Vexs/a8fd95377ca862ca13fe6d0f0e42737e/raw")
-        self.unicode_regex = re.compile(await resp.text() + r"|\U00000031-\U00000039|\U0001f51f")
+        self.unicode_regex = re.compile(await resp.text() + r"|[\U00000031-\U00000039]|\U0001f51f")
 
     @commands.group()
     async def add(self, ctx):
