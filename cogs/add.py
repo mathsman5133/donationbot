@@ -6,6 +6,8 @@ import re
 import coc
 import logging
 
+import emoji as pckgemoji
+
 from discord.ext import commands
 
 from syncboards import emojis, titles, default_sort_by, BOARD_PLACEHOLDER
@@ -172,19 +174,17 @@ class Add(commands.Cog):
         :white_check_mark: `+add player Reddit Elephino :elephino:`
         """
         custom = custom_emoji.search(clan)
-        if not custom:
-            if not self.unicode_regex:
-                return await ctx.send("Uh oh, something broke! Please try again in a few minutes.")
-
-            unicode = self.unicode_regex.search(clan)
-            if not unicode:
-                return await ctx.send("I couldn't find an emoji in your message!")
-
         if custom:
             emoji = self.bot.get_emoji(int(custom.group('id')))
             emoji_id = emoji.id
         else:
-            emoji = unicode[0]
+            find = pckgemoji.emoji_lis(clan)
+            if len(find) == 0:
+                return await ctx.send("I couldn't find an emoji in your message!")
+            if len(find) > 1:
+                return await ctx.send("I detected more than 1 emoji in your message. Please try again with only 1 emoji.")
+
+            emoji = find[0]['emoji']
             emoji_id = emoji
 
         if not emoji:
