@@ -91,13 +91,13 @@ class AddClanConverter(commands.Converter):
         clan = await ClanConverter().convert(ctx, argument)
         clan = clan[0]
 
-        current_clans = await ctx.bot.get_clans(ctx.guild.id)
-        if len(current_clans) > 3 and not is_patron_pred(ctx):
-            raise commands.BadArgument(
-                'You must be a patron to have more than 4 clans claimed per server. '
-                'See more info with `+patron`, or join the support server for more help: '
-                f'{ctx.bot.support_invite}'
-            )
+        # current_clans = await ctx.bot.get_clans(ctx.guild.id)
+        # if len(current_clans) > 3 and not is_patron_pred(ctx):
+        #     raise commands.BadArgument(
+        #         'You must be a patron to have more than 4 clans claimed per server. '
+        #         'See more info with `+patron`, or join the support server for more help: '
+        #         f'{ctx.bot.support_invite}'
+        #     )
 
         check = clan.description.strip().endswith('dt') or await ctx.bot.is_owner(ctx.author) or clan.tag in (n.tag for n in current_clans)
 

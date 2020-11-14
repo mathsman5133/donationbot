@@ -74,11 +74,11 @@ class Add(commands.Cog):
         if not coc.utils.is_valid_tag(clan_tag):
             return await ctx.send("That doesn't look like a proper clan tag. Please try again.")
 
-        current = await ctx.db.fetch("SELECT DISTINCT clan_tag FROM clans WHERE guild_id = $1 AND clan_tag != $2", ctx.guild.id, clan_tag)
-        if len(current) > 3 and not checks.is_patron_pred(ctx):
-            return await ctx.send('You must be a patron to have more than 4 clans claimed per server. '
-                                  'See more info with `+patron`, or join the support server for more help: '
-                                  f'{self.bot.support_invite}')
+        # current = await ctx.db.fetch("SELECT DISTINCT clan_tag FROM clans WHERE guild_id = $1 AND clan_tag != $2", ctx.guild.id, clan_tag)
+        # if len(current) > 3 and not checks.is_patron_pred(ctx):
+        #     return await ctx.send('You must be a patron to have more than 4 clans claimed per server. '
+        #                           'See more info with `+patron`, or join the support server for more help: '
+        #                           f'{self.bot.support_invite}')
 
         if await ctx.db.fetch("SELECT id FROM clans WHERE clan_tag = $1 AND channel_id = $2", clan_tag, channel.id):
             return await ctx.send('This clan has already been linked to the channel. Please try again.')
@@ -177,7 +177,7 @@ class Add(commands.Cog):
                 return await ctx.send("I couldn't find an emoji in your message!")
 
             emoji = find[0]
-            emoji_id = emoji
+            eismoji_id = emoji
 
         if not emoji:
             return await ctx.send(
