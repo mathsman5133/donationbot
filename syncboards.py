@@ -167,8 +167,14 @@ width: 1200px;
 }
 #icon_cls {
     position: relative;
-    height: 32px;
-    width: 32px;
+    height: 64px;
+    width: 64px;
+    align:center;
+}
+#icon_clsii {
+    position: relative;
+    height: 64px;
+    width: 64px;
     align:center;
 }
 table {
@@ -265,7 +271,7 @@ header {
             self.players = [
                 (
                     str(i) + ".",
-                    f'<img id="icon_cls" src="' + await self.load_or_save_custom_emoji(p['emoji']) + '">' if p['emoji'] and p['emoji'].isdigit() else p['emoji'],
+                    f'<img id="icon_clsii" src="' + await self.load_or_save_custom_emoji(p['emoji']) + '">' if p['emoji'] and p['emoji'].isdigit() else p['emoji'],
                     p['player_name'],
                     p['donations'],
                     p['received'],
@@ -278,7 +284,7 @@ header {
             self.players = [
                 (
                     str(i) + ".",
-                    f'<img class="icon_cls" src="' + await self.load_or_save_custom_emoji(p['emoji']) + '">' if p['emoji'] and p['emoji'].isdigit() else p['emoji'],
+                    f'<img class="icon_clsii" src="' + await self.load_or_save_custom_emoji(p['emoji']) + '">' if p['emoji'] and p['emoji'].isdigit() else p['emoji'],
                     p['player_name'],
                     p['starting'],
                     f"{p['gain']} <sup>({p['attacks']})</sup>", f"{p['loss']} <sup>({p['defenses']})</sup>",
@@ -291,7 +297,7 @@ header {
             self.players = [
                 (
                     str(i) + ".",
-                    f'<img class="icon_cls" src="' + await self.load_or_save_custom_emoji(p['emoji']) + '">' if p['emoji'] and p['emoji'].isdigit() else p['emoji'],
+                    f'<img class="icon_clsii" src="' + await self.load_or_save_custom_emoji(p['emoji']) + '">' if p['emoji'] and p['emoji'].isdigit() else p['emoji'],
                     p['player_name'],
                     p['trophies'],
                     p['gain'],
