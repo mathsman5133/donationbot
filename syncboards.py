@@ -253,7 +253,7 @@ header {
     def end_html(self):
         self.html += "</body></html>"
 
-    def parse_players(self):
+    async def parse_players(self):
         if self.board_type == 'donation':
             self.players = [
                 (
@@ -295,7 +295,7 @@ header {
 
     async def make(self):
         s = time.perf_counter()
-        self.parse_players()
+        await self.parse_players()
         self.add_style()
         self.add_body()
         self.add_title()
