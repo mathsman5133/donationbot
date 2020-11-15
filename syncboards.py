@@ -102,7 +102,7 @@ class HTMLImages:
             self.selected_index = []
 
         if any(p['emoji'] for p in players):
-            self.columns.insert(1, '<img id="img_cls" src="' + Path("assets/reddit badge.png").resolve().as_uri() + '">')
+            self.columns.insert(1, '<img id="icon_cls" src="' + Path("assets/reddit badge.png").resolve().as_uri() + '">')
             self.selected_index = [col + 1 for col in self.selected_index]
 
     async def load_or_save_custom_emoji(self, emoji_id: str):
@@ -167,8 +167,8 @@ width: 1200px;
 }
 #icon_cls {
     position: relative;
-    height: 64px;
-    width: 64px;
+    height: 32px;
+    width: 32px;
     align:center;
 }
 table {
