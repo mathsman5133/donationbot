@@ -90,20 +90,19 @@ class HTMLImages:
             self.columns = ["#", "Player Name", "Cups", "Gain", "Last On"]
 
         if sort_by and board_type == "donation":
-            sort_columns = ("#", "Player Name", "donations", "received", "ratio", "last_online ASC, player_name")
+            sort_columns = ("#", "Clan", "Player Name", "donations", "received", "ratio", "last_online ASC, player_name")
             self.selected_index = [sort_columns.index('donations' if sort_by == 'donation' else sort_by)]
         elif sort_by and board_type == "legend":
-            sort_columns = ("#", "Player Name", "starting", "gain", "loss", "finishing")
+            sort_columns = ("#", "Clan", "Player Name", "starting", "gain", "loss", "finishing")
             self.selected_index = [sort_columns.index(sort_by)]
         elif sort_by:
-            sort_columns = ("#", "Player Name", "trophies", "gain", "last_online ASC, player_name")
+            sort_columns = ("#", "Clan", "Player Name", "trophies", "gain", "last_online ASC, player_name")
             self.selected_index = [sort_columns.index(sort_by.replace('donations', 'trophies'))]
         else:
             self.selected_index = []
 
         if any(p['emoji'] for p in players):
             self.columns.insert(1, '<img id="icon_cls" src="' + Path("assets/reddit badge.png").resolve().as_uri() + '">')
-            self.selected_index = [col + 1 for col in self.selected_index]
 
     async def load_or_save_custom_emoji(self, emoji_id: str):
         try:
@@ -253,7 +252,7 @@ header {
         for player in players:
             to_add += "<tr>" + "".join(
                 f"<td{' class=selected' if i in self.selected_index else ''}>{cell}</td>"
-                for i, cell in enumerate(player) if cell
+                for i, cell in enumerate(player) if cell != ''
             ) + "</tr>"
 
         to_add += "</table>"
