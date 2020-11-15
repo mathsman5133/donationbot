@@ -90,18 +90,20 @@ class HTMLImages:
             self.columns = ["#", "Player Name", "Cups", "Gain", "Last On"]
 
         if sort_by and board_type == "donation":
-            sort_columns = ("#", "Clan", "Player Name", "donations", "received", "ratio", "last_online ASC, player_name")
+            sort_columns = ("#", "Player Name", "donations", "received", "ratio", "last_online ASC, player_name")
             self.selected_index = [sort_columns.index('donations' if sort_by == 'donation' else sort_by)]
         elif sort_by and board_type == "legend":
-            sort_columns = ("#", "Clan", "Player Name", "starting", "gain", "loss", "finishing")
+            sort_columns = ("#", "Player Name", "starting", "gain", "loss", "finishing")
             self.selected_index = [sort_columns.index(sort_by)]
         elif sort_by:
-            sort_columns = ("#", "Clan", "Player Name", "trophies", "gain", "last_online ASC, player_name")
+            sort_columns = ("#", "Player Name", "trophies", "gain", "last_online ASC, player_name")
             self.selected_index = [sort_columns.index(sort_by.replace('donations', 'trophies'))]
         else:
             self.selected_index = []
 
         if any(p['emoji'] for p in players):
+            # re-assign the sorted column index
+            self.selected_index = [col + 1 for col in self.selected_index]
             self.columns.insert(1, '<img id="icon_cls" src="' + Path("assets/reddit badge.png").resolve().as_uri() + '">')
 
     async def load_or_save_custom_emoji(self, emoji_id: str):
@@ -246,7 +248,7 @@ header {
 
         to_add += "<tr>" + "".join(
             f"<th{' class=selected' if i in self.selected_index else ''}>{column}</th>"
-            for i, column in enumerate(self.columns)
+            for i, column in enumerate(self.columns) if column
         ) + "</tr>"
 
         for player in players:
