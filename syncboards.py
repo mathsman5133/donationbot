@@ -83,27 +83,28 @@ class HTMLImages:
 
         self.html = ""
         if board_type == "donation":
-            self.columns = ["#", "Player Name", "Dons", "Rec", "Ratio", "Last On"]
+            self.columns = ["#", None, "Player Name", "Dons", "Rec", "Ratio", "Last On"]
         elif board_type == "legend":
-            self.columns = ["#", "Player Name", "Initial", "Gain", "Loss", "Final", "Best"]
+            self.columns = ["#", None, "Player Name", "Initial", "Gain", "Loss", "Final", "Best"]
         else:
-            self.columns = ["#", "Player Name", "Cups", "Gain", "Last On"]
+            self.columns = ["#", None, "Player Name", "Cups", "Gain", "Last On"]
 
         if sort_by and board_type == "donation":
-            sort_columns = ("#", "Player Name", "donations", "received", "ratio", "last_online ASC, player_name")
+            sort_columns = ("#", "Clan", "Player Name", "donations", "received", "ratio", "last_online ASC, player_name")
             self.selected_index = [sort_columns.index('donations' if sort_by == 'donation' else sort_by)]
         elif sort_by and board_type == "legend":
-            sort_columns = ("#", "Player Name", "starting", "gain", "loss", "finishing")
+            sort_columns = ("#", "Clan", "Player Name", "starting", "gain", "loss", "finishing")
             self.selected_index = [sort_columns.index(sort_by)]
         elif sort_by:
-            sort_columns = ("#", "Player Name", "trophies", "gain", "last_online ASC, player_name")
+            sort_columns = ("#", "Clan", "Player Name", "trophies", "gain", "last_online ASC, player_name")
             self.selected_index = [sort_columns.index(sort_by.replace('donations', 'trophies'))]
         else:
             self.selected_index = []
 
         if any(p['emoji'] for p in players):
             # re-assign the sorted column index
-            self.selected_index = [col + 1 for col in self.selected_index]
+            # self.selected_index = [col + 1 for col in self.selected_index]
+            self.columns.pop(1)
             self.columns.insert(1, '<img id="icon_cls" src="' + Path("assets/reddit badge.png").resolve().as_uri() + '">')
 
     async def load_or_save_custom_emoji(self, emoji_id: str):
