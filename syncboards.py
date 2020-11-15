@@ -89,9 +89,6 @@ class HTMLImages:
         else:
             self.columns = ["#", "Player Name", "Cups", "Gain", "Last On"]
 
-        if any(p['emoji'] for p in players):
-            self.columns.insert(1, "<img src=" + Path("assets/reddit badge.png").resolve().as_uri() + ">")
-
         if sort_by and board_type == "donation":
             sort_columns = ("#", "Player Name", "donations", "received", "ratio", "last_online ASC, player_name")
             self.selected_index = [sort_columns.index('donations' if sort_by == 'donation' else sort_by)]
@@ -103,6 +100,10 @@ class HTMLImages:
             self.selected_index = [sort_columns.index(sort_by.replace('donations', 'trophies'))]
         else:
             self.selected_index = []
+
+        if any(p['emoji'] for p in players):
+            self.columns.insert(1, '<img id="img_cls" src="' + Path("assets/reddit badge.png").resolve().as_uri() + '">')
+            self.selected_index = [col + 1 for col in self.selected_index]
 
     async def load_or_save_custom_emoji(self, emoji_id: str):
         try:
@@ -166,8 +167,9 @@ width: 1200px;
 }
 #icon_cls {
     position: relative;
-    height: 64;
-    width: 64;
+    height: 80%;
+    width: 80%;
+    align:center;
 }
 table {
   border-collapse: seperate;
