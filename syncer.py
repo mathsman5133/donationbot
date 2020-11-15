@@ -1081,8 +1081,6 @@ class Syncer:
                             dict(
                                 guild_id=config.guild_id,
                                 channel_id=channel_id,
-                                guild_name=config.guild and config.guild.name,
-                                shard=config.guild and config.guild.shard_id,
                                 type='{}log'.format(type_),
                             )
                         )
@@ -1100,8 +1098,6 @@ class Syncer:
                             dict(
                                 guild_id=config.guild_id,
                                 channel_id=channel_id,
-                                guild_name=config.guild and config.guild.name,
-                                shard=config.guild and config.guild.shard_id,
                                 type='{}log'.format(type_),
                             )
                         )
