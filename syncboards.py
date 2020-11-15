@@ -173,6 +173,8 @@ width: 1200px;
 }
 #icon_clsii {
     position: relative;
+    height: 40px;
+    width: 40px;
     align:center;
 }
 table {
