@@ -90,7 +90,7 @@ class HTMLImages:
             self.columns = ["#", "Player Name", "Cups", "Gain", "Last On"]
 
         if any(p['emoji'] for p in players):
-            self.columns.insert(1, "<img src=" + Path("assets/reddit badge.png").resolve() + ">")
+            self.columns.insert(1, "<img src=" + Path("assets/reddit badge.png").resolve().as_uri() + ">")
 
         if sort_by and board_type == "donation":
             sort_columns = ("#", "Player Name", "donations", "received", "ratio", "last_online ASC, player_name")
