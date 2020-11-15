@@ -110,7 +110,7 @@ class HTMLImages:
         except KeyError:
             path = Path(f'assets/board_icons/{emoji_id}.png')
             if path.is_file():
-                return path.resolve()
+                return path.resolve().as_uri()
             else:
                 async with self.session.get(discord.Asset.BASE + emoji_id) as resp:
                     if resp.status == 200:
@@ -118,7 +118,7 @@ class HTMLImages:
                         with open(f'assets/board_icons/{emoji_id}.png', 'wb') as f:
                             bytes_ = f.write(data)
                             if bytes_:
-                                return Path(f'assets/board_icons/{emoji_id}.png').resolve()
+                                return Path(f'assets/board_icons/{emoji_id}.png').resolve().as_uri()
                     else:
                         return None
 
