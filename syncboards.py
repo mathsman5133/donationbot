@@ -112,7 +112,7 @@ class HTMLImages:
             if path.is_file():
                 return path.resolve().as_uri()
             else:
-                async with self.session.get(discord.Asset.BASE + emoji_id) as resp:
+                async with self.session.get(f"{discord.Asset.BASE}/emojis/{emoji_id}.png") as resp:
                     if resp.status == 200:
                         data = await resp.read()
                         with open(f'assets/board_icons/{emoji_id}.png', 'wb') as f:
