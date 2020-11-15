@@ -155,8 +155,8 @@ width: 1200px;
 <head>
 <style>
 """ + body + """
-img {
-  position: fixed;
+#bgimg {
+  position: absolute;
   top: 0;
   left: 0;
   height: 100%;
@@ -164,7 +164,7 @@ img {
   z-index:-1;
   opacity:0.9;
 }
-icon_cls {
+#icon_cls {
     position: relative;
     height: 64;
     width: 64;
@@ -232,7 +232,7 @@ header {
         self.html += f"<header>{self.title}</header>"
 
     def add_image(self):
-        self.html += f'<img src="{self.image}" alt="Test"></img>'
+        self.html += f'<img id="bgimg" src="{self.image}" alt="Test"></img>'
 
     def add_table(self, players):
         to_add = "<table>"
@@ -263,7 +263,7 @@ header {
             self.players = [
                 (
                     str(i) + ".",
-                    f'<img class="icon_cls" src="' + await self.load_or_save_custom_emoji(p['emoji']) + '">' if p['emoji'] and p['emoji'].isdigit() else p['emoji'],
+                    f'<img id="icon_cls" src="' + await self.load_or_save_custom_emoji(p['emoji']) + '">' if p['emoji'] and p['emoji'].isdigit() else p['emoji'],
                     p['player_name'],
                     p['donations'],
                     p['received'],
