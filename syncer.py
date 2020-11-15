@@ -20,8 +20,10 @@ import creds
 
 from botlog import setup_logging
 from bot import setup_db
-from cogs.utils.donationtrophylogs import SlimDonationEvent2, SlimTrophyEvent, get_basic_log, get_detailed_log, format_trophy_log_message, get_legend_log
+from cogs.utils.donationtrophylogs import SlimDonationEvent2, SlimTrophyEvent, get_basic_log, get_detailed_log, format_trophy_log_message, get_events_fmt
 from cogs.utils.db_objects import LogConfig
+from cogs.utils.formatters import LineWrapper
+
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
@@ -80,6 +82,8 @@ class Syncer:
 
         self.boards_counter = Counter()
 
+        self._log_tasks = {}
+
     async def get_season_id(self):
         fetch = await pool.fetchrow("SELECT id FROM seasons WHERE start < now() ORDER BY start DESC;")
         self.season_id = fetch['id']
@@ -104,6 +108,10 @@ class Syncer:
             self.dispatch_callbacks,
         )
         coc_client.add_events(*listeners)
+
+        self.sync_temp_event_tasks.add_exception_type(Exception, BaseException)
+        self.sync_temp_event_tasks.start()
+
         coc_client.run_forever()
 
     # @coc_client.event
@@ -975,6 +983,136 @@ class Syncer:
             plt.close()
         except Exception:
             log.exception("sending stats")
+
+    @tasks.loop(hours=1.0)
+    async def sync_temp_event_tasks(self):
+        # await bot.wait_until_ready()
+        query = """SELECT channel_id, type 
+                   FROM logs 
+                   WHERE toggle = True 
+                   AND "interval" > make_interval()
+                """
+        fetch = await pool.fetch(query)
+        for n in fetch:
+            channel_id, type_ = n[0], n[1]
+            key = (channel_id, type_)
+            log.debug(f'Syncing task for Channel ID {key}')
+            task = self._log_tasks.get(key)
+            if not task:
+                log.debug(f'Task has not been created. Creating it. Channel ID: {key}')
+                self._log_tasks[key] = bot.loop.create_task(self.create_temp_event_task(channel_id, type_))
+                continue
+            elif task.done():
+                log.info(task.get_stack())
+                log.info(f'Task has already been completed, recreating it. Channel ID: {key}')
+                self._log_tasks[key] = bot.loop.create_task(self.create_temp_event_task(channel_id, type_))
+                continue
+            else:
+                log.debug(f'Task has already been sucessfully registered for Channel ID {channel_id}')
+
+        to_cancel = [n for n in self._log_tasks.keys() if n not in set((n[0], n[1]) for n in fetch)]
+        for n in to_cancel:
+            log.debug(f'Channel events have been removed from DB. Destroying task. Channel ID: {n}')
+            task = self._log_tasks.pop(n)
+            task.cancel()
+
+        log.info(f'Successfully synced {len(fetch)} channel tasks.')
+
+    async def fetch_config(self, channel_id, type):
+        fetch = await pool.fetchrow("SELECT * FROM logs WHERE channel_id = $1 AND type = $2", channel_id, type)
+        return fetch and LogConfig(record=fetch, bot=None)
+
+    async def create_temp_event_task(self, channel_id, type_):
+        try:
+            while True:
+                config = await self.fetch_config(channel_id, type_)
+                if not config:
+                    log.critical(f'Requested a task creation for channel id {channel_id} {type_} but config was not found.')
+                    return
+
+                await asyncio.sleep(config.seconds)
+                config = await self.fetch_config(channel_id, type_)
+
+                if type_ == "donation" and config.detailed:
+                    query = "DELETE FROM detailedtempevents WHERE channel_id = $1 RETURNING clan_tag, exact, combo, unknown"
+                    fetch = await pool.fetch(query, channel_id)
+
+                    if not fetch:
+                        continue
+
+                    embeds = []
+
+                    for clan_tag, events in itertools.groupby(sorted(fetch, key=lambda x: x['clan_tag']),
+                                                              key=lambda x: x['clan_tag']):
+                        events = list(events)
+
+                        events_fmt = {
+                            "exact": [],
+                            "combo": [],
+                            "unknown": []
+                        }
+                        for n in events:
+                            events_fmt["exact"].extend(n['exact'].split('\n'))
+                            events_fmt["combo"].extend(n['combo'].split('\n'))
+                            events_fmt["unknown"].extend(n['unknown'].split('\n'))
+
+                        p = LineWrapper()
+                        p.add_lines(get_events_fmt(events_fmt))
+
+                        try:
+                            clan = await coc_client.get_clan(clan_tag)
+                        except coc.NotFound:
+                            log.exception(f'{clan_tag} not found')
+                            continue
+
+                        hex_ = bytes.hex(str.encode(clan.tag))[:20]
+
+                        for page in p.pages:
+                            e = discord.Embed(
+                                colour=int(int(''.join(filter(lambda x: x.isdigit(), hex_))) ** 0.3),
+                                description=page
+                            )
+                            e.set_author(name=f"{clan.name} ({clan.tag})", icon_url=clan.badge.url)
+                            e.set_footer(text="Reported").timestamp = datetime.datetime.utcnow()
+                            embeds.append(e)
+
+                    for n in embeds:
+                        bot.message_log.log_struct(
+                            dict(
+                                guild_id=config.guild_id,
+                                channel_id=channel_id,
+                                guild_name=config.guild and config.guild.name,
+                                shard=config.guild and config.guild.shard_id,
+                                type='{}log'.format(type_),
+                            )
+                        )
+                        asyncio.ensure_future(self.safe_send(config.channel_id, embed=n))
+
+                else:
+                    query = "DELETE FROM tempevents WHERE channel_id = $1 AND type = $2 RETURNING fmt"
+                    fetch = await pool.fetch(query, channel_id, type_)
+                    p = LineWrapper()
+
+                    for n in fetch:
+                        p.add_lines(n[0].split("\n"))
+                    for page in p.pages:
+                        bot.message_log.log_struct(
+                            dict(
+                                guild_id=config.guild_id,
+                                channel_id=channel_id,
+                                guild_name=config.guild and config.guild.name,
+                                shard=config.guild and config.guild.shard_id,
+                                type='{}log'.format(type_),
+                            )
+                        )
+                        asyncio.ensure_future(self.safe_send(config.channel_id, page))
+
+        except asyncio.CancelledError:
+            raise
+        except:
+            log.exception(f'Exception encountered while running task for {channel_id} {type_}')
+            self._log_tasks[(channel_id, type_)].cancel()
+            self._log_tasks[(channel_id, type_)] = bot.loop.create_task(self.create_temp_event_task(channel_id, type_))
 
 
 if __name__ == "__main__":
