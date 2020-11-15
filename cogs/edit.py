@@ -295,6 +295,10 @@ class Edit(commands.Cog):
         """
         await self.do_edit_board_perpage(ctx, channel or ctx.channel, per_page, 'legend')
 
+    @edit_legendboard.command(name='columns', aliases=['column'])
+    async def edit_legendboard_columns(self, ctx, channel: typing.Optional[discord.TextChannel], *, combination: str):
+        
+
     @edit.group(name='trophyboard')
     @manage_guild()
     async def edit_trophyboard(self, ctx):

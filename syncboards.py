@@ -4,6 +4,8 @@ import itertools
 import logging
 import time
 
+from pathlib import Path
+
 from datetime import datetime, timedelta
 
 import aiohttp
@@ -66,8 +68,11 @@ loop = asyncio.get_event_loop()
 
 
 class HTMLImages:
-    def __init__(self, players, title=None, image=None, sort_by=None, footer=None, offset=None, board_type='donation', fonts=None):
+    def __init__(self, players, title=None, image=None, sort_by=None, footer=None, offset=None, board_type='donation', fonts=None, session=None):
         self.players = players
+        self.session = session
+
+        self.emoji_paths = {}
 
         self.offset = offset or 1
         self.title = title or titles.get(board_type, backgrounds['donation'])
@@ -78,11 +83,14 @@ class HTMLImages:
 
         self.html = ""
         if board_type == "donation":
-            self.columns = ("#", "Player Name", "Dons", "Rec", "Ratio", "Last On")
+            self.columns = ["#", "Player Name", "Dons", "Rec", "Ratio", "Last On"]
         elif board_type == "legend":
-            self.columns = ("#", "Player Name", "Initial", "Gain", "Loss", "Final", "Best")
+            self.columns = ["#", "Player Name", "Initial", "Gain", "Loss", "Final", "Best"]
         else:
-            self.columns = ("#", "Player Name", "Cups", "Gain", "Last On")
+            self.columns = ["#", "Player Name", "Cups", "Gain", "Last On"]
+
+        if any(p['emoji'] for p in players):
+            self.columns.insert(1, "<img src=" + Path("assets/reddit badge.png").resolve() + ">")
 
         if sort_by and board_type == "donation":
             sort_columns = ("#", "Player Name", "donations", "received", "ratio", "last_online ASC, player_name")
@@ -95,6 +103,24 @@ class HTMLImages:
             self.selected_index = [sort_columns.index(sort_by.replace('donations', 'trophies'))]
         else:
             self.selected_index = []
+
+    async def load_or_save_custom_emoji(self, emoji_id: str):
+        try:
+            return self.emoji_paths[emoji_id]
+        except KeyError:
+            path = Path(f'assets/board_icons/{emoji_id}.png')
+            if path.is_file():
+                return path.resolve()
+            else:
+                async with self.session.get(discord.Asset.BASE + emoji_id) as resp:
+                    if resp.status == 200:
+                        data = await resp.read()
+                        with open(f'assets/board_icons/{emoji_id}.png', 'wb') as f:
+                            bytes_ = f.write(data)
+                            if bytes_:
+                                return Path(f'assets/board_icons/{emoji_id}.png').resolve()
+                    else:
+                        return None
 
     def get_readable(self, delta):
         hours, remainder = divmod(int(delta.total_seconds()), 3600)
@@ -214,7 +240,7 @@ header {
         for player in players:
             to_add += "<tr>" + "".join(
                 f"<td{' class=selected' if i in self.selected_index else ''}>{cell}</td>"
-                for i, cell in enumerate(player)
+                for i, cell in enumerate(player) if cell
             ) + "</tr>"
 
         to_add += "</table>"
@@ -229,14 +255,41 @@ header {
 
     def parse_players(self):
         if self.board_type == 'donation':
-            self.players = [(str(i) + ".", p['player_name'], p['donations'], p['received'], round(p['donations'] / (p['received'] or 1), 2),
-                            self.get_readable(p['last_online'])) for i, p in enumerate(self.players, start=self.offset)]
+            self.players = [
+                (
+                    str(i) + ".",
+                    f'<img src="' + await self.load_or_save_custom_emoji(p['emoji']) + '">' if p['emoji'] and p['emoji'].isdigit() else p['emoji'],
+                    p['player_name'],
+                    p['donations'],
+                    p['received'],
+                    round(p['donations'] / (p['received'] or 1), 2),
+                    self.get_readable(p['last_online']),
+                 )
+                for i, p in enumerate(self.players, start=self.offset)
+            ]
         elif self.board_type == 'legend':
-            self.players = [(str(i) + ".", p['player_name'], p['starting'], f"{p['gain']} <sup>({p['attacks']})</sup>", f"{p['loss']} <sup>({p['defenses']})</sup>", p['finishing'], p['best_trophies'])
-                            for i, p in enumerate(self.players, start=self.offset)]
+            self.players = [
+                (
+                    str(i) + ".",
+                    f'<img src="' + await self.load_or_save_custom_emoji(p['emoji']) + '">' if p['emoji'] and p['emoji'].isdigit() else p['emoji'],
+                    p['player_name'],
+                    p['starting'],
+                    f"{p['gain']} <sup>({p['attacks']})</sup>", f"{p['loss']} <sup>({p['defenses']})</sup>",
+                    p['finishing'],
+                    p['best_trophies']
+                )
+                for i, p in enumerate(self.players, start=self.offset)
+            ]
         else:
             self.players = [
-                (str(i) + ".", p['player_name'], p['trophies'], p['gain'], self.get_readable(p['last_online']))
+                (
+                    str(i) + ".",
+                    f'<img src="' + await self.load_or_save_custom_emoji(p['emoji']) + '">' if p['emoji'] and p['emoji'].isdigit() else p['emoji'],
+                    p['player_name'],
+                    p['trophies'],
+                    p['gain'],
+                    self.get_readable(p['last_online'])
+                )
                 for i, p in enumerate(self.players, start=self.offset)
             ]
 
@@ -273,9 +326,10 @@ header {
 
 
 class SyncBoards:
-    def __init__(self, bot, start_loop=False, pool=None):
+    def __init__(self, bot, start_loop=False, pool=None, session=None):
         self.bot = bot
         self.pool = pool or bot.pool
+        self.session = session or aiohttp.ClientSession()
 
         self.season_id = 17
 
@@ -399,6 +453,8 @@ class SyncBoards:
 
         if config.channel_id == GLOBAL_BOARDS_CHANNEL_ID:
             query = f"""SELECT DISTINCT player_name,
+                                        players.clan_tag,
+                                        clans.emoji,
                                         donations,
                                         received,
                                         trophies,
@@ -423,7 +479,7 @@ class SyncBoards:
                 offset
             )
         elif config.type == "legend":
-            query = f"""SELECT DISTINCT players.player_name, starting, gain, loss, finishing, best_trophies, legend_days.attacks, legend_days.defenses
+            query = f"""SELECT DISTINCT players.player_name, players.clan_tag, clans.emoji, starting, gain, loss, finishing, best_trophies, legend_days.attacks, legend_days.defenses
                         FROM legend_days 
                         INNER JOIN players 
                         ON players.player_tag = legend_days.player_tag
@@ -447,6 +503,8 @@ class SyncBoards:
             )
         else:
             query = f"""SELECT DISTINCT player_name,
+                                        players.clan_tag,
+                                        clans.emoji,
                                         donations,
                                         received,
                                         trophies,
@@ -487,6 +545,7 @@ class SyncBoards:
             footer=f"Season: {season_start} - {season_finish}.",
             offset=offset,
             board_type=config.type,
+            session=self.session,
         )
         render = await table.make()
         s2 = time.perf_counter() - s1

@@ -45,7 +45,7 @@ class DonationBoard(commands.Cog):
         self._board_channels = []
         self.season_meta = {}
 
-        self.board_updater = SyncBoards(bot, start_loop=False)
+        self.board_updater = SyncBoards(bot, start_loop=False, session=bot.session)
 
     @commands.command()
     async def rb(self, ctx, *, fonts: str = None):
