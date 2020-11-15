@@ -155,7 +155,7 @@ width: 1200px;
 <head>
 <style>
 """ + body + """
-img_cls {
+img {
   position: fixed;
   top: 0;
   left: 0;
@@ -165,8 +165,9 @@ img_cls {
   opacity:0.9;
 }
 icon_cls {
-    height: 128,
-    width: 128
+    position: relative;
+    height: 64;
+    width: 64;
 }
 table {
   border-collapse: seperate;
@@ -231,7 +232,7 @@ header {
         self.html += f"<header>{self.title}</header>"
 
     def add_image(self):
-        self.html += f'<img class="img_cls" src="{self.image}" alt="Test"></img>'
+        self.html += f'<img src="{self.image}" alt="Test"></img>'
 
     def add_table(self, players):
         to_add = "<table>"
