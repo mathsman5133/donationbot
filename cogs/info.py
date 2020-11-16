@@ -242,7 +242,7 @@ class Info(commands.Cog, name='\u200bInfo'):
                     "[add|edit|remove] trophylog",
                     "[add|remove] clan",
                     "[add|remove] discord",
-                    "add emoji",
+                    "[add|remove] emoji",
                     "edit darkmode",
                     "edit prefix",
                     "edit timezone",

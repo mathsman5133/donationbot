@@ -54,6 +54,21 @@ class Remove(commands.Cog):
         else:
             await ctx.send(f":x: {clan_tag} wasn't added in {channel.mention}.")
 
+    @remove.command(name='emoji')
+    @checks.manage_guild()
+    async def remove_emoji(self, ctx, *, clan: str):
+        if coc.utils.is_valid_tag(coc.utils.correct_tag(clan)):
+            clan = coc.utils.correct_tag(clan)
+
+        fetch = await ctx.db.fetchrow(
+            "UPDATE clans SET emoji=null WHERE clan_tag = $1 OR clan_name LIKE $1 AND guild_id=$2 RETURNING clan_name",
+            clan, ctx.guild.id
+        )
+        if fetch:
+            await ctx.send(f"👌 Removed emoji for {fetch['clan_name']}.")
+        else:
+            await ctx.send(f":x: I couldn't find a clan called {clan}. Perhaps try the tag?")
+
     @remove.command(name='discord')
     async def remove_discord(self, ctx, *, player: str):
         """Unlink a clash account from your discord account.
