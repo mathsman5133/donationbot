@@ -291,7 +291,7 @@ header {
     async def get_img_src(self, player):
         emoji = player['emoji']
         if emoji and emoji.isdigit():
-            uri = await self.load_or_save_custom_emoji(p['emoji'], None)
+            uri = await self.load_or_save_custom_emoji(player['emoji'], None)
         elif emoji:
             return emoji
         elif player['clan_tag']:
