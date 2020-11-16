@@ -348,13 +348,17 @@ class ActivityArgumentConverter(commands.Converter):
             )
 
         fetch = await ctx.db.fetchrow("SELECT activity_sync FROM guilds WHERE guild_id = $1", ctx.guild.id)
-        if not fetch['activity_sync']:
+        if not (fetch and fetch['activity_sync']):
+            await ctx.db.execute(
+                "INSERT INTO guilds (guild_id, activity_sync) VALUES ($1, TRUE) "
+                "ON CONFLICT DO UPDATE SET activity_sync = TRUE",
+                ctx.guild.id
+            )
             await ctx.send(
                 "This is the first time this command has been run in this server. "
                 "I will only start recording your activity from now. "
                 "Please wait a few days for me to gather reliable data."
             )
-            await ctx.db.execute("UPDATE guilds SET activity_sync = TRUE WHERE guild_id = $1", ctx.guild.id)
             return None
 
         return guild, channel, user, clan, player, time_
