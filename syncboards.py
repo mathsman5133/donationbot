@@ -298,7 +298,7 @@ header {
             self.players = [
                 (
                     str(i) + ".",
-                    self.show_clan and await self.get_img_src(p),
+                    self.show_clan and await self.get_img_src(p) or '',
                     p['player_name'],
                     p['donations'],
                     p['received'],
@@ -311,7 +311,7 @@ header {
             self.players = [
                 (
                     str(i) + ".",
-                    self.show_clan and await self.get_img_src(p),
+                    self.show_clan and await self.get_img_src(p) or '',
                     p['player_name'],
                     p['starting'],
                     f"{p['gain']} <sup>({p['attacks']})</sup>", f"{p['loss']} <sup>({p['defenses']})</sup>",
@@ -324,7 +324,7 @@ header {
             self.players = [
                 (
                     str(i) + ".",
-                    self.show_clan and await self.get_img_src(p),
+                    self.show_clan and await self.get_img_src(p) or '',
                     p['player_name'],
                     p['trophies'],
                     p['gain'],
