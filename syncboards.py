@@ -689,7 +689,7 @@ class SyncBoards:
 
 
 if __name__ == "__main__":
-    coc_client = coc.login(creds.email, creds.password)
+    coc_client = coc.login(creds.email, creds.password, key_names='test')
     pool = loop.run_until_complete(setup_db())
 
     stateless_bot = discord.Client()
