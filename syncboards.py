@@ -288,12 +288,25 @@ header {
     def end_html(self):
         self.html += "</body></html>"
 
+    async def get_img_src(self, player):
+        emoji = player['emoji']
+        if emoji and emoji.isdigit():
+            uri = await self.load_or_save_custom_emoji(p['emoji'], None)
+        elif emoji:
+            return emoji
+        elif player['clan_tag']:
+            uri = await self.load_or_save_custom_emoji(player['clan_tag'], player['clan_tag'])
+        else:
+            return None
+
+        return uri and f'<img id="icon_clsii" src="{uri}">'
+
     async def parse_players(self):
         if self.board_type == 'donation':
             self.players = [
                 (
                     str(i) + ".",
-                    f'<img id="icon_clsii" src="' + await self.load_or_save_custom_emoji(p['emoji'], p['clan_tag']) + '">' if (p['emoji'].isdigit() or not p['emoji']) else p['emoji'],
+                    await self.get_img_src(p),
                     p['player_name'],
                     p['donations'],
                     p['received'],
@@ -306,7 +319,7 @@ header {
             self.players = [
                 (
                     str(i) + ".",
-                    f'<img id="icon_clsii" src="' + await self.load_or_save_custom_emoji(p['emoji'], p['clan_tag']) + '">' if (p['emoji'].isdigit() or not p['emoji']) else p['emoji'],
+                    await self.get_img_src(p),
                     p['player_name'],
                     p['starting'],
                     f"{p['gain']} <sup>({p['attacks']})</sup>", f"{p['loss']} <sup>({p['defenses']})</sup>",
@@ -319,7 +332,7 @@ header {
             self.players = [
                 (
                     str(i) + ".",
-                    f'<img id="icon_clsii" src="' + await self.load_or_save_custom_emoji(p['emoji'], p['clan_tag']) + '">' if (p['emoji'].isdigit() or not p['emoji']) else p['emoji'],
+                    await self.get_img_src(p),
                     p['player_name'],
                     p['trophies'],
                     p['gain'],
