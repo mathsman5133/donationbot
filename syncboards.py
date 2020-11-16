@@ -67,6 +67,7 @@ GLOBAL_BOARDS_CHANNEL_ID = 663683345108172830
 
 log = logging.getLogger(__name__)
 loop = asyncio.get_event_loop()
+coc_client = coc.login(creds.email, creds.password)
 
 
 class HTMLImages:
@@ -118,22 +119,11 @@ class HTMLImages:
                 return path.resolve().as_uri()
             else:
                 if clan_tag:
-                    async with self.session.get(f"{coc.http.Route.BASE}/clans/{clan_tag.replace('#', '%23')}") as resp:
-                        if resp.status == 200:
-                            data = await resp.json()
-                            url = data['clan'] and data['clan']['badgeUrls']['small']
-                            if url:
-                                async with self.session.get(url) as resp:
-                                    if resp.status == 200:
-                                        data = await resp.read()
-                                        with open(f'assets/board_icons/{emoji_or_clan_id}.png', 'wb') as f:
-                                            bytes_ = f.write(data)
-                                            if bytes_:
-                                                return Path(
-                                                    f'assets/board_icons/{emoji_or_clan_id}.png'
-                                                ).resolve().as_uri()
-
-                            return None
+                    clan = await coc_client.get_clan(clan_tag)
+                    if clan:
+                        b = await clan.badge.save(f'assets/board_icons/{emoji_or_clan_id}.png')
+                        if b:
+                            return Path(f'assets/board_icons/{emoji_or_clan_id}.png').resolve().as_uri()
                 else:
                     async with self.session.get(f"{discord.Asset.BASE}/emojis/{emoji_or_clan_id}.png") as resp:
                         if resp.status == 200:
@@ -297,9 +287,9 @@ header {
         elif player['clan_tag']:
             uri = await self.load_or_save_custom_emoji(player['clan_tag'], player['clan_tag'])
         else:
-            return None
+            return ''
 
-        return uri and f'<img id="icon_clsii" src="{uri}">'
+        return uri and f'<img id="icon_clsii" src="{uri}">' or ''
 
     async def parse_players(self):
         if self.board_type == 'donation':
