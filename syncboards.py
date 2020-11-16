@@ -106,8 +106,11 @@ class HTMLImages:
         if len({p['clan_tag'] for p in players}) > 1:
             # re-assign the sorted column index
             # self.selected_index = [col + 1 for col in self.selected_index]
+            self.show_clan = True
             self.columns.pop(1)
             self.columns.insert(1, '<img id="icon_cls" src="' + Path("assets/reddit badge.png").resolve().as_uri() + '">')
+        else:
+            self.show_clan = False
 
     async def load_or_save_custom_emoji(self, emoji_or_clan_id: str, clan_tag: str = None):
         try:
@@ -295,7 +298,7 @@ header {
             self.players = [
                 (
                     str(i) + ".",
-                    await self.get_img_src(p),
+                    self.show_clan and await self.get_img_src(p),
                     p['player_name'],
                     p['donations'],
                     p['received'],
@@ -308,7 +311,7 @@ header {
             self.players = [
                 (
                     str(i) + ".",
-                    await self.get_img_src(p),
+                    self.show_clan and await self.get_img_src(p),
                     p['player_name'],
                     p['starting'],
                     f"{p['gain']} <sup>({p['attacks']})</sup>", f"{p['loss']} <sup>({p['defenses']})</sup>",
@@ -321,7 +324,7 @@ header {
             self.players = [
                 (
                     str(i) + ".",
-                    await self.get_img_src(p),
+                    self.show_clan and await self.get_img_src(p),
                     p['player_name'],
                     p['trophies'],
                     p['gain'],
