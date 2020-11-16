@@ -67,13 +67,12 @@ GLOBAL_BOARDS_CHANNEL_ID = 663683345108172830
 
 log = logging.getLogger(__name__)
 loop = asyncio.get_event_loop()
-coc_client = coc.login(creds.email, creds.password)
-
 
 class HTMLImages:
-    def __init__(self, players, title=None, image=None, sort_by=None, footer=None, offset=None, board_type='donation', fonts=None, session=None):
+    def __init__(self, players, title=None, image=None, sort_by=None, footer=None, offset=None, board_type='donation', fonts=None, session=None, coc_client=None):
         self.players = players
         self.session = session
+        self.coc_client = coc_client
 
         self.emoji_paths = {}
 
@@ -119,7 +118,7 @@ class HTMLImages:
                 return path.resolve().as_uri()
             else:
                 if clan_tag:
-                    clan = await coc_client.get_clan(clan_tag)
+                    clan = await self.coc_client.get_clan(clan_tag)
                     if clan:
                         b = await clan.badge.save(f'assets/board_icons/{emoji_or_clan_id}.png')
                         if b:
@@ -364,9 +363,10 @@ header {
 
 
 class SyncBoards:
-    def __init__(self, bot, start_loop=False, pool=None, session=None):
+    def __init__(self, bot, start_loop=False, pool=None, session=None, coc_client=None):
         self.bot = bot
         self.pool = pool or bot.pool
+        self.coc_client = coc_client or bot.coc
         self.session = session or aiohttp.ClientSession()
 
         self.season_id = 17
@@ -584,6 +584,7 @@ class SyncBoards:
             offset=offset,
             board_type=config.type,
             session=self.session,
+            coc_client=self.coc_client,
         )
         render = await table.make()
         s2 = time.perf_counter() - s1
@@ -688,10 +689,14 @@ class SyncBoards:
 
 
 if __name__ == "__main__":
+    coc_client = coc.login(creds.email, creds.password)
+    pool = loop.run_until_complete(setup_db())
+
     stateless_bot = discord.Client()
     stateless_bot.session = aiohttp.ClientSession()
-    stateless_bot.pool = loop.run_until_complete(setup_db())
     setup_logging(stateless_bot)
+
     loop.run_until_complete(stateless_bot.login(creds.bot_token))
-    SyncBoards(stateless_bot, start_loop=True)
+
+    SyncBoards(stateless_bot, start_loop=True, coc_client=coc_client, pool=pool)
     loop.run_forever()
