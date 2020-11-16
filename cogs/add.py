@@ -511,6 +511,7 @@ class Add(commands.Cog):
         :warning: Manage Server
         """
         await self.do_log_add(ctx, channel or ctx.channel, "donation")
+        await ctx.send("Want a detailed donation log? Try the `+edit donationlog style` command.")
 
     @add.command(name='trophylog')
     @manage_guild()

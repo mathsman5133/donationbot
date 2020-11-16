@@ -121,6 +121,7 @@ class Aliases(commands.Cog, name='\u200bAliases'):
             return await ctx.send("I couldn't detect a clan from your message. Please try again.")
 
         await self.do_log_add(ctx, channel or ctx.channel, clan, "donation")
+        await ctx.send("Want a detailed donation log? Try the `+edit donationlog style` command.")
 
     @commands.command()
     @manage_guild()
@@ -226,7 +227,7 @@ class Aliases(commands.Cog, name='\u200bAliases'):
     @commands.command(aliases=["trophyevents"], hidden=True)
     async def donationevents(self, ctx):
         await ctx.send(
-            f"These commands have been removed as this data is no longer saved. "
+            f"These commands have been removed as this data is no longer stored. "
             f"Please join the support server for more questions: {self.bot.support_invite}"
         )
 
