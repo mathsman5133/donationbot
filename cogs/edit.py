@@ -101,7 +101,6 @@ class Edit(commands.Cog):
         fetch = await ctx.db.fetchrow(query, ctx.author.id)
         await ctx.send(f"👌 Updated dark mode to: {'on' if fetch['dark_mode'] else 'off'}")
 
-
     async def do_edit_board_url(self, ctx, channel, url, type_):
         if url in ['default', 'none', 'remove']:
             url = None

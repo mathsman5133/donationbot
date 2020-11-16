@@ -3,6 +3,8 @@ import io
 import itertools
 import logging
 import time
+import os
+import shutil
 
 from pathlib import Path
 
@@ -101,29 +103,47 @@ class HTMLImages:
         else:
             self.selected_index = []
 
-        if any(p['emoji'] for p in players):
+        if len({p['clan_tag'] for p in players}) > 1:
             # re-assign the sorted column index
             # self.selected_index = [col + 1 for col in self.selected_index]
             self.columns.pop(1)
             self.columns.insert(1, '<img id="icon_cls" src="' + Path("assets/reddit badge.png").resolve().as_uri() + '">')
 
-    async def load_or_save_custom_emoji(self, emoji_id: str):
+    async def load_or_save_custom_emoji(self, emoji_or_clan_id: str, clan_tag: str = None):
         try:
-            return self.emoji_paths[emoji_id]
+            return self.emoji_paths[emoji_or_clan_id]
         except KeyError:
-            path = Path(f'assets/board_icons/{emoji_id}.png')
+            path = Path(f'assets/board_icons/{emoji_or_clan_id}.png')
             if path.is_file():
                 return path.resolve().as_uri()
             else:
-                async with self.session.get(f"{discord.Asset.BASE}/emojis/{emoji_id}.png") as resp:
-                    if resp.status == 200:
-                        data = await resp.read()
-                        with open(f'assets/board_icons/{emoji_id}.png', 'wb') as f:
-                            bytes_ = f.write(data)
-                            if bytes_:
-                                return Path(f'assets/board_icons/{emoji_id}.png').resolve().as_uri()
-                    else:
-                        return None
+                if clan_tag:
+                    async with self.session.get(f"{coc.http.Route.BASE}/clans/{clan_tag.replace('#', '%23')}") as resp:
+                        if resp.status == 200:
+                            data = await resp.json()
+                            url = data['clan'] and data['clan']['badgeUrls']['small']
+                            if url:
+                                async with self.session.get(url) as resp:
+                                    if resp.status == 200:
+                                        data = await resp.read()
+                                        with open(f'assets/board_icons/{emoji_or_clan_id}.png', 'wb') as f:
+                                            bytes_ = f.write(data)
+                                            if bytes_:
+                                                return Path(
+                                                    f'assets/board_icons/{emoji_or_clan_id}.png'
+                                                ).resolve().as_uri()
+
+                            return None
+                else:
+                    async with self.session.get(f"{discord.Asset.BASE}/emojis/{emoji_or_clan_id}.png") as resp:
+                        if resp.status == 200:
+                            data = await resp.read()
+                            with open(f'assets/board_icons/{emoji_or_clan_id}.png', 'wb') as f:
+                                bytes_ = f.write(data)
+                                if bytes_:
+                                    return Path(f'assets/board_icons/{emoji_or_clan_id}.png').resolve().as_uri()
+                        else:
+                            return None
 
     def get_readable(self, delta):
         hours, remainder = divmod(int(delta.total_seconds()), 3600)
@@ -273,7 +293,7 @@ header {
             self.players = [
                 (
                     str(i) + ".",
-                    f'<img id="icon_clsii" src="' + await self.load_or_save_custom_emoji(p['emoji']) + '">' if p['emoji'] and p['emoji'].isdigit() else p['emoji'],
+                    f'<img id="icon_clsii" src="' + await self.load_or_save_custom_emoji(p['emoji'], p['clan_tag']) + '">' if (p['emoji'].isdigit() or not p['emoji']) else p['emoji'],
                     p['player_name'],
                     p['donations'],
                     p['received'],
@@ -286,7 +306,7 @@ header {
             self.players = [
                 (
                     str(i) + ".",
-                    f'<img id="icon_clsii" src="' + await self.load_or_save_custom_emoji(p['emoji']) + '">' if p['emoji'] and p['emoji'].isdigit() else p['emoji'],
+                    f'<img id="icon_clsii" src="' + await self.load_or_save_custom_emoji(p['emoji'], p['clan_tag']) + '">' if (p['emoji'].isdigit() or not p['emoji']) else p['emoji'],
                     p['player_name'],
                     p['starting'],
                     f"{p['gain']} <sup>({p['attacks']})</sup>", f"{p['loss']} <sup>({p['defenses']})</sup>",
@@ -299,7 +319,7 @@ header {
             self.players = [
                 (
                     str(i) + ".",
-                    f'<img id="icon_clsii" src="' + await self.load_or_save_custom_emoji(p['emoji']) + '">' if p['emoji'] and p['emoji'].isdigit() else p['emoji'],
+                    f'<img id="icon_clsii" src="' + await self.load_or_save_custom_emoji(p['emoji'], p['clan_tag']) + '">' if (p['emoji'].isdigit() or not p['emoji']) else p['emoji'],
                     p['player_name'],
                     p['trophies'],
                     p['gain'],
@@ -360,7 +380,7 @@ class SyncBoards:
 
         self.start_loops = start_loop
         if start_loop:
-            for task in (self.update_board_loops, self.reset_season_id):
+            for task in (self.update_board_loops, self.reset_season_id, self.flush_saved_board_icons):
                 task.add_exception_type(Exception)
                 task.start()
 
@@ -605,6 +625,15 @@ class SyncBoards:
             )
         except:
             log.exception('trying to send board for %s', config.channel_id)
+
+    @tasks.loop(hours=1.0)
+    async def flush_saved_board_icons(self):
+        try:
+            shutil.rmtree('assets/board_icons')
+            os.makedirs('assets/board_icons')
+        except:
+            log.exception('failed to flush saved board icons')
+
 
     @tasks.loop(seconds=5.0)
     async def legend_board_reset(self):
