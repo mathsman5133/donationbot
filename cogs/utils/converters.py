@@ -351,7 +351,7 @@ class ActivityArgumentConverter(commands.Converter):
         if not (fetch and fetch['activity_sync']):
             await ctx.db.execute(
                 "INSERT INTO guilds (guild_id, activity_sync) VALUES ($1, TRUE) "
-                "ON CONFLICT DO UPDATE SET activity_sync = TRUE",
+                "ON CONFLICT (guild_id) DO UPDATE SET activity_sync = TRUE",
                 ctx.guild.id
             )
             await ctx.send(
