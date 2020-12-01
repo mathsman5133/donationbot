@@ -143,7 +143,7 @@ class Syncer:
                             trophies,
                             clan_tag,
                             league_id,
-                            legend_trophies
+                            last_updated
                             )
                     SELECT player_tag,
                            0,
@@ -153,10 +153,13 @@ class Syncer:
                            player_name,
                            LEAST(trophies, 5000),
                            LEAST(trophies, 5000),
+                           clan_tag,
                            league_id,
-                           CASE WHEN league_id = 29000022 AND trophies > 5000 THEN legend_trophies + trophies - 5000 ELSE legend_trophies END
+                           last_updated
                     FROM players
                     WHERE season_id = $1
+                    ON CONFLICT (season_id, player_tag)
+                    DO NOTHING;
                 """
         await pool.execute(query, self.season_id - 1)
 
@@ -535,7 +538,7 @@ class Syncer:
                         self.boards_counter.pop(k, None)
 
                 async with self.legend_data_lock:
-                    tags = set(tag for (tag, counter) in self.legend_counter.items() if counter > 3)
+                    tags = set(tag for (tag, counter) in self.legend_counter.items() if counter > 10)
                     response2 = await pool.execute(query3, list(tags), ['legend'])
                     for k in tags:
                         self.legend_counter.pop(k, None)
@@ -845,7 +848,7 @@ class Syncer:
                                         start_friend_in_need,
                                         start_sharing_is_caring,
                                         start_attacks,
-                                        start_defenses,
+                        New                start_defenses,
                                         start_best_trophies,
                                         start_update,
                                         clan_tag,
