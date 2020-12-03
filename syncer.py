@@ -425,21 +425,29 @@ class Syncer:
     #         await self.bulk_board_insert()
 
     async def insert_legend_data(self):
-        query = """INSERT INTO legend_days (player_tag, day, starting, gain, loss, finishing, attacks, defenses) 
-                   SELECT x.player_tag, x.today, x.starting, x.gain, x.loss, x.finishing, x.attacks, x.defenses
+        query = """INSERT INTO legend_days (player_tag, player_name, clan_tag, day, starting, gain, loss, finishing, attacks, defenses) 
+                   SELECT x.player_tag, x.player_name, x.clan_tag, x.today, x.starting, x.gain, x.loss, x.finishing, x.attacks, x.defenses
                    FROM jsonb_to_recordset($1::jsonb)
                    AS x(
                        player_tag TEXT,
+                       player_name TEXT,
+                       clan_tag TEXT,
                        today timestamp,
                        starting integer,
                        gain integer,
                        loss integer,
                        finishing integer,
                        attacks integer,
-                       defenses integer                 
+                       defenses integer             
                    )   
                    ON CONFLICT (player_tag, day)
-                   DO UPDATE SET gain = legend_days.gain + excluded.gain, loss = legend_days.loss + excluded.loss, finishing = excluded.finishing, attacks = legend_days.attacks + excluded.attacks, defenses = legend_days.defenses + excluded.defenses
+                   DO UPDATE SET gain = legend_days.gain + excluded.gain, 
+                                 loss = legend_days.loss + excluded.loss, 
+                                 finishing = excluded.finishing, 
+                                 attacks = legend_days.attacks + excluded.attacks, 
+                                 defenses = legend_days.defenses + excluded.defenses,
+                                 player_name = excluded.player_name,
+                                 clan_tag = excluded.clan_tag
                 """
         await pool.execute(query, list(self.legend_data.values()))
         self.legend_data.clear()
@@ -681,6 +689,8 @@ class Syncer:
                 except KeyError:
                     self.legend_data[player.tag] = {
                         'player_tag': player.tag,
+                        'player_name': player.name,
+                        'clan_tag': getattr(player.clan, 'tag', None),
                         'today': self.legend_day,
                         'starting': player.trophies,
                         'gain': change if change > 0 else 0,
