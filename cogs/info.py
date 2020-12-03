@@ -13,6 +13,7 @@ from matplotlib import pyplot as plt
 import numpy as np
 
 from discord.ext import commands
+from cogs.utils.db_objects import LogConfig, BoardConfig, SlimEventConfig
 from cogs.utils.paginator import Pages, EmbedPages
 from cogs.utils.formatters import CLYTable, readable_time, TabularData
 from cogs.utils.emoji_lookup import misc
@@ -373,24 +374,26 @@ class Info(commands.Cog, name='\u200bInfo'):
                                      f"{misc['online'] + 'Enabled' if trophylog.toggle else misc['offline'] + 'Disabled'}\n" \
                                      f":hourglass: Wait time of {readable_time(trophylog.seconds)}\n\n"
 
-            board = await self.bot.utils.board_config(channel.id)
-            if board:
-                embed.description += f"**{board.type.capitalize()}Board**\n" \
-                                     f":notepad_spiral: {channel.mention}\n" \
-                                     f":paperclip: [Icon URL]({board.icon_url})\n" \
-                                     f":rosette: Render Type: *#{board.render}*\n" \
-                                     f":chart_with_upwards_trend: Sorted by: *{board.sort_by}*\n" \
-                                     f":notebook_with_decorative_cover: Title: *{board.title}*\n\n"
+            fetch = await ctx.db.fetch("SELECT * FROM boards WHERE channel_id = $1", channel_id)
+            for row in fetch:
+                board_config = BoardConfig(bot=self.bot, record=row)
+
+                embed.description += f"**{board_config.type.capitalize()}Board**\n" \
+                                     f":notepad_spiral: {board_config.channel.mention}\n" \
+                                     f":paperclip: [Background URL]({board_config.icon_url})\n" \
+                                     f":chart_with_upwards_trend: Sorted by: *{board_config.sort_by}*\n" \
+                                     f":notebook_with_decorative_cover: Title: *{board_config.title}*\n\n"
 
             query = "SELECT clan_tag FROM clans WHERE channel_id = $1"
             clan_tags = await ctx.db.fetch(query, channel.id)
             if clan_tags:
                 embed.description += "**Clans**\n"
             async for clan in self.bot.coc.get_clans((n["clan_tag"] for n in clan_tags)):
-                embed.description += f":notepad_spiral: {clan} ({clan.tag})\n" \
-                                     f":paperclip: [In-Game Link]({clan.share_link})\n" \
-                                     f":paperclips: [Icon URL]({clan.badge.url})\n" \
-                                     f":person_bowing: Members: {clan.member_count}/50\n\n"
+                fmt = f":notepad_spiral: {clan} ({clan.tag})\n" \
+                      f":paperclip: [In-Game Link]({clan.share_link})\n" \
+                      f":paperclips: [Icon URL]({clan.badge.url})\n" \
+                      f":person_bowing: Members: {clan.member_count}/50\n\n"
+                embed.add_field(name="\u200b", value=fmt)
 
             if embed.description:
                 embeds.append(embed)
@@ -447,16 +450,18 @@ class Info(commands.Cog, name='\u200bInfo'):
                                      f"{misc['online'] + 'Enabled' if log_config.toggle else misc['offline'] + 'Disabled'}\n" \
                                      f":hourglass: Wait time of {readable_time(log_config.seconds)}\n\n"
 
-            for channel_id in channel_ids:
-                board_config = await self.bot.utils.board_config(channel_id)
-                channel = self.bot.get_channel(channel_id)
-                if not (board_config and channel):
-                    continue
+            fetch = await ctx.db.fetch(
+                "SELECT * FROM boards "
+                "INNER JOIN clans ON clans.channel_id = boards.channel_id "
+                "WHERE boards.guild_id = $1 AND clan_tag = $2",
+                ctx.guild.id, clan.tag
+            )
+            for row in fetch:
+                board_config = BoardConfig(bot=self.bot, record=row)
 
                 embed.description += f"**{board_config.type.capitalize()}Board**\n" \
-                                     f":notepad_spiral: {channel.mention}\n" \
-                                     f":paperclip: [Icon URL]({board_config.icon_url})\n" \
-                                     f":rosette: Render Type: *#{board_config.render}*\n" \
+                                     f":notepad_spiral: {board_config.channel.mention}\n" \
+                                     f":paperclip: [Background URL]({board_config.icon_url})\n" \
                                      f":chart_with_upwards_trend: Sorted by: *{board_config.sort_by}*\n" \
                                      f":notebook_with_decorative_cover: Title: *{board_config.title}*\n\n"
 
