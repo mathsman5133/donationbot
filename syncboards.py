@@ -524,11 +524,11 @@ class SyncBoards:
                         INNER JOIN clans
                         ON clans.clan_tag = legend_days.clan_tag
                         WHERE day = $1
-                        AND clans.channel_id = $3
+                        AND clans.channel_id = $2
                         ORDER BY {config.sort_by} DESC
                         NULLS LAST
-                        LIMIT $4
-                        OFFSET $5
+                        LIMIT $3
+                        OFFSET $4
                     """
             fetch = await self.pool.fetch(
                 query,
