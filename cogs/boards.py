@@ -209,8 +209,6 @@ class DonationBoard(commands.Cog):
 
         if not fetch:
             return
-        if fetch['type'] == 'legend':
-            return
 
         config = BoardConfig(bot=self.bot, record=fetch)
         await self.update_board(None, config=config)
