@@ -524,7 +524,6 @@ class SyncBoards:
                         INNER JOIN clans
                         ON clans.clan_tag = legend_days.clan_tag
                         WHERE day = $1
-                        AND season_id = $2
                         AND clans.channel_id = $3
                         ORDER BY {config.sort_by} DESC
                         NULLS LAST
@@ -534,7 +533,6 @@ class SyncBoards:
             fetch = await self.pool.fetch(
                 query,
                 self.legend_day,
-                season_id,
                 config.channel_id,
                 self.get_next_per_page(config.page, config.per_page),
                 offset
