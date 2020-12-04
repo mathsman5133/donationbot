@@ -87,7 +87,7 @@ class HTMLImages:
         if board_type == "donation":
             self.columns = ["#", None, "Player Name", "Dons", "Rec", "Ratio", "Last On"]
         elif board_type == "legend":
-            self.columns = ["#", None, "Player Name", "Initial", "Gain", "Loss", "Final", "Best"]
+            self.columns = ["#", None, "Player Name", "Initial", "Gain", "Loss", "Final"]
         else:
             self.columns = ["#", None, "Player Name", "Cups", "Gain", "Last On"]
 
@@ -316,7 +316,6 @@ header {
                     p['starting'],
                     f"{p['gain']} <sup>({p['attacks']})</sup>", f"{p['loss']} <sup>({p['defenses']})</sup>",
                     p['finishing'],
-                    p['best_trophies']
                 )
                 for i, p in enumerate(self.players, start=self.offset)
             ]
