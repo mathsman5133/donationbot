@@ -545,12 +545,11 @@ class Syncer:
                     for k in tags:
                         self.boards_counter.pop(k, None)
 
-                # fixme: uncomment when fix legend boards
-                # async with self.legend_data_lock:
-                #     tags = set(tag for (tag, counter) in self.legend_counter.items() if counter > 10)
-                #     response2 = await pool.execute(query3, list(tags), ['legend'])
-                #     for k in tags:
-                #         self.legend_counter.pop(k, None)
+                async with self.legend_data_lock:
+                    tags = set(tag for (tag, counter) in self.legend_counter.items() if counter > 3)
+                    response2 = await pool.execute(query3, list(tags), ['legend'])
+                    for k in tags:
+                        self.legend_counter.pop(k, None)
 
                 log.info(f"updating boards for {response} channels")
                 self.board_batch_data.clear()

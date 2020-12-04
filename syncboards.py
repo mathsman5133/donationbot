@@ -520,12 +520,10 @@ class SyncBoards:
                 offset
             )
         elif config.type == "legend":
-            query = f"""SELECT DISTINCT players.player_name, players.clan_tag, clans.emoji, starting, gain, loss, finishing, best_trophies, legend_days.attacks, legend_days.defenses
+            query = f"""SELECT player_name, clan_tag, clans.emoji, starting, gain, loss, finishing, best_trophies, legend_days.attacks, legend_days.defenses
                         FROM legend_days 
-                        INNER JOIN players 
-                        ON players.player_tag = legend_days.player_tag
                         INNER JOIN clans
-                        ON clans.clan_tag = players.clan_tag
+                        ON clans.clan_tag = legend_days.clan_tag
                         WHERE day = $1
                         AND season_id = $2
                         AND clans.channel_id = $3
