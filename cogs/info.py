@@ -721,9 +721,25 @@ class Info(commands.Cog, name='\u200bInfo'):
     async def channelid(self, ctx):
         await ctx.send(f"Guild ID: {ctx.guild.id}\nChannel ID: {ctx.channel.id}")
 
-    @commands.command()
+    @staticmethod
+    def convert_rows_to_bytes(rows):
+        csv = ""
+        for i, row in enumerate(rows):
+            if i == 0:
+                # headers
+                csv += ''.join(f"{col}," for col in row.keys())
+                csv += '\n'
+
+            csv += ''.join(f"{r}," for r in row.values())
+            csv += '\n'
+
+        return io.BytesIO(csv.encode("utf-8"))
+
+    @commands.group()
     async def dump(self, ctx, *, argument: ConvertToPlayers = None):
         """Get a .csv of all player data the bot has stored for a clan/players.
+
+        Use `+dump legends` to get a .csv of recent legend data, as seen on the legend boards.
 
         **Parameters**
         :key: The argument: Can be a clan tag, name, player tag, name, channel #mention, user @mention or `server` for all clans linked to the server.
@@ -767,18 +783,56 @@ class Info(commands.Cog, name='\u200bInfo'):
                     ORDER BY season_id DESC
                     """
         fetch = await ctx.db.fetch(query, [p['player_tag'] for p in argument], list({p['clan_tag'] for p in argument}))
-        csv = ""
-        for i, row in enumerate(fetch):
-            if i == 0:
-                # headers
-                csv += ''.join(f"{col}," for col in row.keys())
-                csv += '\n'
+        await ctx.send(file=discord.File(filename="donation-tracker-player-export.csv", fp=self.convert_rows_to_bytes(fetch)))
 
-            csv += ''.join(f"{r}," for r in row.values())
-            csv += '\n'
+    @dump.command(name="legend", aliases=["legends", "leg"])
+    async def dump_legends(self, ctx, *, argument: ConvertToPlayers = None):
+        """Get a .csv of all legend data the bot has stored for a clan/players.
 
-        bytesio = io.BytesIO(csv.encode("utf-8"))
-        await ctx.send(file=discord.File(filename="donation-tracker-export.csv", fp=bytesio))
+        **Parameters**
+        :key: The argument: Can be a clan tag, name, player tag, name, channel #mention, user @mention or `server` for all clans linked to the server.
+
+        **Format**
+        :information_source: `+dump legends`
+        :information_source: `+dump legends #CLAN_TAG`
+        :information_source: `+dump legends CLAN NAME`
+        :information_source: `+dump legends #PLAYER_TAG`
+        :information_source: `+dump legends Player Name`
+        :information_source: `+dump legends #channel`
+        :information_source: `+dump legends @user`
+        :information_source: `+dump legends all`
+
+        **Example**
+        :white_check_mark: `+dump legends`
+        :white_check_mark: `+dump legends #JY9J2Y99`
+        :white_check_mark: `+dump legends Reddit`
+        :white_check_mark: `+dump legends Mathsman`
+        :white_check_mark: `+dump legends @mathsman#1208`
+        :white_check_mark: `+dump legends #donation-log`
+        :white_check_mark: `+dump legends all`
+        """
+        if not argument:
+            argument = await ConvertToPlayers().convert(ctx, "all")
+        if not argument:
+            return await ctx.send("Couldn't find any players - try adding a clan?")
+
+        query = """SELECT player_tag, 
+                          player_name, 
+                          clan_tag,
+                          starting,
+                          finishing,
+                          gain,
+                          loss,
+                          attacks,
+                          defenses,
+                          day 
+                    FROM legend_days
+                    WHERE player_tag = ANY($1::TEXT[])
+                    AND clan_tag = ANY($2::TEXT[])
+                    ORDER BY day DESC
+                    """
+        fetch = await ctx.db.fetch(query, [p['player_tag'] for p in argument], list({p['clan_tag'] for p in argument}))
+        await ctx.send(file=discord.File(filename="donation-tracker-legends-export.csv", fp=self.convert_rows_to_bytes(fetch)))
 
     @dump.before_invoke
     async def before_dump(self, ctx):
