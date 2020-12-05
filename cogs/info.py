@@ -735,7 +735,7 @@ class Info(commands.Cog, name='\u200bInfo'):
 
         return io.BytesIO(csv.encode("utf-8"))
 
-    @commands.group()
+    @commands.group(invoke_without_command=True)
     async def dump(self, ctx, *, argument: ConvertToPlayers = None):
         """Get a .csv of all player data the bot has stored for a clan/players.
 
