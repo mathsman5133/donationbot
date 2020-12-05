@@ -835,6 +835,7 @@ class Info(commands.Cog, name='\u200bInfo'):
         await ctx.send(file=discord.File(filename="donation-tracker-legends-export.csv", fp=self.convert_rows_to_bytes(fetch)))
 
     @dump.before_invoke
+    @dump_legends.before_invoke
     async def before_dump(self, ctx):
         await ctx.trigger_typing()
 
