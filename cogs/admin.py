@@ -267,7 +267,6 @@ class Admin(commands.Cog):
         await ctx.send('\n'.join(f'{status}: `{module}`' for status, module in statuses))
 
     @commands.command(hidden=True)
-    @commands.is_owner()
     async def commandstats(self, ctx, limit=20):
         """Shows command stats.
         Use a negative number for bottom instead of top.
@@ -286,8 +285,8 @@ class Admin(commands.Cog):
 
         await ctx.send(f'```\n{output}\n```')
 
-    @commands.command(pass_context=True, hidden=True, name='eval')
-    async def _eval(self, ctx, *, body: str):
+    @commands.command(hidden=True)
+    async def eval(self, ctx, *, body: str):
         """Evaluates a code"""
 
         env = {
@@ -335,104 +334,8 @@ class Admin(commands.Cog):
                 self._last_result = ret
                 await self.safe_send(ctx, f'```py\n{value}{ret}\n```')
 
-    @commands.command(pass_context=True, hidden=True)
-    async def repl(self, ctx):
-        """Launches an interactive REPL session."""
-        variables = {
-            'ctx': ctx,
-            'bot': self.bot,
-            'message': ctx.message,
-            'guild': ctx.guild,
-            'channel': ctx.channel,
-            'author': ctx.author,
-            '_': None,
-        }
-
-        if ctx.channel.id in self.sessions:
-            await ctx.send('Already running a REPL session in this channel. Exit it with `quit`.')
-            return
-
-        self.sessions.add(ctx.channel.id)
-        await ctx.send('Enter code to execute or evaluate. `exit()` or `quit` to exit.')
-
-        def check(m):
-            return m.author.id == ctx.author.id and \
-                   m.channel.id == ctx.channel.id and \
-                   m.content.startswith('`')
-
-        while True:
-            try:
-                response = await self.bot.wait_for('message', check=check, timeout=10.0 * 60.0)
-            except asyncio.TimeoutError:
-                await ctx.send('Exiting REPL session.')
-                self.sessions.remove(ctx.channel.id)
-                break
-
-            cleaned = self.cleanup_code(response.content)
-
-            if cleaned in ('quit', 'exit', 'exit()'):
-                await ctx.send('Exiting.')
-                self.sessions.remove(ctx.channel.id)
-                return
-
-            executor = exec
-            if cleaned.count('\n') == 0:
-                # single statement, potentially 'eval'
-                try:
-                    code = compile(cleaned, '<repl session>', 'eval')
-                except SyntaxError:
-                    pass
-                else:
-                    executor = eval
-
-            if executor is exec:
-                try:
-                    code = compile(cleaned, '<repl session>', 'exec')
-                except SyntaxError as e:
-                    await ctx.send(self.get_syntax_error(e))
-                    continue
-
-            variables['message'] = response
-
-            fmt = None
-            stdout = io.StringIO()
-
-            try:
-                with redirect_stdout(stdout):
-                    result = executor(code, variables)
-                    if inspect.isawaitable(result):
-                        result = await result
-            except Exception as e:
-                value = stdout.getvalue()
-                fmt = f'```py\n{value}{traceback.format_exc()}\n```'
-            else:
-                value = stdout.getvalue()
-                if result is not None:
-                    fmt = f'```py\n{value}{result}\n```'
-                    variables['_'] = result
-                elif value:
-                    fmt = f'```py\n{value}\n```'
-
-            try:
-                if fmt is not None:
-                    if len(fmt) > 2000:
-                        await ctx.send('Content too big to be printed.')
-                    else:
-                        await ctx.send(fmt)
-            except discord.Forbidden:
-                pass
-            except discord.HTTPException as e:
-                await ctx.send(f'Unexpected error: `{e}`')
-
-    @commands.command(hidden=True)
-    async def sql(self, ctx, *, query: str):
-        """Run some SQL."""
-        # the imports are here because I imagine some people would want to use
-        # this cog as a base for their other cog, and since this one is kinda
-        # odd and unnecessary for most people, I will make it easy to remove
-        # for those people.
+    async def execute_sql(self, ctx, query: str):
         query = self.cleanup_code(query)
-
         is_multistatement = query.count(';') > 1
         if is_multistatement:
             # fetch does not support multiple statements
@@ -445,11 +348,20 @@ class Admin(commands.Cog):
             results = await strategy(query)
             dt = (time.perf_counter() - start) * 1000.0
         except Exception:
-            return await ctx.send(f'```py\n{traceback.format_exc()}\n```')
+            return f'```py\n{traceback.format_exc()}\n```', None
+        else:
+            return results, dt
+
+    @commands.command(hidden=True)
+    async def sql(self, ctx, *, query: str):
+        """Run some SQL."""
+        results, timer = await self.execute_sql(ctx, query)
+        if not timer:
+            return await self.safe_send(ctx, results)
 
         rows = len(results)
-        if is_multistatement or rows == 0:
-            return await ctx.send(f'`{dt:.2f}ms: {results}`')
+        if rows == 0:
+            return await ctx.send(f'`{timer:.2f}ms: {results}`')
 
         headers = list(results[0].keys())
         table = TabularData()
@@ -457,37 +369,7 @@ class Admin(commands.Cog):
         table.add_rows(list(r.values()) for r in results)
         render = table.render()
 
-        fmt = f'```\n{render}\n```\n*Returned {rows} rows in {dt:.2f}ms*'
-        return await self.safe_send(ctx, fmt)
-
-    @commands.command(hidden=True)
-    async def sqlite(self, ctx, *, query: str):
-        """Run some SQLite."""
-        # the imports are here because I imagine some people would want to use
-        # this cog as a base for their other cog, and since this one is kinda
-        # odd and unnecessary for most people, I will make it easy to remove
-        # for those people.
-        query = self.cleanup_code(query)
-
-        try:
-            start = time.perf_counter()
-            cursor = self.bot.sqlite.execute(query)
-            results = cursor.fetchall()
-            dt = (time.perf_counter() - start) * 1000.0
-        except Exception:
-            return await ctx.send(f'```py\n{traceback.format_exc()}\n```')
-
-        rows = len(results)
-        if rows == 0:
-            return await ctx.send(f'`{dt:.2f}ms: {results}`')
-
-        headers = [f"header {i}" for i in range(len(results[0]))]
-        table = TabularData()
-        table.set_columns(headers)
-        table.add_rows(list(r) for r in results)
-        render = table.render()
-
-        fmt = f'```\n{render}\n```\n*Returned {rows} rows in {dt:.2f}ms*'
+        fmt = f'```\n{render}\n```\n*Returned {rows} rows in {timer:.2f}ms*'
         return await self.safe_send(ctx, fmt)
 
     @commands.command(hidden=True)
@@ -510,7 +392,6 @@ class Admin(commands.Cog):
         return await self.safe_send(ctx, fmt)
 
     @commands.command(hidden=True)
-    @commands.is_owner()
     async def sql_tables(self, ctx):
         query = """SELECT table_name
                    FROM information_schema.tables
@@ -565,80 +446,27 @@ class Admin(commands.Cog):
         await self.safe_send(ctx, fmt)
 
     @commands.command(hidden=True)
-    async def sudo(self, ctx, channel: Optional[GlobalChannel], who: discord.User, *, command: str):
-        """Run a command as another user optionally in another channel."""
-        msg = copy.copy(ctx.message)
-        channel = channel or ctx.channel
-        msg.channel = channel
-        msg.author = channel.guild.get_member(who.id) or who
-        msg.content = ctx.prefix + command
-        new_ctx = await self.bot.get_context(msg, cls=type(ctx))
-        new_ctx._db = ctx._db
-        await self.bot.invoke(new_ctx)
+    async def sqlcsv(self, ctx, *, query: str):
+        results, timer = await self.execute_sql(ctx, query)
+        if not timer:
+            return await self.safe_send(ctx, results)
 
-    @commands.command(hidden=True)
-    async def do(self, ctx, times: int, *, command):
-        """Repeats a command a specified number of times."""
-        msg = copy.copy(ctx.message)
-        msg.content = ctx.prefix + command
+        rows = len(results)
+        if rows == 0:
+            return await ctx.send(f'`{timer:.2f}ms: {results}`')
 
-        new_ctx = await self.bot.get_context(msg, cls=type(ctx))
-        new_ctx._db = ctx._db
+        csv = ""
+        for i, row in enumerate(results):
+            if i == 0:
+                # headers
+                csv += ''.join(f"{col}," for col in row.keys())
+                csv += '\n'
 
-        for i in range(times):
-            await new_ctx.reinvoke()
+            csv += ''.join(f"{r}," for r in row.values())
+            csv += '\n'
 
-    @commands.command(hidden=True)
-    async def sh(self, ctx, *, command):
-        """Runs a shell command."""
-        from cogs.utils.paginator import TextPages
-
-        async with ctx.typing():
-            stdout, stderr = await self.run_process(command)
-
-        if stderr:
-            text = f'stdout:\n{stdout}\nstderr:\n{stderr}'
-        else:
-            text = stdout
-
-        try:
-            pages = TextPages(ctx, text)
-            await pages.paginate()
-        except Exception as e:
-            await ctx.send(str(e))
-
-    @commands.command(hidden=True)
-    async def perf(self, ctx, *, command):
-        """Checks the timing of a command, attempting to suppress HTTP and DB calls."""
-
-        msg = copy.copy(ctx.message)
-        msg.content = ctx.prefix + command
-
-        new_ctx = await self.bot.get_context(msg, cls=type(ctx))
-        new_ctx._db = PerformanceMocker()
-
-        # Intercepts the Messageable interface a bit
-        new_ctx._state = PerformanceMocker()
-        new_ctx.channel = PerformanceMocker()
-
-        if new_ctx.command is None:
-            return await ctx.send('No command found')
-
-        start = time.perf_counter()
-        try:
-            await new_ctx.command.invoke(new_ctx)
-        except commands.CommandError:
-            end = time.perf_counter()
-            success = False
-            try:
-                await self.safe_send(ctx, f'```py\n{traceback.format_exc()}\n```')
-            except discord.HTTPException:
-                pass
-        else:
-            end = time.perf_counter()
-            success = True
-
-        await ctx.send(f'Status: {ctx.tick(success)} Time: {(end - start) * 1000:.2f}ms')
+        fmt = f'Returned {rows} rows in {timer:.2f}ms*'
+        return await ctx.send(fmt, file=discord.File(filename="sql-query-results.csv", fp=io.BytesIO(csv.encode("utf-8"))))
 
 
 def setup(bot):
