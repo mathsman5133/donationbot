@@ -15,6 +15,7 @@ from cogs.utils.checks import manage_guild, helper_check
 from cogs.utils import checks
 
 RCS_GUILD_ID = 295287647075827723
+MONZETTI_GUILD_ID = 228438771966672896
 
 log = logging.getLogger(__name__)
 
@@ -95,8 +96,8 @@ class Add(commands.Cog):
         check = is_verified \
                 or await self.bot.is_owner(ctx.author) \
                 or clan_tag in (n['clan_tag'] for n in current) \
-                or ctx.guild.id == RCS_GUILD_ID \
-                or helper_check(self.bot, ctx.author) is True
+                or ctx.guild.id in (RCS_GUILD_ID, MONZETTI_GUILD_ID) \
+                or await helper_check(self.bot, ctx.author) is True
 
         if not check and not fetch:
             return await ctx.send("Please verify your account before adding a clan: `+verify #playertag`. "

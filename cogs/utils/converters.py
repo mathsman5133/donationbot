@@ -325,6 +325,7 @@ class ActivityArgumentConverter(commands.Converter):
                             SELECT player_tag, player_name FROM cte2
                             WHERE player_tag = $4 
                             OR player_name LIKE $5
+                            ORDER BY season_id DESC
                             """
             fetch = await ctx.db.fetchrow(
                 query,
