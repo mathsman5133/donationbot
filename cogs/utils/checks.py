@@ -8,7 +8,7 @@ class NoConfigFailure(commands.CheckFailure):
     pass
 
 
-def helper_check(bot, user):
+async def helper_check(bot, user):
     support_member = await bot.get_guild(594276321937326091).fetch_member(user.id)
     if support_member and any(r.id == HELPER_ROLE for r in support_member.roles):
         return True
