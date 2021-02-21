@@ -308,7 +308,7 @@ class ActivityArgumentConverter(commands.Converter):
 
             query = """
                             WITH cte AS (
-                                SELECT DISTINCT player_tag, player_name FROM players WHERE $2 = True OR user_id = $1  AND player_name is not null
+                                SELECT player_tag, player_name FROM players WHERE $2 = True OR user_id = $1 AND player_name is not null AND season_id = $6
                             ),
                             cte2 AS (
                                 SELECT DISTINCT player_tag, 
@@ -317,6 +317,7 @@ class ActivityArgumentConverter(commands.Converter):
                                 INNER JOIN clans 
                                 ON clans.clan_tag = players.clan_tag 
                                 WHERE clans.guild_id = $3
+                                AND players.season_id = $6
                             )
                             SELECT player_tag, player_name FROM cte
                             WHERE player_tag = $4 
@@ -325,7 +326,6 @@ class ActivityArgumentConverter(commands.Converter):
                             SELECT player_tag, player_name FROM cte2
                             WHERE player_tag = $4 
                             OR player_name LIKE $5
-                            ORDER BY season_id DESC
                             """
             fetch = await ctx.db.fetchrow(
                 query,
@@ -333,7 +333,8 @@ class ActivityArgumentConverter(commands.Converter):
                 await ctx.bot.is_owner(ctx.author),
                 ctx.guild.id,
                 correct_tag(argument),
-                argument
+                argument,
+                await ctx.bot.seasonconfig.get_season_id(),
             )
             if fetch:
                 player = fetch
