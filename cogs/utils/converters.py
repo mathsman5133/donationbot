@@ -308,7 +308,7 @@ class ActivityArgumentConverter(commands.Converter):
 
             query = """
                             WITH cte AS (
-                                SELECT player_tag, player_name FROM players WHERE $2 = True OR user_id = $1 AND player_name is not null AND season_id = $6
+                                SELECT player_tag, player_name FROM players WHERE ($2 = True OR user_id = $1) AND player_name is not null AND season_id = $6
                             ),
                             cte2 AS (
                                 SELECT DISTINCT player_tag, 
@@ -420,7 +420,7 @@ class ActivityBarConverter(commands.Converter):
         if user:
             query = """
                     WITH player_tags AS (
-                        SELECT DISTINCT player_tag, player_name FROM players WHERE user_id = $1 AND player_name IS NOT null
+                        SELECT DISTINCT player_tag, player_name FROM players WHERE user_id = $1 AND player_name IS NOT null AND season_id = $3
                     ),
                     valid_times AS (
                         SELECT generate_series(min(hour_time), max(hour_time), '1 hour'::interval) as "time", player_tags.player_name
@@ -444,7 +444,7 @@ class ActivityBarConverter(commands.Converter):
                     GROUP BY valid_times.player_name, "hour"
                     ORDER BY valid_times.player_name, "hour"
                     """
-            fetch = await ctx.db.fetch(query, user.id, str(time_ or 365))
+            fetch = await ctx.db.fetch(query, user.id, str(time_ or 365), await ctx.bot.seasonconfig.get_season_id())
             if not fetch:
                 return None
 
