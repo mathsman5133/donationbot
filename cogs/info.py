@@ -350,6 +350,10 @@ class Info(commands.Cog, name='\u200bInfo'):
             board_channels = await ctx.db.fetch(query, guild.id)
             channels.update({n["channel_id"] for n in board_channels})
 
+            query = "SELECT channel_id FROM clans WHERE guild_id = $1"
+            clan_channels = await ctx.db.fetch(query, guild.id)
+            channels.update({n["channel_id"] for n in clan_channels})
+
         embeds = []
 
         for channel_id in channels:
