@@ -75,7 +75,7 @@ class Add(commands.Cog):
         if not coc.utils.is_valid_tag(clan_tag):
             return await ctx.send("That doesn't look like a proper clan tag. Please try again.")
 
-        current = await ctx.db.fetch("SELECT DISTINCT clan_tag FROM clans WHERE guild_id = $1 AND clan_tag != $2", ctx.guild.id, clan_tag)
+        current = await ctx.db.fetch("SELECT DISTINCT clan_tag FROM clans WHERE guild_id = $1", ctx.guild.id)
         # if len(current) > 3 and not checks.is_patron_pred(ctx):
         #     return await ctx.send('You must be a patron to have more than 4 clans claimed per server. '
         #                           'See more info with `+patron`, or join the support server for more help: '
