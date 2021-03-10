@@ -310,7 +310,13 @@ class Syncer:
         clan_tags = list(set(n['clan_tag'] for n in data))
         fetch = await pool.fetch(query, clan_tags)
 
-        clan_tag_to_channel_data = {r['clan_tag']: LogConfig(bot=None, record=r) for r in fetch}
+        clan_tag_to_channel_data = {}
+        for row in fetch:
+            try:
+                clan_tag_to_channel_data[row['clan_tag']].append(LogConfig(bot=None, record=row))
+            except KeyError:
+                clan_tag_to_channel_data[row['clan_tag']] = [LogConfig(bot=None, record=row)]
+
         events = [
             SlimTrophyEvent(
                 n['trophy_change'],
