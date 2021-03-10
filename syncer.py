@@ -327,7 +327,7 @@ class Syncer:
         fake_clan_players = {row['player_tag']: row['fake_clan_tag'] for row in fetch}
         if fake_clan_players:
             for event in data:
-                for log_config in clan_tag_to_channel_data.get(n['clan_tag'], []):
+                for log_config in clan_tag_to_channel_data.get(event['clan_tag'], []):
                     events.append(SlimTrophyEvent(
                         event['trophy_change'],
                         event['league_id'],
