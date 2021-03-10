@@ -90,7 +90,7 @@ class Add(commands.Cog):
         #                           'See more info with `+patron`, or join the support server for more help: '
         #                           f'{self.bot.support_invite}')
 
-        if await ctx.db.fetch("SELECT id FROM clans WHERE clan_tag = $1 AND channel_id = $2", clan_tag, channel.id):
+        if await ctx.db.fetch("SELECT id FROM clans WHERE clan_tag = $1 AND channel_id = $2", fake_clan_tag or clan_tag, channel.id):
             return await ctx.send('This clan has already been linked to the channel. Please try again.')
 
         if not fake_clan_tag:
