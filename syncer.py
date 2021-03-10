@@ -322,7 +322,7 @@ class Syncer:
             ) for n in data if clan_tag_to_channel_data.get(n['clan_tag'])
         ]
 
-        query = """SELECT DISTINCT player_tag, fake_clan_tag FROM players WHERE season_id = $1 AND fake_clan_tag is not null AND player_tag = ANY($1::TEXT[])"""
+        query = """SELECT DISTINCT player_tag, fake_clan_tag FROM players WHERE season_id = $1 AND fake_clan_tag is not null AND player_tag = ANY($2::TEXT[])"""
         fetch = await pool.fetch(query, self.season_id, [p['player_tag'] for p in data])
         fake_clan_players = {row['player_tag']: row['fake_clan_tag'] for row in fetch}
         if fake_clan_players:
@@ -398,7 +398,7 @@ class Syncer:
             except KeyError:
                 clan_tag_to_channel_data[row['clan_tag']] = [LogConfig(bot=None, record=row)]
 
-        query = """SELECT DISTINCT player_tag, fake_clan_tag FROM players WHERE season_id = $1 AND fake_clan_tag is not null AND player_tag = ANY($1::TEXT[])"""
+        query = """SELECT DISTINCT player_tag, fake_clan_tag FROM players WHERE season_id = $1 AND fake_clan_tag is not null AND player_tag = ANY($2::TEXT[])"""
         fetch = await pool.fetch(query, self.season_id, [p['player_tag'] for p in self.donationlog_batch_data])
         fake_clan_players = {row['player_tag']: row['fake_clan_tag'] for row in fetch}
 
