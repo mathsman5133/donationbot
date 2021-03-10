@@ -666,13 +666,13 @@ class Add(commands.Cog):
 
         if not clan_id:
             query = "INSERT INTO clans (channel_id, guild_id, clan_tag, fake_clan) VALUES ($1, $2, $3, True)"
-            clan_id = f"${str(ctx.channel.id)[-6:]}"
+            clan_id = str(ctx.channel.id)[-6:]
             await ctx.db.execute(query, ctx.channel.id, ctx.guild.id, clan_id)
 
         query = "UPDATE players SET fake_clan_tag = $1 WHERE player_tag = ANY($2::TEXT[]) AND season_id = $3"
         result = await ctx.db.execute(query, clan_id, valid_tags, await self.bot.seasonconfig.get_season_id())
 
-        await ctx.send(f"I've added {len(valid_tags)} {result} to your FakeClan ID: {clan_id}.")
+        await ctx.send(f"I've added {len(valid_tags)} players to your FakeClan ID: {clan_id}.")
 
     @makeclan.command(name="remove")
     async def makeclan_remove(self, ctx, *player_tags: str):
@@ -694,11 +694,12 @@ class Add(commands.Cog):
         await ctx.send(f"I've removed {len(valid_tags)} {result} from your FakeClan ID: {clan_id}.")
 
     @makeclan.command(name="list")
-    async def makeclan_list(self, ctx, clan_id: str):
-        clan_id = clan_id if "$" in clan_id else None
+    async def makeclan_list(self, ctx, clan_id: str = ""):
+        clan_id = clan_id.strip() if clan_id and clan_id.strip().isdigit() else None
         if not clan_id:
             query = "SELECT clan_tag FROM clans WHERE channel_id = $1 AND fake_clan = True"
-            clan_id = await ctx.db.fetchrow(query, ctx.channel.id)
+            fetch = await ctx.db.fetchrow(query, ctx.channel.id)
+            clan_id = fetch and fetch['clan_tag']
 
         if not clan_id:
             return await ctx.send(
