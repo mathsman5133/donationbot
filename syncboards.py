@@ -505,7 +505,7 @@ class SyncBoards:
                                         trophies - start_trophies AS "gain"
                        FROM players
                        INNER JOIN clans
-                       ON (clans.clan_tag = players.clan_tag OR (players.fake_clan_tag is not null and players.clan_tag = clans.clan_tag))
+                       ON (clans.clan_tag = players.clan_tag OR (players.fake_clan_tag is not null and players.fake_clan_tag = clans.clan_tag))
                        WHERE season_id = $1
                        ORDER BY {'donations' if config.sort_by == 'donation' else config.sort_by} DESC
                        NULLS LAST
@@ -559,7 +559,7 @@ class SyncBoards:
                                         trophies - start_trophies AS "gain"
                        FROM players
                        INNER JOIN clans
-                       ON (clans.clan_tag = players.clan_tag OR (players.fake_clan_tag is not null and players.clan_tag = clans.clan_tag))
+                       ON (clans.clan_tag = players.clan_tag OR (players.fake_clan_tag is not null and players.fake_clan_tag = clans.clan_tag))
                        WHERE clans.channel_id = $1
                        AND season_id = $2
                        ORDER BY {'donations' if config.sort_by == 'donation' else config.sort_by} DESC
