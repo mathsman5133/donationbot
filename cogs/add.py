@@ -650,7 +650,7 @@ class Add(commands.Cog):
             await ctx.send("Sorry, that token wasn't correct. Please run the command again.")
 
     @commands.group()
-    async def makeclan(self):
+    async def makeclan(self, ctx):
         ...
 
     @makeclan.command(name="create")
