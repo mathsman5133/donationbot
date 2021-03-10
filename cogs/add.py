@@ -73,9 +73,14 @@ class Add(commands.Cog):
         else:
             channel = ctx.message.channel_mentions[0]
 
-        clan_tag = coc.utils.correct_tag(clan_tag.replace(channel.mention, "").strip())
-        fake_clan_tag = clan_tag.replace(channel.mention, "").strip()
+        body = clan_tag
+
+        clan_tag = coc.utils.correct_tag(body.replace(channel.mention, "").strip())
+
+        fake_clan_tag = body.replace(channel.mention, "").strip()
+        print(fake_clan_tag)
         fake_clan_tag = fake_clan_tag if fake_clan_tag.isdigit() and len(fake_clan_tag) == 6 else None
+        print(fake_clan_tag)
         if not (coc.utils.is_valid_tag(clan_tag) or fake_clan_tag):
             return await ctx.send("That doesn't look like a proper clan tag. Please try again.")
 

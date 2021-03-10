@@ -531,7 +531,7 @@ class SyncBoards:
                         FROM legend_days 
                         INNER JOIN cte
                         ON cte.player_tag = legend_days.player_tag
-                        WHERE day = $1
+                        WHERE day = $2
                         ORDER BY {config.sort_by} DESC
                         NULLS LAST
                         LIMIT $3
@@ -539,8 +539,8 @@ class SyncBoards:
                     """
             fetch = await self.pool.fetch(
                 query,
-                self.legend_day,
                 config.channel_id,
+                self.legend_day,
                 self.get_next_per_page(config.page, config.per_page),
                 offset
             )
