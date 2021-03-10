@@ -663,10 +663,41 @@ class Add(commands.Cog):
 
     @commands.group()
     async def makeclan(self, ctx):
-        ...
+        """[Group] Make a "FakeClan" that is comprised of members you want; independant of any real clash of clans clan.
+
+        This may be a niche feature, but is helpful for those running competitions and leaderboards between a few
+        members of their clan, and/or over a few clans, but don't want the noise of those not involved to appear.
+
+        A fake clan works in exactly the same way as a normal clan - once you set it up you use the FakeClan ID
+        (a 6-digit number) instead of the clan tag. For example, `+add boards 123456` will create leaderboards for your
+        fake clan, provided your ID is 123456.
+
+        You can add, remove or list fake clans and their members.
+        """
 
     @makeclan.command(name="create")
     async def makeclan_create(self, ctx, *player_tags: str):
+        """Make a "FakeClan" that is comprised of members you want; independant of any real clash of clans clan.
+
+        This may be a niche feature, but is helpful for those running competitions and leaderboards between a few
+        members of their clan, and/or over a few clans, but don't want the noise of those not involved to appear.
+
+        A fake clan works in exactly the same way as a normal clan - once you set it up you use the FakeClan ID
+        (a 6-digit number) instead of the clan tag. For example, `+add boards 123456` will create leaderboards for your
+        fake clan, provided your ID is 123456.
+
+        If you run this command in the same channel as where an existing FakeClan has been created, it will add more players
+        to that FakeClan.
+
+        **Parameters**
+        :key: A list of player tags, seperated by a space.
+
+        **Format**
+        :information_source: `+makeclan create #PLAYERTAG #PLAYERTAG2 #PLAYERTAG3 #PLAYERTAG4`
+
+        **Example**
+        :white_check_mark: `+makeclan create #JY9J2Y99 #2PP #2PL`
+        """
         valid_tags = [coc.utils.correct_tag(tag) for tag in player_tags if coc.utils.is_valid_tag(tag)]
         if not valid_tags:
             return await ctx.send("I couldn't find any valid #player tags from your message. Please try again.")
@@ -689,11 +720,22 @@ class Add(commands.Cog):
 
     @makeclan.command(name="remove", aliases=["delete"])
     async def makeclan_remove(self, ctx, *player_tags: str):
+        """Remove members from a "FakeClan". It will use the FakeClan added to the current channel.
+
+        **Parameters**
+        :key: A list of player tags, seperated by a space.
+
+        **Format**
+        :information_source: `+makeclan remove #PLAYERTAG #PLAYERTAG2 #PLAYERTAG3 #PLAYERTAG4`
+
+        **Example**
+        :white_check_mark: `+makeclan remove #JY9J2Y99 #2PP #2PL`
+        """
         valid_tags = [coc.utils.correct_tag(tag) for tag in player_tags if coc.utils.is_valid_tag(tag)]
         if not valid_tags:
             return await ctx.send("I couldn't find any valid #player tags from your message. Please try again.")
 
-        clan_id = discord.utils.find(lambda tag: "$" in tag, player_tags)
+        clan_id = discord.utils.find(lambda tag: tag.isdigit(), player_tags)
         if not clan_id:
             query = "SELECT clan_tag FROM clans WHERE channel_id = $1 AND fake_clan = True"
             fetch = await ctx.db.fetchrow(query, ctx.channel.id)
@@ -709,6 +751,14 @@ class Add(commands.Cog):
 
     @makeclan.command(name="list")
     async def makeclan_list(self, ctx, clan_id: str = ""):
+        """List all members added to a "FakeClan" in the current channel.
+
+        **Format**
+        :information_source: `+makeclan list`
+
+        **Example**
+        :white_check_mark: `+makeclan list`
+        """
         clan_id = clan_id.strip() if clan_id and clan_id.strip().isdigit() else None
         if not clan_id:
             query = "SELECT clan_tag FROM clans WHERE channel_id = $1 AND fake_clan = True"

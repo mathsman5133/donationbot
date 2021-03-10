@@ -158,31 +158,32 @@ class Info(commands.Cog, name='\u200bInfo'):
 
     @commands.command(hidden=True)
     async def ping(self, ctx):
-        stats = self.bot.coc.http.stats
-        med = []
-        l_err = []
-        h_err = []
-        for key, perf in stats.items():
-            median = statistics.median(perf)
-            l_err.append(median - statistics.median_low(perf))
-            h_err.append(statistics.median_high(perf) - median)
-            med.append(median)
-
-        y_pos = np.arange(len(stats))
-        fig, ax = plt.subplots()
-        ax.barh(y_pos, med, xerr=[l_err, h_err])
-        ax.set_yticks(y_pos)
-        ax.set_yticklabels([k.replace("locations/global", "loc") for k in stats.keys()])
-        ax.invert_yaxis()  # labels read top-to-bottom
-        ax.set_xlabel("Median Latency (ms)")
-        ax.set_title("Median COC API Latency by Endpoint.")
-
-        plt.tight_layout()
-        b = io.BytesIO()
-        plt.savefig(b, format='png', pad_inches=0.2)
-        b.seek(0)
+        # stats = self.bot.coc.http.stats
+        # med = []
+        # l_err = []
+        # h_err = []
+        # for key, perf in stats.items():
+        #     median = statistics.median(perf)
+        #     l_err.append(median - statistics.median_low(perf))
+        #     h_err.append(statistics.median_high(perf) - median)
+        #     med.append(median)
+        #
+        # y_pos = np.arange(len(stats))
+        # fig, ax = plt.subplots()
+        # ax.barh(y_pos, med, xerr=[l_err, h_err])
+        # ax.set_yticks(y_pos)
+        # ax.set_yticklabels([k.replace("locations/global", "loc") for k in stats.keys()])
+        # ax.invert_yaxis()  # labels read top-to-bottom
+        # ax.set_xlabel("Median Latency (ms)")
+        # ax.set_title("Median COC API Latency by Endpoint.")
+        #
+        # plt.tight_layout()
+        # b = io.BytesIO()
+        # plt.savefig(b, format='png', pad_inches=0.2)
+        # b.seek(0)
         fmt = "\n".join(f'Shard ID: {i}, Latency: {n*1000:.2f}ms' for i, n in self.bot.latencies)
-        await ctx.send(f'Pong!\n{fmt}\nAverage Latency: {self.bot.latency*1000:.2f}ms', file=discord.File(b, f'cocapi.png'))
+        await ctx.send(f'Pong!\n{fmt}\nAverage Latency: {self.bot.latency*1000:.2f}ms')
+        # await ctx.send(f'Pong!\n{fmt}\nAverage Latency: {self.bot.latency*1000:.2f}ms', file=discord.File(b, f'cocapi.png'))
         plt.close()
 
     @commands.command(hidden=True)
