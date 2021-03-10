@@ -662,7 +662,8 @@ class Add(commands.Cog):
         clan_id = discord.utils.find(lambda tag: "$" in tag, player_tags)
         if not clan_id:
             query = "SELECT clan_tag FROM clans WHERE channel_id = $1 AND fake_clan = True"
-            clan_id = await ctx.db.fetchrow(query, ctx.channel.id)
+            fetch = await ctx.db.fetchrow(query, ctx.channel.id)
+            clan_id = fetch and fetch['clan_tag']
 
         if not clan_id:
             query = "INSERT INTO clans (channel_id, guild_id, clan_tag, fake_clan) VALUES ($1, $2, $3, True)"
@@ -674,7 +675,7 @@ class Add(commands.Cog):
 
         await ctx.send(f"I've added {len(valid_tags)} players to your FakeClan ID: {clan_id}.")
 
-    @makeclan.command(name="remove")
+    @makeclan.command(name="remove", aliases=["delete"])
     async def makeclan_remove(self, ctx, *player_tags: str):
         valid_tags = [coc.utils.correct_tag(tag) for tag in player_tags if coc.utils.is_valid_tag(tag)]
         if not valid_tags:
@@ -683,13 +684,14 @@ class Add(commands.Cog):
         clan_id = discord.utils.find(lambda tag: "$" in tag, player_tags)
         if not clan_id:
             query = "SELECT clan_tag FROM clans WHERE channel_id = $1 AND fake_clan = True"
-            clan_id = await ctx.db.fetchrow(query, ctx.channel.id)
+            fetch = await ctx.db.fetchrow(query, ctx.channel.id)
+            clan_id = fetch and fetch['clan_tag']
 
         if not clan_id:
             return await ctx.send("I couldn't find a FakeClan setup in this channel. Use `+help makeclan` for more info.")
 
         query = "UPDATE players SET fake_clan_tag = null WHERE player_tag = ANY($2::TEXT[]) AND season_id = $3"
-        result = await ctx.db.execute(query, clan_id, valid_tags, await self.bot.seasonconfig.get_season_id())
+        result = await ctx.db.execute(query, valid_tags, await self.bot.seasonconfig.get_season_id())
 
         await ctx.send(f"I've removed {len(valid_tags)} {result} from your FakeClan ID: {clan_id}.")
 

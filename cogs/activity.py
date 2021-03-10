@@ -52,6 +52,7 @@ class Activity(commands.Cog):
 
     @tasks.loop(hours=24.0)
     async def load_bot_wide_data(self):
+        await self.bot.wait_until_ready()
         query = """WITH cte AS (
                             SELECT cast(SUM(counter) as decimal) / COUNT(distinct player_tag) AS counter, 
                                    date_trunc('day', hour_time) AS "date" 
