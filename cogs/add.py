@@ -121,8 +121,8 @@ class Add(commands.Cog):
         else:
             clan = "FakeClan"
 
-        query = "INSERT INTO clans (clan_tag, guild_id, channel_id, clan_name) VALUES ($1, $2, $3, $4)"
-        await ctx.db.execute(query, fake_clan_tag or clan.tag, ctx.guild.id, channel.id, str(clan))
+        query = "INSERT INTO clans (clan_tag, guild_id, channel_id, clan_name, fake_clan) VALUES ($1, $2, $3, $4, $5)"
+        await ctx.db.execute(query, fake_clan_tag or clan.tag, ctx.guild.id, channel.id, str(clan), fake_clan_tag is not None)
 
         if not fake_clan_tag:
             season_id = await self.bot.seasonconfig.get_season_id()

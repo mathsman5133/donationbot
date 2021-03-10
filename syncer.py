@@ -255,7 +255,7 @@ class Syncer:
 
         try:
             s = time.perf_counter()
-            fetch = await pool.fetch("SELECT DISTINCT(clan_tag) FROM clans")
+            fetch = await pool.fetch("SELECT DISTINCT(clan_tag) FROM clans WHERE fake_clan = False")
             log.info(f"Setting {len(fetch)} tags to update")
             coc_client._clan_updates = [n[0] for n in fetch]
         except:
