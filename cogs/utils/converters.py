@@ -691,7 +691,7 @@ class ConvertToPlayers(commands.Converter):
                                   user_id 
                            FROM players
                            INNER JOIN clans
-                           ON (clans.clan_tag = players.clan_tag OR (clans.fake_clan_tag IS NOT NULL AND clans.clan_tag = players.fake_clan_tag))
+                           ON (clans.clan_tag = players.clan_tag OR (players.fake_clan_tag IS NOT NULL AND clans.clan_tag = players.fake_clan_tag))
                            WHERE clans.guild_id = $1 
                            AND players.season_id = $2
                         """
