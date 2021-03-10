@@ -36,7 +36,7 @@ class BackgroundManagement(commands.Cog):
         self.bot = bot
         self.next_event_starts.start()
         # self.daily_history_updater.start()
-        asyncio.ensure_future(self.sync_temp_event_tasks())
+        # asyncio.ensure_future(self.sync_temp_event_tasks())
         #self.sync_activity_stats.start()
         self._log_tasks = {}
         self.bot.loop.create_task(self.chunk_on_startup())

@@ -29,7 +29,6 @@ initial_extensions = [
     'cogs.botutils',
     'cogs.stats',
     'cogs.deprecated',
-    'cogs.guildsetup',
     'cogs.info',
     'cogs.reset_season',
     'cogs.activity',
