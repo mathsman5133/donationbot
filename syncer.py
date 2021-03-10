@@ -321,6 +321,37 @@ class Syncer:
                 clan_tag_to_channel_data.get(n['clan_tag'])
             ) for n in data if clan_tag_to_channel_data.get(n['clan_tag'])
         ]
+
+        query = """SELECT DISTINCT player_tag, fake_clan_tag FROM players WHERE season_id = $1 AND fake_clan_tag is not null AND player_tag = ANY($1::TEXT[])"""
+        fetch = await pool.fetch(query, self.season_id, [p['player_tag'] for p in data])
+        fake_clan_players = {row['player_tag']: row['fake_clan_tag'] for row in fetch}
+        if fake_clan_players:
+            for event in data:
+                for log_config in clan_tag_to_channel_data.get(n['clan_tag'], []):
+                    events.append(SlimTrophyEvent(
+                        event['trophy_change'],
+                        event['league_id'],
+                        event['player_name'],
+                        event['clan_tag'],
+                        event['clan_name'],
+                        log_config,
+                    ))
+
+                try:
+                    fake_clan_tag = fake_clan_players[event['player_tag']]
+                except KeyError:
+                    pass
+                else:
+                    for log_config in clan_tag_to_channel_data.get(fake_clan_tag, []):
+                        events.append(SlimTrophyEvent(
+                            event['trophy_change'],
+                            event['league_id'],
+                            event['player_name'],
+                            event['clan_tag'],
+                            event['clan_name'],
+                            log_config)
+                        )
+
         events.sort(key=lambda n: n.log_config.channel_id)
 
         for config, events in itertools.groupby(events, key=lambda n: n.log_config):
@@ -367,6 +398,10 @@ class Syncer:
             except KeyError:
                 clan_tag_to_channel_data[row['clan_tag']] = [LogConfig(bot=None, record=row)]
 
+        query = """SELECT DISTINCT player_tag, fake_clan_tag FROM players WHERE season_id = $1 AND fake_clan_tag is not null AND player_tag = ANY($1::TEXT[])"""
+        fetch = await pool.fetch(query, self.season_id, [p['player_tag'] for p in self.donationlog_batch_data])
+        fake_clan_players = {row['player_tag']: row['fake_clan_tag'] for row in fetch}
+
         events = []
         data = copy.copy(self.donationlog_batch_data)
         self.donationlog_batch_data.clear()
@@ -383,6 +418,23 @@ class Syncer:
                         log_config
                     )
                 )
+            try:
+                fake_clan_tag = fake_clan_players[event['player_tag']]
+            except KeyError:
+                pass
+            else:
+                for log_config in clan_tag_to_channel_data.get(fake_clan_tag, []):
+                    events.append(
+                        SlimDonationEvent2(
+                            event['donations'],
+                            event['received'],
+                            event['player_name'],
+                            event['player_tag'],
+                            event['clan_tag'],
+                            event['clan_name'],
+                            log_config
+                        )
+                    )
 
         events.sort(key=lambda n: n.log_config.channel_id)
 

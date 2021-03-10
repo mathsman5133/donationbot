@@ -505,7 +505,7 @@ class SyncBoards:
                                         trophies - start_trophies AS "gain"
                        FROM players
                        INNER JOIN clans
-                       ON clans.clan_tag = players.clan_tag
+                       ON (clans.clan_tag = players.clan_tag OR (players.fake_clan_tag is not null and players.clan_tag = clans.clan_tag))
                        WHERE season_id = $1
                        ORDER BY {'donations' if config.sort_by == 'donation' else config.sort_by} DESC
                        NULLS LAST
@@ -519,12 +519,19 @@ class SyncBoards:
                 offset
             )
         elif config.type == "legend":
-            query = f"""SELECT player_name, legend_days.clan_tag, clans.emoji, starting, gain, loss, finishing, legend_days.attacks, legend_days.defenses
+            query = f"""
+                        WITH cte AS (
+                            SELECT DISTINCT player_tag, emoji 
+                            FROM players 
+                            INNER JOIN clans 
+                            ON (clans.clan_tag = players.clan_tag OR (players.fake_clan_tag is not null and players.fake_clan_tag = clans.clan_tag)) 
+                            WHERE clans.channel_id = $1
+                        )
+                        SELECT player_name, legend_days.clan_tag, cte.emoji, starting, gain, loss, finishing, legend_days.attacks, legend_days.defenses
                         FROM legend_days 
-                        INNER JOIN clans
-                        ON clans.clan_tag = legend_days.clan_tag
+                        INNER JOIN cte
+                        ON cte.player_tag = legend_days.player_tag
                         WHERE day = $1
-                        AND clans.channel_id = $2
                         ORDER BY {config.sort_by} DESC
                         NULLS LAST
                         LIMIT $3
@@ -540,6 +547,7 @@ class SyncBoards:
         else:
             query = f"""SELECT DISTINCT player_name,
                                         players.clan_tag,
+                                        players.fake_clan_tag,
                                         clans.emoji,
                                         donations,
                                         received,
@@ -551,7 +559,7 @@ class SyncBoards:
                                         trophies - start_trophies AS "gain"
                        FROM players
                        INNER JOIN clans
-                       ON clans.clan_tag = players.clan_tag
+                       ON (clans.clan_tag = players.clan_tag OR (players.fake_clan_tag is not null and players.clan_tag = clans.clan_tag)
                        WHERE clans.channel_id = $1
                        AND season_id = $2
                        ORDER BY {'donations' if config.sort_by == 'donation' else config.sort_by} DESC
