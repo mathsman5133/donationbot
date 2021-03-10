@@ -74,7 +74,9 @@ class Add(commands.Cog):
             channel = ctx.message.channel_mentions[0]
 
         clan_tag = coc.utils.correct_tag(clan_tag.replace(channel.mention, "").strip())
-        if not coc.utils.is_valid_tag(clan_tag):
+        fake_clan_tag = clan_tag.replace(channel.mention, "").strip()
+        fake_clan_tag = fake_clan_tag if fake_clan_tag.isdigit() and len(fake_clan_tag) == 6 else None
+        if not (coc.utils.is_valid_tag(clan_tag) or fake_clan_tag):
             return await ctx.send("That doesn't look like a proper clan tag. Please try again.")
 
         current = await ctx.db.fetch("SELECT DISTINCT clan_tag FROM clans WHERE guild_id = $1", ctx.guild.id)
@@ -86,66 +88,71 @@ class Add(commands.Cog):
         if await ctx.db.fetch("SELECT id FROM clans WHERE clan_tag = $1 AND channel_id = $2", clan_tag, channel.id):
             return await ctx.send('This clan has already been linked to the channel. Please try again.')
 
-        try:
-            clan = await ctx.bot.coc.get_clan(clan_tag)
-        except coc.NotFound:
-            return await ctx.send(f'Clan not found with `{clan_tag}` tag.')
+        if not fake_clan_tag:
+            try:
+                clan = await ctx.bot.coc.get_clan(clan_tag)
+            except coc.NotFound:
+                return await ctx.send(f'Clan not found with `{clan_tag}` tag.')
 
-        fetch = await ctx.db.fetch("SELECT player_tag FROM players WHERE user_id = $1 AND verified = True", ctx.author.id)
-        members = [n for n in (clan.get_member(m['player_tag']) for m in fetch) if n]
-        is_verified = any(member.role in (coc.Role.elder, coc.Role.co_leader, coc.Role.leader) for member in members)
+            fetch = await ctx.db.fetch("SELECT player_tag FROM players WHERE user_id = $1 AND verified = True",
+                                       ctx.author.id)
+            members = [n for n in (clan.get_member(m['player_tag']) for m in fetch) if n]
+            is_verified = any(member.role in (coc.Role.elder, coc.Role.co_leader, coc.Role.leader) for member in members)
 
-        check = is_verified \
-                or await self.bot.is_owner(ctx.author) \
-                or clan_tag in (n['clan_tag'] for n in current) \
-                or ctx.guild.id in (RCS_GUILD_ID, MONZETTI_GUILD_ID) \
-                or await helper_check(self.bot, ctx.author) is True
+            check = is_verified \
+                    or await self.bot.is_owner(ctx.author) \
+                    or clan_tag in (n['clan_tag'] for n in current) \
+                    or ctx.guild.id in (RCS_GUILD_ID, MONZETTI_GUILD_ID) \
+                    or await helper_check(self.bot, ctx.author) is True
 
-        if not check and not fetch:
-            return await ctx.send("Please verify your account before adding a clan: `+verify #playertag`. "
-                                  "See `+help verify` for more information.\n\n"
-                                  "This is a security feature of the bot to ensure you are an elder or above of the clan.")
-        if not members and not check:
-            return await ctx.send("Please ensure your verified account(s) are in the clan, and try again.")
-        if members and not check:
-            return await ctx.send("Your verified account(s) are not an elder or above. Please try again.")
+            if not check and not fetch:
+                return await ctx.send("Please verify your account before adding a clan: `+verify #playertag`. "
+                                      "See `+help verify` for more information.\n\n"
+                                      "This is a security feature of the bot to ensure you are an elder or above of the clan.")
+            if not members and not check:
+                return await ctx.send("Please ensure your verified account(s) are in the clan, and try again.")
+            if members and not check:
+                return await ctx.send("Your verified account(s) are not an elder or above. Please try again.")
+        else:
+            clan = "FakeClan"
 
         query = "INSERT INTO clans (clan_tag, guild_id, channel_id, clan_name) VALUES ($1, $2, $3, $4)"
-        await ctx.db.execute(query, clan.tag, ctx.guild.id, channel.id, clan.name)
+        await ctx.db.execute(query, fake_clan_tag or clan.tag, ctx.guild.id, channel.id, str(clan))
 
-        season_id = await self.bot.seasonconfig.get_season_id()
-        query = """INSERT INTO players (
-                                        player_tag, 
-                                        donations, 
-                                        received, 
-                                        trophies, 
-                                        start_trophies, 
-                                        season_id,
-                                        clan_tag,
-                                        player_name,
-                                        best_trophies,
-                                        legend_trophies
-                                        ) 
-                    VALUES ($1,$2,$3,$4,$4,$5,$6,$7,$8,$9) 
-                    ON CONFLICT (player_tag, season_id) 
-                    DO UPDATE SET clan_tag = $6
-                """
-        async with ctx.db.transaction():
-            async for member in clan.get_detailed_members():
-                await ctx.db.execute(
-                    query,
-                    member.tag,
-                    member.donations,
-                    member.received,
-                    member.trophies,
-                    season_id,
-                    clan.tag,
-                    member.name,
-                    member.best_trophies,
-                    member.legend_statistics and member.legend_statistics.legend_trophies or 0
-                )
+        if not fake_clan_tag:
+            season_id = await self.bot.seasonconfig.get_season_id()
+            query = """INSERT INTO players (
+                                            player_tag, 
+                                            donations, 
+                                            received, 
+                                            trophies, 
+                                            start_trophies, 
+                                            season_id,
+                                            clan_tag,
+                                            player_name,
+                                            best_trophies,
+                                            legend_trophies
+                                            ) 
+                        VALUES ($1,$2,$3,$4,$4,$5,$6,$7,$8,$9) 
+                        ON CONFLICT (player_tag, season_id) 
+                        DO UPDATE SET clan_tag = $6
+                    """
+            async with ctx.db.transaction():
+                async for member in clan.get_detailed_members():
+                    await ctx.db.execute(
+                        query,
+                        member.tag,
+                        member.donations,
+                        member.received,
+                        member.trophies,
+                        season_id,
+                        clan.tag,
+                        member.name,
+                        member.best_trophies,
+                        member.legend_statistics and member.legend_statistics.legend_trophies or 0
+                    )
 
-        await ctx.send(f"👌 {clan} ({clan.tag}) successfully added to {channel.mention}.")
+        await ctx.send(f"👌 {clan} ({fake_clan_tag or clan.tag}) successfully added to {channel.mention}.")
         ctx.channel = channel  # modify for `on_clan_claim` listener
         self.bot.dispatch('clan_claim', ctx, clan)
 
