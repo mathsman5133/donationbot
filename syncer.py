@@ -317,6 +317,8 @@ class Syncer:
             except KeyError:
                 clan_tag_to_channel_data[row['clan_tag']] = [LogConfig(bot=None, record=row)]
 
+        log.info('for trophylogs there are %s clan tags/channel data entries', len(clan_tag_to_channel_data))
+
         query = """SELECT DISTINCT player_tag, fake_clan_tag FROM players WHERE season_id = $1 AND fake_clan_tag is not null AND player_tag = ANY($2::TEXT[])"""
         fetch = await pool.fetch(query, self.season_id, [p['player_tag'] for p in data])
         fake_clan_players = {row['player_tag']: row['fake_clan_tag'] for row in fetch}
@@ -349,6 +351,7 @@ class Syncer:
                         )
 
         events.sort(key=lambda n: n.log_config.channel_id)
+        log.info('running trophylogs for %s events', len(events))
 
         for config, events in itertools.groupby(events, key=lambda n: n.log_config):
             log.debug(f"running {config.channel_id}")
