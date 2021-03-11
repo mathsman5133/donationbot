@@ -323,32 +323,31 @@ class Syncer:
         fetch = await pool.fetch(query, self.season_id, [p['player_tag'] for p in data])
         fake_clan_players = {row['player_tag']: row['fake_clan_tag'] for row in fetch}
         events = []
-        if fake_clan_players:
-            for event in data:
-                for log_config in clan_tag_to_channel_data.get(event['clan_tag'], []):
+        for event in data:
+            for log_config in clan_tag_to_channel_data.get(event['clan_tag'], []):
+                events.append(SlimTrophyEvent(
+                    event['trophy_change'],
+                    event['league_id'],
+                    event['player_name'],
+                    event['clan_tag'],
+                    event['clan_name'],
+                    log_config,
+                ))
+
+            try:
+                fake_clan_tag = fake_clan_players[event['player_tag']]
+            except KeyError:
+                pass
+            else:
+                for log_config in clan_tag_to_channel_data.get(fake_clan_tag, []):
                     events.append(SlimTrophyEvent(
                         event['trophy_change'],
                         event['league_id'],
                         event['player_name'],
                         event['clan_tag'],
                         event['clan_name'],
-                        log_config,
-                    ))
-
-                try:
-                    fake_clan_tag = fake_clan_players[event['player_tag']]
-                except KeyError:
-                    pass
-                else:
-                    for log_config in clan_tag_to_channel_data.get(fake_clan_tag, []):
-                        events.append(SlimTrophyEvent(
-                            event['trophy_change'],
-                            event['league_id'],
-                            event['player_name'],
-                            event['clan_tag'],
-                            event['clan_name'],
-                            log_config)
-                        )
+                        log_config)
+                    )
 
         events.sort(key=lambda n: n.log_config.channel_id)
         log.info('running trophylogs for %s events', len(events))
