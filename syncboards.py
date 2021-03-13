@@ -521,16 +521,21 @@ class SyncBoards:
         elif config.type == "legend":
             query = f"""
                         WITH cte AS (
-                            SELECT DISTINCT player_tag, player_name, emoji 
+                            SELECT DISTINCT player_tag, player_name 
                             FROM players 
                             INNER JOIN clans 
-                            ON (clans.clan_tag = players.clan_tag OR (players.fake_clan_tag is not null and players.fake_clan_tag = clans.clan_tag)) 
+                            ON clans.clan_tag = players.clan_tag OR players.fake_clan_tag = clans.clan_tag
                             WHERE clans.channel_id = $1
+                        ),
+                        cte2 AS (
+                            SELECT emoji, clan_tag FROM clans WHERE channel_id=$1
                         )
-                        SELECT DISTINCT cte.player_name, legend_days.clan_tag, cte.emoji, starting, gain, loss, finishing, legend_days.attacks, legend_days.defenses
+                        SELECT DISTINCT cte.player_name, legend_days.clan_tag, cte2.emoji, starting, gain, loss, finishing, legend_days.attacks, legend_days.defenses
                         FROM legend_days 
                         INNER JOIN cte
                         ON cte.player_tag = legend_days.player_tag
+                        INNER JOIN cte2 
+                        ON legend_days.clan_tag = cte2.clan_tag
                         WHERE day = $2
                         ORDER BY {config.sort_by} DESC
                         NULLS LAST
