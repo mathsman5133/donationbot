@@ -744,7 +744,7 @@ class Add(commands.Cog):
         if not clan_id:
             return await ctx.send("I couldn't find a FakeClan setup in this channel. Use `+help makeclan` for more info.")
 
-        query = "UPDATE players SET fake_clan_tag = null WHERE player_tag = ANY($2::TEXT[]) AND season_id = $3"
+        query = "UPDATE players SET fake_clan_tag = null WHERE player_tag = ANY($1::TEXT[]) AND season_id = $2"
         result = await ctx.db.execute(query, valid_tags, await self.bot.seasonconfig.get_season_id())
 
         await ctx.send(f"I've removed {len(valid_tags)} {result} from your FakeClan ID: {clan_id}.")
