@@ -314,7 +314,7 @@ class Syncer:
                           detailed  
                     FROM logs 
                     INNER JOIN clans 
-                    ON clans.clan_tag = logs.clan_tag
+                    ON clans.channel_id = logs.channel_id
                     INNER JOIN players
                     ON players.fake_clan_tag = clans.clan_tag
                     WHERE player_tag = ANY($1::TEXT[])
@@ -413,7 +413,7 @@ class Syncer:
                           detailed  
                     FROM logs 
                     INNER JOIN clans 
-                    ON clans.clan_tag = logs.clan_tag
+                    ON logs.channel_id = clans.channel_id 
                     INNER JOIN players
                     ON players.fake_clan_tag = clans.clan_tag
                     WHERE player_tag = ANY($1::TEXT[])
