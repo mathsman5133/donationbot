@@ -305,13 +305,32 @@ class Syncer:
                    AND logs.toggle = TRUE
                    AND logs.type = 'trophy'
                 """
+        query2 = """SELECT logs.channel_id, 
+                          clans.clan_tag,
+                          logs.guild_id, 
+                          "interval", 
+                          toggle,
+                          type,
+                          detailed  
+                    FROM logs 
+                    INNER JOIN clans 
+                    ON clans.clan_tag = logs.clan_tag
+                    INNER JOIN players
+                    ON players.fake_clan_tag = clans.clan_tag
+                    WHERE player_tag = ANY($1::TEXT[])
+                    AND logs.toggle = True
+                    AND logs.type = 'trophy'
+                """
         data = copy.copy(self.trophylog_batch_data)
         self.trophylog_batch_data.clear()
         clan_tags = list(set(n['clan_tag'] for n in data))
+        player_tags = list(set(p['player_tag'] for p in self.donationlog_batch_data))
+
         fetch = await pool.fetch(query, clan_tags)
+        fetch2 = await pool.fetch(query2, player_tags)
 
         clan_tag_to_channel_data = {}
-        for row in fetch:
+        for row in itertools.chain(fetch, fetch2):
             try:
                 clan_tag_to_channel_data[row['clan_tag']].append(LogConfig(bot=None, record=row))
             except KeyError:
@@ -385,19 +404,38 @@ class Syncer:
                    AND logs.toggle = TRUE
                    AND logs.type = 'donation'
                 """
+        query2 = """SELECT logs.channel_id, 
+                          clans.clan_tag,
+                          logs.guild_id, 
+                          "interval", 
+                          toggle,
+                          type,
+                          detailed  
+                    FROM logs 
+                    INNER JOIN clans 
+                    ON clans.clan_tag = logs.clan_tag
+                    INNER JOIN players
+                    ON players.fake_clan_tag = clans.clan_tag
+                    WHERE player_tag = ANY($1::TEXT[])
+                    AND logs.toggle = True
+                    AND logs.type = 'donation'
+                """
         clan_tags = list(set(n['clan_tag'] for n in self.donationlog_batch_data))
+        player_tags = list(set(p['player_tag'] for p in self.donationlog_batch_data))
+
         log.debug(f"clan tags: {clan_tags}")
         fetch = await pool.fetch(query, clan_tags)
+        fetch2 = await pool.fetch(query2, player_tags)
 
         clan_tag_to_channel_data = {}
-        for row in fetch:
+        for row in itertools.chain(fetch, fetch2):
             try:
                 clan_tag_to_channel_data[row['clan_tag']].append(LogConfig(bot=None, record=row))
             except KeyError:
                 clan_tag_to_channel_data[row['clan_tag']] = [LogConfig(bot=None, record=row)]
 
         query = """SELECT DISTINCT player_tag, fake_clan_tag FROM players WHERE season_id = $1 AND fake_clan_tag is not null AND player_tag = ANY($2::TEXT[])"""
-        fetch = await pool.fetch(query, self.season_id, [p['player_tag'] for p in self.donationlog_batch_data])
+        fetch = await pool.fetch(query, self.season_id, )
         fake_clan_players = {row['player_tag']: row['fake_clan_tag'] for row in fetch}
 
         events = []
@@ -559,6 +597,19 @@ class Syncer:
                     WHERE boards.channel_id = x.channel_id
                     AND boards.type = ANY($2::TEXT[])
                 """
+        query4 = """UPDATE boards
+                    SET need_to_update = TRUE
+                    FROM (
+                        SELECT DISTINCT channel_id
+                        FROM clans
+                        INNER JOIN players 
+                        ON players.fake_clan_tag = clans.clan_tag
+                        WHERE players.clan_tag = ANY($1::TEXT[])
+                    )
+                    AS x
+                    WHERE boards.channel_id = x.channel_id
+                    AND boards.type = ANY($2::TEXT[])
+        """
         trans_query = """UPDATE players 
                          SET donations = public.get_don_rec_max($1, $2, COALESCE(players.donations, 0)), 
                              received  = public.get_don_rec_max($3, $4, COALESCE(players.received, 0)), 
@@ -592,12 +643,14 @@ class Syncer:
                 async with self.last_updated_batch_lock:
                     tags = set(tag for (tag, counter) in self.boards_counter.items() if counter > 10)
                     response = await pool.execute(query3, list(tags), ['donation', 'trophy'])
+                    response = await pool.execute(query4, list(tags), ['donation', 'trophy'])
                     for k in tags:
                         self.boards_counter.pop(k, None)
 
                 async with self.legend_data_lock:
                     tags = set(tag for (tag, counter) in self.legend_counter.items() if counter > 3)
                     response2 = await pool.execute(query3, list(tags), ['legend'])
+                    response2 = await pool.execute(query4, list(tags), ['legend'])
                     for k in tags:
                         self.legend_counter.pop(k, None)
 
