@@ -257,7 +257,7 @@ class Syncer:
             s = time.perf_counter()
             fetch = await pool.fetch("SELECT DISTINCT(clan_tag) FROM clans WHERE fake_clan = False")
             log.info(f"Setting {len(fetch)} tags to update")
-            coc_client._clan_updates = [n[0] for n in fetch]
+            coc_client._clan_updates = [n[0] for n in fetch if coc.utils.is_valid_tag(n[0])]
         except:
             log.exception("setting clan tags failed")
         else:
@@ -339,7 +339,7 @@ class Syncer:
         log.info('for trophylogs there are %s clan tags/channel data entries', len(clan_tag_to_channel_data))
 
         query = """SELECT DISTINCT player_tag, fake_clan_tag FROM players WHERE season_id = $1 AND fake_clan_tag is not null AND player_tag = ANY($2::TEXT[])"""
-        fetch = await pool.fetch(query, self.season_id, [p['player_tag'] for p in data])
+        fetch = await pool.fetch(query, self.season_id, player_tags)
         fake_clan_players = {row['player_tag']: row['fake_clan_tag'] for row in fetch}
         events = []
         for event in data:
@@ -435,7 +435,7 @@ class Syncer:
                 clan_tag_to_channel_data[row['clan_tag']] = [LogConfig(bot=None, record=row)]
 
         query = """SELECT DISTINCT player_tag, fake_clan_tag FROM players WHERE season_id = $1 AND fake_clan_tag is not null AND player_tag = ANY($2::TEXT[])"""
-        fetch = await pool.fetch(query, self.season_id, )
+        fetch = await pool.fetch(query, self.season_id, player_tags)
         fake_clan_players = {row['player_tag']: row['fake_clan_tag'] for row in fetch}
 
         events = []
