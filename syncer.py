@@ -1091,7 +1091,7 @@ class Syncer:
                 attacks_to_load = [
                     {
                         "clan_tag": war.clan_tag,
-                        "prep_start_time": war.preparation_start_time.time,
+                        "prep_start_time": war.preparation_start_time.time.isoformat(),
                         "player_tag": attack.attacker_tag,
                         "defender_tag": attack.defender_tag,
                         "attack_order": attack.order,
@@ -1153,7 +1153,7 @@ class Syncer:
 
                     attacks_to_load.append({
                         "clan_tag": war.clan_tag,
-                        "prep_start_time": war.preparation_start_time.time,
+                        "prep_start_time": war.preparation_start_time.time.isoformat(),
                         "player_tag": attack.attacker_tag,
                         "defender_tag": attack.defender_tag,
                         "attack_order": attack.order,
