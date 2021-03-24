@@ -49,12 +49,24 @@ Other Info:
 """
 
 
+class Help(commands.DefaultHelpCommand):
+    def send_bot_help(self, mapping):
+        return self.context.invoke(self.context.bot.get_command("help"))
+    def send_cog_help(self, cog):
+        return self.context.invoke(self.context.bot.get_command("help"), str(cog))
+    def send_command_help(self, command):
+        return self.context.invoke(self.context.bot.get_command("help"), str(command.name))
+    def send_group_help(self, group):
+        return self.context.invoke(self.context.bot.get_command("help"), str(group.name))
+
+
 class Info(commands.Cog, name='\u200bInfo'):
     """Misc commands related to the bot."""
     def __init__(self, bot):
         self.bot = bot
 
         self._old_help = bot.help_command
+        bot.help_command = Help
         bot.remove_command("help")
         # bot.help_command = self.help()
         # bot.help_command.cog = self
@@ -316,7 +328,7 @@ class Info(commands.Cog, name='\u200bInfo'):
 
             if isinstance(command, commands.Group):
                 for subcommand in command.commands:
-                    embed.add_field(name=ctx.prefix + subcommand.full_parent_name + " " + subcommand.name, value=subcommand.brief)
+                    embed.add_field(name=ctx.prefix + subcommand.full_parent_name + " " + subcommand.name, value=subcommand.short_doc)
 
             try:
                 await command.can_run(ctx)
