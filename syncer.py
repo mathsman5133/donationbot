@@ -1131,7 +1131,8 @@ class Syncer:
 
             maybe_load = []
             async for war in coc_client.get_clan_wars(tags):
-                if not war:
+                if not (war and war.end_time):
+                    log.info('skipping war %s', war)
                     continue
                 if war.end_time.time > now:
                     # create sleeper task
