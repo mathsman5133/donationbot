@@ -66,7 +66,7 @@ class Info(commands.Cog, name='\u200bInfo'):
         self.bot = bot
 
         self._old_help = bot.help_command
-        bot.help_command = Help
+        bot.help_command = Help()
         bot.remove_command("help")
         # bot.help_command = self.help()
         # bot.help_command.cog = self
