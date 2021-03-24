@@ -1140,7 +1140,7 @@ class Syncer:
                     self.war_tasks[war.clan_tag] = self.loop.create_task(self.sleep_for_war_end(war))
                 else:
                     log.info('running end of war things for %s clan tag', war.clan_tag)
-                    query = "SELECT MAX(attack_order) FROM war_attacks WHERE prep_start_time = $1 AND clan_tag = $2"
+                    query = "SELECT MAX(attack_order) as max FROM war_attacks WHERE prep_start_time = $1 AND clan_tag = $2"
                     fetch = await pool.fetch(query, war.preparation_start_time.time, war.clan_tag)
                     if len(war.clan.attacks) > len(fetch):
                         maybe_load.append((war, fetch))
@@ -1148,7 +1148,7 @@ class Syncer:
             attacks_to_load = []
             for war, fetch in maybe_load:
                 for attack in war.clan.attacks:
-                    if attack.order < fetch[0]:
+                    if attack.order < fetch[0]['max']:
                         continue
 
                     attacks_to_load.append({
