@@ -419,9 +419,9 @@ class Info(commands.Cog, name='\u200bInfo'):
                 embed.add_field(name="\u200b", value=fmt)
 
             query = "SELECT COUNT(*) FROM players WHERE fake_clan_tag = $1 AND season_id = $2"
-            for clan in (c["clan_tag"] for c in clan_tags if c["fake_clan"]):
-                fetch = await ctx.db.fetchrow(query)
-                fmt = f":notepad_spiral: FakeClan ID: {clan['clan_tag']})\n" \
+            for clan_tag in (c["clan_tag"] for c in clan_tags if c["fake_clan"]):
+                fetch = await ctx.db.fetchrow(query, clan_tag, await self.bot.seasonconfig.get_season_id())
+                fmt = f":notepad_spiral: FakeClan ID: {clan_tag})\n" \
                       f":person_bowing: Members: {fetch[0]}\n\n"
                 embed.add_field(name="\u200b", value=fmt)
 
