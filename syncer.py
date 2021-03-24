@@ -1126,6 +1126,7 @@ class Syncer:
     async def load_wars(self):
         try:
             tags = set(coc_client._clan_updates) - set(self.war_tasks.keys())
+            log.info('loading %s wars', len(tags))
             now = datetime.datetime.utcnow()
 
             maybe_load = []
