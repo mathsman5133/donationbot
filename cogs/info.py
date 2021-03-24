@@ -53,11 +53,11 @@ class Help(commands.DefaultHelpCommand):
     def send_bot_help(self, mapping):
         return self.context.invoke(self.context.bot.get_command("help"))
     def send_cog_help(self, cog):
-        return self.context.invoke(self.context.bot.get_command("help"), str(cog))
+        return self.context.invoke(self.context.bot.get_command("help"), query=str(cog))
     def send_command_help(self, command):
-        return self.context.invoke(self.context.bot.get_command("help"), str(command.name))
+        return self.context.invoke(self.context.bot.get_command("help"), query=str(command.name))
     def send_group_help(self, group):
-        return self.context.invoke(self.context.bot.get_command("help"), str(group.name))
+        return self.context.invoke(self.context.bot.get_command("help"), query=str(group.name))
 
 
 class Info(commands.Cog, name='\u200bInfo'):
@@ -421,7 +421,7 @@ class Info(commands.Cog, name='\u200bInfo'):
             query = "SELECT COUNT(*) FROM players WHERE fake_clan_tag = $1 AND season_id = $2"
             for clan_tag in (c["clan_tag"] for c in clan_tags if c["fake_clan"]):
                 fetch = await ctx.db.fetchrow(query, clan_tag, await self.bot.seasonconfig.get_season_id())
-                fmt = f":notepad_spiral: FakeClan ID: {clan_tag})\n" \
+                fmt = f":notepad_spiral: FakeClan ID: {clan_tag}\n" \
                       f":person_bowing: Members: {fetch[0]}\n\n"
                 embed.add_field(name="\u200b", value=fmt)
 
