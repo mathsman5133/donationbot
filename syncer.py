@@ -1122,7 +1122,7 @@ class Syncer:
             self.war_tasks.pop(war.clan_tag)
             return
 
-    @tasks.loop(minutes=10.0)
+    @tasks.loop(seconds=30.0)
     async def load_wars(self):
         try:
             tags = set(coc_client._clan_updates) - set(self.war_tasks.keys())
