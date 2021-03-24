@@ -279,6 +279,20 @@ create table events (
     trophy_msg bigint default 0
 );
 
+create table war_attacks(
+    id serial primary key,
+    clan_tag TEXT,
+    prep_start_time TIMESTAMP,
+    load_time TIMESTAMP default now(),
+    player_tag TEXT,
+    defender_tag TEXT,
+    attack_order INTEGER,
+    stars INTEGER,
+    destruction DECIMAL,
+    unique(prep_start_time, clan_tag, attack_order)
+);
+create index player_tag_idx on war_attacks (player_tag);
+
 CREATE OR REPLACE FUNCTION public.get_event_id(guild_id bigint)
  RETURNS integer
  LANGUAGE plpgsql

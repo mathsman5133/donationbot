@@ -83,6 +83,7 @@ class Syncer:
         self.boards_counter = Counter()
 
         self._log_tasks = {}
+        self.war_tasks = {}
 
     async def get_season_id(self):
         fetch = await pool.fetchrow("SELECT id FROM seasons WHERE start < now() ORDER BY start DESC;")
@@ -111,6 +112,8 @@ class Syncer:
 
         self.sync_temp_event_tasks.add_exception_type(Exception, BaseException)
         self.sync_temp_event_tasks.start()
+
+        self.load_wars.start()
 
         coc_client.run_forever()
 
@@ -1067,6 +1070,113 @@ class Syncer:
     @coc.ClientEvents.maintenance_completion()
     async def maintenance_completed(self, start_time):
         await self.safe_send(594286547449282587, f"Maintenance has finished, started at {start_time}!")
+
+    async def sleep_for_war_end(self, war):
+        await asyncio.sleep(war.end_time.seconds_until - 600)
+        while True:
+            try:
+                new_war = await coc_client.get_clan_war(war.clan_tag)
+            except Exception as exc:
+                log.info('exception occured trying to fetch war for %s, exc: %s', war.clan_tag, exc)
+                self.war_tasks.pop(war.clan_tag)
+                return
+
+            if not new_war:
+                pass
+            elif new_war.state == "inWar":
+                war = new_war
+                await asyncio.sleep(war.end_time.seconds_until)
+                continue
+            elif new_war.state == "warEnded":
+                attacks_to_load = [
+                    {
+                        "clan_tag": war.clan_tag,
+                        "prep_start_time": war.preparation_start_time.time,
+                        "player_tag": attack.attacker_tag,
+                        "defender_tag": attack.defender_tag,
+                        "attack_order": attack.order,
+                        "stars": attack.stars,
+                        "destruction": attack.destruction,
+                    }
+                    for attack in war.clan.attacks
+                ]
+
+                query = """
+                INSERT INTO war_attacks (clan_tag, prep_start_time, load_time, player_tag, defender_tag, attack_order, stars, destruction)
+                SELECT x.clan_tag, x.prep_start_time, x.player_tag, x.defender_tag, x.attack_order, x.stars, x.destruction
+                FROM jsonb_to_recordset($1::jsonb)
+                AS x(
+                    clan_tag TEXT,
+                    prep_start_time TIMESTAMP,
+                    player_tag TEXT,
+                    defender_tag TEXT,
+                    attack_order INTEGER,
+                    stars INTEGER,
+                    destruction DECIMAL
+                )
+                RETURNING 1
+                """
+                result = await pool.fetch(query, attacks_to_load)
+                log.info('saving %s attacks for %s clan because war ended.', len(result), war.clan_tag)
+
+            self.war_tasks.pop(war.clan_tag)
+            return
+
+    @tasks.loop(minutes=10.0)
+    async def load_wars(self):
+        try:
+            tags = set(coc_client._clan_updates) - set(self.war_tasks.keys())
+            now = datetime.datetime.utcnow()
+
+            maybe_load = []
+            async for war in coc_client.get_clan_wars(tags):
+                if not war:
+                    continue
+                if war.end_time.time > now:
+                    # create sleeper task
+                    log.info('creating war task for %s clan tag', war.clan_tag)
+                    self.war_tasks[war.clan_tag] = self.loop.create_task(self.sleep_for_war_end(war))
+                else:
+                    log.info('running end of war things for %s clan tag', war.clan_tag)
+                    query = "SELECT MAX(attack_order) FROM war_attacks WHERE prep_start_time = $1 AND clan_tag = $2"
+                    fetch = await pool.fetch(query, war.preparation_start_time.time, war.clan_tag)
+                    if len(fetch) > len(war.clan.attacks):
+                        maybe_load.append((war, fetch))
+
+            attacks_to_load = []
+            for war, fetch in maybe_load:
+                for attack in war.clan.attacks:
+                    if attack.order < fetch[0]:
+                        continue
+
+                    attacks_to_load.append({
+                        "clan_tag": war.clan_tag,
+                        "prep_start_time": war.preparation_start_time.time,
+                        "player_tag": attack.attacker_tag,
+                        "defender_tag": attack.defender_tag,
+                        "attack_order": attack.order,
+                        "stars": attack.stars,
+                        "destruction": attack.destruction,
+                    })
+
+            query = """
+            INSERT INTO war_attacks (clan_tag, prep_start_time, load_time, player_tag, defender_tag, attack_order, stars, destruction)
+            SELECT x.clan_tag, x.prep_start_time, x.player_tag, x.defender_tag, x.attack_order, x.stars, x.destruction
+            FROM jsonb_to_recordset($1::jsonb)
+            AS x(
+                clan_tag TEXT,
+                prep_start_time TIMESTAMP,
+                player_tag TEXT,
+                defender_tag TEXT,
+                attack_order INTEGER,
+                stars INTEGER,
+                destruction DECIMAL
+            )
+            """
+            await pool.execute(query, attacks_to_load)
+
+        except Exception as exc:
+            log.exception('failed to run war syncer.')
 
     async def fetch_webhooks(self):
         bot.error_webhooks = itertools.cycle([await bot.fetch_webhook(id_) for id_ in (749580949968388126, 749580957362946089, 749580961477296138, 749580975511568554, 749580988530556978, 749581056184942603)])
