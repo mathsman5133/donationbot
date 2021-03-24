@@ -739,6 +739,11 @@ class ConvertToPlayers(commands.Converter):
             except commands.BadArgument:
                 pass
 
+        if argument.strip().isdigit():
+            corrected = argument.strip()
+        else:
+            corrected = correct_tag(argument)
+
         if not player:
             query = """SELECT DISTINCT player_tag, 
                               player_name,
@@ -758,7 +763,8 @@ class ConvertToPlayers(commands.Converter):
                        OR clans.clan_name LIKE $2 
                        AND players.season_id = $3
                     """
-            fetch = await ctx.db.fetch(query, correct_tag(argument), argument, season_id)
+
+            fetch = await ctx.db.fetch(query, corrected, argument, season_id)
 
             if fetch:
                 return fetch
@@ -779,7 +785,7 @@ class ConvertToPlayers(commands.Converter):
                        OR player_name LIKE $2 
                        AND players.season_id = $3
                     """
-            fetch = await ctx.db.fetch(query, correct_tag(argument), argument, season_id)
+            fetch = await ctx.db.fetch(query, corrected, argument, season_id)
             if fetch:
                 return fetch
 
