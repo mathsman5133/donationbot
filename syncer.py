@@ -1132,7 +1132,7 @@ class Syncer:
             maybe_load = []
             async for war in coc_client.get_clan_wars(tags):
                 if not (war and war.end_time):
-                    log.info('skipping war %s', war)
+                    log.info('skipping war %s, clan_tag %s', war, war.clan_tag)
                     continue
                 if war.end_time.time > now:
                     # create sleeper task
@@ -1142,7 +1142,7 @@ class Syncer:
                     log.info('running end of war things for %s clan tag', war.clan_tag)
                     query = "SELECT MAX(attack_order) FROM war_attacks WHERE prep_start_time = $1 AND clan_tag = $2"
                     fetch = await pool.fetch(query, war.preparation_start_time.time, war.clan_tag)
-                    if len(fetch) > len(war.clan.attacks):
+                    if len(war.clan.attacks) > len(fetch):
                         maybe_load.append((war, fetch))
 
             attacks_to_load = []
