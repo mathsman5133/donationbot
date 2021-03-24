@@ -496,7 +496,8 @@ class Add(commands.Cog):
                         guild_id,
                         $2,
                         clan_name,
-                        in_event
+                        in_event,
+                        fake_clan
 
                    FROM clans
                    WHERE guild_id = $1
@@ -661,8 +662,8 @@ class Add(commands.Cog):
         else:
             await ctx.send("Sorry, that token wasn't correct. Please run the command again.")
 
-    @commands.group()
-    async def makeclan(self, ctx):
+    @commands.group(invoke_without_command=True)
+    async def fakeclan(self, ctx):
         """[Group] Make a "FakeClan" that is comprised of members you want; independant of any real clash of clans clan.
 
         This may be a niche feature, but is helpful for those running competitions and leaderboards between a few
@@ -674,10 +675,11 @@ class Add(commands.Cog):
 
         You can add, remove or list fake clans and their members.
         """
+        await ctx.send_help(ctx.command)
 
-    @makeclan.command(name="create")
-    async def makeclan_create(self, ctx, *player_tags: str):
-        """Make a "FakeClan" that is comprised of members you want; independant of any real clash of clans clan.
+    @fakeclan.command(name="create", aliases=["add", "make"])
+    async def fakeclan_create(self, ctx, *player_tags: str):
+        """Create a "FakeClan" that is comprised of members you want; independant of any real clash of clans clan.
 
         This may be a niche feature, but is helpful for those running competitions and leaderboards between a few
         members of their clan, and/or over a few clans, but don't want the noise of those not involved to appear.
@@ -693,17 +695,19 @@ class Add(commands.Cog):
         :key: A list of player tags, seperated by a space.
 
         **Format**
-        :information_source: `+makeclan create #PLAYERTAG #PLAYERTAG2 #PLAYERTAG3 #PLAYERTAG4`
+        :information_source: `+fakeclan create #PLAYERTAG #PLAYERTAG2 #PLAYERTAG3 #PLAYERTAG4`
 
         **Example**
-        :white_check_mark: `+makeclan create #JY9J2Y99 #2PP #2PL`
+        :white_check_mark: `+fakeclan create #JY9J2Y99 #2PP #2PL`
         """
         valid_tags = [coc.utils.correct_tag(tag) for tag in player_tags if coc.utils.is_valid_tag(tag)]
         if not valid_tags:
             return await ctx.send("I couldn't find any valid #player tags from your message. Please try again.")
 
-        clan_id = discord.utils.find(lambda tag: "$" in tag, player_tags)
-        if not clan_id:
+        clan_id = discord.utils.find(lambda tag: tag and tag.strip().isdigit(), player_tags)
+        if clan_id:
+            clan_id = clan_id.strip()
+        else:
             query = "SELECT clan_tag FROM clans WHERE channel_id = $1 AND fake_clan = True"
             fetch = await ctx.db.fetchrow(query, ctx.channel.id)
             clan_id = fetch and fetch['clan_tag']
@@ -713,12 +717,13 @@ class Add(commands.Cog):
             clan_id = str(ctx.channel.id)[-6:]
             await ctx.db.execute(query, ctx.channel.id, ctx.guild.id, clan_id)
 
-        query = "UPDATE players SET fake_clan_tag = $1 WHERE player_tag = ANY($2::TEXT[]) AND season_id = $3"
-        result = await ctx.db.execute(query, clan_id, valid_tags, await self.bot.seasonconfig.get_season_id())
+        query = "UPDATE players SET fake_clan_tag = $1 WHERE player_tag = ANY($2::TEXT[]) AND season_id = $3 RETURNING 1"
+        result = await ctx.db.fetch(query, clan_id, valid_tags, await self.bot.seasonconfig.get_season_id())
 
-        await ctx.send(f"I've added {len(valid_tags)} players to your FakeClan ID: {clan_id}.")
+        await ctx.send(f"I've added {len(result)} players to your FakeClan ID: {clan_id}.")
+        await ctx.invoke(self.fakeclan_list, clan_id=clan_id)
 
-    @makeclan.command(name="remove", aliases=["delete"])
+    @fakeclan.command(name="remove", aliases=["delete"])
     async def makeclan_remove(self, ctx, *player_tags: str):
         """Remove members from a "FakeClan". It will use the FakeClan added to the current channel.
 
@@ -726,31 +731,34 @@ class Add(commands.Cog):
         :key: A list of player tags, seperated by a space.
 
         **Format**
-        :information_source: `+makeclan remove #PLAYERTAG #PLAYERTAG2 #PLAYERTAG3 #PLAYERTAG4`
+        :information_source: `+fakeclan remove #PLAYERTAG #PLAYERTAG2 #PLAYERTAG3 #PLAYERTAG4`
 
         **Example**
-        :white_check_mark: `+makeclan remove #JY9J2Y99 #2PP #2PL`
+        :white_check_mark: `+fakeclan remove #JY9J2Y99 #2PP #2PL`
         """
         valid_tags = [coc.utils.correct_tag(tag) for tag in player_tags if coc.utils.is_valid_tag(tag)]
         if not valid_tags:
             return await ctx.send("I couldn't find any valid #player tags from your message. Please try again.")
 
-        clan_id = discord.utils.find(lambda tag: tag.isdigit(), player_tags)
-        if not clan_id:
+        clan_id = discord.utils.find(lambda tag: tag and tag.strip().isdigit(), player_tags)
+        if clan_id:
+            clan_id = clan_id.strip()
+        else:
             query = "SELECT clan_tag FROM clans WHERE channel_id = $1 AND fake_clan = True"
             fetch = await ctx.db.fetchrow(query, ctx.channel.id)
             clan_id = fetch and fetch['clan_tag']
 
         if not clan_id:
-            return await ctx.send("I couldn't find a FakeClan setup in this channel. Use `+help makeclan` for more info.")
+            return await ctx.send("I couldn't find a FakeClan setup in this channel. Use `+help fakeclan` for more info.")
 
-        query = "UPDATE players SET fake_clan_tag = null WHERE player_tag = ANY($1::TEXT[]) AND season_id = $2"
-        result = await ctx.db.execute(query, valid_tags, await self.bot.seasonconfig.get_season_id())
+        query = "UPDATE players SET fake_clan_tag = null WHERE player_tag = ANY($1::TEXT[]) AND season_id = $2 RETURNING 1"
+        result = await ctx.db.fetch(query, valid_tags, await self.bot.seasonconfig.get_season_id())
 
-        await ctx.send(f"I've removed {len(valid_tags)} {result} from your FakeClan ID: {clan_id}.")
+        await ctx.send(f"I've removed {len(result)} from your FakeClan ID: {clan_id}.")
+        await ctx.invoke(self.fakeclan_list, clan_id=clan_id)
 
-    @makeclan.command(name="list")
-    async def makeclan_list(self, ctx, clan_id: str = ""):
+    @fakeclan.command(name="list", aliases=["show"])
+    async def fakeclan_list(self, ctx, clan_id: str = ""):
         """List all members added to a "FakeClan" in the current channel.
 
         **Format**

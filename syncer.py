@@ -324,7 +324,7 @@ class Syncer:
         data = copy.copy(self.trophylog_batch_data)
         self.trophylog_batch_data.clear()
         clan_tags = list(set(n['clan_tag'] for n in data))
-        player_tags = list(set(p['player_tag'] for p in self.donationlog_batch_data))
+        player_tags = list(set(p['player_tag'] for p in data))
 
         fetch = await pool.fetch(query, clan_tags)
         fetch2 = await pool.fetch(query2, player_tags)

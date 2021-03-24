@@ -314,7 +314,13 @@ class Info(commands.Cog, name='\u200bInfo'):
             else:
                 embed.description = command.help or 'No help found...'
 
-            if not await command.can_run(ctx):
+            if isinstance(command, commands.Group):
+                for subcommand in command.commands:
+                    embed.add_field(name=ctx.prefix + subcommand.full_parent_name + " " + subcommand.name, value=subcommand.brief)
+
+            try:
+                await command.can_run(ctx)
+            except commands.CheckAnyFailure:
                 embed.description += f"\n{misc['offline']}You don't have the required permissions to run this command."
 
             await ctx.send(embed=embed)
@@ -389,15 +395,22 @@ class Info(commands.Cog, name='\u200bInfo'):
                                      f":chart_with_upwards_trend: Sorted by: *{board_config.sort_by}*\n" \
                                      f":notebook_with_decorative_cover: Title: *{board_config.title}*\n\n"
 
-            query = "SELECT clan_tag FROM clans WHERE channel_id = $1"
+            query = "SELECT clan_tag, fake_clan FROM clans WHERE channel_id = $1"
             clan_tags = await ctx.db.fetch(query, channel.id)
             if clan_tags:
                 embed.description += "**Clans**\n"
-            async for clan in self.bot.coc.get_clans((n["clan_tag"] for n in clan_tags)):
+            async for clan in self.bot.coc.get_clans((n["clan_tag"] for n in clan_tags if not n["fake_clan"])):
                 fmt = f":notepad_spiral: {clan} ({clan.tag})\n" \
                       f":paperclip: [In-Game Link]({clan.share_link})\n" \
                       f":paperclips: [Icon URL]({clan.badge.url})\n" \
                       f":person_bowing: Members: {clan.member_count}/50\n\n"
+                embed.add_field(name="\u200b", value=fmt)
+
+            query = "SELECT COUNT(*) FROM players WHERE fake_clan_tag = $1 AND season_id = $2"
+            for clan in (c["clan_tag"] for c in clan_tags if c["fake_clan"]):
+                fetch = await ctx.db.fetchrow(query)
+                fmt = f":notepad_spiral: FakeClan ID: {clan['clan_tag']})\n" \
+                      f":person_bowing: Members: {fetch[0]}\n\n"
                 embed.add_field(name="\u200b", value=fmt)
 
             if embed.description:
