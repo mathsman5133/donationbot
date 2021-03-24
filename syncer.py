@@ -1148,7 +1148,7 @@ class Syncer:
             attacks_to_load = []
             for war, fetch in maybe_load:
                 for attack in war.clan.attacks:
-                    if attack.order < fetch[0]['max']:
+                    if attack.order < (fetch[0]['max'] or 0):
                         continue
 
                     attacks_to_load.append({
