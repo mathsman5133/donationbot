@@ -1102,7 +1102,7 @@ class Syncer:
                 ]
 
                 query = """
-                INSERT INTO war_attacks (clan_tag, prep_start_time, load_time, player_tag, defender_tag, attack_order, stars, destruction)
+                INSERT INTO war_attacks (clan_tag, prep_start_time, player_tag, defender_tag, attack_order, stars, destruction)
                 SELECT x.clan_tag, x.prep_start_time, x.player_tag, x.defender_tag, x.attack_order, x.stars, x.destruction
                 FROM jsonb_to_recordset($1::jsonb)
                 AS x(
@@ -1160,7 +1160,7 @@ class Syncer:
                     })
 
             query = """
-            INSERT INTO war_attacks (clan_tag, prep_start_time, load_time, player_tag, defender_tag, attack_order, stars, destruction)
+            INSERT INTO war_attacks (clan_tag, prep_start_time, player_tag, defender_tag, attack_order, stars, destruction)
             SELECT x.clan_tag, x.prep_start_time, x.player_tag, x.defender_tag, x.attack_order, x.stars, x.destruction
             FROM jsonb_to_recordset($1::jsonb)
             AS x(
