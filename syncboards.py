@@ -599,7 +599,7 @@ class SyncBoards:
                     ON start < load_time 
                     AND load_time < finish
                     LEFT JOIN cte2
-                    ON cte2.clan_tag = war_missed_attacks.clan_tag
+                    ON cte2.clan_tag = war_attacks.clan_tag
                     WHERE seasons.id = $2
                     GROUP BY cte.player_tag, cte.player_name, stars, cte2.emoji, cte2.clan_tag
                     UNION ALL
