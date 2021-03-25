@@ -93,7 +93,7 @@ class HTMLImages:
         elif board_type == "legend":
             self.columns = ["#", None, "Player Name", "Initial", "Gain", "Loss", "Final"]
         elif board_type == "war":
-            self.columns = ["#", None, "Player Name", "Stars", "Dest'n", "3*", "2*", "1*", "0*", "Missed"]
+            self.columns = ["#", None, "Player Name", "Stars", "Dest %", "3 Star", "2 Star", "Missed"]
         else:
             self.columns = ["#", None, "Player Name", "Cups", "Gain", "Last On"]
 
@@ -342,13 +342,13 @@ header {
                         sum(r['destruction_count'] for r in rows),
                         by_star.get(3, {}).get('stars', 0),
                         by_star.get(2, {}).get('stars', 0),
-                        by_star.get(1, {}).get('stars', 0),
-                        by_star.get(0, {}).get('stars', 0),
+                        # by_star.get(1, {}).get('stars', 0),
+                        # by_star.get(0, {}).get('stars', 0),
                         by_star.get(-1, {}).get('stars', 0),
                     )
                 )
 
-            self.players = [(str(index) + ".", *player) for index, player in enumerate(sorted(players, key=lambda r: r[2], reverse=True), start=self.offset)]
+            self.players = [(str(index) + ".", *player) for index, player in enumerate(sorted(players, key=lambda r: (r[2], r[3]), reverse=True), start=self.offset)]
 
         else:
             self.players = [
