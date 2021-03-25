@@ -334,6 +334,8 @@ header {
                 rows = list(rows)
                 by_star = {r['stars']: r for r in rows}
 
+                print(index, rows)
+
                 players.append(
                     (
                         str(index) + ".",
@@ -348,6 +350,7 @@ header {
                         by_star.get(-1, {}).get('stars', 0),
                     )
                 )
+            print('players is %s, there are count: %s', players, len(players))
             self.players = players
 
         else:
