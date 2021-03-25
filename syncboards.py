@@ -348,7 +348,7 @@ header {
                     )
                 )
 
-            self.players = [(str(index) + ".", *player) for index, player in enumerate(sorted(players, key=lambda r: r[2]))]
+            self.players = [(str(index) + ".", *player) for index, player in enumerate(sorted(players, key=lambda r: r[2], reverse=True), start=self.offset)]
 
         else:
             self.players = [
