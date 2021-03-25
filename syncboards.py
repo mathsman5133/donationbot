@@ -615,7 +615,7 @@ class SyncBoards:
                     ON cte2.clan_tag = war_missed_attacks.clan_tag
                     WHERE seasons.id = $2
                     GROUP BY cte.player_tag, cte.player_name, cte2.emoji, war_missed_attacks.clan_tag
-                    ORDER BY star_count DESC, destruction DESC
+                    ORDER BY star_count DESC, destruction_count DESC
                     LIMIT $3
                     OFFSET $4
             """
