@@ -341,7 +341,7 @@ header {
                         str(index) + ".",
                         self.show_clan and await self.get_img_src(rows[0]) or '',
                         rows[0]['player_name'],
-                        sum(r['stars'] for r in rows),
+                        sum(r['star_count'] for r in rows),
                         sum(r['destruction_count'] for r in rows),
                         by_star.get(3, {}).get('stars', 0),
                         by_star.get(2, {}).get('stars', 0),
@@ -351,7 +351,7 @@ header {
                     )
                 )
             print('players is %s, there are count: %s', players, len(players))
-            self.players = players
+            self.players = list(sorted(players, key=lambda p: p[3]))
 
         else:
             self.players = [
@@ -595,7 +595,7 @@ class SyncBoards:
                     cte2 AS (
                         SELECT emoji, clan_tag FROM clans WHERE channel_id=$1
                     )
-                    SELECT SUM(stars) as star_count, SUM(destruction) as destruction_count, cte.player_tag, cte.player_name, stars, cte2.emoji, cte2.clan_tag
+                    SELECT SUM(stars) as star_count, SUM(destruction) as destruction_count, cte.player_tag, cte.player_name, stars, cte2.emoji, war_attacks.clan_tag
                     FROM war_attacks 
                     INNER JOIN cte 
                     ON cte.player_tag = war_attacks.player_tag 
@@ -605,9 +605,9 @@ class SyncBoards:
                     LEFT JOIN cte2
                     ON cte2.clan_tag = war_attacks.clan_tag
                     WHERE seasons.id = $2
-                    GROUP BY cte.player_tag, cte.player_name, stars, cte2.emoji, cte2.clan_tag
+                    GROUP BY cte.player_tag, cte.player_name, stars, cte2.emoji, war_attacks.clan_tag
                     UNION ALL
-                    SELECT SUM(attacks_missed) as star_count, 0 as destruction_count, cte.player_tag, cte.player_name, -1 as stars, cte2.emoji, cte2.clan_tag
+                    SELECT SUM(attacks_missed) as star_count, 0 as destruction_count, cte.player_tag, cte.player_name, -1 as stars, cte2.emoji, war_missed_attacks.clan_tag
                     FROM war_missed_attacks
                     INNER JOIN cte 
                     ON cte.player_tag = war_missed_attacks.player_tag
@@ -617,7 +617,7 @@ class SyncBoards:
                     LEFT JOIN cte2 
                     ON cte2.clan_tag = war_missed_attacks.clan_tag
                     WHERE seasons.id = $2
-                    GROUP BY cte.player_tag, cte.player_name, cte2.emoji, cte2.clan_tag
+                    GROUP BY cte.player_tag, cte.player_name, cte2.emoji, war_missed_attacks.clan_tag
                     LIMIT $3
                     OFFSET $4
             """
