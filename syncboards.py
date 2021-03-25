@@ -338,7 +338,7 @@ header {
                     (
                         self.show_clan and await self.get_img_src(rows[0]) or '',
                         rows[0]['player_name'],
-                        sum(r['stars'] * r['star_count'] for r in rows),
+                        sum(r['stars'] * r['star_count'] for r in rows if r['stars'] >= 0),
                         sum(r['destruction_count'] for r in rows),
                         by_star.get(3, {}).get('star_count', 0),
                         by_star.get(2, {}).get('star_count', 0),
