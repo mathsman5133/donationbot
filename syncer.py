@@ -1132,7 +1132,7 @@ class Syncer:
                 ]
 
                 query = """
-                INSERT INTO war_missed (clan_tag, prep_start_time, player_tag, attacks_missed)
+                INSERT INTO war_missed_attacks (clan_tag, prep_start_time, player_tag, attacks_missed)
                 SELECT x.clan_tag, x.prep_start_time, x.player_tag, x.attacks_missed
                 FROM jsonb_to_recordset($1::jsonb)
                 AS x(
@@ -1224,7 +1224,7 @@ class Syncer:
             await pool.execute(query, attacks_to_load)
 
             query = """
-            INSERT INTO war_missed (clan_tag, prep_start_time, player_tag, attacks_missed)
+            INSERT INTO war_missed_attacks (clan_tag, prep_start_time, player_tag, attacks_missed)
             SELECT x.clan_tag, x.prep_start_time, x.player_tag, x.attacks_missed
             FROM jsonb_to_recordset($1::jsonb)
             AS x(
