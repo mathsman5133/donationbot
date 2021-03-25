@@ -1148,6 +1148,20 @@ class Syncer:
                 result = await pool.fetch(query, missed_attacks)
                 log.info('saving %s missed attacks for %s clan because war ended.', len(result), war.clan_tag)
 
+                query = """
+                    UPDATE boards 
+                    SET need_to_update = TRUE 
+                    FROM(
+                        SELECT channel_id 
+                        FROM clans 
+                        WHERE clan_tag = $1
+                    ) 
+                    AS x 
+                    WHERE boards.channel_id = x.channel_id
+                    AND type = 'war'
+                """
+                await pool.execute(query, war.clan_tag)
+
             self.war_tasks.pop(war.clan_tag)
             return
 
@@ -1238,7 +1252,21 @@ class Syncer:
             RETURNING 1
             """
             result = await pool.fetch(query, missed_attacks)
-            log.info('saving %s missed attacks for %s clan because war ended.', len(result), war.clan_tag)
+            log.info('saving %s missed attacks for %s clan because war ended.', len(result))
+
+            query = """
+                UPDATE boards 
+                SET need_to_update = TRUE 
+                FROM(
+                    SELECT channel_id 
+                    FROM clans 
+                    WHERE clan_tag = ANY($1::TEXT[])
+                ) 
+                AS x 
+                WHERE boards.channel_id = x.channel_id
+                AND type = 'war'
+            """
+            await pool.execute(query, list(set(r['clan_tag'] for r in attacks_to_load)))
 
         except Exception as exc:
             log.exception('failed to run war syncer.')
