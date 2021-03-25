@@ -330,15 +330,12 @@ header {
             ]
         elif self.board_type == "war":
             players = []
-            for index, (player_tag, rows) in enumerate(itertools.groupby(sorted(self.players, key=lambda r: r['player_tag']), key=lambda r: r['player_tag']), start=self.offset):
+            for player_tag, rows in itertools.groupby(sorted(self.players, key=lambda r: r['player_tag']), key=lambda r: r['player_tag']):
                 rows = list(rows)
                 by_star = {r['stars']: r for r in rows}
 
-                print(index, rows)
-
                 players.append(
                     (
-                        str(index) + ".",
                         self.show_clan and await self.get_img_src(rows[0]) or '',
                         rows[0]['player_name'],
                         sum(r['star_count'] for r in rows),
@@ -350,8 +347,8 @@ header {
                         by_star.get(-1, {}).get('stars', 0),
                     )
                 )
-            print('players is %s, there are count: %s', players, len(players))
-            self.players = list(sorted(players, key=lambda p: p[3]))
+
+            self.players = [(str(index) + ".", *player) for index, player in enumerate(sorted(players, key=lambda r: r[2]))]
 
         else:
             self.players = [
