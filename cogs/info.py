@@ -956,6 +956,7 @@ class Info(commands.Cog, name='\u200bInfo'):
 
     @dump.before_invoke
     @dump_legends.before_invoke
+    @dump_war.before_invoke
     async def before_dump(self, ctx):
         await ctx.trigger_typing()
 

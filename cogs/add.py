@@ -508,7 +508,8 @@ class Add(commands.Cog):
                             guild_id, 
                             channel_id, 
                             clan_name, 
-                            in_event
+                            in_event,
+                            fake_clan
                             ) 
                    SELECT 
                         clan_tag,
