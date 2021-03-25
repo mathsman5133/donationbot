@@ -1125,6 +1125,10 @@ class Syncer:
     @tasks.loop(hours=12.0)
     async def load_wars(self):
         try:
+            while not coc_client._clan_updates:
+                log.info('sleeping until we have some clan tags to run for')
+                await asyncio.sleep(15)
+
             tags = set(coc_client._clan_updates) - set(self.war_tasks.keys())
             log.info('loading %s wars', len(tags))
             now = datetime.datetime.utcnow()
