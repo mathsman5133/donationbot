@@ -250,6 +250,7 @@ class Info(commands.Cog, name='\u200bInfo'):
                     "add boards",
                     "[add|edit|remove] donationboard",
                     "[add|edit|remove] trophyboard",
+                    "[add|edit|remove] warboard",
                     "[add|edit|remove] legendboard",
                     "[add|remove] legendlog",
                     "[add|edit|remove] donationlog",

@@ -298,6 +298,76 @@ class Edit(commands.Cog):
     # async def edit_legendboard_columns(self, ctx, channel: typing.Optional[discord.TextChannel], *, combination: str):
     #
 
+    @edit.group(name='warboard')
+    @manage_guild()
+    async def edit_warboard(self, ctx):
+        """[Group] Edit a warboard. See the subcommands for more info.
+        """
+        if not ctx.invoked_subcommand:
+            await ctx.send_help(ctx.command)
+
+    @edit_warboard.command(name='background', aliases=['bg', 'icon'])
+    async def edit_warboard_icon(self, ctx, channel: typing.Optional[discord.TextChannel], *, url: str = None):
+        """Add or change the background for a warboard.
+
+        **Parameters**
+        :key: A channel where the warboard is located (#mention)
+        :key: A URL (jpeg, jpg or png only). Use `default` to remove any background and use the bot default.
+
+        **Format**
+        :information_source: `+edit warboard background #CHANNEL URL`
+
+        **Example**
+        :white_check_mark: `+edit warboard background #legend-board https://catsareus/thecrazycatbot/123.jpg`
+        :white_check_mark: `+edit warboard background #legend-board default`
+
+        **Required Permissions**
+        :warning: Manage Server
+        """
+        await self.do_edit_board_url(ctx, channel or ctx.channel, url, 'war')
+
+    @edit_warboard.command(name='title')
+    async def edit_warboard_title(self, ctx, channel: typing.Optional[discord.TextChannel], *, title: str):
+        """Change the title for a warboard.
+
+        **Parameters**
+        :key: A channel where the warboard is located (#mention)
+        :key: Title (must be less than 50 characters).
+
+        **Format**
+        :information_source: `+edit warboard title #CHANNEL TITLE`
+
+        **Example**
+        :white_check_mark: `+edit warboard title #dt-boards The Crazy Cat Bot Title`
+
+        **Required Permissions**
+        :warning: Manage Server
+        """
+        await self.do_edit_board_title(ctx, channel or ctx.channel, title, 'war')
+
+    @edit_warboard.command(name='perpage')
+    async def edit_warboard_per_page(self, ctx, channel: typing.Optional[discord.TextChannel], *, per_page: int):
+        """Change how many players are displayed on each page of a warboard.
+
+        By default, it is 15 for the first and second pages, then 20, 25, 25, 50 etc.
+        You can restore the default settings by running `+edit warboard perpage 0`.
+
+        **Parameters**
+        :key: A channel where the warboard is located (#mention)
+        :key: The number of players per page. Must be a number (25).
+
+        **Format**
+        :information_source: `+edit warboard perpage #CHANNEL NUMBER`
+
+        **Example**
+        :white_check_mark: `+edit warboard perpage #legend-boards 15`
+        :white_check_mark: `+edit warboard perpage #legend-boards 50`
+
+        **Required Permissions**
+        :warning: Manage Server
+        """
+        await self.do_edit_board_perpage(ctx, channel or ctx.channel, per_page, 'war')
+
     @edit.group(name='trophyboard')
     @manage_guild()
     async def edit_trophyboard(self, ctx):

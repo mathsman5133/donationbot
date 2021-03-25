@@ -460,7 +460,6 @@ class Add(commands.Cog):
 
     @add.command(name='warboard')
     @manage_guild()
-    @commands.is_owner()
     async def add_warboard(self, ctx, channel: discord.TextChannel = None):
         """Create a war board for your server.
 
