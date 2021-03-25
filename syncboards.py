@@ -588,6 +588,7 @@ class SyncBoards:
                             INNER JOIN clans 
                             ON clans.clan_tag = players.clan_tag OR players.fake_clan_tag = clans.clan_tag
                             WHERE clans.channel_id = $1
+                            AND players.season_id = $2
                     ),
                     cte2 AS (
                         SELECT emoji, clan_tag FROM clans WHERE channel_id=$1
