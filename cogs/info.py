@@ -1,4 +1,3 @@
-import csv
 import logging
 import psutil
 import os
@@ -8,6 +7,7 @@ import itertools
 import io
 import math
 import copy
+import csv
 import statistics
 
 from matplotlib import pyplot as plt
@@ -763,17 +763,17 @@ class Info(commands.Cog, name='\u200bInfo'):
 
         return io.BytesIO(content.encode("utf-8-sig"))
 
-        csv = ""
-        for i, row in enumerate(rows):
-            if i == 0:
-                # headers
-                csv += ''.join(f"{col}," for col in row.keys())
-                csv += '\n'
-
-            csv += ''.join(f"{r}," for r in row.values())
-            csv += '\n'
-
-        return io.BytesIO(csv.encode("utf-8"))
+        # csv = ""
+        # for i, row in enumerate(rows):
+        #     if i == 0:
+        #         # headers
+        #         csv += ''.join(f"{col}," for col in row.keys())
+        #         csv += '\n'
+        #
+        #     csv += ''.join(f"{r}," for r in row.values())
+        #     csv += '\n'
+        #
+        # return io.BytesIO(csv.encode("utf-8"))
 
     @commands.group(invoke_without_command=True)
     async def dump(self, ctx, *, argument: ConvertToPlayers = None):
