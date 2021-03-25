@@ -909,9 +909,10 @@ class Info(commands.Cog, name='\u200bInfo'):
         WITH cte AS (
                 SELECT DISTINCT player_tag, player_name 
                 FROM players 
-                WHERE player_tag = ANY($1::TEXT[])
+                WHERE (player_tag = ANY($1::TEXT[])
                 OR clan_tag = ANY($2::TEXT[])
-                OR fake_clan_tag = ANY($2::TEXT[])
+                OR fake_clan_tag = ANY($2::TEXT[]))
+                AND season_id = $3                
         )
         SELECT COUNT(*) as star_count, SUM(destruction) as destruction_count, cte.player_tag, cte.player_name, stars, seasons.id as season_id
         FROM war_attacks 
@@ -932,7 +933,7 @@ class Info(commands.Cog, name='\u200bInfo'):
         GROUP BY season_id, cte.player_tag, cte.player_name, stars
         ORDER BY season_id DESC, star_count DESC, destruction_count DESC
         """
-        fetch = await ctx.db.fetch(query, [p['player_tag'] for p in argument], list({p['clan_tag'] for p in argument}))
+        fetch = await ctx.db.fetch(query, [p['player_tag'] for p in argument], list({p['clan_tag'] for p in argument}), await self.bot.seasonconfig.get_season_id())
         to_send = []
         for (player_tag, season_id), rows in itertools.groupby(fetch, key=lambda r: (r['player_tag'], r['season_id'])):
             rows = list(rows)
