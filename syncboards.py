@@ -93,7 +93,7 @@ class HTMLImages:
         elif board_type == "legend":
             self.columns = ["#", None, "Player Name", "Initial", "Gain", "Loss", "Final"]
         elif board_type == "war":
-            self.columns = ["#", None, "Player Name", "Stars", "Dest %", "3 *", "2 *", "Missed"]
+            self.columns = ["#", None, "Player Name", "Stars", "Dest %", "3 ⭐", "2 ⭐", "Missed"]
         else:
             self.columns = ["#", None, "Player Name", "Cups", "Gain", "Last On"]
 

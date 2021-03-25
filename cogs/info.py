@@ -1,3 +1,4 @@
+import csv
 import logging
 import psutil
 import os
@@ -754,6 +755,14 @@ class Info(commands.Cog, name='\u200bInfo'):
 
     @staticmethod
     def convert_rows_to_bytes(rows):
+        f = io.StringIO()
+        w = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
+        w.writeheader()
+        w.writerows(rows)
+        content = f.getvalue()
+
+        return io.BytesIO(content.encode("utf-8-sig"))
+
         csv = ""
         for i, row in enumerate(rows):
             if i == 0:
@@ -864,6 +873,85 @@ class Info(commands.Cog, name='\u200bInfo'):
                     """
         fetch = await ctx.db.fetch(query, [p['player_tag'] for p in argument], list({p['clan_tag'] for p in argument}))
         await ctx.send(file=discord.File(filename="donation-tracker-legends-export.csv", fp=self.convert_rows_to_bytes(fetch)))
+
+    @dump.command(name="war")
+    async def dump_war(self, ctx, *, argument: ConvertToPlayers = None):
+        """Get a .csv of all war data the bot has stored for a clan/players.
+
+        **Parameters**
+        :key: The argument: Can be a clan tag, name, player tag, name, channel #mention, user @mention or `server` for all clans linked to the server.
+
+        **Format**
+        :information_source: `+dump war`
+        :information_source: `+dump war #CLAN_TAG`
+        :information_source: `+dump war CLAN NAME`
+        :information_source: `+dump war #PLAYER_TAG`
+        :information_source: `+dump war Player Name`
+        :information_source: `+dump war #channel`
+        :information_source: `+dump war @user`
+        :information_source: `+dump war all`
+
+        **Example**
+        :white_check_mark: `+dump war`
+        :white_check_mark: `+dump war #JY9J2Y99`
+        :white_check_mark: `+dump war Reddit`
+        :white_check_mark: `+dump war Mathsman`
+        :white_check_mark: `+dump war @mathsman#1208`
+        :white_check_mark: `+dump war #donation-log`
+        :white_check_mark: `+dump war all`
+        """
+        if not argument:
+            argument = await ConvertToPlayers().convert(ctx, "all")
+        if not argument:
+            return await ctx.send("Couldn't find any players - try adding a clan?")
+
+        query = """
+        WITH cte AS (
+                SELECT DISTINCT player_tag, player_name 
+                FROM players 
+                WHERE player_tag = ANY($1::TEXT[])
+                OR clan_tag = ANY($2::TEXT[])
+                OR fake_clan_tag = ANY($2::TEXT[])
+        )
+        SELECT COUNT(*) as star_count, SUM(destruction) as destruction_count, cte.player_tag, cte.player_name, stars, seasons.id as season_id
+        FROM war_attacks 
+        INNER JOIN cte 
+        ON cte.player_tag = war_attacks.player_tag 
+        INNER JOIN seasons 
+        ON start < load_time 
+        AND load_time < finish
+        GROUP BY season_id, cte.player_tag, cte.player_name, stars
+        UNION ALL
+        SELECT SUM(attacks_missed) as star_count, 0 as destruction_count, cte.player_tag, cte.player_name, -1 as stars, seasons.id as season_id
+        FROM war_missed_attacks
+        INNER JOIN cte 
+        ON cte.player_tag = war_missed_attacks.player_tag
+        INNER JOIN seasons 
+        ON start < load_time 
+        AND load_time < finish
+        GROUP BY season_id, cte.player_tag, cte.player_name, stars
+        ORDER BY season_id DESC, star_count DESC, destruction_count DESC
+        """
+        fetch = await ctx.db.fetch(query, [p['player_tag'] for p in argument], list({p['clan_tag'] for p in argument}))
+        to_send = []
+        for (player_tag, season_id), rows in itertools.groupby(fetch, key=lambda r: (r['player_tag'], r['season_id'])):
+            rows = list(rows)
+            by_star = {r['stars']: r for r in rows}
+
+            to_send.append({
+                "player_tag": player_tag,
+                "player_name": rows[0]['player_name'],
+                "season_id": season_id,
+                "total_stars": sum(r['stars'] * r['star_count'] for r in rows if r['stars'] >= 0),
+                "total_destruction": sum(r['destruction_count'] for r in rows),
+                "three_star_count": by_star.get(3, {}).get('star_count', 0),
+                "two_star_count": by_star.get(2, {}).get('star_count', 0),
+                "one_star_count": by_star.get(1, {}).get('stars', 0),
+                "zero_star_count": by_star.get(0, {}).get('stars', 0),
+                "missed_attack_count": by_star.get(-1, {}).get('star_count', 0),
+            })
+
+        await ctx.send(file=discord.File(filename="donation-tracker-war-export.csv", fp=self.convert_rows_to_bytes(to_send)))
 
     @dump.before_invoke
     @dump_legends.before_invoke
