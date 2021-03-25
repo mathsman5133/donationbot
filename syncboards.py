@@ -348,6 +348,7 @@ header {
                         by_star.get(-1, {}).get('stars', 0),
                     )
                 )
+            self.players = players
 
         else:
             self.players = [
