@@ -54,7 +54,7 @@ default_sort_by = {
     "donation": "donations",
     "trophy": "trophies",
     "legend": "finishing",
-    "war": "stars"
+    "war": "stars",
 }
 
 
@@ -103,9 +103,9 @@ class HTMLImages:
         elif sort_by and board_type == "legend":
             sort_columns = ("#", "Clan", "Player Name", "starting", "gain", "loss", "finishing")
             self.selected_index = [sort_columns.index(sort_by)]
-        # elif sort_by and board_type == "war":
-        #     sort_columns = ("#", "Clan", "Player Name", "starting", "gain", "loss", "finishing")
-        #     self.selected_index = [sort_columns.index(sort_by)]
+        elif sort_by and board_type == "war":
+            sort_columns = ("#", "Clan", "Player Name", "stars", "destruction", "3_star", "2_star", "1_star", "0_star", "missed")
+            self.selected_index = [sort_columns.index(sort_by)]
         elif sort_by:
             sort_columns = ("#", "Clan", "Player Name", "trophies", "gain", "last_online ASC, player_name")
             self.selected_index = [sort_columns.index(sort_by.replace('donations', 'trophies'))]

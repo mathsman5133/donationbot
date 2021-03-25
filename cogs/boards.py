@@ -187,7 +187,7 @@ class DonationBoard(commands.Cog):
             fetch = await self.bot.pool.fetchrow('UPDATE boards SET page = page - 1, toggle=True WHERE message_id = $1 AND page > 1 RETURNING *', payload.message_id)
 
         elif payload.emoji == REFRESH_EMOJI:
-            lookup = {'donation': 'donations', 'legend': 'finishing', 'trophy': 'trophies'}
+            lookup = {'donation': 'donations', 'legend': 'finishing', 'trophy': 'trophies', 'war': 'stars'}
             original_sort = lookup[fetch['type']]
             query = "UPDATE boards SET sort_by = $1, page=1, season_id=0, toggle=True WHERE message_id = $2 RETURNING *"
             fetch = await self.bot.pool.fetchrow(query, original_sort, payload.message_id)
