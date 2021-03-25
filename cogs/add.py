@@ -458,6 +458,26 @@ class Add(commands.Cog):
                              f'before resetting it, please use `+add legendlog #{channel} #logs-channel`.\n\n'
                              f'Feel free to delete this message.')
 
+    @add.command(name='warboard')
+    @manage_guild()
+    @commands.is_owner()
+    async def add_warboard(self, ctx, channel: discord.TextChannel = None):
+        """Create a war board for your server.
+
+        **Parameters**
+        :key: Discord channel (mention etc.)
+
+        **Format**
+        :information_source: `+add warboard #CHANNEL`
+
+        **Example**
+        :white_check_mark: `+add warboard #logging`
+
+        **Required Permissions**
+        :warning: Manage Server
+        """
+        await self.do_add_board(ctx, channel, "war", invoked_from_command=True)
+
     @staticmethod
     async def do_log_add(ctx, channel, type_):
         if await ctx.db.fetchrow("SELECT id FROM boards WHERE channel_id=$1", channel.id):

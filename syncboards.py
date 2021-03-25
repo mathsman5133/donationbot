@@ -36,21 +36,25 @@ emojis = {
     "donation": (REFRESH_EMOJI, LEFT_EMOJI, RIGHT_EMOJI, PERCENTAGE_EMOJI, LAST_ONLINE_EMOJI, HISTORICAL_EMOJI),
     "trophy": (REFRESH_EMOJI, LEFT_EMOJI, RIGHT_EMOJI, GAIN_EMOJI, LAST_ONLINE_EMOJI, HISTORICAL_EMOJI),
     "legend": (REFRESH_EMOJI, LEFT_EMOJI, RIGHT_EMOJI),
+    "war": (REFRESH_EMOJI, LEFT_EMOJI, RIGHT_EMOJI),
 }
 backgrounds = {
     "donation": "https://cdn.discordapp.com/attachments/681438398455742536/768684688100687882/snowyfield2.png",
     "trophy": "https://cdn.discordapp.com/attachments/681438398455742536/768649037250560060/clash_cliffs2-min.png",
     "legend": "https://cdn.discordapp.com/attachments/681438398455742536/770048574645469274/clashxmas_north_cloudsSky_v004.jpg",
+    "war": "https://cdn.discordapp.com/attachments/594286547449282587/824491008099876885/BG-coc_BALLOON.jpg",
 }
 titles = {
     "donation": "Donation Leaderboard",
     "trophy": "Trophy Leaderboard",
     "legend": "Legend Leaderboard",
+    "war": "War Leaderboard",
 }
 default_sort_by = {
     "donation": "donations",
     "trophy": "trophies",
-    "legend": "finishing"
+    "legend": "finishing",
+    "war": "stars"
 }
 
 
@@ -88,6 +92,8 @@ class HTMLImages:
             self.columns = ["#", None, "Player Name", "Dons", "Rec", "Ratio", "Last On"]
         elif board_type == "legend":
             self.columns = ["#", None, "Player Name", "Initial", "Gain", "Loss", "Final"]
+        elif board_type == "war":
+            self.columns = ["#", None, "Player Name", "Stars", "Dest'n", "3*", "2*", "1*", "0*", "Missed"]
         else:
             self.columns = ["#", None, "Player Name", "Cups", "Gain", "Last On"]
 
@@ -97,6 +103,9 @@ class HTMLImages:
         elif sort_by and board_type == "legend":
             sort_columns = ("#", "Clan", "Player Name", "starting", "gain", "loss", "finishing")
             self.selected_index = [sort_columns.index(sort_by)]
+        # elif sort_by and board_type == "war":
+        #     sort_columns = ("#", "Clan", "Player Name", "starting", "gain", "loss", "finishing")
+        #     self.selected_index = [sort_columns.index(sort_by)]
         elif sort_by:
             sort_columns = ("#", "Clan", "Player Name", "trophies", "gain", "last_online ASC, player_name")
             self.selected_index = [sort_columns.index(sort_by.replace('donations', 'trophies'))]
@@ -319,6 +328,27 @@ header {
                 )
                 for i, p in enumerate(self.players, start=self.offset)
             ]
+        elif self.board_type == "war":
+            players = []
+            for index, (player_tag, rows) in enumerate(itertools.groupby(sorted(players, key=lambda r: r['player_tag']), key=lambda r: r['player_tag']), start=self.offset):
+                rows = list(rows)
+                by_star = {r['stars']: r for r in rows}
+
+                players.append(
+                    (
+                        str(index) + ".",
+                        self.show_clan and await self.get_img_src(rows[0]) or '',
+                        rows[0]['player_name'],
+                        sum(r['stars'] for r in rows),
+                        sum(r['deuction_count'] for r in rows),
+                        by_star.get(3, {}).get('stars', 0),
+                        by_star.get(2, {}).get('stars', 0),
+                        by_star.get(1, {}).get('stars', 0),
+                        by_star.get(0, {}).get('stars', 0),
+                        by_star.get(-1, {}).get('stars', 0),
+                    )
+                )
+
         else:
             self.players = [
                 (
@@ -546,6 +576,51 @@ class SyncBoards:
                 query,
                 config.channel_id,
                 self.legend_day,
+                self.get_next_per_page(config.page, config.per_page),
+                offset
+            )
+        elif config.type == "war":
+            query = f"""
+                    WITH cte AS (
+                            SELECT DISTINCT player_tag, player_name 
+                            FROM players 
+                            INNER JOIN clans 
+                            ON clans.clan_tag = players.clan_tag OR players.fake_clan_tag = clans.clan_tag
+                            WHERE clans.channel_id = $1
+                    ),
+                    cte2 AS (
+                        SELECT emoji, clan_tag FROM clans WHERE channel_id=$1
+                    )
+                    SELECT SUM(stars) as star_count, SUM(destruction) as destruction_count, cte.player_tag, cte.player_name, stars, cte2.emoji, cte2.clan_tag
+                    FROM war_attacks 
+                    INNER JOIN cte 
+                    ON cte.player_tag = war_attacks.player_tag 
+                    INNER JOIN seasons 
+                    ON start < load_time 
+                    AND load_time < finish
+                    LEFT JOIN cte2
+                    ON cte2.clan_tag = war_missed_attacks.clan_tag
+                    WHERE seasons.id = $2
+                    GROUP BY cte.player_tag, cte.player_name, stars, cte2.emoji, cte2.clan_tag
+                    UNION ALL
+                    SELECT SUM(attacks_missed) as star_count, 0 as destruction_count, cte.player_tag, cte.player_name, -1 as stars, cte2.emoji, cte2.clan_tag
+                    FROM war_missed_attacks
+                    INNER JOIN cte 
+                    ON cte.player_tag = war_missed_attacks.player_tag
+                    INNER JOIN seasons 
+                    ON start < load_time 
+                    AND load_time < finish
+                    LEFT JOIN cte2 
+                    ON cte2.clan_tag = war_missed_attacks.clan_tag
+                    WHERE seasons.id = $2
+                    GROUP BY cte.player_tag, cte.player_name, cte2.emoji, cte2.clan_tag
+                    LIMIT $3
+                    OFFSET $4
+            """
+            fetch = await self.pool.fetch(
+                query,
+                config.channel_id,
+                season_id,
                 self.get_next_per_page(config.page, config.per_page),
                 offset
             )
