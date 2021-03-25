@@ -293,6 +293,18 @@ create table war_attacks(
 );
 create index player_tag_idx on war_attacks (player_tag);
 
+create table war_missed_attacks (
+    id serial primary key,
+    clan_tag TEXT,
+    prep_start_time TIMESTAMP,
+    load_time timestamp default now(),
+    player_tag TEXT,
+    attacks_missed INTEGER,
+    unique(clan_tag, prep_start_time, player_tag)
+);
+create index player_tag_idx on war_missed_attacks (player_tag);
+
+
 CREATE OR REPLACE FUNCTION public.get_event_id(guild_id bigint)
  RETURNS integer
  LANGUAGE plpgsql

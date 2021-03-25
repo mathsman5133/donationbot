@@ -1119,10 +1119,39 @@ class Syncer:
                 result = await pool.fetch(query, attacks_to_load)
                 log.info('saving %s attacks for %s clan because war ended.', len(result), war.clan_tag)
 
+                max_attacks = max(len(member.attacks) for member in war.clan.members)
+                missed_attacks = [
+                    {
+                        "clan_tag": war.clan_tag,
+                        "prep_start_time": war.preparation_start_time.time.isoformat(),
+                        "player_tag": member.tag,
+                        "missed_attacks": max_attacks - len(member.attacks),
+                    }
+                    for member in war.clan.members
+                    if len(member.attacks) != max_attacks
+                ]
+
+                query = """
+                INSERT INTO war_missed (clan_tag, prep_start_time, player_tag, attacks_missed)
+                SELECT x.clan_tag, x.prep_start_time, x.player_tag, x.attacks_missed
+                FROM jsonb_to_recordset($1::jsonb)
+                AS x(
+                    clan_tag TEXT,
+                    prep_start_time TIMESTAMP,
+                    player_tag TEXT,
+                    attacks_missed INTEGER
+                )
+                ON CONFLICT (prep_start_time, clan_tag, player_tag)
+                DO NOTHING
+                RETURNING 1
+                """
+                result = await pool.fetch(query, missed_attacks)
+                log.info('saving %s missed attacks for %s clan because war ended.', len(result), war.clan_tag)
+
             self.war_tasks.pop(war.clan_tag)
             return
 
-    @tasks.loop(hours=12.0)
+    @tasks.loop(seconds=30.0)
     async def load_wars(self):
         try:
             while not coc_client._clan_updates:
@@ -1150,6 +1179,7 @@ class Syncer:
                         maybe_load.append((war, fetch))
 
             attacks_to_load = []
+            missed_attacks = []
             for war, fetch in maybe_load:
                 for attack in war.clan.attacks:
                     if attack.order <= (fetch[0]['max'] or 0):
@@ -1164,6 +1194,18 @@ class Syncer:
                         "stars": attack.stars,
                         "destruction": attack.destruction,
                     })
+
+                max_attacks = max(len(member.attacks) for member in war.clan.members)
+                missed_attacks.extend(
+                    {
+                        "clan_tag": war.clan_tag,
+                        "prep_start_time": war.preparation_start_time.time.isoformat(),
+                        "player_tag": member.tag,
+                        "missed_attacks": max_attacks - len(member.attacks),
+                    }
+                    for member in war.clan.members
+                    if len(member.attacks) != max_attacks
+                )
 
             query = """
             INSERT INTO war_attacks (clan_tag, prep_start_time, player_tag, defender_tag, attack_order, stars, destruction)
@@ -1180,6 +1222,23 @@ class Syncer:
             )
             """
             await pool.execute(query, attacks_to_load)
+
+            query = """
+            INSERT INTO war_missed (clan_tag, prep_start_time, player_tag, attacks_missed)
+            SELECT x.clan_tag, x.prep_start_time, x.player_tag, x.attacks_missed
+            FROM jsonb_to_recordset($1::jsonb)
+            AS x(
+                clan_tag TEXT,
+                prep_start_time TIMESTAMP,
+                player_tag TEXT,
+                attacks_missed INTEGER
+            )
+            ON CONFLICT (prep_start_time, clan_tag, player_tag)
+            DO NOTHING
+            RETURNING 1
+            """
+            result = await pool.fetch(query, missed_attacks)
+            log.info('saving %s missed attacks for %s clan because war ended.', len(result), war.clan_tag)
 
         except Exception as exc:
             log.exception('failed to run war syncer.')
