@@ -55,9 +55,9 @@ class Help(commands.DefaultHelpCommand):
     def send_cog_help(self, cog):
         return self.context.invoke(self.context.bot.get_command("help"), query=str(cog))
     def send_command_help(self, command):
-        return self.context.invoke(self.context.bot.get_command("help"), query=str(command.name))
+        return self.context.invoke(self.context.bot.get_command("help"), query=str(command.qualified_name))
     def send_group_help(self, group):
-        return self.context.invoke(self.context.bot.get_command("help"), query=str(group.name))
+        return self.context.invoke(self.context.bot.get_command("help"), query=str(group.qualified_name))
 
 
 class Info(commands.Cog, name='\u200bInfo'):
