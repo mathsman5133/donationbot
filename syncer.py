@@ -1125,7 +1125,7 @@ class Syncer:
                         "clan_tag": war.clan_tag,
                         "prep_start_time": war.preparation_start_time.time.isoformat(),
                         "player_tag": member.tag,
-                        "missed_attacks": max_attacks - len(member.attacks),
+                        "attacks_missed": max_attacks - len(member.attacks),
                     }
                     for member in war.clan.members
                     if len(member.attacks) != max_attacks
@@ -1201,7 +1201,7 @@ class Syncer:
                         "clan_tag": war.clan_tag,
                         "prep_start_time": war.preparation_start_time.time.isoformat(),
                         "player_tag": member.tag,
-                        "missed_attacks": max_attacks - len(member.attacks),
+                        "attacks_missed": max_attacks - len(member.attacks),
                     }
                     for member in war.clan.members
                     if len(member.attacks) != max_attacks
