@@ -330,7 +330,7 @@ header {
             ]
         elif self.board_type == "war":
             players = []
-            for index, (player_tag, rows) in enumerate(itertools.groupby(sorted(players, key=lambda r: r['player_tag']), key=lambda r: r['player_tag']), start=self.offset):
+            for index, (player_tag, rows) in enumerate(itertools.groupby(sorted(self.players, key=lambda r: r['player_tag']), key=lambda r: r['player_tag']), start=self.offset):
                 rows = list(rows)
                 by_star = {r['stars']: r for r in rows}
 
