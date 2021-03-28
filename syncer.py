@@ -1087,82 +1087,85 @@ class Syncer:
                 war = new_war
                 await asyncio.sleep(war.end_time.seconds_until)
                 continue
-            elif new_war.state == "warEnded":
-                attacks_to_load = [
-                    {
-                        "clan_tag": war.clan_tag,
-                        "prep_start_time": war.preparation_start_time.time.isoformat(),
-                        "player_tag": attack.attacker_tag,
-                        "defender_tag": attack.defender_tag,
-                        "attack_order": attack.order,
-                        "stars": attack.stars,
-                        "destruction": attack.destruction,
-                    }
-                    for attack in war.clan.attacks
-                ]
 
-                query = """
-                INSERT INTO war_attacks (clan_tag, prep_start_time, player_tag, defender_tag, attack_order, stars, destruction)
-                SELECT x.clan_tag, x.prep_start_time, x.player_tag, x.defender_tag, x.attack_order, x.stars, x.destruction
-                FROM jsonb_to_recordset($1::jsonb)
-                AS x(
-                    clan_tag TEXT,
-                    prep_start_time TIMESTAMP,
-                    player_tag TEXT,
-                    defender_tag TEXT,
-                    attack_order INTEGER,
-                    stars INTEGER,
-                    destruction DECIMAL
-                )
-                RETURNING 1
-                """
-                result = await pool.fetch(query, attacks_to_load)
-                log.info('saving %s attacks for %s clan because war ended.', len(result), war.clan_tag)
+            if new_war.state != "warEnded":
+                new_war = war
 
-                max_attacks = max(len(member.attacks) for member in war.clan.members)
-                missed_attacks = [
-                    {
-                        "clan_tag": war.clan_tag,
-                        "prep_start_time": war.preparation_start_time.time.isoformat(),
-                        "player_tag": member.tag,
-                        "attacks_missed": max_attacks - len(member.attacks),
-                    }
-                    for member in war.clan.members
-                    if len(member.attacks) != max_attacks
-                ]
+            attacks_to_load = [
+                {
+                    "clan_tag": new_war.clan_tag,
+                    "prep_start_time": new_war.preparation_start_time.time.isoformat(),
+                    "player_tag": attack.attacker_tag,
+                    "defender_tag": attack.defender_tag,
+                    "attack_order": attack.order,
+                    "stars": attack.stars,
+                    "destruction": attack.destruction,
+                }
+                for attack in new_war.clan.attacks
+            ]
 
-                query = """
-                INSERT INTO war_missed_attacks (clan_tag, prep_start_time, player_tag, attacks_missed)
-                SELECT x.clan_tag, x.prep_start_time, x.player_tag, x.attacks_missed
-                FROM jsonb_to_recordset($1::jsonb)
-                AS x(
-                    clan_tag TEXT,
-                    prep_start_time TIMESTAMP,
-                    player_tag TEXT,
-                    attacks_missed INTEGER
-                )
-                ON CONFLICT (prep_start_time, clan_tag, player_tag)
-                DO NOTHING
-                RETURNING 1
-                """
-                result = await pool.fetch(query, missed_attacks)
-                log.info('saving %s missed attacks for %s clan because war ended.', len(result), war.clan_tag)
+            query = """
+            INSERT INTO war_attacks (clan_tag, prep_start_time, player_tag, defender_tag, attack_order, stars, destruction)
+            SELECT x.clan_tag, x.prep_start_time, x.player_tag, x.defender_tag, x.attack_order, x.stars, x.destruction
+            FROM jsonb_to_recordset($1::jsonb)
+            AS x(
+                clan_tag TEXT,
+                prep_start_time TIMESTAMP,
+                player_tag TEXT,
+                defender_tag TEXT,
+                attack_order INTEGER,
+                stars INTEGER,
+                destruction DECIMAL
+            )
+            RETURNING 1
+            """
+            result = await pool.fetch(query, attacks_to_load)
+            log.info('saving %s attacks for %s clan because war ended.', len(result), new_war.clan_tag)
 
-                query = """
-                    UPDATE boards 
-                    SET need_to_update = TRUE 
-                    FROM(
-                        SELECT channel_id 
-                        FROM clans 
-                        WHERE clan_tag = $1
-                    ) 
-                    AS x 
-                    WHERE boards.channel_id = x.channel_id
-                    AND type = 'war'
-                """
-                await pool.execute(query, war.clan_tag)
+            max_attacks = max(len(member.attacks) for member in new_war.clan.members)
+            missed_attacks = [
+                {
+                    "clan_tag": new_war.clan_tag,
+                    "prep_start_time": new_war.preparation_start_time.time.isoformat(),
+                    "player_tag": member.tag,
+                    "attacks_missed": max_attacks - len(member.attacks),
+                }
+                for member in new_war.clan.members
+                if len(member.attacks) != max_attacks
+            ]
 
-            self.war_tasks.pop(war.clan_tag)
+            query = """
+            INSERT INTO war_missed_attacks (clan_tag, prep_start_time, player_tag, attacks_missed)
+            SELECT x.clan_tag, x.prep_start_time, x.player_tag, x.attacks_missed
+            FROM jsonb_to_recordset($1::jsonb)
+            AS x(
+                clan_tag TEXT,
+                prep_start_time TIMESTAMP,
+                player_tag TEXT,
+                attacks_missed INTEGER
+            )
+            ON CONFLICT (prep_start_time, clan_tag, player_tag)
+            DO NOTHING
+            RETURNING 1
+            """
+            result = await pool.fetch(query, missed_attacks)
+            log.info('saving %s missed attacks for %s clan because war ended.', len(result), new_war.clan_tag)
+
+            query = """
+                UPDATE boards 
+                SET need_to_update = TRUE 
+                FROM(
+                    SELECT channel_id 
+                    FROM clans 
+                    WHERE clan_tag = $1
+                ) 
+                AS x 
+                WHERE boards.channel_id = x.channel_id
+                AND type = 'war'
+            """
+            await pool.execute(query, new_war.clan_tag)
+
+            self.war_tasks.pop(new_war.clan_tag)
             return
 
     @tasks.loop(hours=12.0)
