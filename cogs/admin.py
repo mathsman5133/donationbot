@@ -143,7 +143,7 @@ class Admin(commands.Cog):
         directories = (
             "cogs.utils", "cogs"
         )
-        files = ["syncboards"]
+        files = [("", "syncboards")]
         for directory in directories:
             for dirpath, _, filenames in os.walk(directory):
                 if "__pycache__" in dirpath:
