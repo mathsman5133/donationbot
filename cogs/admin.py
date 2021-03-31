@@ -186,9 +186,9 @@ class Admin(commands.Cog):
 
             success, fail = [r for r in results if r[1]], [r for r in results if not r[1]]
             if len(fail) == 0:
-                to_send += f"{tick}: `{directory}`: {len(success)} Modules Reloaded\n"
+                to_send += f"{tick}: `{directory or ' '}`: {len(success)} Modules Reloaded\n"
             else:
-                to_send += f"{tick}: `{directory}`: {len(success)} Modules Reloaded\n" + \
+                to_send += f"{tick}: `{directory or ' '}`: {len(success)} Modules Reloaded\n" + \
                            "\n".join(
                                f"    {cross}: `{module}` - " + (f" - {exception}" if exception else "")
                                for directory, status, module, exception in fail
