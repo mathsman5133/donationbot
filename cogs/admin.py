@@ -158,7 +158,7 @@ class Admin(commands.Cog):
         results = set()
         for _ in range(2):
             for dirpath, filename in files:
-                module_name = dirpath.replace("/", ".") + "." + filename.replace(".py", "")
+                module_name = (dirpath.replace("/", ".") + "." if dirpath else "") + filename.replace(".py", "")
                 if dirpath == "cogs":
                     try:
                         self.reload_or_load_extension(module_name)
