@@ -603,8 +603,8 @@ class BackgroundManagement(commands.Cog):
     async def send_claim_clan_stats(self, e, clan, guild):
         self.bot.clan_log.log_struct(
             dict(
-                clan_name=clan.name,
-                clan_tag=clan.tag,
+                clan_name=str(clan),
+                clan_tag=clan and clan.tag,
                 guild_id=guild.id,
                 guild_name=guild.name,
                 shard=guild.shard_id,
@@ -613,13 +613,13 @@ class BackgroundManagement(commands.Cog):
             )
         )
 
-        e.add_field(name='Name', value=clan.name)
-        e.add_field(name='Tag', value=clan.tag)
+        e.add_field(name='Name', value=str(clan))
+        e.add_field(name='Tag', value=clan and clan.tag)
 
-        total = len(clan.members)
+        total = clan and len(clan.members)
         e.add_field(name='Member Count', value=str(total))
 
-        if clan.badge:
+        if clan and clan.badge:
             e.set_thumbnail(url=clan.badge.url)
 
         query = """SELECT clan_tag, clan_name

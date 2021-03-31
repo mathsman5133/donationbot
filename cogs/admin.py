@@ -20,6 +20,7 @@ import shlex
 
 from cogs.utils.formatters import TabularData
 from cogs.utils.converters import GlobalChannel
+from cogs.utils.emoji_lookup import misc
 import asyncio
 import io
 
@@ -127,6 +128,73 @@ class Admin(commands.Cog):
                     coll = ""
                 coll += line
             await ctx.send(coll)
+
+    def reload_or_load_extension(self, module):
+        try:
+            self.bot.reload_extension(module)
+        except commands.ExtensionNotLoaded:
+            self.bot.load_extension(module)
+
+    @commands.command()
+    async def reload(self, ctx):
+        async with ctx.typing():
+            await self.run_process("git pull")
+
+        directories = (
+            "cogs.utils", "cogs"
+        )
+        files = ["syncboards"]
+        for directory in directories:
+            for dirpath, _, filenames in os.walk(directory):
+                if "__pycache__" in dirpath:
+                    continue
+
+                for file in filenames:
+                    if ".py" not in file:
+                        continue
+
+                    files.append((dirpath, file))
+
+        results = set()
+        for _ in range(2):
+            for dirpath, filename in files:
+                module_name = dirpath.replace("/", ".") + "." + filename.replace(".py", "")
+                if dirpath == "cogs":
+                    try:
+                        self.reload_or_load_extension(module_name)
+                    except commands.ExtensionError as exc:
+                        results.add((dirpath, False, module_name, str(exc)))
+                    else:
+                        results.add((dirpath, True, module_name, None))
+                else:
+                    try:
+                        module = sys.modules[module_name]
+                    except KeyError:
+                        results.add((dirpath, False, module_name, "Module not found."))
+                    else:
+                        try:
+                            importlib.reload(module)
+                        except Exception as e:
+                            results.add((dirpath, False, module_name, str(e)))
+                        else:
+                            results.add((dirpath, True, module_name, None))
+
+        tick, cross = misc['greentick'], misc['redtick']
+        to_send = ""
+        for directory, results in itertools.groupby(sorted(results, key=lambda l: l[0]), key=lambda r: r[0]):
+            results = list(results)
+
+            success, fail = [r for r in results if r[1]], [r for r in results if not r[1]]
+            if len(fail) == 0:
+                to_send += f"{tick}: `{directory}`: {len(success)} Modules Reloaded\n"
+            else:
+                to_send += f"{tick}: `{directory}`: {len(success)} Modules Reloaded\n" + \
+                           "\n".join(
+                               f"    {cross}: `{module}` - " + (f" - {exception}" if exception else "")
+                               for directory, status, module, exception in fail
+                           ) + "\n"
+
+        await ctx.send(to_send)
 
     @commands.command(hidden=True)
     async def loadapi(self, ctx, num: int = 20):

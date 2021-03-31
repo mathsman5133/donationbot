@@ -1,3 +1,4 @@
+import discord
 from discord.ext import commands
 
 PATRON_PERK_ROLES = [605349824472154134, 683559116731318423]
@@ -9,10 +10,15 @@ class NoConfigFailure(commands.CheckFailure):
 
 
 async def helper_check(bot, user):
-    support_member = await bot.get_guild(594276321937326091).fetch_member(user.id)
-    if support_member and any(r.id == HELPER_ROLE for r in support_member.roles):
-        return True
-    return False
+    try:
+        support_member = await bot.get_guild(594276321937326091).fetch_member(user.id)
+    except discord.NotFound:
+        return False
+    else:
+        if any(r.id == HELPER_ROLE for r in support_member.roles):
+            return True
+        else:
+            return False
 
 
 async def check_guild_permissions(ctx, perms, check=all):

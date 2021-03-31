@@ -823,7 +823,8 @@ class Info(commands.Cog, name='\u200bInfo'):
                     ORDER BY season_id DESC
                     """
         fetch = await ctx.db.fetch(query, [p['player_tag'] for p in argument], list({p['clan_tag'] for p in argument}))
-        await ctx.send(file=discord.File(filename="donation-tracker-player-export.csv", fp=self.convert_rows_to_bytes(fetch)))
+        rows = [{k: v for k, v in row.items()} for row in fetch]
+        await ctx.send(file=discord.File(filename="donation-tracker-player-export.csv", fp=self.convert_rows_to_bytes(rows)))
 
     @dump.command(name="legend", aliases=["legends", "leg"])
     async def dump_legends(self, ctx, *, argument: ConvertToPlayers = None):
@@ -872,7 +873,8 @@ class Info(commands.Cog, name='\u200bInfo'):
                     ORDER BY day DESC
                     """
         fetch = await ctx.db.fetch(query, [p['player_tag'] for p in argument], list({p['clan_tag'] for p in argument}))
-        await ctx.send(file=discord.File(filename="donation-tracker-legends-export.csv", fp=self.convert_rows_to_bytes(fetch)))
+        rows = [{k: v for k, v in row.items()} for row in fetch]
+        await ctx.send(file=discord.File(filename="donation-tracker-legends-export.csv", fp=self.convert_rows_to_bytes(rows)))
 
     @dump.command(name="war")
     async def dump_war(self, ctx, *, argument: ConvertToPlayers = None):
