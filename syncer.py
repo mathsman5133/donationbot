@@ -44,7 +44,7 @@ class CustomClanMember(coc.ClanMember):
 class CustomClan(coc.Clan):
     def _from_data(self, data: dict) -> None:
         client = self._client
-        self._members = {m['tag']: CustomClanMember(data=m, client=client) for m in data.get("memberList", [])}
+        self.__iter_members = {m['tag']: CustomClanMember(data=m, client=client) for m in data.get("memberList", [])}
 
 
 coc_client = coc.login(creds.email, creds.password, client=coc.EventsClient, key_names="test2", throttle_limit=30, key_count=3, scopes=creds.scopes, cache_max_size=None)
