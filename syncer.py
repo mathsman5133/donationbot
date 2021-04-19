@@ -44,8 +44,11 @@ class CustomClanMember(coc.ClanMember):
 class CustomClan(coc.Clan):
     def _from_data(self, data: dict) -> None:
         client = self._client
-        self._iter_members = {m['tag']: CustomClanMember(data=m, client=client) for m in data.get("memberList", [])}
+        self._members = {m['tag']: CustomClanMember(data=m, client=client) for m in data.get("memberList", [])}
 
+    @coc.utils.cached_property("_cs_members")
+    def members(self):
+        return list(self._members.values())
 
 coc_client = coc.login(creds.email, creds.password, client=coc.EventsClient, key_names="test2", throttle_limit=30, key_count=3, scopes=creds.scopes, cache_max_size=None)
 coc_client.clan_cls = CustomClan
@@ -1255,7 +1258,7 @@ class Syncer:
             RETURNING 1
             """
             result = await pool.fetch(query, missed_attacks)
-            log.info('saving %s missed attacks for %s clan because war ended.', len(result))
+            log.info('saving %s missed attacks for %s clan because war ended.', len(result), len(tags))
 
             query = """
                 UPDATE boards 
