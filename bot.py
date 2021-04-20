@@ -25,7 +25,7 @@ sentry_sdk.init(creds.SENTRY_KEY)
 initial_extensions = [
     'cogs.admin',
     'cogs.aliases',
-    'cogs.auto_claim',
+    'cogs.auto_claim_v2',
     'cogs.botutils',
     'cogs.stats',
     'cogs.deprecated',
@@ -109,7 +109,7 @@ class DonationBot(commands.AutoShardedBot):
     def __init__(self):
         super().__init__(command_prefix=get_pref, case_insensitive=True,
                          description=description, pm_help=None, help_attrs=dict(hidden=True),
-                         intents=intents, chunk_guilds_at_startup=False)
+                         intents=intents, chunk_guilds_at_startup=False, allowed_mentions=discord.AllowedMentions.none())
 
         self.prefixes = dict()
 
