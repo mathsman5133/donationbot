@@ -151,6 +151,7 @@ class AutoClaim(commands.Cog):
         except KeyError:
             task = asyncio.create_task(self.run_autoclaim_task(ctx.channel, ctx.me, ctx.author.id))
             self.running_commands[ctx.channel.id] = task
+            await task
         else:
             return await ctx.send(f"{CROSS} There is already an active autoclaim command runnning.")
 
