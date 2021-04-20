@@ -85,7 +85,7 @@ class Stats(commands.Cog):
         user_ids = {row['user_id'] for row in players if row['user_id']}
         discord_members = {member.id: member for member in await self.bot.query_member_by_id_batch(guild, user_ids)}
 
-        for user_id, accounts in itertools.groupby(sorted(players, key=lambda r: r['user_id']), key=lambda r: r['user_id'] or 'xxx'):
+        for user_id, accounts in itertools.groupby(sorted(players, key=lambda r: (r['user_id'] or 'xxx')), key=lambda r: (r['user_id'] or 'xxx')):
             accounts = list(accounts)
             if fetch_api:
                 api_players = [self._players[row['player_tag']] for row in accounts]
