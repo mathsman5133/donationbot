@@ -57,6 +57,9 @@ bot.session = aiohttp.ClientSession()
 pool = asyncio.get_event_loop().run_until_complete(setup_db())
 setup_logging(bot)
 
+EVENTS_BEFORE_REFRESHING_BOARD = 20
+EVENTS_BEFORE_REFRESHING_LEGEND_BOARD = 10
+
 
 class Syncer:
     def __init__(self):
@@ -647,14 +650,14 @@ class Syncer:
                 # response = await pool.execute(query2, list(self.board_batch_data.values()))
                 # log.info(f'Registered donations/received to the events database. Status Code {response}.')
                 async with self.last_updated_batch_lock:
-                    tags = set(tag for (tag, counter) in self.boards_counter.items() if counter > 10)
+                    tags = set(tag for (tag, counter) in self.boards_counter.items() if counter > EVENTS_BEFORE_REFRESHING_BOARD)
                     response = await pool.execute(query3, list(tags), ['donation', 'trophy'])
                     response = await pool.execute(query4, list(tags), ['donation', 'trophy'])
                     for k in tags:
                         self.boards_counter.pop(k, None)
 
                 async with self.legend_data_lock:
-                    tags = set(tag for (tag, counter) in self.legend_counter.items() if counter > 3)
+                    tags = set(tag for (tag, counter) in self.legend_counter.items() if counter > EVENTS_BEFORE_REFRESHING_LEGEND_BOARD)
                     response2 = await pool.execute(query3, list(tags), ['legend'])
                     response2 = await pool.execute(query4, list(tags), ['legend'])
                     for k in tags:
