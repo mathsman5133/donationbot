@@ -670,6 +670,9 @@ class ConvertToPlayers(commands.Converter):
         season_id = await ctx.bot.seasonconfig.get_season_id()
         argument = argument.replace("--byuser", "").strip()
 
+        if not argument:
+            return
+
         player, clan = False, False
         if "player" in argument:
             player = True
