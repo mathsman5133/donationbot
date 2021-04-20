@@ -35,7 +35,7 @@ class CustomPlayer(coc.Player):
 
 class SuperPlayer:
     def __init__(self, **kwargs):
-        for key, value in kwargs:
+        for key, value in kwargs.items():
             setattr(self, key, value)
 
     def __getitem__(self, item):
