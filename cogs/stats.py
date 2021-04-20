@@ -1,5 +1,8 @@
+import itertools
 import time
 import math
+
+from collections import namedtuple
 
 import coc
 
@@ -8,6 +11,9 @@ from discord.ext.commands.core import _CaseInsensitiveDict
 
 from cogs.utils.converters import ConvertToPlayers
 from cogs.utils.paginator import StatsAttacksPaginator, StatsDefensesPaginator, StatsTrophiesPaginator, StatsDonorsPaginator, StatsGainsPaginator, StatsLastOnlinePaginator, StatsAchievementPaginator, StatsAccountsPaginator
+
+
+FakeClan = namedtuple("FakeClan", "tag")
 
 
 class CustomPlayer(coc.Player):
@@ -25,6 +31,15 @@ class CustomPlayer(coc.Player):
     def get_ach_value(self, name):
         ach = self.get_caseinsensitive_achievement(name)
         return ach and ach.value or 0
+
+
+class SuperPlayer:
+    def __init__(self, **kwargs):
+        for key, value in kwargs:
+            setattr(self, key, value)
+
+    def __getitem__(self, item):
+        return getattr(self, item, None)
 
 
 class ExpiringCache(dict):
@@ -63,6 +78,50 @@ class Stats(commands.Cog):
                 self._players[player.tag] = player
 
         return [v for (k, (v, _)) in self._players.items() if k in player_tags]
+
+    async def _group_players_by_user(self, players, guild, fetch_api=False, achievement=None):
+        to_return = []
+
+        user_ids = {row['user_id'] for row in players if row['user_id']}
+        discord_members = {member.id: member for member in await self.bot.query_member_by_id_batch(guild, user_ids)}
+
+        for user_id, accounts in itertools.groupby(sorted(players, key=lambda r: r['user_id']), key=lambda r: r['user_id'] or 'xxx'):
+            accounts = list(accounts)
+            if fetch_api:
+                api_players = [self._players[row['player_tag']] for row in accounts]
+
+                if user_id == "xxx":
+                    to_return.extend(api_players)
+                else:
+                    super_player = SuperPlayer(
+                        tag=user_id,
+                        name=str(discord_members.get(user_id, "NotFound")),
+                        attack_wins=sum(p.attack_wins for p in accounts),
+                        defense_wins=sum(p.defense_wins for p in accounts),
+                        donations=sum(p.trophies for p in accounts),
+                        clan=FakeClan(accounts[0]['clan_tag']),
+                        aggr_achievement=sum(p.get_ach_value(achievement) for p in accounts),
+                    )
+                    to_return.append(super_player)
+
+            else:
+                if user_id == "xxx":
+                    to_return.extend(accounts)
+                else:
+                    super_player = SuperPlayer(
+                        player_tag=user_id,
+                        player_name=str(discord_members.get(user_id, "NotFound")),
+                        trophies=sum(p['trophies'] for p in accounts),
+                        gain=sum(p['gain'] for p in accounts),
+                        donations=sum(p['donations'] for p in accounts),
+                        received=sum(p['received'] for p in accounts),
+                        since=min(p['since'] for p in accounts),
+                        user_id=user_id,
+                        clan=FakeClan(accounts[0]['clan_tag']),
+                    )
+                    to_return.append(super_player)
+
+        return to_return
 
     async def _get_emojis(self, guild_id):
         query = "SElECT DISTINCT clan_tag, emoji FROM clans WHERE guild_id = $1 AND emoji != ''"
@@ -119,10 +178,14 @@ class Stats(commands.Cog):
         emojis = await self._get_emojis(ctx.guild.id)
         description = self._get_description(emojis, argument)
 
+        data = await self._get_players([p['player_tag'] for p in argument])
+        if "--byuser" in ctx.message.clean_content:
+            data = await self._group_players_by_user(argument, ctx.guild, fetch_api=True)
+
         p = StatsAttacksPaginator(
             ctx,
-            data=await self._get_players([p['player_tag'] for p in argument]),
-            page_count=math.ceil(len(argument) / 20),
+            data=data,
+            page_count=math.ceil(len(data) / 20),
             title=title,
             description=description,
             emojis=emojis,
@@ -165,10 +228,14 @@ class Stats(commands.Cog):
         emojis = await self._get_emojis(ctx.guild.id)
         description = self._get_description(emojis, argument)
 
+        data = await self._get_players([p['player_tag'] for p in argument])
+        if "--byuser" in ctx.message.clean_content:
+            data = await self._group_players_by_user(argument, ctx.guild, fetch_api=True)
+
         p = StatsDefensesPaginator(
             ctx,
-            data=await self._get_players([p['player_tag'] for p in argument]),
-            page_count=math.ceil(len(argument) / 20),
+            data=data,
+            page_count=math.ceil(len(data) / 20),
             title=title,
             description=description,
             emojis=emojis,
@@ -211,10 +278,13 @@ class Stats(commands.Cog):
         description = self._get_description(emojis, argument)
 
         data = sorted(argument, key=lambda p: p['donations'], reverse=True)
+        if "--byuser" in ctx.message.clean_content:
+            data = await self._group_players_by_user(argument, ctx.guild)
+
         p = StatsDonorsPaginator(
             ctx,
             data=data,
-            page_count=math.ceil(len(argument) / 20),
+            page_count=math.ceil(len(data) / 20),
             title=title,
             description=description,
             emojis=emojis,
@@ -257,8 +327,11 @@ class Stats(commands.Cog):
         description = self._get_description(emojis, argument)
 
         data = sorted(argument, key=lambda p: p['received'], reverse=True)
+        if "--byuser" in ctx.message.clean_content:
+            data = await self._group_players_by_user(argument, ctx.guild)
+
         p = StatsDonorsPaginator(
-            ctx, data=data, page_count=math.ceil(len(argument) / 20), title=title, description=description, emojis=emojis
+            ctx, data=data, page_count=math.ceil(len(data) / 20), title=title, description=description, emojis=emojis
         )
         await p.paginate()
 
@@ -299,8 +372,11 @@ class Stats(commands.Cog):
         description = self._get_description(emojis, argument)
 
         data = sorted(argument, key=lambda p: p['trophies'], reverse=True)
+        if "--byuser" in ctx.message.clean_content:
+            data = await self._group_players_by_user(argument, ctx.guild)
+
         p = StatsTrophiesPaginator(
-            ctx, data=data, page_count=math.ceil(len(argument) / 20), title=title, description=description, emojis=emojis
+            ctx, data=data, page_count=math.ceil(len(data) / 20), title=title, description=description, emojis=emojis
         )
         await p.paginate()
 
@@ -341,8 +417,11 @@ class Stats(commands.Cog):
         description = self._get_description(emojis, argument)
 
         data = sorted(argument, key=lambda p: p['since'], reverse=True)
+        if "--byuser" in ctx.message.clean_content:
+            data = await self._group_players_by_user(argument, ctx.guild)
+
         p = StatsLastOnlinePaginator(
-            ctx, data=data, page_count=math.ceil(len(argument) / 20), title=title, description=description, emojis=emojis
+            ctx, data=data, page_count=math.ceil(len(data) / 20), title=title, description=description, emojis=emojis
         )
         await p.paginate()
 
@@ -386,6 +465,8 @@ class Stats(commands.Cog):
 
         players = await ConvertToPlayers().convert(ctx, "all")
         data = await self._get_players([p['player_tag'] for p in players])
+        if "--byuser" in ctx.message.clean_content:
+            data = await self._group_players_by_user(players, ctx.guild, fetch_api=True, achievement=achievement)
 
         if not data[0].get_caseinsensitive_achievement(achievement):
             return await ctx.send("I couldn't find that achievement, sorry. Please make sure your spelling is correct!")

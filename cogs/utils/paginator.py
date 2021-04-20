@@ -686,7 +686,7 @@ class StatsAchievementPaginator(TablePaginator):
         self.emojis = emojis or {}
 
     def create_row(self, i, player):
-        self.table.add_row([i, self.emojis.get(player.clan and player.clan.tag, ""), player.get_ach_value(self.achievement), player.name])
+        self.table.add_row([i, self.emojis.get(player.clan and player.clan.tag, ""), getattr(player, "aggr_achievement", player.get_ach_value(self.achievement)), player.name])
 
     async def prepare_entry(self, page):
         self.table.clear_rows()

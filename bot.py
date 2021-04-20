@@ -218,6 +218,74 @@ class DonationBot(commands.AutoShardedBot):
         fetch = await self.pool.fetch(query)
         self.prefixes = {n["guild_id"]: n["prefix"] for n in fetch}
 
+    async def query_member_by_id_batch(self, guild, user_ids, only_guild=True):
+        results = []
+        to_fetch = []
+
+        for user in user_ids:
+            result = guild.get_member(user) or (self.get_user(user) if not only_guild else None)
+            if result:
+                results.append(result)
+            else:
+                to_fetch.append(user)
+
+        log.info("Query Members Checkpoint 1, results: %s, fetch: %s", len(results), len(to_fetch))
+        if len(to_fetch) == 0:
+            return results
+
+        ws = self._get_websocket(shard_id=guild.shard_id)
+        if len(to_fetch) == 1 or ws.is_ratelimited():
+            # If we're being rate limited on the WS, then fall back to using the HTTP API
+            # So we don't have to wait ~60 seconds for the query to finish
+            for user_id in to_fetch:
+                try:
+                    member = await guild.fetch_member(user_id)
+                except discord.HTTPException:
+                    pass
+                else:
+                    results.append(member)
+                    to_fetch.remove(user_id)
+                    guild._add_member(member)
+
+        elif len(to_fetch) <= 100:
+            # If we're not being rate limited then we can use the websocket to actually query
+            try:
+                members = await guild.query_members(limit=100, user_ids=to_fetch, cache=True)
+            except asyncio.TimeoutError:
+                pass
+            else:
+                for member in members:
+                    results.append(member)
+                    if member:
+                        to_fetch.remove(member.id)
+
+        else:
+            for index in range(0, len(to_fetch), 100):
+                to_resolve = to_fetch[index:index + 100]
+                try:
+                    members = await guild.query_members(limit=100, user_ids=to_resolve, cache=True)
+                except asyncio.TimeoutError:
+                    continue
+                else:
+                    for member in members:
+                        results.append(member)
+                        if member:
+                            to_fetch.remove(member.id)
+
+        log.info("Query Members Checkpoint 2, results: %s, fetch: %s", len(results), len(to_fetch))
+        if not only_guild and to_fetch:
+            for user_id in to_fetch:
+                try:
+                    user = await self.fetch_user(user_id)
+                except discord.HTTPException:
+                    pass
+                else:
+                    results.append(user)
+                    to_fetch.remove(user_id)
+
+        log.info("Query Members Checkpoint 3, results: %s, fetch: %s", len(results), len(to_fetch))
+        return results
+
 
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()
