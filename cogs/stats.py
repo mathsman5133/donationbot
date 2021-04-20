@@ -100,7 +100,7 @@ class Stats(commands.Cog):
                         defense_wins=sum(p.defense_wins for p in api_players),
                         donations=sum(p.trophies for p in api_players),
                         clan=FakeClan(accounts[0]['clan_tag']),
-                        aggr_achievement=sum(p.get_ach_value(achievement) for p in api_players),
+                        aggr_achievement=sum(p.get_ach_value(achievement) for p in api_players) if achievement else 0,
                     )
                     to_return.append(super_player)
 
