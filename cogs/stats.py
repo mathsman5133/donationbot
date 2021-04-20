@@ -20,7 +20,7 @@ class CustomPlayer(coc.Player):
     def get_caseinsensitive_achievement(self, name):
         if self._achievements is None:
             self._achievements = _CaseInsensitiveDict()
-            for achievement in getattr(self, "_Player__iter_achievements"):
+            for achievement in getattr(self, "_iter_achievements"):
                 self._achievements[achievement.name] = achievement
 
         try:
