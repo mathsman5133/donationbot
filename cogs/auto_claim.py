@@ -55,7 +55,9 @@ class AutoClaim(commands.Cog):
             display_names = [member.display_name for member in members]
             lookup = {member.display_name: member for member in members}
 
-        query = """SELECT DISTINCT player_name, player_tag, user_id
+        season_id = await self.bot.seasonconfig.get_season_id()
+
+        query = """SELECT DISTINCT player_name, player_tag
                    FROM players 
                    INNER JOIN clans 
                    ON clans.clan_tag = players.clan_tag 
@@ -63,7 +65,7 @@ class AutoClaim(commands.Cog):
                    WHERE clans.channel_id = $1
                    AND players.season_id =$2
                    """
-        fetch = await self.bot.pool.fetch(query, channel.id, await self.bot.seasonconfig.get_season_id())
+        fetch = await self.bot.pool.fetch(query, channel.id, season_id)
         links = {tag: user_id for tag, user_id in await self.bot.links.get_links(*(row['player_tag'] for row in fetch))}
 
         can_delete_messages = channel.permissions_for(me).manage_messages
@@ -92,6 +94,7 @@ class AutoClaim(commands.Cog):
             else:
                 if batch_to_send:
                     await channel.send(batch_to_send)
+                    batch_to_send = ""
 
             match = process.extractOne(name, display_names, score_cutoff=60)
             if match:
@@ -119,6 +122,7 @@ class AutoClaim(commands.Cog):
 
             if match and content in ("yes", "y") or "yes" in content:
                 await self.bot.links.add_link(tag, member.id)
+                await self.bot.pool.execute("UPDATE players SET user_id = $1 WHERE player_tag = $2 AND season_id = $3", member.id, tag, season_id)
                 await msg.edit(content=f"{TICK} {name} ({tag}) has been linked to {member.mention}.")
 
             elif content in ("skip", "s") or "skip" in content:
@@ -127,6 +131,7 @@ class AutoClaim(commands.Cog):
             elif response.mentions:
                 member = response.mentions[0]
                 await self.bot.links.add_link(tag, member.id)
+                await self.bot.pool.execute("UPDATE players SET user_id = $1 WHERE player_tag = $2 AND season_id = $3", member.id, tag, season_id)
                 await msg.edit(content=f"{TICK} {name} ({tag}) has been linked to {member.mention}.", allowed_mentions=allowed_mentions)
 
             elif "autoclaim cancel" in content:
