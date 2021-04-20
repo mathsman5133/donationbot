@@ -56,7 +56,7 @@ class ExpiringCache(dict):
 
     def __getitem__(self, key):
         self.clean_old()
-        return super().__getitem__(key)[1]
+        return super().__getitem__(key)[0]
 
     def __setitem__(self, key, value):
         super().__setitem__(key, (value, time.monotonic()))
