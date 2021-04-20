@@ -96,11 +96,11 @@ class Stats(commands.Cog):
                     super_player = SuperPlayer(
                         tag=user_id,
                         name=str(discord_members.get(user_id, "NotFound")),
-                        attack_wins=sum(p.attack_wins for p in accounts),
-                        defense_wins=sum(p.defense_wins for p in accounts),
-                        donations=sum(p.trophies for p in accounts),
+                        attack_wins=sum(p.attack_wins for p in api_players),
+                        defense_wins=sum(p.defense_wins for p in api_players),
+                        donations=sum(p.trophies for p in api_players),
                         clan=FakeClan(accounts[0]['clan_tag']),
-                        aggr_achievement=sum(p.get_ach_value(achievement) for p in accounts),
+                        aggr_achievement=sum(p.get_ach_value(achievement) for p in api_players),
                     )
                     to_return.append(super_player)
 
