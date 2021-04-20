@@ -668,6 +668,7 @@ class ActivityLineConverter(commands.Converter):
 class ConvertToPlayers(commands.Converter):
     async def convert(self, ctx, argument):
         season_id = await ctx.bot.seasonconfig.get_season_id()
+        argument = argument.replace("--byuser", "").strip()
 
         player, clan = False, False
         if "player" in argument:
