@@ -91,18 +91,18 @@ class AutoClaim(commands.Cog):
                 if batch_to_send:
                     await channel.send(batch_to_send)
 
-            match = process.extractOne(name, display_names)
+            match = process.extractOne(name, display_names, score_cutoff=60)
             if match:
                 member = lookup[match[0]]
                 msg = await channel.send(
-                    f"I want to link {name} ({tag}) to {member.mention} ({match[1]}% match). "
+                    f"{SLASH} I want to link {name} ({tag}) to {member.mention} ({match[1]}% match). "
                     f"\nIf this is correct, type `yes` or `y`. "
-                    f"\nIf not, mention the member you want to add them to, i.e. <@{self.bot.user.id}>."
+                    f"\nIf not, mention the member you want to add them to, for e.g. <@{self.bot.user.id}>."
                     f"\nType `skip` or `s` to skip.",
                 )
             else:
                 msg = await channel.send(
-                    f"I didn't find a matching member for {name} ({tag}).\n"
+                    f"{CROSS} I didn't find a matching member for {name} ({tag}).\n"
                     f"Please @mention the person you wish to add to this player, or type `s` or `skip` to skip."
                 )
 
@@ -117,18 +117,18 @@ class AutoClaim(commands.Cog):
 
             if match and content in ("yes", "y") or "yes" in content:
                 await self.bot.links.add_link(tag, member.id)
-                await msg.edit(f"{TICK} {name} ({tag}) has been linked to {member.mention}.")
+                await msg.edit(content=f"{TICK} {name} ({tag}) has been linked to {member.mention}.")
 
             elif content in ("skip", "s") or "skip" in content:
-                await msg.edit(f"{SLASH} Skipping {name} ({tag}).")
+                await msg.edit(content=f"{CROSS} Skipping {name} ({tag}).")
 
             elif response.mentions:
                 member = response.mentions[0]
                 await self.bot.links.add_link(tag, member.id)
-                await msg.edit(f"{TICK} {name} ({tag}) has been linked to {member.mention}.")
+                await msg.edit(content=f"{TICK} {name} ({tag}) has been linked to {member.mention}.")
 
             else:
-                await msg.edit(f"{SLASH} Invalid response, skipping {name} ({tag}).")
+                await msg.edit(content=f"{CROSS} Invalid response, skipping {name} ({tag}).")
 
             if can_delete_messages:
                 try:
