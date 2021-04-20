@@ -75,7 +75,7 @@ class AutoClaim(commands.Cog):
         for row in fetch:
             tag, name = row['player_tag'], row['player_name']
 
-            link = links.get(row['player'])
+            link = links.get(tag)
             if link:
                 user = await self.get_or_fetch_member(channel.guild, link)
                 fmt = f"{TICK} {name} ({tag}) has already been linked to {user.mention}.\n"
@@ -150,6 +150,12 @@ class AutoClaim(commands.Cog):
             self.running_commands[ctx.channel.id]
         except KeyError:
             task = asyncio.create_task(self.run_autoclaim_task(ctx.channel, ctx.me, ctx.author.id))
+            await ctx.send(
+                "Welcome to AutoClaim. "
+                "I will walk you through an interactive linking of all the players in the clans added to this channel."
+                "\nPlease wait while I get started."
+            )
+            await ctx.trigger_typing()
             self.running_commands[ctx.channel.id] = task
             await task
         else:
