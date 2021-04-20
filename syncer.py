@@ -50,7 +50,7 @@ class CustomClan(coc.Clan):
     def members(self):
         return list(self._members.values())
 
-coc_client = coc.login(creds.email, creds.password, client=coc.EventsClient, key_names="test2", throttle_limit=30, key_count=3, scopes=creds.scopes, cache_max_size=None)
+coc_client = coc.login(creds.email, creds.password, client=coc.EventsClient, key_names="test2", throttle_limit=30, key_count=2, scopes=creds.scopes, cache_max_size=None)
 coc_client.clan_cls = CustomClan
 bot = commands.Bot(command_prefix="+")
 bot.session = aiohttp.ClientSession()
