@@ -557,6 +557,7 @@ class SyncBoards:
                             INNER JOIN clans 
                             ON clans.clan_tag = players.clan_tag OR players.fake_clan_tag = clans.clan_tag
                             WHERE clans.channel_id = $1
+                            AND season_id = $5
                         ),
                         cte2 AS (
                             SELECT emoji, clan_tag FROM clans WHERE channel_id=$1
@@ -578,7 +579,8 @@ class SyncBoards:
                 config.channel_id,
                 self.legend_day,
                 self.get_next_per_page(config.page, config.per_page),
-                offset
+                offset,
+                season_id,
             )
         elif config.type == "war":
             query = f"""
