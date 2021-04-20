@@ -25,7 +25,7 @@ sentry_sdk.init(creds.SENTRY_KEY)
 initial_extensions = [
     'cogs.admin',
     'cogs.aliases',
-    'cogs.auto_claim_v2',
+    'cogs.auto_claim',
     'cogs.botutils',
     'cogs.stats',
     'cogs.deprecated',

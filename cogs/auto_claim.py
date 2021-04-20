@@ -1,81 +1,155 @@
-import discord
-import math
-import typing
+import asyncio
+import logging
 
+import discord
 
 from discord.ext import commands
+from fuzzywuzzy import process
 
-from cogs.utils import fuzzy, checks, formatters, paginator
-from cogs.utils.converters import ClanConverter, PlayerConverter
+from cogs.utils.checks import manage_guild
+from cogs.utils.emoji_lookup import misc
 
 
-class AutoClaim(commands.Cog, name='\u200bAutoClaim'):
+log = logging.getLogger()
+
+TICK = misc['greentick']
+CROSS = misc['redtick']
+SLASH = misc['greytick']
+
+
+class AutoClaim(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.running_commands = {}
 
-    async def match_player(self, player, guild: discord.Guild, prompt=False, ctx=None,
-                           score_cutoff=20, claim=True):
-        matches = fuzzy.extract_matches(player.name, [n.name for n in guild.members],
-                                        score_cutoff=score_cutoff, scorer=fuzzy.partial_ratio,
-                                        limit=9)
-        if len(matches) == 0:
+    async def get_or_fetch_member(self, guild, member_id):
+        member = guild.get_member(member_id)
+        if member is not None:
+            return member
+
+        shard = self.bot.get_shard(guild.shard_id)
+        if shard.is_ws_ratelimited():
+            try:
+                member = await guild.fetch_member(member_id)
+            except discord.HTTPException:
+                return None
+            else:
+                return member
+
+        members = await guild.query_members(limit=1, user_ids=[member_id], cache=True)
+        if not members:
             return None
-        if len(matches) == 1:
-            user = guild.get_member_named(matches[0][0])
-            if prompt:
-                m = await ctx.prompt(f'[auto-claim]: {player.name} ({player.tag}) '
-                                     f'to be claimed to {str(user)} ({user.id}). '
-                                     f'If already claimed, this will do nothing.')
-                if m is True and claim is True:
-                    query = "UPDATE players SET user_id = $1 " \
-                            "WHERE player_tag = $2 AND user_id IS NULL AND season_id = $3"
-                    await self.bot.pool.execute(query, user.id, player.tag,
-                                                await self.bot.seasonconfig.get_season_id())
-                    await self.bot.links.add_link(player.tag, user.id)
+        return members[0]
+
+    async def run_autoclaim_task(self, channel, me, author_id):
+        try:
+            await channel.guild.chunk(cache=True)
+        except Exception as exc:
+            log.exception("Failed to chunk members for guild %s", channel.guild.id, exc_info=exc)
+            return await channel.send(
+                "I'm sorry, but something went wrong and I couldn't find any members in this channel. "
+                "Please try again later."
+            )
+        else:
+            members = channel.members
+            display_names = [member.display_name for member in members]
+            lookup = {member.display_name: member for member in members}
+
+        query = """SELECT DISTINCT player_name, player_tag, user_id
+                   FROM players 
+                   INNER JOIN clans 
+                   ON clans.clan_tag = players.clan_tag 
+                   OR players.fake_clan_tag = clans.clan_tag
+                   WHERE clans.channel_id = $1
+                   AND players.season_id =$2
+                   """
+        fetch = await self.bot.pool.fetch(query, channel.id, await self.bot.seasonconfig.get_season_id())
+        links = {tag: user_id for tag, user_id in await self.bot.links.get_links(*(row['player_tag'] for row in fetch))}
+
+        can_delete_messages = channel.permissions_for(me).manage_messages
+        allowed_mentions = discord.AllowedMentions.none()
+
+        def check(message):
+            return message.channel == channel and message.author.id == author_id
+
+        batch_to_send = ""
+
+        for row in fetch:
+            tag, name = row['player_tag'], row['player_name']
+
+            link = links.get(tag)
+            if link:
+                user = await self.get_or_fetch_member(channel.guild, link)
+                fmt = f"{TICK} {name} ({tag}) has already been linked to {user.mention}.\n"
+                if len(batch_to_send) + len(fmt) > 2000:
+                    await channel.send(batch_to_send)
+                    batch_to_send = fmt
                 else:
-                    return False
-            return user
-        return [guild.get_member_named(n[0]) for n in matches]
+                    batch_to_send += fmt
 
-    async def match_member(self, member, clan, claim):
-        matches = fuzzy.extract_matches(member.name, [n.name for n in clan.members],
-                                        score_cutoff=60)
-        if len(matches) == 0:
-            return None
-        for i, n in enumerate(matches):
-            m = clan.get_member_by(name=n[0])
-            link = await self.bot.links.get_link(m.tag)
-            if link is None:
                 continue
-            # query = "SELECT user_id FROM players WHERE player_tag = $1 AND season_id = $2"
-            # fetch = await self.bot.pool.fetchrow(query, m.tag,
-            #                                      await self.bot.seasonconfig.get_season_id())
-            # if fetch is None:
-            #     continue
-            del matches[i]
 
-        if len(matches) == 1 and claim is True:
-            player = clan.get_member_by(name=matches[0][0])
-            query = "UPDATE players SET user_id = $1 WHERE player_tag = $2 " \
-                    "AND user_id IS NULL AND season_id = $3"
-            await self.bot.pool.execute(query, member.id, player.tag,
-                                        await self.bot.seasonconfig.get_season_id())
-            await self.bot.links.add_link(player.tag, member.id)
-            return player
-        elif len(matches) == 1:
-            return True
+            else:
+                if batch_to_send:
+                    await channel.send(batch_to_send)
 
-        return [clan.get_member(name=n) for n in matches]
+            match = process.extractOne(name, display_names, score_cutoff=60)
+            if match:
+                member = lookup[match[0]]
+                msg = await channel.send(
+                    f"{SLASH} I want to link {name} ({tag}) to {member.mention} ({match[1]}% match). "
+                    f"\nIf this is correct, type `yes` or `y`. "
+                    f"\nIf not, mention the member you want to add them to, for e.g. <@{self.bot.user.id}>."
+                    f"\nType `skip` or `s` to skip.",
+                )
+            else:
+                msg = await channel.send(
+                    f"{CROSS} I didn't find a matching member for {name} ({tag}).\n"
+                    f"Please @mention the person you wish to add to this player, or type `s` or `skip` to skip."
+                )
 
-    @staticmethod
-    async def send(messageable, msg, colour):
-        return await messageable.send(embed=discord.Embed(colour=colour,
-                                                          description=msg))
+            try:
+                response = await self.bot.wait_for('message', timeout=60.0, check=check)
+            except asyncio.TimeoutError:
+                await channel.send(f"{CROSS} I'm sorry, you took too long. Please try again later.")
+                del self.running_commands[channel.id]
+                return
 
-    @commands.group(name='autoclaim')
-    @checks.manage_guild()
-    async def auto_claim(self, ctx):
+            content = response.clean_content.strip()
+
+            if match and content in ("yes", "y") or "yes" in content:
+                await self.bot.links.add_link(tag, member.id)
+                await msg.edit(content=f"{TICK} {name} ({tag}) has been linked to {member.mention}.")
+
+            elif content in ("skip", "s") or "skip" in content:
+                await msg.edit(content=f"{CROSS} Skipping {name} ({tag}).")
+
+            elif response.mentions:
+                member = response.mentions[0]
+                await self.bot.links.add_link(tag, member.id)
+                await msg.edit(content=f"{TICK} {name} ({tag}) has been linked to {member.mention}.", allowed_mentions=allowed_mentions)
+
+            elif "autoclaim cancel" in content:
+                await channel.send(f"{TICK} AutoClaim has successfully been cancelled.")
+                del self.running_commands[channel.id]
+                return
+
+            else:
+                await msg.edit(content=f"{CROSS} Invalid response, skipping {name} ({tag}).")
+
+            if can_delete_messages:
+                try:
+                    await response.delete()
+                except discord.Forbidden:
+                    can_delete_messages = False
+                except:
+                    pass
+
+        await channel.send(f"{TICK} Thank you, autoclaim has finished.")
+
+    @commands.group(invoke_without_command=True)
+    @manage_guild()
+    async def autoclaim(self, ctx):
         """[Group] Manage a currently running auto-claim command.
 
         Automatically claim all accounts in server, through an interactive process.
@@ -83,160 +157,55 @@ class AutoClaim(commands.Cog, name='\u200bAutoClaim'):
         It will go through all players in claimed clans in server, matching them to discord users where possible.
         The interactive process is easy to use, and will try to guide you through as easily as possible
         """
-        if ctx.invoked_subcommand is None:
-            return await ctx.send_help(ctx.command)
+        await ctx.send_help(ctx.command)
 
-    @auto_claim.command(name='start')
-    @checks.manage_guild()
-    async def auto_claim_start(self, ctx, *, clan: ClanConverter = None):
-        """Automatically claim all accounts in server, through an interactive process.
+    @autoclaim.command()
+    async def start(self, ctx):
+        """Automatically link all players in clans added to this channel to members, through an interactive process.
 
-        It will go through all players in claimed clans in server, matching them to discord users where possible.
-        The interactive process is easy to use, and will try to guide you through as easily as possible
+        This will go through all members in your clans, and look for corresponding matches to people who can view this channel.
+        For every match, the bot will ask you to verify by typing `y`, override by mentioning another member (@mention), or skip by typing `s`.
 
-        **Parameters**
-        :key: Clan tag, name or `all` for all clans claimed.
+        You can cancel this command at any time by using `+autoclaim cancel`.
 
         **Format**
-        :information_source: `+autoclaim start #CLAN_TAG`
-        :information_source: `+autoclaim start CLAN NAME`
-        :information_source: `+autoclaim start all`
+        :information_source: `+autoclaim start`
 
         **Example**
-        :white_check_mark: `+autoclaim start #P0LYJC8C`
-        :white_check_mark: `+autoclaim start Rock Throwers`
-        :white_check_mark: `+autoclaim start all`
+        :white_check_mark: `+autoclaim start`
 
         **Required Permissions**
         :warning: Manage Server
         """
-        if self.running_commands.get(ctx.guild.id, False):
-            return await ctx.send('You already have an auto-claim command running. '
-                                  'Please cancel (`+help autoclaim cancel`) it before starting a new one.')
+        try:
+            self.running_commands[ctx.channel.id]
+        except KeyError:
+            task = asyncio.create_task(self.run_autoclaim_task(ctx.channel, ctx.me, ctx.author.id))
+            await ctx.send(
+                "Welcome to AutoClaim. "
+                "I will walk you through an interactive linking of all the players in the clans added to this channel."
+                "\nPlease wait while I get started."
+            )
+            await ctx.trigger_typing()
+            self.running_commands[ctx.channel.id] = task
+            await task
+        else:
+            return await ctx.send(f"{CROSS} There is already an active autoclaim command runnning.")
 
-        self.running_commands[ctx.guild.id] = True
-
-        season_id = await self.bot.seasonconfig.get_season_id()
-        failed_players = []
-
-        if not clan:
-            clan = await ctx.get_clans()
-
-        prompt = await ctx.prompt(
-            'Would you like to be asked to confirm before the bot claims matching accounts? '
-            'Else you can un-claim and reclaim if there is an incorrect claim.'
-        )
-        if prompt is None:
-            return
-
-        await ctx.send('You can stop this command at any time by running `+autoclaim cancel`')
-
-        match_player = self.match_player
-
-        for c in clan:
-            for member in c.members:
-                if self.running_commands[ctx.guild.id] is False:
-                    del self.running_commands[ctx.guild.id]
-                    return await ctx.send('autoclaim command stopped.')
-
-                # query = """SELECT id
-                #            FROM players
-                #            WHERE player_tag = $1
-                #            AND user_id IS NOT NULL
-                #            AND season_id = $2;
-                #         """
-                # fetch = await ctx.db.fetchrow(query, member.tag, season_id)
-                # if fetch:
-                #     continue
-                link = await self.bot.links.get_link(member.tag)
-                if link:
-                    continue
-
-                results = await match_player(member, ctx.guild, prompt, ctx)
-                if not results:
-                    msg = await self.send(ctx, f'[auto-claim]: No members found for {member.name} ({member.tag})',
-                                          discord.Colour.red())
-                    failed_players.append([member, msg])
-                    continue
-                    # no members found in guild with that player name
-                if isinstance(results, discord.Member):
-                    await self.send(ctx, f'[auto-claim]: {member.name} ({member.tag}) '
-                                         f'has been claimed to {str(results)} ({results.id})',
-                                    discord.Colour.green())
-                    continue
-
-                table = formatters.TabularData()
-                table.set_columns(['Option', 'user#disrim'])
-                table.add_rows([i + 1, str(n)] for i, n in enumerate(results))
-                result = await ctx.prompt(f'[auto-claim]: For player {member.name} ({member.tag})\n'
-                                          f'Corresponding members found:\n'
-                                          f'```\n{table.render()}\n```', additional_options=len(results))
-                if isinstance(result, int):
-                    query = "UPDATE players SET user_id = $1 WHERE player_tag = $2 AND season_id = $3"
-                    await self.bot.pool.execute(query, results[result].id, member.tag, season_id)
-                    await self.bot.links.add_link(member.tag, results[result].id)
-                if result is None or result is False:
-                    msg = await self.send(ctx, f'[auto-claim]: For player {member.name} ({member.tag})\n'
-                                               f'Corresponding members found, none claimed:\n'
-                                               f'```\n{table.render()}\n```',
-                                          colour=discord.Colour.gold()
-                                          )
-                    failed_players.append([member, msg])
-                    continue
-
-                await self.send(ctx, f'[auto-claim]: {member.name} ({member.tag}) '
-                                     f'has been claimed to {str(results[result])} ({results[result].id})',
-                                colour=discord.Colour.green())
-
-        prompt = await ctx.prompt("Would you like to go through a list of players who weren't claimed and "
-                                  "claim them now?\nI will walk you through it...")
-        if not prompt:
-            return await ctx.confirm()
-        for player, fail_msg in failed_players:
-            if self.running_commands[ctx.guild.id] is False:
-                del self.running_commands[ctx.guild.id]
-                return await ctx.send('autoclaim command stopped.')
-
-            m = await ctx.send(f'Player: {player.name} ({player.tag}), Clan: {player.clan.name} ({player.clan.tag}).'
-                               f'\nPlease send either a UserID, user#discrim combo, '
-                               f'or mention of the person you wish to claim this account to.')
-
-            def check(m):
-                return m.author == ctx.author and m.channel == ctx.channel
-
-            msg = await self.bot.wait_for('message', check=check)
-            try:
-                member = await commands.MemberConverter().convert(ctx, msg.content)
-            except commands.BadArgument:
-                await ctx.send(
-                    'Discord user not found. Moving on to next clan member. Please claim them manually.')
-                continue
-
-            query = "UPDATE players SET user_id = $1 WHERE player_tag = $2 AND season_id = $3"
-            await self.bot.pool.execute(query, member.id, player.tag, season_id)
-            await self.bot.links.add_link(player.tag, member.id)
-            try:
-                await fail_msg.edit(embed=discord.Embed(colour=discord.Colour.green(),
-                                                        description=f'[auto-claim]: {player.name} ({player.tag}) '
-                                                        f'has been claimed to {str(member)} ({member.id})'
-                                                        ))
-                await m.delete()
-                await msg.delete()
-            except (discord.Forbidden, discord.HTTPException):
-                pass
-
-        del self.running_commands[ctx.guild.id]
-        await ctx.send('All done. Thanks!')
-
-    @auto_claim.command(name='cancel', aliases=['stop'])
-    @checks.manage_guild()
-    async def auto_claim_cancel(self, ctx):
+    @autoclaim.command()
+    async def cancel(self, ctx):
         """Cancel an on-going auto-claim command.
 
         **Required Permissions**
         :warning: Manage Server
         """
-        self.running_commands[ctx.guild.id] = False
+        try:
+            task = self.running_commands[ctx.channel.id]
+        except KeyError:
+            return await ctx.send(f"{CROSS} There is no active autoclaim command to cancel.")
+        else:
+            task.cancel()
+            return await ctx.send(f"{TICK} Autoclaim command cancelled. Thank you.")
 
 
 def setup(bot):
