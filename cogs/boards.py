@@ -9,7 +9,7 @@ from discord.ext import commands
 
 from cogs.add import BOARD_PLACEHOLDER
 from cogs.utils.db_objects import DatabaseMessage, BoardConfig
-from syncboards import SyncBoards
+from syncboards import SyncBoards, default_sort_by
 
 
 log = logging.getLogger(__name__)
@@ -110,7 +110,7 @@ class DonationBoard(commands.Cog):
                 "channel_id": ctx.channel.id,
                 "icon_url": None,
                 "title": None,
-                "sort_by": None,
+                "sort_by": default_sort_by[board_type],
                 "toggle": True,
                 "type": board_type,
                 "in_event": False,
@@ -124,8 +124,9 @@ class DonationBoard(commands.Cog):
         else:
             configs = [BoardConfig(bot=self.bot, record=row) for row in fetch]
 
-        for config in configs:
-            await self.update_board(None, config, divert_to=ctx.channel.id)
+        async with ctx.typing():
+            for config in configs:
+                await self.update_board(None, config, divert_to=ctx.channel.id)
 
     @commands.Cog.listener()
     async def on_guild_channel_delete(self, channel):
