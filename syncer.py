@@ -57,8 +57,8 @@ bot.session = aiohttp.ClientSession()
 pool = asyncio.get_event_loop().run_until_complete(setup_db())
 setup_logging(bot)
 
-EVENTS_BEFORE_REFRESHING_BOARD = 20
-EVENTS_BEFORE_REFRESHING_LEGEND_BOARD = 10
+EVENTS_BEFORE_REFRESHING_BOARD = 10
+EVENTS_BEFORE_REFRESHING_LEGEND_BOARD = 3
 
 
 class Syncer:
