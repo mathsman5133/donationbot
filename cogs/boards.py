@@ -67,7 +67,7 @@ class DonationBoard(commands.Cog):
 
     @commands.command()
     async def showboard(self, ctx, *, board_type: str = "donation"):
-        """Show boards in your server.
+        """Show boards in your server. If no boards are setup it will create one with clans added to the current channel.
 
         **Parameters**
         :key: Board Type: `donation`, `trophy` or `legend`. Defaults to `donation`.
@@ -99,17 +99,33 @@ class DonationBoard(commands.Cog):
         AND boards.guild_id = $2
         AND type = $3
         """
-        async with ctx.typing():
-            fetch = await ctx.db.fetch(query, channel.id, ctx.guild.id, board_type)
-            if not fetch:
-                return await ctx.send(
-                    "I couldn't find any boards which have a clan that is linked to this channel. "
-                    "Swap to a setup channel, or use `+showboard #dt-boards`."
-                )
+        fetch = await ctx.db.fetch(query, channel.id, ctx.guild.id, board_type)
+        if not fetch:
+            exists = await ctx.db.fetch("SELECT 1 FROM clans WHERE channel_id = $1", channel.id)
+            if not exists:
+                return await ctx.send("I couldn't find any clans added to this channel.")
 
-            for row in fetch:
-                config = BoardConfig(bot=self.bot, record=row)
-                await self.update_board(None, config, divert_to=ctx.channel.id)
+            fake_record = {
+                "guild_id": ctx.guild.id,
+                "channel_id": ctx.channel.id,
+                "icon_url": None,
+                "title": None,
+                "sort_by": None,
+                "toggle": True,
+                "type": board_type,
+                "in_event": False,
+                "message_id": None,
+                "per_page": 0,
+                "page": 1,
+                "season_id": None,
+            }
+
+            configs = [BoardConfig(bot=self.bot, record=fake_record)]
+        else:
+            configs = [BoardConfig(bot=self.bot, record=row) for row in fetch]
+
+        for config in configs:
+            await self.update_board(None, config, divert_to=ctx.channel.id)
 
     @commands.Cog.listener()
     async def on_guild_channel_delete(self, channel):
