@@ -82,11 +82,13 @@ class DonationBoard(commands.Cog):
         """
         if ctx.message.channel_mentions:
             channel = ctx.message.channel_mentions[0]
-            board_type = board_type.replace(channel.mention, "")
+            board_type = board_type.replace(channel.mention, "").strip()
+
         else:
             channel = ctx.channel
 
-        print(board_type)
+        if board_type not in ("donation", "trophy", "legend", "war"):
+            board_type = "donation"
 
         query = """
         SELECT DISTINCT boards.*
@@ -99,6 +101,12 @@ class DonationBoard(commands.Cog):
         """
         async with ctx.typing():
             fetch = await ctx.db.fetch(query, channel.id, ctx.guild.id, board_type)
+            if not fetch:
+                return await ctx.send(
+                    "I couldn't find any boards which have a clan that is linked to this channel. "
+                    "Swap to a setup channel, or use `+showboard #dt-boards`."
+                )
+
             for row in fetch:
                 config = BoardConfig(bot=self.bot, record=row)
                 await self.update_board(None, config, divert_to=ctx.channel.id)
