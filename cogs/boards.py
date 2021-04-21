@@ -1,4 +1,6 @@
 import asyncio
+import typing
+
 import discord
 import logging
 
@@ -54,10 +56,36 @@ class DonationBoard(commands.Cog):
         self.board_updater = SyncBoards(self.bot, start_loop=False, session=self.bot.session, fake_clan_guilds=self.bot.fake_clan_guilds)
 
     @commands.command()
-    async def rb(self, ctx, *, fonts: str = None):
-        fetch = await ctx.db.fetchrow("SELECT * FROM boards OFFSET random() LIMIT 1")
+    async def rb(self, ctx, *, board_type: str = None):
+        if board_type:
+            fetch = await ctx.db.fetchrow("SELECT * FROM boards WHERE type = $1 OFFSET random() LIMIT 1", board_type)
+
+        else:
+            fetch = await ctx.db.fetchrow("SELECT * FROM boards OFFSET random() LIMIT 1")
+
         config = BoardConfig(bot=self.bot, record=fetch)
-        await self.update_board(None, config, fonts=fonts, send_to_channel=ctx.channel.id)
+        await self.update_board(None, config, divert_to=ctx.channel.id)
+
+    @commands.command()
+    async def showboard(self, ctx, board_type: str = "donation"):
+        if ctx.message.channel_mentions:
+            channel = ctx.message.channel_mentions[0]
+            board_type = board_type.replace(channel.mention, "")
+        else:
+            channel = ctx.channel
+
+        fetch = await ctx.db.fetchrow(
+            "SELECT boards.* "
+            "FROM boards "
+            "INNER JOIN clans "
+            "ON clans.channel_id = boards.channel_id "
+            "WHERE clans.clan_tag IN (SELECT clan_tag FROM clans WHERE channel_id = $1 "
+            "AND type = $2",
+            channel.id,
+            board_type
+        )
+        config = BoardConfig(bot=self.bot, record=fetch)
+        await self.update_board(None, config, divert_to=ctx.channel.id)
 
     @commands.Cog.listener()
     async def on_guild_channel_delete(self, channel):
@@ -220,7 +248,7 @@ class DonationBoard(commands.Cog):
         if self.board_updater.webhooks is None:
             await self.board_updater.on_init()
 
-        await self.board_updater.update_board(config, update_global=True, **kwargs)
+        await self.board_updater.update_board(config, **kwargs)
 
 
 def setup(bot):
