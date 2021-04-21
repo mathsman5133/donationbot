@@ -33,8 +33,8 @@ def setup_logging(bot, test_syncer=False):
     log.setLevel(logging.INFO)
     stream_handler = logging.StreamHandler()
     stream_handler.setLevel(logging.DEBUG)
-    dt_fmt = '%d-%m-%Y %H:%M:%S'
-    fmt = logging.Formatter('[{asctime}] [{levelname:<7}] {name}: {message}', dt_fmt, style='{')
+    dt_fmt = '%H:%M:%S'
+    fmt = logging.Formatter('[{asctime}]: {message}', dt_fmt, style='{')
     # if creds.live:
     #     handler = logging.FileHandler(filename='donationtracker.log', encoding='utf-8', mode='w')
     #     handler.setLevel(logging.INFO)
