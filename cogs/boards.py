@@ -75,7 +75,7 @@ class DonationBoard(commands.Cog):
             channel = ctx.channel
 
         query = """
-        SELECT boards.*
+        SELECT DISTINCT boards.*
         FROM boards
         INNER JOIN clans
         ON clans.channel_id = boards.channel_id
