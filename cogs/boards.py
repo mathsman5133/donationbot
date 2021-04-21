@@ -74,18 +74,18 @@ class DonationBoard(commands.Cog):
         else:
             channel = ctx.channel
 
-        fetch = await ctx.db.fetchrow(
-            "SELECT boards.* "
-            "FROM boards "
-            "INNER JOIN clans "
-            "ON clans.channel_id = boards.channel_id "
-            "WHERE clans.clan_tag IN (SELECT clan_tag FROM clans WHERE channel_id = $1 "
-            "AND type = $2",
-            channel.id,
-            board_type
-        )
-        config = BoardConfig(bot=self.bot, record=fetch)
-        await self.update_board(None, config, divert_to=ctx.channel.id)
+        query = """
+        SELECT boards.*
+        FROM boards
+        INNER JOIN clans
+        ON clans.channel_id = boards.channel_id
+        WHERE clans.clan_tag IN (SELECT clan_tag FROM clans WHERE channel_id = $1)
+        AND type = $2
+        """
+        fetch = await ctx.db.fetch(query, channel.id, board_type)
+        for row in fetch:
+            config = BoardConfig(bot=self.bot, record=row)
+            await self.update_board(None, config, divert_to=ctx.channel.id)
 
     @commands.Cog.listener()
     async def on_guild_channel_delete(self, channel):
