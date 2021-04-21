@@ -59,7 +59,6 @@ class DonationBoard(commands.Cog):
     async def rb(self, ctx, *, board_type: str = None):
         if board_type:
             fetch = await ctx.db.fetchrow("SELECT * FROM boards WHERE type = $1 OFFSET random() LIMIT 1", board_type)
-
         else:
             fetch = await ctx.db.fetchrow("SELECT * FROM boards OFFSET random() LIMIT 1")
 
@@ -80,9 +79,10 @@ class DonationBoard(commands.Cog):
         INNER JOIN clans
         ON clans.channel_id = boards.channel_id
         WHERE clans.clan_tag IN (SELECT clan_tag FROM clans WHERE channel_id = $1)
-        AND type = $2
+        AND boards.guild_id = $2
+        AND type = $3
         """
-        fetch = await ctx.db.fetch(query, channel.id, board_type)
+        fetch = await ctx.db.fetch(query, ctx.guild.id, channel.id, board_type)
         for row in fetch:
             config = BoardConfig(bot=self.bot, record=row)
             await self.update_board(None, config, divert_to=ctx.channel.id)
