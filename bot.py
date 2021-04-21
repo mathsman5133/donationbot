@@ -132,6 +132,8 @@ class DonationBot(commands.AutoShardedBot):
 
         self.sqlite = sqlite3.connect("errors.sqlite")
 
+        self.fake_clan_guilds = {}
+
         for e in initial_extensions:
             try:
                 self.load_extension(e)  # load cogs
@@ -162,9 +164,6 @@ class DonationBot(commands.AutoShardedBot):
         if hasattr(ctx, 'after_invoke'):
             await ctx.after_invoke(ctx)
 
-    async def on_ready(self):
-        self.error_webhooks = itertools.cycle(n for n in await self.get_channel(625160612791451661).webhooks())
-
     async def on_message(self, message):
         if message.author.bot:
             return  # ignore bot messages
@@ -191,6 +190,8 @@ class DonationBot(commands.AutoShardedBot):
     async def on_ready(self):
         await self.change_presence(activity=discord.Game('+help for commands'))
         await self.init_prefixes()
+        self.error_webhooks = itertools.cycle(n for n in await self.get_channel(625160612791451661).webhooks())
+        self.fake_clan_guilds = {row['guild_id'] for row in await self.pool.fetch("SELECT DISTINCT guild_id FROM clans WHERE fake_clan=True")}
 
     async def on_resumed(self):
         await self.change_presence(activity=discord.Game('+help for commands'))

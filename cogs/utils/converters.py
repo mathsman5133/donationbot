@@ -306,7 +306,12 @@ class ActivityArgumentConverter(commands.Converter):
                 clan = fetch
                 break
 
-            query = """
+            fake_clan_in_server = ctx.guild.id in ctx.bot.fake_clan_guilds
+            join = "(clans.clan_tag = players.clan_tag OR " \
+                   "(players.fake_clan_tag IS NOT NULL AND clans.clan_tag = players.fake_clan_tag))" \
+                if fake_clan_in_server else "clans.clan_tag = players.clan_tag"
+
+            query = f"""
                             WITH cte AS (
                                 SELECT player_tag, player_name FROM players WHERE ($2 = True OR user_id = $1) AND player_name is not null AND season_id = $6
                             ),
@@ -315,7 +320,7 @@ class ActivityArgumentConverter(commands.Converter):
                                                 player_name 
                                 FROM players 
                                 INNER JOIN clans 
-                                ON (clans.clan_tag = players.clan_tag OR (players.fake_clan_tag is not null and players.fake_clan_tag = players.clan_tag))
+                                ON {join}
                                 WHERE clans.guild_id = $3
                                 AND players.season_id = $6
                             )
@@ -681,9 +686,14 @@ class ConvertToPlayers(commands.Converter):
             clan = True
             argument = argument.replace("clan", "").strip()
 
+        fake_clan_in_server = ctx.guild.id in ctx.bot.fake_clan_guilds
+        join = "(clans.clan_tag = players.clan_tag OR " \
+               "(players.fake_clan_tag IS NOT NULL AND clans.clan_tag = players.fake_clan_tag))" \
+               if fake_clan_in_server else "clans.clan_tag = players.clan_tag"
+
         if not (player or clan):
             if argument in ("all", "server", "guild"):
-                query = """SELECT DISTINCT player_tag, 
+                query = f"""SELECT DISTINCT player_tag, 
                                   player_name,
                                   clans.clan_name,
                                   players.clan_tag,
@@ -695,7 +705,7 @@ class ConvertToPlayers(commands.Converter):
                                   user_id 
                            FROM players
                            INNER JOIN clans
-                           ON (clans.clan_tag = players.clan_tag OR (players.fake_clan_tag IS NOT NULL AND clans.clan_tag = players.fake_clan_tag))
+                           ON {join}
                            WHERE clans.guild_id = $1 
                            AND players.season_id = $2
                         """
@@ -703,7 +713,7 @@ class ConvertToPlayers(commands.Converter):
 
             try:
                 channel = await commands.TextChannelConverter().convert(ctx, argument)
-                query = """SELECT DISTINCT player_tag, 
+                query = f"""SELECT DISTINCT player_tag, 
                                   player_name,
                                   clans.clan_name,
                                   players.clan_tag,
@@ -715,7 +725,7 @@ class ConvertToPlayers(commands.Converter):
                                   user_id 
                            FROM players 
                            INNER JOIN clans 
-                           ON (clans.clan_tag = players.clan_tag OR (players.fake_clan_tag IS NOT NULL AND clans.clan_tag = players.fake_clan_tag))
+                           ON {join}
                            WHERE clans.channel_id = $1 
                            AND players.season_id = $2
                         """
@@ -749,7 +759,7 @@ class ConvertToPlayers(commands.Converter):
             corrected = correct_tag(argument)
 
         if not player:
-            query = """SELECT DISTINCT player_tag, 
+            query = f"""SELECT DISTINCT player_tag, 
                               player_name,
                               clans.clan_name,
                               players.clan_tag,
@@ -761,7 +771,7 @@ class ConvertToPlayers(commands.Converter):
                               user_id 
                        FROM players 
                        INNER JOIN clans 
-                       ON (clans.clan_tag = players.clan_tag OR (players.fake_clan_tag IS NOT NULL AND clans.clan_tag = players.fake_clan_tag))
+                       ON {join}
                        WHERE clans.clan_tag = $1 
                        AND players.season_id = $3
                        OR clans.clan_name LIKE $2 

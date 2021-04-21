@@ -147,6 +147,8 @@ class Stats(commands.Cog):
     async def attacks(self, ctx, *, argument: ConvertToPlayers = None):
         """Get top attack wins for a clan or player.
 
+        Use `--byuser` to group accounts based on their linked discord users.
+
         **Parameters**
         :key: The argument: Can be a clan tag, name, player tag, name, channel #mention, user @mention or `server` for all clans linked to the server.
 
@@ -163,7 +165,7 @@ class Stats(commands.Cog):
         **Example**
         :white_check_mark: `+attacks`
         :white_check_mark: `+attacks #JY9J2Y99`
-        :white_check_mark: `+attacks Reddit`
+        :white_check_mark: `+attacks Reddit --byuser`
         :white_check_mark: `+attacks Mathsman`
         :white_check_mark: `+attacks @mathsman#1208`
         :white_check_mark: `+attacks #donation-log`
@@ -196,6 +198,8 @@ class Stats(commands.Cog):
     async def defenses(self, ctx, *, argument: ConvertToPlayers = None):
         """Get top defense wins for a clan or player.
 
+        Use `--byuser` to group accounts based on their linked discord users.
+
         **Parameters**
         :key: The argument: Can be a clan tag, name, player tag, name, channel #mention, user @mention or `server` for all clans linked to the server.
 
@@ -212,7 +216,7 @@ class Stats(commands.Cog):
         **Example**
         :white_check_mark: `+defenses`
         :white_check_mark: `+defenses #JY9J2Y99`
-        :white_check_mark: `+defenses Reddit`
+        :white_check_mark: `+defenses Reddit --byuser`
         :white_check_mark: `+defenses Mathsman`
         :white_check_mark: `+defenses @mathsman#1208`
         :white_check_mark: `+defenses #donation-log`
@@ -246,6 +250,8 @@ class Stats(commands.Cog):
     async def donations(self, ctx, *, argument: ConvertToPlayers = None):
         """Get top donations for a clan or player.
 
+        Use `--byuser` to group accounts based on their linked discord users.
+
         **Parameters**
         :key: The argument: Can be a clan tag, name, player tag, name, channel #mention, user @mention or `server` for all clans linked to the server.
 
@@ -262,7 +268,7 @@ class Stats(commands.Cog):
         **Example**
         :white_check_mark: `+donations`
         :white_check_mark: `+donations #JY9J2Y99`
-        :white_check_mark: `+donations Reddit`
+        :white_check_mark: `+donations Reddit --byuser`
         :white_check_mark: `+donations Mathsman`
         :white_check_mark: `+donations @mathsman#1208`
         :white_check_mark: `+donations #donation-log`
@@ -295,6 +301,8 @@ class Stats(commands.Cog):
     async def received(self, ctx, *, argument: ConvertToPlayers = None):
         """Get top troops received for a clan or player.
 
+        Use `--byuser` to group accounts based on their linked discord users.
+
         **Parameters**
         :key: The argument: Can be a clan tag, name, player tag, name, channel #mention, user @mention or `server` for all clans linked to the server.
 
@@ -311,7 +319,7 @@ class Stats(commands.Cog):
         **Example**
         :white_check_mark: `+received`
         :white_check_mark: `+received #JY9J2Y99`
-        :white_check_mark: `+received Reddit`
+        :white_check_mark: `+received Reddit --byuser`
         :white_check_mark: `+received Mathsman`
         :white_check_mark: `+received @mathsman#1208`
         :white_check_mark: `+received #donation-log`
@@ -339,6 +347,8 @@ class Stats(commands.Cog):
     async def trophies(self, ctx, *, argument: ConvertToPlayers = None):
         """Get top trophy counts for a clan or player.
 
+        Use `--byuser` to group accounts based on their linked discord users.
+
         **Parameters**
         :key: The argument: Can be a clan tag, name, player tag, name, channel #mention, user @mention or `server` for all clans linked to the server.
 
@@ -355,7 +365,7 @@ class Stats(commands.Cog):
         **Example**
         :white_check_mark: `+trophies`
         :white_check_mark: `+trophies #JY9J2Y99`
-        :white_check_mark: `+trophies Reddit`
+        :white_check_mark: `+trophies Reddit --byuser`
         :white_check_mark: `+trophies Mathsman`
         :white_check_mark: `+trophies @mathsman#1208`
         :white_check_mark: `+trophies #donation-log`
@@ -384,6 +394,8 @@ class Stats(commands.Cog):
     async def lastonline(self, ctx, *, argument: ConvertToPlayers = None):
         """Get recent last-online status for a clan or player.
 
+        Use `--byuser` to group accounts based on their linked discord users.
+
         **Parameters**
         :key: The argument: Can be a clan tag, name, player tag, name, channel #mention, user @mention or `server` for all clans linked to the server.
 
@@ -400,7 +412,7 @@ class Stats(commands.Cog):
         **Example**
         :white_check_mark: `+lastonline`
         :white_check_mark: `+lastonline #JY9J2Y99`
-        :white_check_mark: `+lastonline Reddit`
+        :white_check_mark: `+lastonline Reddit --byuser`
         :white_check_mark: `+lastonline Mathsman`
         :white_check_mark: `+lastonline @mathsman#1208`
         :white_check_mark: `+lastonline #donation-log`
@@ -429,6 +441,8 @@ class Stats(commands.Cog):
     async def achievement(self, ctx, *, achievement: str):
         """Get top achievement counts for all clan/players in the server.
 
+        Use `--byuser` to group accounts based on their linked discord users.
+
         A few common achievements have been included:
             - `gg` -> `Gold Grab`
             - `ee` -> `Elixir Escapade`
@@ -444,7 +458,7 @@ class Stats(commands.Cog):
 
         **Example**
         :white_check_mark: `+achievement gg`
-        :white_check_mark: `+achievement Gold Grab`
+        :white_check_mark: `+achievement Gold Grab --byuser`
         :white_check_mark: `+achievement Unbreakable`
         :white_check_mark: `+achievement Get those goblins!`
         """

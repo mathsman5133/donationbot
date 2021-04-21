@@ -565,6 +565,12 @@ class BackgroundManagement(commands.Cog):
         await self.send_claim_clan_stats(e, clan, ctx.guild)
         await self.bot.background.sync_temp_event_tasks()
 
+        if not clan:
+            self.bot.fake_clan_guilds = {
+                row['guild_id'] for row in
+                await self.bot.pool.fetch("SELECT DISTINCT guild_id FROM clans WHERE fake_clan=True")
+            }
+
     @commands.Cog.listener()
     async def on_clan_unclaim(self, ctx, clan):
         e = discord.Embed(colour=discord.Colour.dark_blue(), title='Clan Unclaimed')
