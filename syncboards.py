@@ -396,7 +396,7 @@ header {
 
 
 class SyncBoards:
-    def __init__(self, bot, start_loop=False, pool=None, session=None, coc_client=None):
+    def __init__(self, bot, start_loop=False, pool=None, session=None, coc_client=None, fake_clan_guilds=None):
         self.bot = bot
         self.pool = pool or bot.pool
         self.coc_client = coc_client or bot.coc
@@ -408,6 +408,8 @@ class SyncBoards:
         self.season_meta = {}
 
         self.webhooks = None
+        self.fake_clan_guilds = fake_clan_guilds or set()
+
         self.session = aiohttp.ClientSession()
         self.throttler = coc.BasicThrottler(1)
 
@@ -455,6 +457,7 @@ class SyncBoards:
             return
 
         fetch = await self.pool.fetch("UPDATE boards SET need_to_update=False WHERE need_to_update=True AND toggle=True RETURNING *")
+        self.fake_clan_guilds = {row['guild_id'] for row in await self.pool.fetch("SELECT DISTINCT guild_id FROM clans WHERE fake_clan=True")}
 
         current_tasks = []
         for n in fetch:

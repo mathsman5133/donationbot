@@ -51,7 +51,7 @@ class DonationBoard(commands.Cog):
 
     async def on_init(self):
         await self.bot.wait_until_ready()
-        self.board_updater = SyncBoards(self.bot, start_loop=False, session=self.bot.session)
+        self.board_updater = SyncBoards(self.bot, start_loop=False, session=self.bot.session, fake_clan_guilds=self.bot.fake_clan_guilds)
 
     @commands.command()
     async def rb(self, ctx, *, fonts: str = None):
