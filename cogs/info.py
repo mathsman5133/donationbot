@@ -246,6 +246,7 @@ class Info(commands.Cog, name='\u200bInfo'):
                     "lastonline",
                     "trophies",
                     "dump",
+                    "showboard",
                 )),
                 ("Setup Commands", (
                     "add boards",

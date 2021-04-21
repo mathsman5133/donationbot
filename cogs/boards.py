@@ -66,12 +66,27 @@ class DonationBoard(commands.Cog):
         await self.update_board(None, config, divert_to=ctx.channel.id)
 
     @commands.command()
-    async def showboard(self, ctx, board_type: str = "donation"):
+    async def showboard(self, ctx, *, board_type: str = "donation"):
+        """Show boards in your server.
+
+        **Parameters**
+        :key: Board Type: `donation`, `trophy` or `legend`. Defaults to `donation`.
+
+        **Format**
+        :information_source: `+showboard BOARD_TYPE`
+
+        **Example**
+        :white_check_mark: `+showboard`
+        :white_check_mark: `+showboard donation`
+        :white_check_mark: `+showboard trophy`
+        """
         if ctx.message.channel_mentions:
             channel = ctx.message.channel_mentions[0]
             board_type = board_type.replace(channel.mention, "")
         else:
             channel = ctx.channel
+
+        print(board_type)
 
         query = """
         SELECT DISTINCT boards.*
@@ -82,10 +97,11 @@ class DonationBoard(commands.Cog):
         AND boards.guild_id = $2
         AND type = $3
         """
-        fetch = await ctx.db.fetch(query, channel.id, ctx.guild.id, board_type)
-        for row in fetch:
-            config = BoardConfig(bot=self.bot, record=row)
-            await self.update_board(None, config, divert_to=ctx.channel.id)
+        async with ctx.typing():
+            fetch = await ctx.db.fetch(query, channel.id, ctx.guild.id, board_type)
+            for row in fetch:
+                config = BoardConfig(bot=self.bot, record=row)
+                await self.update_board(None, config, divert_to=ctx.channel.id)
 
     @commands.Cog.listener()
     async def on_guild_channel_delete(self, channel):
