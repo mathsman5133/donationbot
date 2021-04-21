@@ -42,7 +42,7 @@ def setup_logging(bot, test_syncer=False):
     #     log.addHandler(handler)
 
     stream_handler.setFormatter(fmt)
-    # log.addHandler(stream_handler)
+    log.addHandler(stream_handler)
 
     bot.error_webhooks = itertools.cycle([discord.Webhook.partial(
         id=creds.log_hook_id,
