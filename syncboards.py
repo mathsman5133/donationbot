@@ -522,6 +522,11 @@ class SyncBoards:
         for i in range(1, config.page):
             offset += self.get_next_per_page(i, config.per_page)
 
+        fake_clan_in_server = config.guild_id in self.fake_clan_guilds
+        join = "(clans.clan_tag = players.clan_tag OR " \
+               "(players.fake_clan_tag IS NOT NULL AND clans.clan_tag = players.fake_clan_tag))" \
+            if fake_clan_in_server else "clans.clan_tag = players.clan_tag"
+
         if config.channel_id == GLOBAL_BOARDS_CHANNEL_ID:
             query = f"""SELECT DISTINCT player_name,
                                         players.clan_tag,
@@ -536,7 +541,7 @@ class SyncBoards:
                                         trophies - start_trophies AS "gain"
                        FROM players
                        INNER JOIN clans
-                       ON (clans.clan_tag = players.clan_tag OR (players.fake_clan_tag is not null and players.fake_clan_tag = clans.clan_tag))
+                       ON {join}
                        WHERE season_id = $1
                        ORDER BY {'donations' if config.sort_by == 'donation' else config.sort_by} DESC
                        NULLS LAST
@@ -555,7 +560,7 @@ class SyncBoards:
                             SELECT DISTINCT player_tag, player_name 
                             FROM players 
                             INNER JOIN clans 
-                            ON clans.clan_tag = players.clan_tag OR players.fake_clan_tag = clans.clan_tag
+                            ON {join}
                             WHERE clans.channel_id = $1
                             AND season_id = $5
                         ),
@@ -588,7 +593,7 @@ class SyncBoards:
                             SELECT DISTINCT player_tag, player_name 
                             FROM players 
                             INNER JOIN clans 
-                            ON clans.clan_tag = players.clan_tag OR players.fake_clan_tag = clans.clan_tag
+                            ON {join}
                             WHERE clans.channel_id = $1
                             AND players.season_id = $2
                     ),
@@ -644,7 +649,7 @@ class SyncBoards:
                                         trophies - start_trophies AS "gain"
                        FROM players
                        INNER JOIN clans
-                       ON (clans.clan_tag = players.clan_tag OR (players.fake_clan_tag is not null and players.fake_clan_tag = clans.clan_tag))
+                       ON {join}
                        WHERE clans.channel_id = $1
                        AND season_id = $2
                        ORDER BY {'donations' if config.sort_by == 'donation' else config.sort_by} DESC
