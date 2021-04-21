@@ -82,7 +82,7 @@ class DonationBoard(commands.Cog):
         AND boards.guild_id = $2
         AND type = $3
         """
-        fetch = await ctx.db.fetch(query, ctx.guild.id, channel.id, board_type)
+        fetch = await ctx.db.fetch(query, channel.id, ctx.guild.id, board_type)
         for row in fetch:
             config = BoardConfig(bot=self.bot, record=row)
             await self.update_board(None, config, divert_to=ctx.channel.id)
