@@ -707,7 +707,7 @@ class SyncBoards:
                 log.info('failed to send legend log to channel %s', config.channel_id)
             return
 
-        # log.info(perf_log)
+        log.info(perf_log)
         logged_board_message = await next(self.webhooks).send(
             perf_log, file=discord.File(render, f'{config.type}board.png'), wait=True
         )
