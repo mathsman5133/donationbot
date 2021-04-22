@@ -179,7 +179,7 @@ class Add(commands.Cog):
 
         **Example**
         :white_check_mark: `+add emoji #P0LYJC8C :the_best_clan:`
-        :white_check_mark: `+add player Reddit Elephino :elephino:`
+        :white_check_mark: `+add emoji Reddit Elephino :elephino:`
         """
         custom = custom_emoji.search(clan)
         if custom:

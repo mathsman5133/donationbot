@@ -57,6 +57,18 @@ class Remove(commands.Cog):
     @remove.command(name='emoji')
     @checks.manage_guild()
     async def remove_emoji(self, ctx, *, clan: str):
+        """Remove an emoji assosiated with a clan.
+
+        **Parameters**
+        :key: A clan name or tag
+
+        **Format**
+        :information_source: `+remove emoji #CLANTAG`
+        :information_source: `+remove emoji CLAN NAME`
+
+        **Example**
+        :white_check_mark: `+remove emoji #P0LYJC8C`
+        :white_check_mark: `+remove emoji Reddit Elephino`"""
         if coc.utils.is_valid_tag(coc.utils.correct_tag(clan)):
             clan = coc.utils.correct_tag(clan)
 

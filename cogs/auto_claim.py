@@ -150,6 +150,9 @@ class AutoClaim(commands.Cog):
                 except:
                     pass
 
+        if batch_to_send:
+            await channel.send(batch_to_send)
+
         await channel.send(f"{TICK} Thank you, autoclaim has finished.")
 
     @commands.group(invoke_without_command=True)
