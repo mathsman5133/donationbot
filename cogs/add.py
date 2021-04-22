@@ -366,7 +366,7 @@ class Add(commands.Cog):
         """
         boards_channel = await self.do_add_board(ctx, None, "donation", invoked_from_command=False)
         await self.do_add_board(ctx, boards_channel, "trophy", invoked_from_command=False)
-        f = await ctx.db.fetchrow('SELECT players.id FROM players INNER JOIN clans '
+        f = await ctx.db.fetchrow('SELECT 1 FROM players INNER JOIN clans '
                                   'ON clans.clan_tag = players.clan_tag '
                                   'WHERE clans.guild_id = $1 AND players.season_id = $2 '
                                   'AND players.league_id = 29000022', ctx.guild.id,
