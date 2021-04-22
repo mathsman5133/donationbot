@@ -125,6 +125,7 @@ class Add(commands.Cog):
         await ctx.db.execute(query, fake_clan_tag or clan.tag, ctx.guild.id, channel.id, str(clan), fake_clan_tag is not None)
 
         if not fake_clan_tag:
+            log.info("Adding clan members")
             season_id = await self.bot.seasonconfig.get_season_id()
             query = """INSERT INTO players (
                                             player_tag, 
