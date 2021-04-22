@@ -145,6 +145,7 @@ class Add(commands.Cog):
                     """
             async with ctx.db.transaction():
                 async for member in clan.get_detailed_members():
+                    log.info("`+add clan`, adding member: %s to clan %s", clan_tag, member)
                     await ctx.db.execute(
                         query,
                         member.tag,
