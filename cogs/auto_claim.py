@@ -89,6 +89,10 @@ class AutoClaim(commands.Cog):
                 else:
                     batch_to_send += fmt
 
+                await self.bot.pool.execute(
+                    "UPDATE players SET user_id = $1 WHERE player_tag =$2 AND season_id = $3", user.id, tag, season_id
+                )
+
                 continue
 
             else:
@@ -122,7 +126,12 @@ class AutoClaim(commands.Cog):
 
             if match and content in ("yes", "y") or "yes" in content:
                 await self.bot.links.add_link(tag, member.id)
-                await self.bot.pool.execute("UPDATE players SET user_id = $1 WHERE player_tag = $2 AND season_id = $3", member.id, tag, season_id)
+                await self.bot.pool.execute(
+                    "UPDATE players SET user_id = $1 WHERE player_tag = $2 AND season_id = $3",
+                    member.id,
+                    tag,
+                    season_id,
+                )
                 await msg.edit(content=f"{TICK} {name} ({tag}) has been linked to {member.mention}.")
 
             elif content in ("skip", "s") or "skip" in content:
@@ -131,7 +140,12 @@ class AutoClaim(commands.Cog):
             elif response.mentions:
                 member = response.mentions[0]
                 await self.bot.links.add_link(tag, member.id)
-                await self.bot.pool.execute("UPDATE players SET user_id = $1 WHERE player_tag = $2 AND season_id = $3", member.id, tag, season_id)
+                await self.bot.pool.execute(
+                    "UPDATE players SET user_id = $1 WHERE player_tag = $2 AND season_id = $3",
+                    member.id,
+                    tag,
+                    season_id,
+                )
                 await msg.edit(content=f"{TICK} {name} ({tag}) has been linked to {member.mention}.", allowed_mentions=allowed_mentions)
 
             elif "autoclaim cancel" in content:
@@ -152,6 +166,8 @@ class AutoClaim(commands.Cog):
 
         if batch_to_send:
             await channel.send(batch_to_send)
+
+
 
         await channel.send(f"{TICK} Thank you, autoclaim has finished.")
 
