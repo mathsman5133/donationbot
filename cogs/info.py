@@ -824,6 +824,11 @@ class Info(commands.Cog, name='\u200bInfo'):
                     ORDER BY season_id DESC
                     """
         fetch = await ctx.db.fetch(query, [p['player_tag'] for p in argument], list({p['clan_tag'] for p in argument}))
+        if not fetch:
+            return await ctx.send(
+                "Sorry, I have not collected enough data yet. Please try again later, or try changing your query."
+            )
+
         rows = [{k: v for k, v in row.items()} for row in fetch]
         await ctx.send(file=discord.File(filename="donation-tracker-player-export.csv", fp=self.convert_rows_to_bytes(rows)))
 
@@ -874,6 +879,11 @@ class Info(commands.Cog, name='\u200bInfo'):
                     ORDER BY day DESC
                     """
         fetch = await ctx.db.fetch(query, [p['player_tag'] for p in argument], list({p['clan_tag'] for p in argument}))
+        if not fetch:
+            return await ctx.send(
+                "Sorry, I have not collected enough data yet. Please try again later, or try changing your query."
+            )
+
         rows = [{k: v for k, v in row.items()} for row in fetch]
         await ctx.send(file=discord.File(filename="donation-tracker-legends-export.csv", fp=self.convert_rows_to_bytes(rows)))
 
@@ -937,6 +947,9 @@ class Info(commands.Cog, name='\u200bInfo'):
         ORDER BY season_id DESC, star_count DESC, destruction_count DESC
         """
         fetch = await ctx.db.fetch(query, [p['player_tag'] for p in argument], list({p['clan_tag'] for p in argument}), await self.bot.seasonconfig.get_season_id())
+        if not fetch:
+            return await ctx.send("Sorry, I have not collected enough data yet. Please try again later.")
+
         to_send = []
         for (player_tag, season_id), rows in itertools.groupby(fetch, key=lambda r: (r['player_tag'], r['season_id'])):
             rows = list(rows)

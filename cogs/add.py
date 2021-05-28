@@ -367,6 +367,9 @@ class Add(commands.Cog):
 
         """
         boards_channel = await self.do_add_board(ctx, None, "donation", invoked_from_command=False)
+        if not boards_channel:
+            return  # we sent an error message already
+
         await self.do_add_board(ctx, boards_channel, "trophy", invoked_from_command=False)
         f = await ctx.db.fetchrow('SELECT 1 FROM players INNER JOIN clans '
                                   'ON clans.clan_tag = players.clan_tag '

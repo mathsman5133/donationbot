@@ -179,7 +179,7 @@ class DonationBot(commands.AutoShardedBot):
             return await ctx.send(f"Please invite me to a server to run commands: {invite}")
 
         if ctx.command is None:
-            if self.user in message.mentions:
+            if self.user in message.mentions and message.channel.permissions_for(ctx.me).send_messages:
                 await ctx.send(f"My prefix for this guild is {self.prefixes.get(message.guild.id, '+')}")
 
             return  # if there's no command invoked return
