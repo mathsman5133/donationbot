@@ -680,7 +680,7 @@ class SyncBoards:
             image=config.icon_url,
             sort_by=config.sort_by,
             footer=f"Season: {season_start} - {season_finish}.",
-            offset=offset,
+            offset=offset + 1,
             board_type=config.type,
             session=self.session,
             coc_client=self.coc_client,
