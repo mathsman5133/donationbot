@@ -44,7 +44,7 @@ A few frequently used commands to get started:
 Other Info:
 
  • There are lots of how-to's and other support on the [support server](https://discord.gg/ePt8y4V) if you get stuck.
- • Please share the bot with your friends! [Bot Invite]({self.invite_link})
+ • Please share the bot with your friends! [Bot Invite]({invite})
  • Please support us on [Patreon](https://www.patreon.com/donationtracker)!
  • Have a good day!
 """
@@ -108,7 +108,7 @@ class Info(commands.Cog, name='\u200bInfo'):
 
     @property
     def welcome_message(self):
-        e = discord.Embed(colour=self.bot.colour, description=WELCOME_MESSAGE)
+        e = discord.Embed(colour=self.bot.colour, description=WELCOME_MESSAGE.format(invite=self.invite_link))
         e.set_author(name='Hello! I\'m the Donation Tracker!', icon_url=self.bot.user.avatar_url)
         return e
 
