@@ -615,7 +615,7 @@ class BackgroundManagement(commands.Cog):
                 guild_name=guild.name,
                 shard=guild.shard_id,
                 added='Claimed' in e.title,
-                bot_added=guild.me.joined_at
+                bot_added=str(guild.me.joined_at),
             )
         )
 
