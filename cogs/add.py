@@ -744,6 +744,9 @@ class Add(commands.Cog):
 
         query = "UPDATE players SET fake_clan_tag = $1 WHERE player_tag = ANY($2::TEXT[]) AND season_id = $3 RETURNING 1"
         result = await ctx.db.fetch(query, clan_id, valid_tags, await self.bot.seasonconfig.get_season_id())
+        if not result:
+            return await ctx.send("Those players weren't in my database. "
+                                  "Try adding the clans that they're in first, and try again.")
 
         await ctx.send(f"I've added {len(result)} players to your FakeClan ID: {clan_id}.")
         await ctx.invoke(self.fakeclan_list, clan_id=clan_id)
@@ -804,6 +807,8 @@ class Add(commands.Cog):
 
         query = "SELECT player_tag, player_name FROM players WHERE fake_clan_tag = $1 AND season_id = $2"
         fetch = await ctx.db.fetch(query, clan_id, await self.bot.seasonconfig.get_season_id())
+        if not fetch:
+            return await ctx.send(f"I couldn't find any players added to the fake clan with ID {clan_id} fake clan.")
 
         title = f"FakeClan Members: {clan_id}"
 
