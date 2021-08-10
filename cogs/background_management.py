@@ -563,7 +563,7 @@ class BackgroundManagement(commands.Cog):
     async def on_clan_claim(self, ctx, clan):
         e = discord.Embed(colour=discord.Colour.blue(), title='Clan Claimed')
         await self.send_claim_clan_stats(e, clan, ctx.guild)
-        await self.bot.background.sync_temp_event_tasks()
+        # await self.bot.background.sync_temp_event_tasks()
 
         if not clan:
             self.bot.fake_clan_guilds = {
@@ -575,7 +575,7 @@ class BackgroundManagement(commands.Cog):
     async def on_clan_unclaim(self, ctx, clan):
         e = discord.Embed(colour=discord.Colour.dark_blue(), title='Clan Unclaimed')
         await self.send_claim_clan_stats(e, clan, ctx.guild)
-        await self.bot.background.sync_temp_event_tasks()
+        # await self.bot.background.sync_temp_event_tasks()
 
     async def send_guild_stats(self, e, guild):
         self.bot.guild_log.log_struct(
