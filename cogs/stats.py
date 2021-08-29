@@ -138,7 +138,7 @@ class Stats(commands.Cog):
             description = ""
 
         if total and clan_names:
-            description += f"\nGrand Total: {total}\n"
+            description += f"Grand Total: {total}\n"
 
         if not emojis:
             description += "Want to see who is in which clan?\nTry adding a clan emoji: `+add emoji #clantag :emoji:`\n\n"
@@ -306,7 +306,7 @@ class Stats(commands.Cog):
 
         title = "Top Donations"
         emojis = await self._get_emojis(ctx.guild.id)
-        description = self._get_description(emojis, argument, get_summary, f"{sum(don_sum.values())}/{rec_sum.values()}")
+        description = self._get_description(emojis, argument, get_summary, f"{sum(don_sum.values())}/{sum(rec_sum.values())}")
 
         p = StatsDonorsPaginator(
             ctx,
@@ -365,7 +365,7 @@ class Stats(commands.Cog):
 
         title = "Top Receivers"
         emojis = await self._get_emojis(ctx.guild.id)
-        description = self._get_description(emojis, argument, get_summary, f"{sum(don_sum.values())}/{rec_sum.values()}")
+        description = self._get_description(emojis, argument, get_summary, f"{sum(don_sum.values())}/{sum(rec_sum.values())}")
 
         p = StatsDonorsPaginator(
             ctx,
