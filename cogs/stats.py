@@ -73,7 +73,7 @@ class Stats(commands.Cog):
         self.bot = bot
         self._players = ExpiringCache(seconds=3600.0)
 
-    async def _get_players(self, player_tags) -> list[coc.Player]:
+    async def _get_players(self, player_tags):
         need_to_get = [tag for tag in player_tags if tag not in self._players.keys()]
         if need_to_get:
             async for player in self.bot.coc.get_players([tag for tag in player_tags if tag not in self._players.keys()], cls=CustomPlayer):
