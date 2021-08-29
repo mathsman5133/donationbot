@@ -304,7 +304,7 @@ class Stats(commands.Cog):
             rec_sum[player['clan_tag']] += player['received']
 
         def get_summary(tag):
-            return f"({don_sum[tag]}/{rec_sum[tag]})"
+            return f"({don_sum[tag]:,d}/{rec_sum[tag]:,d})"
 
         title = "Top Donations"
         emojis = await self._get_emojis(ctx.guild.id)
@@ -312,7 +312,7 @@ class Stats(commands.Cog):
             emojis,
             argument,
             get_summary,
-            f"{sum(don_sum.values()):,d}/{sum(rec_sum.values())}:,d",
+            f"{sum(don_sum.values()):,d}/{sum(rec_sum.values()):,d}",
         )
 
         p = StatsDonorsPaginator(
@@ -368,7 +368,7 @@ class Stats(commands.Cog):
             rec_sum[player['clan_tag']] += player['received']
 
         def get_summary(tag):
-            return f"({don_sum[tag]}/{rec_sum[tag]})"
+            return f"({don_sum[tag]:,d}/{rec_sum[tag]:,d})"
 
         title = "Top Receivers"
         emojis = await self._get_emojis(ctx.guild.id)
@@ -376,7 +376,7 @@ class Stats(commands.Cog):
             emojis,
             argument,
             get_summary,
-            f"{sum(don_sum.values()):,d}/{sum(rec_sum.values())}:,d",
+            f"{sum(don_sum.values()):,d}/{sum(rec_sum.values()):,d}",
         )
 
         p = StatsDonorsPaginator(
