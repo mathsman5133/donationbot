@@ -429,7 +429,7 @@ class Stats(commands.Cog):
 
         cup_sum = defaultdict(int)
         for player in data:
-            cup_sum[player.clan.tag] += player.trophies
+            cup_sum[player['clan_tag']] += player.trophies
 
         title = "Top Trophies"
         emojis = await self._get_emojis(ctx.guild.id)
