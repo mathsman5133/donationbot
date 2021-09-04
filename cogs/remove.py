@@ -216,6 +216,27 @@ class Remove(commands.Cog):
         """
         await self.do_board_remove(ctx, channel or ctx.channel, 'legend')
 
+    @remove.command(name='warboard', aliases=['war board', 'warsboard'])
+    @checks.manage_guild()
+    async def remove_warboard(self, ctx, channel: discord.TextChannel = None):
+        """Removes the guild warboard.
+
+        **Parameters**
+        :key: A discord channel. If not present, it will use the channel you're currently in.
+
+        **Format**
+        :information_source: `+remove warboard`
+        :information_source: `+remove warboard #CHANNEL`
+
+        **Example**
+        :white_check_mark: `+remove warboard`
+        :white_check_mark: `+remove warboard #dt-boards`
+
+        **Required Permissions**
+        :warning: Manage Server
+        """
+        await self.do_board_remove(ctx, channel or ctx.channel, "war")
+
     @remove.command(name='donationlog')
     @manage_guild()
     async def remove_donationlog(self, ctx, channel: discord.TextChannel = None):

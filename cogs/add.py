@@ -463,7 +463,7 @@ class Add(commands.Cog):
                              f'before resetting it, please use `+add legendlog #{channel} #logs-channel`.\n\n'
                              f'Feel free to delete this message.')
 
-    @add.command(name='warboard')
+    @add.command(name='warboard', disabled=True)
     @manage_guild()
     async def add_warboard(self, ctx, channel: discord.TextChannel = None):
         """Create a war board for your server.
