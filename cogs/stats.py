@@ -2,7 +2,7 @@ import itertools
 import time
 import math
 
-from collections import namedtuple
+from collections import namedtuple, defaultdict
 
 import coc
 
@@ -10,7 +10,9 @@ from discord.ext import commands
 from discord.ext.commands.core import _CaseInsensitiveDict
 
 from cogs.utils.converters import ConvertToPlayers
-from cogs.utils.paginator import StatsAttacksPaginator, StatsDefensesPaginator, StatsTrophiesPaginator, StatsDonorsPaginator, StatsGainsPaginator, StatsLastOnlinePaginator, StatsAchievementPaginator, StatsAccountsPaginator
+from cogs.utils.paginator import StatsAttacksPaginator, StatsDefensesPaginator, StatsTrophiesPaginator, \
+                                 StatsDonorsPaginator, StatsLastOnlinePaginator, StatsAchievementPaginator, \
+                                 StatsAccountsPaginator
 
 
 FakeClan = namedtuple("FakeClan", "tag")
@@ -127,13 +129,18 @@ class Stats(commands.Cog):
         query = "SElECT DISTINCT clan_tag, emoji FROM clans WHERE guild_id = $1 AND emoji != ''"
         return {n['clan_tag']: f"<:x:{n['emoji']}>" if n['emoji'].isdigit() else n['emoji'] for n in await self.bot.pool.fetch(query, guild_id)}
 
-    def _get_description(self, emojis, players):
+    def _get_description(self, emojis, players, get_summary, total: int = None):
         clan_names = set((p.get('clan_name'), p['clan_tag']) for p in players if p.get('clan_name'))
         if clan_names:
             description = "Showing Stats For:\n" + "".join(
-                f"{emojis.get(tag, '•')} {name}\n" for name, tag in clan_names) + "\n"
+                f"{emojis.get(tag, '•')} {name} {get_summary(tag)}\n" for name, tag in clan_names) + "\n"
         else:
             description = ""
+
+        if isinstance(total, int):
+            description += f"Grand Total: {total:,d}\n\n"
+        elif isinstance(total, str):
+            description += f"Grand Total: {total}\n\n"
 
         if not emojis:
             description += "Want to see who is in which clan?\nTry adding a clan emoji: `+add emoji #clantag :emoji:`\n\n"
@@ -176,13 +183,17 @@ class Stats(commands.Cog):
         if not argument:
             return await ctx.send("I couldn't find any players. Perhaps try adding a clan?")
 
-        title = f"Top Attack Wins"
-        emojis = await self._get_emojis(ctx.guild.id)
-        description = self._get_description(emojis, argument)
-
         data = await self._get_players([p['player_tag'] for p in argument])
         if "--byuser" in ctx.message.clean_content:
             data = await self._group_players_by_user(argument, ctx.guild, fetch_api=True)
+
+        att_sum = defaultdict(int)
+        for player in data:
+            att_sum[player.clan.tag] += player.attack_wins
+
+        title = f"Top Attack Wins"
+        emojis = await self._get_emojis(ctx.guild.id)
+        description = self._get_description(emojis, argument, lambda tag: f"({att_sum[tag]})", sum(att_sum.values()))
 
         p = StatsAttacksPaginator(
             ctx,
@@ -228,13 +239,17 @@ class Stats(commands.Cog):
         if not argument:
             return await ctx.send("I couldn't find any players. Perhaps try adding a clan?")
 
-        title = f"Top Defense Wins"
-        emojis = await self._get_emojis(ctx.guild.id)
-        description = self._get_description(emojis, argument)
-
         data = await self._get_players([p['player_tag'] for p in argument])
         if "--byuser" in ctx.message.clean_content:
             data = await self._group_players_by_user(argument, ctx.guild, fetch_api=True)
+
+        def_sum = defaultdict(int)
+        for player in data:
+            def_sum[player.clan.tag] += player.defense_wins
+
+        title = f"Top Defense Wins"
+        emojis = await self._get_emojis(ctx.guild.id)
+        description = self._get_description(emojis, argument, lambda tag: f"({def_sum[tag]})", sum(def_sum.values()))
 
         p = StatsDefensesPaginator(
             ctx,
@@ -279,13 +294,26 @@ class Stats(commands.Cog):
         if not argument:
             return await ctx.send("I couldn't find any players. Perhaps try adding a clan?")
 
-        title = "Top Donations"
-        emojis = await self._get_emojis(ctx.guild.id)
-        description = self._get_description(emojis, argument)
-
         data = sorted(argument, key=lambda p: p['donations'], reverse=True)
         if "--byuser" in ctx.message.clean_content:
             data = await self._group_players_by_user(argument, ctx.guild)
+
+        don_sum, rec_sum = defaultdict(int), defaultdict(int)
+        for player in data:
+            don_sum[player['clan_tag']] += player['donations']
+            rec_sum[player['clan_tag']] += player['received']
+
+        def get_summary(tag):
+            return f"({don_sum[tag]:,d}/{rec_sum[tag]:,d})"
+
+        title = "Top Donations"
+        emojis = await self._get_emojis(ctx.guild.id)
+        description = self._get_description(
+            emojis,
+            argument,
+            get_summary,
+            f"{sum(don_sum.values()):,d}/{sum(rec_sum.values()):,d}",
+        )
 
         p = StatsDonorsPaginator(
             ctx,
@@ -330,16 +358,34 @@ class Stats(commands.Cog):
         if not argument:
             return await ctx.send("I couldn't find any players. Perhaps try adding a clan?")
 
-        title = "Top Receivers"
-        emojis = await self._get_emojis(ctx.guild.id)
-        description = self._get_description(emojis, argument)
-
         data = sorted(argument, key=lambda p: p['received'], reverse=True)
         if "--byuser" in ctx.message.clean_content:
             data = await self._group_players_by_user(argument, ctx.guild)
 
+        don_sum, rec_sum = defaultdict(int), defaultdict(int)
+        for player in data:
+            don_sum[player['clan_tag']] += player['donations']
+            rec_sum[player['clan_tag']] += player['received']
+
+        def get_summary(tag):
+            return f"({don_sum[tag]:,d}/{rec_sum[tag]:,d})"
+
+        title = "Top Receivers"
+        emojis = await self._get_emojis(ctx.guild.id)
+        description = self._get_description(
+            emojis,
+            argument,
+            get_summary,
+            f"{sum(don_sum.values()):,d}/{sum(rec_sum.values()):,d}",
+        )
+
         p = StatsDonorsPaginator(
-            ctx, data=data, page_count=math.ceil(len(data) / 20), title=title, description=description, emojis=emojis
+            ctx,
+            data=data,
+            page_count=math.ceil(len(data) / 20),
+            title=title,
+            description=description,
+            emojis=emojis,
         )
         await p.paginate()
 
@@ -377,13 +423,17 @@ class Stats(commands.Cog):
         if not argument:
             return await ctx.send("I couldn't find any players. Perhaps try adding a clan?")
 
-        title = "Top Trophies"
-        emojis = await self._get_emojis(ctx.guild.id)
-        description = self._get_description(emojis, argument)
-
         data = sorted(argument, key=lambda p: p['trophies'], reverse=True)
         if "--byuser" in ctx.message.clean_content:
             data = await self._group_players_by_user(argument, ctx.guild)
+
+        cup_sum = defaultdict(int)
+        for player in data:
+            cup_sum[player['clan_tag']] += player['trophies']
+
+        title = "Top Trophies"
+        emojis = await self._get_emojis(ctx.guild.id)
+        description = self._get_description(emojis, argument, lambda tag: f"({cup_sum[tag]})", sum(cup_sum.values()))
 
         p = StatsTrophiesPaginator(
             ctx, data=data, page_count=math.ceil(len(data) / 20), title=title, description=description, emojis=emojis
@@ -426,7 +476,7 @@ class Stats(commands.Cog):
 
         title = "Last Online"
         emojis = await self._get_emojis(ctx.guild.id)
-        description = self._get_description(emojis, argument)
+        description = self._get_description(emojis, argument, lambda _: "")
 
         data = sorted(argument, key=lambda p: p['since'], reverse=True)
         if "--byuser" in ctx.message.clean_content:
@@ -485,11 +535,16 @@ class Stats(commands.Cog):
         if not data[0].get_caseinsensitive_achievement(achievement):
             return await ctx.send("I couldn't find that achievement, sorry. Please make sure your spelling is correct!")
 
+        data = sorted(data, key=lambda p: p.get_ach_value(achievement), reverse=True)
+
+        data_sum = defaultdict(int)
+        for player in data:
+            data_sum[player.clan.tag] += player.get_ach_value(achievement)
+
         emojis = await self._get_emojis(ctx.guild.id)
         description = "*" + data[0].get_caseinsensitive_achievement(achievement).info + "*\n\n"
-        description += self._get_description(emojis, players)
+        description += self._get_description(emojis, players, lambda tag: f"({data_sum[tag]})", sum(data_sum.values()))
 
-        data = sorted(data, key=lambda p: p.get_ach_value(achievement), reverse=True)
         p = StatsAchievementPaginator(
             ctx, data=data, page_count=math.ceil(len(data) / 20), title=title, description=description, achievement=achievement, emojis=emojis
         )
@@ -539,7 +594,7 @@ class Stats(commands.Cog):
         
         title = "Accounts Added"
         emojis = await self._get_emojis(ctx.guild.id)
-        description = self._get_description(emojis, argument)
+        description = self._get_description(emojis, argument, lambda _: "")
 
         tags_to_name = {p['player_tag']: p for p in argument}
 
