@@ -15,7 +15,7 @@ import asyncpg
 import sentry_sdk
 
 from coc.ext import discordlinks
-from discord.ext import commands
+from disnake.ext import commands
 
 from botlog import setup_logging, add_hooks
 from cogs.utils import context
@@ -107,9 +107,9 @@ async def setup_db():
 
 class DonationBot(commands.AutoShardedBot):
     def __init__(self):
-        super().__init__(command_prefix=get_pref, case_insensitive=True,
-                         description=description, pm_help=None, help_attrs=dict(hidden=True),
-                         intents=intents, chunk_guilds_at_startup=False, allowed_mentions=discord.AllowedMentions.none())
+        super().__init__(command_prefix="!", intents=intents, chunk_guilds_at_startup=False,
+                         allowed_mentions=discord.AllowedMentions.none(),
+                         test_guilds=[594276321937326091], sync_commands_debug=True)
 
         self.prefixes = dict()
 
@@ -125,8 +125,8 @@ class DonationBot(commands.AutoShardedBot):
         self.session = aiohttp.ClientSession(loop=self.loop)
 
         add_hooks(self)
-        self.before_invoke(self.before_command_invoke)
-        self.after_invoke(self.after_command_invoke)
+        # self.before_invoke(self.before_command_invoke)
+        # self.after_invoke(self.after_command_invoke)
 
         self.uptime = datetime.datetime.utcnow()
 
@@ -156,45 +156,50 @@ class DonationBot(commands.AutoShardedBot):
     def background(self):
         return self.get_cog('BackgroundManagement')
 
-    async def before_command_invoke(self, ctx):
-        if hasattr(ctx, 'before_invoke'):
-            await ctx.before_invoke(ctx)
+    # async def before_command_invoke(self, ctx):
+    #     if hasattr(ctx, 'before_invoke'):
+    #         await ctx.before_invoke(ctx)
+    #
+    # async def after_command_invoke(self, ctx):
+    #     if hasattr(ctx, 'after_invoke'):
+    #         await ctx.after_invoke(ctx)
 
-    async def after_command_invoke(self, ctx):
-        if hasattr(ctx, 'after_invoke'):
-            await ctx.after_invoke(ctx)
+    # async def on_message(self, message):
+    #     if message.author.bot:
+    #         return  # ignore bot messages
+    #
+    #     await self.process_commands(message)
 
-    async def on_message(self, message):
-        if message.author.bot:
-            return  # ignore bot messages
-
-        await self.process_commands(message)
-
-    async def process_commands(self, message):
-        # we have a couple attributes to add to context, lets add them now (easy db connection etc.)
-        ctx = await self.get_context(message, cls=context.Context)
-
-        if ctx.guild is None:
-            invite = getattr(self, "invite", discord.utils.oauth_url(self.user.id))
-            return await ctx.send(f"Please invite me to a server to run commands: {invite}")
-
-        if ctx.command is None:
-            if self.user in message.mentions and message.channel.permissions_for(ctx.me).send_messages:
-                await ctx.send(f"My prefix for this guild is {self.prefixes.get(message.guild.id, '+')}")
-
-            return  # if there's no command invoked return
-
-        async with ctx.acquire():
-            await self.invoke(ctx)
+    async def process_application_commands(self, interaction):
+        async with self.pool.acquire(timeout=60.0) as conn:
+            interaction.conn = conn
+            await super().process_application_commands(interaction)
+    #
+    # async def process_commands(self, message):
+    #     # we have a couple attributes to add to context, lets add them now (easy db connection etc.)
+    #     ctx = await self.get_context(message, cls=context.Context)
+    #
+    #     if ctx.guild is None:
+    #         invite = getattr(self, "invite", discord.utils.oauth_url(self.user.id))
+    #         return await ctx.send(f"Please invite me to a server to run commands: {invite}")
+    #
+    #     if ctx.command is None:
+    #         if self.user in message.mentions and message.channel.permissions_for(ctx.me).send_messages:
+    #             await ctx.send(f"My prefix for this guild is {self.prefixes.get(message.guild.id, '+')}")
+    #
+    #         return  # if there's no command invoked return
+    #
+    #     async with ctx.acquire():
+    #         await self.invoke(ctx)
 
     async def on_ready(self):
-        await self.change_presence(activity=discord.Game('+help for commands'))
+        # await self.change_presence(activity=discord.Game('+help for commands'))
         await self.init_prefixes()
         self.error_webhooks = itertools.cycle(n for n in await self.get_channel(625160612791451661).webhooks())
         self.fake_clan_guilds = {row['guild_id'] for row in await self.pool.fetch("SELECT DISTINCT guild_id FROM clans WHERE fake_clan=True")}
 
-    async def on_resumed(self):
-        await self.change_presence(activity=discord.Game('+help for commands'))
+    # async def on_resumed(self):
+    #     await self.change_presence(activity=discord.Game('+help for commands'))
 
     async def get_clans(self, guild_id, in_event=False):
         if in_event:
