@@ -9,10 +9,10 @@ import io
 
 import aiohttp
 import coc
-import discord
+import disnake
 import sentry_sdk
 
-from discord.ext import commands, tasks
+from disnake.ext import commands, tasks
 from collections import Counter
 from matplotlib import pyplot as plt
 
@@ -198,7 +198,7 @@ class Syncer:
         try:
             log.debug(f'sending message to {channel_id}')
             return await bot.http.send_message(channel_id, content, embed=embed and embed.to_dict())
-        except (discord.Forbidden, discord.NotFound):
+        except (disnake.Forbidden, disnake.NotFound):
             await pool.execute("UPDATE logs SET toggle = FALSE WHERE channel_id = $1", channel_id)
             return
         except:
@@ -1307,7 +1307,7 @@ class Syncer:
             b = io.BytesIO()
             plt.savefig(b, format='png')
             b.seek(0)
-            await next(bot.error_webhooks).send(file=discord.File(b, f'cocapi.png'))
+            await next(bot.error_webhooks).send(file=disnake.File(b, f'cocapi.png'))
             plt.close()
         except Exception:
             log.exception("sending stats")
@@ -1396,7 +1396,7 @@ class Syncer:
                         hex_ = bytes.hex(str.encode(clan.tag))[:20]
 
                         for page in p.pages:
-                            e = discord.Embed(
+                            e = disnake.Embed(
                                 colour=int(int(''.join(filter(lambda x: x.isdigit(), hex_))) ** 0.3),
                                 description=page
                             )

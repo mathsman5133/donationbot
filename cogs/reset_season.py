@@ -4,22 +4,22 @@ import asyncio
 from dateutil import relativedelta
 import calendar
 import pytz
-import discord
+import disnake
 import time
 
 from cogs.utils.db_objects import BoardConfig
 
-from discord.ext import commands, tasks
+from disnake.ext import commands, tasks
 
 log = logging.getLogger(__name__)
 
-REFRESH_EMOJI = discord.PartialEmoji(name="refresh", id=694395354841350254, animated=False)
-LEFT_EMOJI = discord.PartialEmoji(name="\N{BLACK LEFT-POINTING TRIANGLE}\ufe0f", id=None, animated=False)    # [:arrow_left:]
-RIGHT_EMOJI = discord.PartialEmoji(name="\N{BLACK RIGHT-POINTING TRIANGLE}\ufe0f", id=None, animated=False)   # [:arrow_right:]
-PERCENTAGE_EMOJI = discord.PartialEmoji(name="percent", id=694463772135260169, animated=False)
-GAIN_EMOJI = discord.PartialEmoji(name="gain", id=696280508933472256, animated=False)
-LAST_ONLINE_EMOJI = discord.PartialEmoji(name="lastonline", id=696292732599271434, animated=False)
-HISTORICAL_EMOJI = discord.PartialEmoji(name="historical", id=694812540290465832, animated=False)
+REFRESH_EMOJI = disnake.PartialEmoji(name="refresh", id=694395354841350254, animated=False)
+LEFT_EMOJI = disnake.PartialEmoji(name="\N{BLACK LEFT-POINTING TRIANGLE}\ufe0f", id=None, animated=False)    # [:arrow_left:]
+RIGHT_EMOJI = disnake.PartialEmoji(name="\N{BLACK RIGHT-POINTING TRIANGLE}\ufe0f", id=None, animated=False)   # [:arrow_right:]
+PERCENTAGE_EMOJI = disnake.PartialEmoji(name="percent", id=694463772135260169, animated=False)
+GAIN_EMOJI = disnake.PartialEmoji(name="gain", id=696280508933472256, animated=False)
+LAST_ONLINE_EMOJI = disnake.PartialEmoji(name="lastonline", id=696292732599271434, animated=False)
+HISTORICAL_EMOJI = disnake.PartialEmoji(name="historical", id=694812540290465832, animated=False)
 
 
 class SeasonConfig(commands.Cog, command_attrs=dict(hidden=True)):
@@ -105,17 +105,17 @@ class SeasonConfig(commands.Cog, command_attrs=dict(hidden=True)):
             config = BoardConfig(record=row, bot=self.bot)
             try:
                 await self.bot.donationboard.new_donationboard_updater(config, reset=True)
-            except discord.HTTPException:
+            except disnake.HTTPException:
                 pass
 
             try:
                 await message.clear_reactions()
-            except (discord.Forbidden, discord.HTTPException):
+            except (disnake.Forbidden, disnake.HTTPException):
                 pass
 
             try:
                 new_msg = await channel.send("Placeholder for the next season's board. Please don't delete me!")
-            except (discord.Forbidden, discord.HTTPException):
+            except (disnake.Forbidden, disnake.HTTPException):
                 continue
 
             if type == "donation":
@@ -141,7 +141,7 @@ class SeasonConfig(commands.Cog, command_attrs=dict(hidden=True)):
             try:
                 for r in reactions:
                     await new_msg.add_reaction(r)
-            except (discord.Forbidden, discord.HTTPException):
+            except (disnake.Forbidden, disnake.HTTPException):
                 pass
 
             await self.bot.pool.execute(query2, new_msg.id, message_id)

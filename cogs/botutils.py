@@ -1,8 +1,8 @@
 import datetime
-import discord
+import disnake
 import logging
 
-from discord.ext import commands
+from disnake.ext import commands
 from typing import Union, List
 
 from cogs.utils.db_objects import LogConfig, BoardConfig, SlimEventConfig
@@ -124,7 +124,7 @@ class Utils(commands.Cog):
                                fetch['finish'], fetch['event_name'],
                                fetch['channel_id'], fetch['guild_id'])
 
-    async def get_message(self, channel: discord.TextChannel, message_id: int) -> Union[discord.Message, None]:
+    async def get_message(self, channel: disnake.TextChannel, message_id: int) -> Union[disnake.Message, None]:
         try:
             return self._messages[message_id]
         except KeyError:
@@ -135,7 +135,7 @@ class Utils(commands.Cog):
         channel = self.bot.get_channel(channel_id)
         try:
             return await channel.send(content, embed=embed)
-        except (discord.Forbidden, discord.NotFound, AttributeError):
+        except (disnake.Forbidden, disnake.NotFound, AttributeError):
             return await self.bot.pool.execute("UPDATE logs SET toggle = FALSE WHERE channel_id = $1", channel_id)
         except:
             log.exception(f"{channel} failed to send {content} {embed}")
@@ -149,7 +149,7 @@ class Utils(commands.Cog):
             e = embed_to_send
             c = None
         elif embed:
-            e = discord.Embed(colour=colour or self.bot.colour,
+            e = disnake.Embed(colour=colour or self.bot.colour,
                               description=message,
                               timestamp=datetime.datetime.utcnow())
             c = None
@@ -159,7 +159,7 @@ class Utils(commands.Cog):
 
         try:
             await config.channel.send(content=c, embed=e)
-        except (discord.Forbidden, discord.HTTPException):
+        except (disnake.Forbidden, disnake.HTTPException):
             return
 
     async def event_config_id(self, event_id: int) -> Union[None, SlimEventConfig]:

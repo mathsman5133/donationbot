@@ -1,5 +1,5 @@
-from discord.utils import _string_width
-from discord.ext import commands
+from disnake.utils import _string_width
+from disnake.ext import commands
 from cogs.utils.emoji_lookup import emojis, misc, number_emojis
 
 

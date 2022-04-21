@@ -5,9 +5,13 @@ import math
 from collections import namedtuple, defaultdict
 
 import coc
+import disnake
+import disnake
 
-from discord.ext import commands
-from discord.ext.commands.core import _CaseInsensitiveDict
+from disnake.ext import commands
+
+# from disnake.ext import commands
+from disnake.ext.commands.core import _CaseInsensitiveDict
 
 from cogs.utils.converters import ConvertToPlayers
 from cogs.utils.paginator import StatsAttacksPaginator, StatsDefensesPaginator, StatsTrophiesPaginator, \
@@ -16,6 +20,11 @@ from cogs.utils.paginator import StatsAttacksPaginator, StatsDefensesPaginator, 
 
 
 FakeClan = namedtuple("FakeClan", "tag")
+Achievements = commands.option_enum(coc.enums.ACHIEVEMENT_ORDER)
+print(len(coc.enums.ACHIEVEMENT_ORDER))
+
+async def autocomp_achievement(intr: disnake.ApplicationCommandInteraction, user_input: str):
+    return [ach for ach in coc.enums.ACHIEVEMENT_ORDER if user_input.lower() in ach.lower()]
 
 
 class CustomPlayer(coc.Player):
@@ -72,6 +81,113 @@ class Stats(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self._players = ExpiringCache(seconds=3600.0)
+
+    async def convert_argument_to_players(self, player: str, clan: str, user: disnake.Member, channel: disnake.TextChannel, guild_id: int, conn):
+        season_id = await self.bot.seasonconfig.get_season_id()
+
+        fake_clan_in_server = guild_id in self.bot.fake_clan_guilds
+        join = "(clans.clan_tag = players.clan_tag OR " \
+               "(players.fake_clan_tag IS NOT NULL AND clans.clan_tag = players.fake_clan_tag))" \
+               if fake_clan_in_server else "clans.clan_tag = players.clan_tag"
+
+        if player:
+            query = """SELECT DISTINCT player_tag, 
+                                       player_name,
+                                       players.clan_tag,
+                                       donations, 
+                                       received, 
+                                       trophies, 
+                                       trophies - start_trophies AS "gain", 
+                                       last_updated - now() AS "since",
+                                       user_id 
+                       FROM players 
+                       WHERE player_tag = $1 
+                       AND players.season_id = $3
+                       OR player_name LIKE $2 
+                       AND players.season_id = $3
+                    """
+            return await conn.fetch(query, coc.utils.correct_tag(player), player, season_id)
+
+        if clan:
+            if clan.strip().isdigit():
+                corrected = clan.strip()
+            else:
+                corrected = coc.utils.correct_tag(clan)
+
+            query = f"""SELECT DISTINCT player_tag, 
+                                        player_name,
+                                        clans.clan_name,
+                                        players.clan_tag,
+                                        donations, 
+                                        received, 
+                                        trophies, 
+                                        trophies - start_trophies AS "gain", 
+                                        last_updated - now() AS "since",
+                                        user_id 
+                         FROM players 
+                         INNER JOIN clans 
+                         ON {join}
+                         WHERE clans.clan_tag = $1 
+                         AND players.season_id = $3
+                         OR clans.clan_name LIKE $2 
+                         AND players.season_id = $3
+                    """
+
+            return await conn.fetch(query, corrected, clan, season_id)
+
+        if user:
+            links = await self.bot.links.get_linked_players(user.id)
+            query = """SELECT DISTINCT player_tag, 
+                                       player_name,
+                                       players.clan_tag,
+                                       donations, 
+                                       received, 
+                                       trophies, 
+                                       trophies - start_trophies AS "gain", 
+                                       last_updated - now() AS "since",
+                                       user_id 
+                       FROM players 
+                       WHERE player_tag = ANY($1::TEXT[])
+                       AND players.season_id = $2
+                    """
+            return await conn.fetch(query, links, season_id)
+
+        if channel:
+            query = f"""SELECT DISTINCT player_tag, 
+                                        player_name,
+                                        clans.clan_name,
+                                        players.clan_tag,
+                                        donations, 
+                                        received, 
+                                        trophies, 
+                                        trophies - start_trophies AS "gain", 
+                                        last_updated - now() AS "since",
+                                        user_id 
+                        FROM players 
+                        INNER JOIN clans 
+                        ON {join}
+                        WHERE clans.channel_id = $1 
+                        AND players.season_id = $2
+                     """
+            return await conn.fetch(query, channel.id, season_id)
+
+        query = f"""SELECT DISTINCT player_tag, 
+                                    player_name,
+                                    clans.clan_name,
+                                    players.clan_tag,
+                                    donations, 
+                                    received, 
+                                    trophies, 
+                                    trophies - start_trophies AS "gain", 
+                                    last_updated - now() AS "since",
+                                    user_id 
+                    FROM players
+                    INNER JOIN clans
+                    ON {join}
+                    WHERE clans.guild_id = $1 
+                    AND players.season_id = $2
+                 """
+        return await conn.fetch(query, guild_id, season_id)
 
     async def _get_players(self, player_tags):
         need_to_get = [tag for tag in player_tags if tag not in self._players.keys()]
@@ -150,8 +266,18 @@ class Stats(commands.Cog):
     async def cog_before_invoke(self, ctx):
         await ctx.trigger_typing()
 
-    @commands.command(name='attacks')
-    async def attacks(self, ctx, *, argument: ConvertToPlayers = None):
+    @commands.slash_command(
+        description="Get top attack wins for a clan or player."
+    )
+    async def attacks(
+        self,
+        intr: disnake.ApplicationCommandInteraction,
+        player: str = commands.Param(default=None, description="Player #tag or name."),
+        clan: str = commands.Param(default=None, description="Clan #tag or name."),
+        user: disnake.Member = commands.Param(default=None, description="User in this server."),
+        channel: disnake.TextChannel = commands.Param(default=None, description="Channel in this server."),
+        by_user: bool = commands.Param(default=False, description="Group users by their linked discord users.")
+    ):
         """Get top attack wins for a clan or player.
 
         Use `--byuser` to group accounts based on their linked discord users.
@@ -178,35 +304,46 @@ class Stats(commands.Cog):
         :white_check_mark: `+attacks #donation-log`
         :white_check_mark: `+attacks all`
         """
-        if argument is None:
-            argument = await ConvertToPlayers().convert(ctx, "all")
-        if not argument:
-            return await ctx.send("I couldn't find any players. Perhaps try adding a clan?")
+        players = await self.convert_argument_to_players(player, clan, user, channel, intr.guild_id, intr.db)
+        if not players:
+            return
+        #     return await ctx.send("I couldn't find any players. Perhaps try adding a clan?")
 
-        data = await self._get_players([p['player_tag'] for p in argument])
-        if "--byuser" in ctx.message.clean_content:
-            data = await self._group_players_by_user(argument, ctx.guild, fetch_api=True)
+        data = await self._get_players([p['player_tag'] for p in players])
+        if by_user:
+            data = await self._group_players_by_user(players, intr.guild, fetch_api=True)
 
         att_sum = defaultdict(int)
         for player in data:
-            att_sum[player.clan.tag] += player.attack_wins
+            print(str(player), player.clan)
+            att_sum[player.clan and player.clan.tag] += player.attack_wins
 
         title = f"Top Attack Wins"
-        emojis = await self._get_emojis(ctx.guild.id)
-        description = self._get_description(emojis, argument, lambda tag: f"({att_sum[tag]})", sum(att_sum.values()))
+        emojis = await self._get_emojis(intr.guild.id)
+        description = self._get_description(emojis, players, lambda tag: f"({att_sum[tag]})", sum(att_sum.values()))
 
         p = StatsAttacksPaginator(
-            ctx,
+            intr,
             data=data,
             page_count=math.ceil(len(data) / 20),
             title=title,
             description=description,
             emojis=emojis,
         )
-        await p.paginate()
+        await p.start()
 
-    @commands.command(name='defenses', aliases=['defense', 'defences', 'defence'])
-    async def defenses(self, ctx, *, argument: ConvertToPlayers = None):
+    @commands.slash_command(
+        description="Get top defense wins for a clan or player."
+    )
+    async def defenses(
+        self,
+        intr: disnake.ApplicationCommandInteraction,
+        player: str = commands.Param(default=None, description="Player #tag or name."),
+        clan: str = commands.Param(default=None, description="Clan #tag or name."),
+        user: disnake.Member = commands.Param(default=None, description="User in this server."),
+        channel: disnake.TextChannel = commands.Param(default=None, description="Channel in this server."),
+        by_user: bool = commands.Param(default=False, description="Group users by their linked discord users.")
+    ):
         """Get top defense wins for a clan or player.
 
         Use `--byuser` to group accounts based on their linked discord users.
@@ -233,36 +370,43 @@ class Stats(commands.Cog):
         :white_check_mark: `+defenses #donation-log`
         :white_check_mark: `+defenses all`
         """
-        if not argument:
-            argument = await ConvertToPlayers().convert(ctx, "all")
+        players = await self.convert_argument_to_players(player, clan, user, channel, intr.guild_id, intr.db)
+        if not players:
+            return
+        #     return await ctx.send("I couldn't find any players. Perhaps try adding a clan?")
 
-        if not argument:
-            return await ctx.send("I couldn't find any players. Perhaps try adding a clan?")
-
-        data = await self._get_players([p['player_tag'] for p in argument])
-        if "--byuser" in ctx.message.clean_content:
-            data = await self._group_players_by_user(argument, ctx.guild, fetch_api=True)
+        data = await self._get_players([p['player_tag'] for p in players])
+        if by_user:
+            data = await self._group_players_by_user(players, intr.guild, fetch_api=True)
 
         def_sum = defaultdict(int)
         for player in data:
-            def_sum[player.clan.tag] += player.defense_wins
+            def_sum[player.clan and player.clan.tag] += player.defense_wins
 
         title = f"Top Defense Wins"
-        emojis = await self._get_emojis(ctx.guild.id)
-        description = self._get_description(emojis, argument, lambda tag: f"({def_sum[tag]})", sum(def_sum.values()))
+        emojis = await self._get_emojis(intr.guild.id)
+        description = self._get_description(emojis, players, lambda tag: f"({def_sum[tag]})", sum(def_sum.values()))
 
         p = StatsDefensesPaginator(
-            ctx,
+            intr,
             data=data,
             page_count=math.ceil(len(data) / 20),
             title=title,
             description=description,
             emojis=emojis,
         )
-        await p.paginate()
+        await p.start()
 
-    @commands.command(aliases=['don', 'dons', 'donation'])
-    async def donations(self, ctx, *, argument: ConvertToPlayers = None):
+    @commands.slash_command(description="Get top donations for a clan or player.")
+    async def donations(
+        self,
+        intr: disnake.ApplicationCommandInteraction,
+        player: str = commands.Param(default=None, description="Player #tag or name."),
+        clan: str = commands.Param(default=None, description="Clan #tag or name."),
+        user: disnake.Member = commands.Param(default=None, description="User in this server."),
+        channel: disnake.TextChannel = commands.Param(default=None, description="Channel in this server."),
+        by_user: bool = commands.Param(default=False, description="Group users by their linked discord users.")
+    ):
         """Get top donations for a clan or player.
 
         Use `--byuser` to group accounts based on their linked discord users.
@@ -289,14 +433,14 @@ class Stats(commands.Cog):
         :white_check_mark: `+donations #donation-log`
         :white_check_mark: `+donations all`
         """
-        if not argument:
-            argument = await ConvertToPlayers().convert(ctx, "all")
-        if not argument:
-            return await ctx.send("I couldn't find any players. Perhaps try adding a clan?")
+        players = await self.convert_argument_to_players(player, clan, user, channel, intr.guild_id, intr.db)
+        if not players:
+            return
+        #     return await ctx.send("I couldn't find any players. Perhaps try adding a clan?")
 
-        data = sorted(argument, key=lambda p: p['donations'], reverse=True)
-        if "--byuser" in ctx.message.clean_content:
-            data = await self._group_players_by_user(argument, ctx.guild)
+        data = sorted(players, key=lambda p: p['donations'], reverse=True)
+        if by_user:
+            data = await self._group_players_by_user(players, intr.guild, fetch_api=True)
 
         don_sum, rec_sum = defaultdict(int), defaultdict(int)
         for player in data:
@@ -307,26 +451,35 @@ class Stats(commands.Cog):
             return f"({don_sum[tag]:,d}/{rec_sum[tag]:,d})"
 
         title = "Top Donations"
-        emojis = await self._get_emojis(ctx.guild.id)
+        emojis = await self._get_emojis(intr.guild.id)
         description = self._get_description(
             emojis,
-            argument,
+            players,
             get_summary,
             f"{sum(don_sum.values()):,d}/{sum(rec_sum.values()):,d}",
         )
 
         p = StatsDonorsPaginator(
-            ctx,
+            intr,
             data=data,
             page_count=math.ceil(len(data) / 20),
             title=title,
             description=description,
             emojis=emojis,
         )
-        await p.paginate()
+        await p.start()
 
-    @commands.command(aliases=['rec', 'recs', 'receives'])
-    async def received(self, ctx, *, argument: ConvertToPlayers = None):
+    @commands.slash_command(description="Get top troops received for a clan or player.")
+    async def received(
+        self,
+        intr: disnake.ApplicationCommandInteraction,
+        player: str = commands.Param(default=None, description="Player #tag or name."),
+        clan: str = commands.Param(default=None, description="Clan #tag or name."),
+        user: disnake.Member = commands.Param(default=None, description="User in this server."),
+        channel: disnake.TextChannel = commands.Param(default=None, description="Channel in this server."),
+        by_user: bool = commands.Param(default=False, description="Group users by their linked discord users.")
+    ):
+
         """Get top troops received for a clan or player.
 
         Use `--byuser` to group accounts based on their linked discord users.
@@ -353,14 +506,14 @@ class Stats(commands.Cog):
         :white_check_mark: `+received #donation-log`
         :white_check_mark: `+received all`
         """
-        if not argument:
-            argument = await ConvertToPlayers().convert(ctx, "all")
-        if not argument:
-            return await ctx.send("I couldn't find any players. Perhaps try adding a clan?")
+        players = await self.convert_argument_to_players(player, clan, user, channel, intr.guild_id, intr.db)
+        if not players:
+            return
+        #     return await ctx.send("I couldn't find any players. Perhaps try adding a clan?")
 
-        data = sorted(argument, key=lambda p: p['received'], reverse=True)
-        if "--byuser" in ctx.message.clean_content:
-            data = await self._group_players_by_user(argument, ctx.guild)
+        data = sorted(players, key=lambda p: p['received'], reverse=True)
+        if by_user:
+            data = await self._group_players_by_user(players, intr.guild, fetch_api=True)
 
         don_sum, rec_sum = defaultdict(int), defaultdict(int)
         for player in data:
@@ -371,26 +524,34 @@ class Stats(commands.Cog):
             return f"({don_sum[tag]:,d}/{rec_sum[tag]:,d})"
 
         title = "Top Receivers"
-        emojis = await self._get_emojis(ctx.guild.id)
+        emojis = await self._get_emojis(intr.guild.id)
         description = self._get_description(
             emojis,
-            argument,
+            players,
             get_summary,
             f"{sum(don_sum.values()):,d}/{sum(rec_sum.values()):,d}",
         )
 
         p = StatsDonorsPaginator(
-            ctx,
+            intr,
             data=data,
             page_count=math.ceil(len(data) / 20),
             title=title,
             description=description,
             emojis=emojis,
         )
-        await p.paginate()
+        await p.start()
 
-    @commands.command(aliases=['troph', 'trophy'])
-    async def trophies(self, ctx, *, argument: ConvertToPlayers = None):
+    @commands.slash_command(description="Get top trophies counts for a clan or player.")
+    async def trophies(
+        self,
+        intr: disnake.ApplicationCommandInteraction,
+        player: str = commands.Param(default=None, description="Player #tag or name."),
+        clan: str = commands.Param(default=None, description="Clan #tag or name."),
+        user: disnake.Member = commands.Param(default=None, description="User in this server."),
+        channel: disnake.TextChannel = commands.Param(default=None, description="Channel in this server."),
+        by_user: bool = commands.Param(default=False, description="Group users by their linked discord users.")
+    ):
         """Get top trophy counts for a clan or player.
 
         Use `--byuser` to group accounts based on their linked discord users.
@@ -417,31 +578,38 @@ class Stats(commands.Cog):
         :white_check_mark: `+trophies #donation-log`
         :white_check_mark: `+trophies all`
         """
-        if not argument:
-            argument = await ConvertToPlayers().convert(ctx, "all")
+        players = await self.convert_argument_to_players(player, clan, user, channel, intr.guild_id, intr.db)
+        if not players:
+            return
+        #     return await ctx.send("I couldn't find any players. Perhaps try adding a clan?")
 
-        if not argument:
-            return await ctx.send("I couldn't find any players. Perhaps try adding a clan?")
-
-        data = sorted(argument, key=lambda p: p['trophies'], reverse=True)
-        if "--byuser" in ctx.message.clean_content:
-            data = await self._group_players_by_user(argument, ctx.guild)
+        data = sorted(players, key=lambda p: p['trophies'], reverse=True)
+        if by_user:
+            data = await self._group_players_by_user(players, intr.guild, fetch_api=True)
 
         cup_sum = defaultdict(int)
         for player in data:
             cup_sum[player['clan_tag']] += player['trophies']
 
         title = "Top Trophies"
-        emojis = await self._get_emojis(ctx.guild.id)
-        description = self._get_description(emojis, argument, lambda tag: f"({cup_sum[tag]})", sum(cup_sum.values()))
+        emojis = await self._get_emojis(intr.guild.id)
+        description = self._get_description(emojis, players, lambda tag: f"({cup_sum[tag]})", sum(cup_sum.values()))
 
         p = StatsTrophiesPaginator(
-            ctx, data=data, page_count=math.ceil(len(data) / 20), title=title, description=description, emojis=emojis
+            intr, data=data, page_count=math.ceil(len(data) / 20), title=title, description=description, emojis=emojis
         )
-        await p.paginate()
+        await p.start()
 
-    @commands.command(aliases=['lo', 'laston'])
-    async def lastonline(self, ctx, *, argument: ConvertToPlayers = None):
+    @commands.slash_command(description="Get recent last-online status for a clan or player.")
+    async def lastonline(
+            self,
+            intr: disnake.ApplicationCommandInteraction,
+            player: str = commands.Param(default=None, description="Player #tag or name."),
+            clan: str = commands.Param(default=None, description="Clan #tag or name."),
+            user: disnake.Member = commands.Param(default=None, description="User in this server."),
+            channel: disnake.TextChannel = commands.Param(default=None, description="Channel in this server."),
+            by_user: bool = commands.Param(default=False, description="Group users by their linked discord users.")
+    ):
         """Get recent last-online status for a clan or player.
 
         Use `--byuser` to group accounts based on their linked discord users.
@@ -468,27 +636,35 @@ class Stats(commands.Cog):
         :white_check_mark: `+lastonline #donation-log`
         :white_check_mark: `+lastonline all`
         """
-        if not argument:
-            argument = await ConvertToPlayers().convert(ctx, "all")
-
-        if not argument:
-            return await ctx.send("I couldn't find any players. Perhaps try adding a clan?")
+        players = await self.convert_argument_to_players(player, clan, user, channel, intr.guild_id, intr.db)
+        if not players:
+            return
+        #     return await ctx.send("I couldn't find any players. Perhaps try adding a clan?")
 
         title = "Last Online"
-        emojis = await self._get_emojis(ctx.guild.id)
-        description = self._get_description(emojis, argument, lambda _: "")
+        emojis = await self._get_emojis(intr.guild.id)
+        description = self._get_description(emojis, players, lambda _: "")
 
-        data = sorted(argument, key=lambda p: p['since'], reverse=True)
-        if "--byuser" in ctx.message.clean_content:
-            data = await self._group_players_by_user(argument, ctx.guild)
+        data = sorted(players, key=lambda p: p['since'], reverse=True)
+        if by_user:
+            data = await self._group_players_by_user(players, intr.guild, fetch_api=True)
 
         p = StatsLastOnlinePaginator(
-            ctx, data=data, page_count=math.ceil(len(data) / 20), title=title, description=description, emojis=emojis
+            intr, data=data, page_count=math.ceil(len(data) / 20), title=title, description=description, emojis=emojis
         )
-        await p.paginate()
+        await p.start()
 
-    @commands.command(aliases=["ach"])
-    async def achievement(self, ctx, *, achievement: str):
+    @commands.slash_command(description="Get top achievement counts for a clan/player.")
+    async def achievements(
+        self,
+        intr: disnake.ApplicationCommandInteraction,
+        achievement: str = commands.Param(autocomplete=autocomp_achievement),
+        player: str = commands.Param(default=None, description="Player #tag or name."),
+        clan: str = commands.Param(default=None, description="Clan #tag or name."),
+        user: disnake.Member = commands.Param(default=None, description="User in this server."),
+        channel: disnake.TextChannel = commands.Param(default=None, description="Channel in this server."),
+        by_user: bool = commands.Param(default=False, description="Group users by their linked discord users.")
+    ):
         """Get top achievement counts for all clan/players in the server.
 
         Use `--byuser` to group accounts based on their linked discord users.
@@ -512,46 +688,56 @@ class Stats(commands.Cog):
         :white_check_mark: `+achievement Unbreakable`
         :white_check_mark: `+achievement Get those goblins!`
         """
-        if not achievement:
-            return await ctx.send_help(ctx.command)
 
-        common_lookups = [
-            ("gg", "Gold Grab"),
-            ("ee", "Elixir Escapade"),
-            ("hh", "Heroic Heist"),
-            ("fin", "Friend in Need"),
-            ("sic", "Sharing is caring"),
-        ]
-        for common, replacement in common_lookups:
-            achievement = achievement.replace(common, replacement)
+        # common_lookups = [
+        #     ("gg", "Gold Grab"),
+        #     ("ee", "Elixir Escapade"),
+        #     ("hh", "Heroic Heist"),
+        #     ("fin", "Friend in Need"),
+        #     ("sic", "Sharing is caring"),
+        # ]
+        # for common, replacement in common_lookups:
+        #     achievement = achievement.replace(common, replacement)
 
         title = f"Achievement Stats: {achievement}"
 
-        players = await ConvertToPlayers().convert(ctx, "all")
+        players = await self.convert_argument_to_players(player, clan, user, channel, intr.guild_id, intr.db)
+        if not players:
+            return
+        #     return await ctx.send("I couldn't find any players. Perhaps try adding a clan?")
+
         data = await self._get_players([p['player_tag'] for p in players])
-        if "--byuser" in ctx.message.clean_content:
-            data = await self._group_players_by_user(players, ctx.guild, fetch_api=True, achievement=achievement)
+        if by_user:
+            data = await self._group_players_by_user(players, intr.guild, fetch_api=True, achievement=achievement)
 
         if not data[0].get_caseinsensitive_achievement(achievement):
-            return await ctx.send("I couldn't find that achievement, sorry. Please make sure your spelling is correct!")
+            return await intr.send("I couldn't find that achievement, sorry. Please make sure your spelling is correct!")
 
         data = sorted(data, key=lambda p: p.get_ach_value(achievement), reverse=True)
 
         data_sum = defaultdict(int)
         for player in data:
-            data_sum[player.clan.tag] += player.get_ach_value(achievement)
+            data_sum[player.clan and player.clan.tag] += player.get_ach_value(achievement)
 
-        emojis = await self._get_emojis(ctx.guild.id)
+        emojis = await self._get_emojis(intr.guild.id)
         description = "*" + data[0].get_caseinsensitive_achievement(achievement).info + "*\n\n"
         description += self._get_description(emojis, players, lambda tag: f"({data_sum[tag]})", sum(data_sum.values()))
 
         p = StatsAchievementPaginator(
-            ctx, data=data, page_count=math.ceil(len(data) / 20), title=title, description=description, achievement=achievement, emojis=emojis
+            intr, data=data, page_count=math.ceil(len(data) / 20), title=title, description=description, emojis=emojis, achievement=achievement
         )
-        await p.paginate()
+        await p.start()
 
-    @commands.command(aliases=['acc'])
-    async def accounts(self, ctx, *, argument: str = None):
+    @commands.slash_command(description="Get accounts added to the bot for clan/players.")
+    async def accounts(
+        self,
+        intr: disnake.ApplicationCommandInteraction,
+        player: str = commands.Param(default=None, description="Player #tag or name."),
+        clan: str = commands.Param(default=None, description="Clan #tag or name."),
+        user: disnake.Member = commands.Param(default=None, description="User in this server."),
+        channel: disnake.TextChannel = commands.Param(default=None, description="Channel in this server."),
+        show_tags: bool = commands.Param(default=False, description="Show player tags instead of discord IDs")
+    ):
         """Get accounts added to the bot for clan/players.
 
         If you wish to see the player tags instead of discord users, add `showtags` to the end of your message.
@@ -580,39 +766,32 @@ class Stats(commands.Cog):
         :white_check_mark: `+accounts #donation-log`
         :white_check_mark: `+accounts all showtags`
         """
-        show_tags = False
-        if not argument:
-            argument = "all"
-        elif 'showtags' in argument:
-            argument = argument.replace('showtags', '').strip()
-            show_tags = True
+        players = await self.convert_argument_to_players(player, clan, user, channel, intr.guild_id, intr.db)
+        if not players:
+            return
+        #     return await ctx.send("I couldn't find any players. Perhaps try adding a clan?")
 
-        argument = await ConvertToPlayers().convert(ctx, argument)
-        
-        if not argument:
-            return await ctx.send("I couldn't find any players. Perhaps try adding a clan?")
-        
         title = "Accounts Added"
-        emojis = await self._get_emojis(ctx.guild.id)
-        description = self._get_description(emojis, argument, lambda _: "")
+        emojis = await self._get_emojis(intr.guild.id)
+        description = self._get_description(emojis, players, lambda _: "")
 
-        tags_to_name = {p['player_tag']: p for p in argument}
+        tags_to_name = {p['player_tag']: p for p in players}
 
         async def get_claim(tag, discord_id):
             player = tags_to_name.get(tag, {'player_name': 'Unknown', 'clan_tag': ''})
             if discord_id is None or show_tags is True:
                 return player['player_name'] or 'Unknown', tag, emojis.get(player['clan_tag'], '')
 
-            member = ctx.guild.get_member(discord_id) or self.bot.get_user(discord_id) or await self.bot.fetch_user(discord_id) or 'Unknown.....'
+            member = intr.guild.get_member(discord_id) or self.bot.get_user(discord_id) or await self.bot.fetch_user(discord_id) or 'Unknown.....'
             return player['player_name'] or 'Unknown', str(member)[:-5], emojis.get(player['clan_tag'], '')
 
         links = await self.bot.links.get_links(*tags_to_name.keys())
         data = sorted([await get_claim(player_tag, discord_id) for player_tag, discord_id in links], key=lambda p: (p[1], p[0]), reverse=True)
 
         p = StatsAccountsPaginator(
-            ctx, data=data, page_count=math.ceil(len(argument) / 20), title=title, description=description
+            intr, data=data, page_count=math.ceil(len(players) / 20), title=title, description=description
         )
-        await p.paginate()
+        await p.start()
 
 
 def setup(bot):

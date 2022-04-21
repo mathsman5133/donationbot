@@ -12,9 +12,9 @@ from datetime import datetime, timedelta
 
 import aiohttp
 import coc
-import discord
+import disnake
 
-from discord.ext import tasks
+from disnake.ext import tasks
 
 import creds
 
@@ -24,13 +24,13 @@ from bot import setup_db
 from cogs.utils.db_objects import BoardConfig
 
 
-REFRESH_EMOJI = discord.PartialEmoji(name="refresh", id=694395354841350254, animated=False)
-LEFT_EMOJI = discord.PartialEmoji(name="\N{BLACK LEFT-POINTING TRIANGLE}\ufe0f", id=None, animated=False)    # [:arrow_left:]
-RIGHT_EMOJI = discord.PartialEmoji(name="\N{BLACK RIGHT-POINTING TRIANGLE}\ufe0f", id=None, animated=False)   # [:arrow_right:]
-PERCENTAGE_EMOJI = discord.PartialEmoji(name="percent", id=694463772135260169, animated=False)
-GAIN_EMOJI = discord.PartialEmoji(name="gain", id=696280508933472256, animated=False)
-LAST_ONLINE_EMOJI = discord.PartialEmoji(name="lastonline", id=696292732599271434, animated=False)
-HISTORICAL_EMOJI = discord.PartialEmoji(name="historical", id=694812540290465832, animated=False)
+REFRESH_EMOJI = disnake.PartialEmoji(name="refresh", id=694395354841350254, animated=False)
+LEFT_EMOJI = disnake.PartialEmoji(name="\N{BLACK LEFT-POINTING TRIANGLE}\ufe0f", id=None, animated=False)    # [:arrow_left:]
+RIGHT_EMOJI = disnake.PartialEmoji(name="\N{BLACK RIGHT-POINTING TRIANGLE}\ufe0f", id=None, animated=False)   # [:arrow_right:]
+PERCENTAGE_EMOJI = disnake.PartialEmoji(name="percent", id=694463772135260169, animated=False)
+GAIN_EMOJI = disnake.PartialEmoji(name="gain", id=696280508933472256, animated=False)
+LAST_ONLINE_EMOJI = disnake.PartialEmoji(name="lastonline", id=696292732599271434, animated=False)
+HISTORICAL_EMOJI = disnake.PartialEmoji(name="historical", id=694812540290465832, animated=False)
 
 emojis = {
     "donation": (REFRESH_EMOJI, LEFT_EMOJI, RIGHT_EMOJI, PERCENTAGE_EMOJI, LAST_ONLINE_EMOJI, HISTORICAL_EMOJI),
@@ -136,7 +136,7 @@ class HTMLImages:
                         if b:
                             return Path(f'assets/board_icons/{emoji_or_clan_id}.png').resolve().as_uri()
                 else:
-                    async with self.session.get(f"{discord.Asset.BASE}/emojis/{emoji_or_clan_id}.png") as resp:
+                    async with self.session.get(f"{disnake.Asset.BASE}/emojis/{emoji_or_clan_id}.png") as resp:
                         if resp.status == 200:
                             data = await resp.read()
                             with open(f'assets/board_icons/{emoji_or_clan_id}.png', 'wb') as f:
@@ -427,9 +427,7 @@ class SyncBoards:
 
     async def on_init(self):
         self.webhooks = itertools.cycle(
-            discord.Webhook.partial(
-                payload['id'], payload['token'], adapter=discord.AsyncWebhookAdapter(session=self.session)
-            ) for payload in await self.bot.http.guild_webhooks(691779140059267084)
+            disnake.Webhook.partial(payload['id'], payload['token'], session=self.session) for payload in await self.bot.http.guild_webhooks(691779140059267084)
         )
 
     async def set_season_id(self):
@@ -476,7 +474,7 @@ class SyncBoards:
     async def set_new_message(self, config):
         try:
             message = await self.bot.http.send_message(config.channel_id, content=BOARD_PLACEHOLDER.format(board=config.type))
-        except (discord.Forbidden, discord.NotFound):
+        except (disnake.Forbidden, disnake.NotFound):
             await self.pool.execute("UPDATE boards SET toggle = FALSE WHERE channel_id = $1", config.channel_id)
             return
 
@@ -702,24 +700,24 @@ class SyncBoards:
         if divert_to:
             log.info('diverting board to %s channel_id', divert_to)
             try:
-                await self.bot.http.send_files(channel_id=divert_to, files=[discord.File(render, f'{config.type}board.png')])
+                await self.bot.http.send_files(channel_id=divert_to, files=[disnake.File(render, f'{config.type}board.png')])
             except:
                 log.info('failed to send legend log to channel %s', config.channel_id)
             return
 
         log.info(perf_log)
         logged_board_message = await next(self.webhooks).send(
-            perf_log, file=discord.File(render, f'{config.type}board.png'), wait=True
+            perf_log, file=disnake.File(render, f'{config.type}board.png'), wait=True
         )
-        embed = discord.Embed(timestamp=datetime.utcnow())
+        embed = disnake.Embed(timestamp=datetime.utcnow())
         embed.set_image(url=logged_board_message.attachments[0].url)
         embed.set_footer(text="Last Updated", icon_url="https://cdn.discordapp.com/avatars/427301910291415051/8fd702a4bbec20941c72bc651279c05c.webp?size=1024")
 
         try:
             await self.bot.http.edit_message(config.channel_id, config.message_id, content=None, embed=embed.to_dict())
-        except discord.NotFound:
+        except disnake.NotFound:
             await self.set_new_message(config)
-        except discord.HTTPException:
+        except disnake.HTTPException:
             await self.pool.execute("UPDATE boards SET toggle = FALSE WHERE channel_id = $1", config.channel_id)
             await self.bot.http.edit_message(
                 config.channel_id,
@@ -767,7 +765,7 @@ class SyncBoards:
 
                     await self.update_board(config, divert_to=row['divert_to_channel_id'] or config.channel_id)
 
-                except (discord.Forbidden, discord.NotFound, discord.HTTPException):
+                except (disnake.Forbidden, disnake.NotFound, disnake.HTTPException):
                     continue
 
             query = """INSERT INTO legend_days (player_tag, day, starting, gain, loss, finishing) 
@@ -791,7 +789,7 @@ if __name__ == "__main__":
     coc_client = coc.login(creds.email, creds.password, key_names='boards')
     pool = loop.run_until_complete(setup_db())
 
-    stateless_bot = discord.Client()
+    stateless_bot = disnake.Client()
     stateless_bot.session = aiohttp.ClientSession()
     setup_logging(stateless_bot)
 

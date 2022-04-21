@@ -1,10 +1,10 @@
-import discord
+import disnake
 import asyncio
 import datetime
 import coc
 import logging
 
-from discord.ext import commands
+from disnake.ext import commands
 from cogs.utils.checks import manage_guild
 from cogs.utils.formatters import CLYTable
 from cogs.utils import checks
@@ -133,14 +133,14 @@ class Remove(commands.Cog):
             try:
                 await self.bot.http.delete_message(channel.id, fetch['message_id'])
                 msg = f"👌 {type_.capitalize()}board successfully removed"
-            except discord.HTTPException:
+            except disnake.HTTPException:
                 msg = f"👌 {type_.capitalize()}board successfully removed, but deleting the message failed."
 
         else:
             try:
                 await channel.delete(reason=f'Command done by {ctx.author} ({ctx.author.id})')
                 msg = f"👌 {type_.capitalize()}board sucessfully removed and channel deleted."
-            except (discord.Forbidden, discord.HTTPException):
+            except (disnake.Forbidden, disnake.HTTPException):
                 msg = f"👌 {type_.capitalize()}board successfully removed.\n" \
                        "⚠ I don't have permissions to delete the channel. Please manually delete it."
             await ctx.db.execute("DELETE FROM clans WHERE channel_id = $1", channel.id)
@@ -157,7 +157,7 @@ class Remove(commands.Cog):
 
     @remove.command(name='donationboard', aliases=['donation board', 'donboard'])
     @checks.manage_guild()
-    async def remove_donationboard(self, ctx, channel: discord.TextChannel = None):
+    async def remove_donationboard(self, ctx, channel: disnake.TextChannel = None):
         """Removes the guild donationboard.
 
         **Parameters**
@@ -178,7 +178,7 @@ class Remove(commands.Cog):
 
     @remove.command(name='trophyboard', aliases=['trophy board', 'tropboard'])
     @manage_guild()
-    async def remove_trophyboard(self, ctx, channel: discord.TextChannel = None):
+    async def remove_trophyboard(self, ctx, channel: disnake.TextChannel = None):
         """Removes a trophyboard.
 
         **Parameters**
@@ -199,7 +199,7 @@ class Remove(commands.Cog):
 
     @remove.command(name='legendboard')
     @manage_guild()
-    async def remove_legendboard(self, ctx, channel: discord.TextChannel = None):
+    async def remove_legendboard(self, ctx, channel: disnake.TextChannel = None):
         """Removes a channel's legend board.
 
         **Parameters**
@@ -218,7 +218,7 @@ class Remove(commands.Cog):
 
     @remove.command(name='warboard', aliases=['war board', 'warsboard'])
     @checks.manage_guild()
-    async def remove_warboard(self, ctx, channel: discord.TextChannel = None):
+    async def remove_warboard(self, ctx, channel: disnake.TextChannel = None):
         """Removes the guild warboard.
 
         **Parameters**
@@ -239,7 +239,7 @@ class Remove(commands.Cog):
 
     @remove.command(name='donationlog')
     @manage_guild()
-    async def remove_donationlog(self, ctx, channel: discord.TextChannel = None):
+    async def remove_donationlog(self, ctx, channel: disnake.TextChannel = None):
         """Removes a channel's donationlog.
 
         **Parameters**
@@ -258,7 +258,7 @@ class Remove(commands.Cog):
 
     @remove.command(name='trophylog')
     @manage_guild()
-    async def remove_trophylog(self, ctx, channel: discord.TextChannel = None):
+    async def remove_trophylog(self, ctx, channel: disnake.TextChannel = None):
         """Removes a channel's trophylog.
 
         **Parameters**
@@ -276,7 +276,7 @@ class Remove(commands.Cog):
         await self.do_log_remove(ctx, channel or ctx.channel, 'trophy')
 
     @remove.command(name='legendlog', aliases=['legendlogs'])
-    async def remove_legendlog(self, ctx, board_channel: discord.TextChannel = None):
+    async def remove_legendlog(self, ctx, board_channel: disnake.TextChannel = None):
         """Remove the legend log channel.
 
         **Parameters**
@@ -353,7 +353,7 @@ class Remove(commands.Cog):
         render = table.events_list()
         fmt += f'{render}\n\nPlease select the reaction that corresponds with the event you would ' \
                f'like to remove.'
-        e = discord.Embed(colour=self.bot.colour,
+        e = disnake.Embed(colour=self.bot.colour,
                           description=fmt)
         msg = await ctx.send(embed=e)
         for r in reactions:

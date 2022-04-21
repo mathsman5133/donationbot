@@ -1,29 +1,30 @@
 import asyncio
 import creds
-import discord
+import disnake
 import logging
 import logging.handlers
 import math
 import itertools
 import sys
-from google.cloud import logging as glogging
-from oauth2client.service_account import ServiceAccountCredentials
+
+# from google.cloud import logging as glogging
+# from oauth2client.service_account import ServiceAccountCredentials
 
 def setup_logging(bot, test_syncer=False):
-    google_log_client = glogging.Client(project='donationbot')
-    google_log_client.setup_logging()
+    # google_log_client = glogging.Client(project='donationbot')
+    # google_log_client.setup_logging()
 
-    bot.message_log = google_log_client.logger('messages')
+    # bot.message_log = google_log_client.logger('messages')
+    #
+    # bot.command_log = google_log_client.logger('commands')
+    # bot.guild_log = google_log_client.logger('guilds')
+    # bot.clan_log = google_log_client.logger('clans')
+    # bot.google_logger = google_log_client.logger('syncer')
+    # bot.board_log = google_log_client.logger('boards')
 
-    bot.command_log = google_log_client.logger('commands')
-    bot.guild_log = google_log_client.logger('guilds')
-    bot.clan_log = google_log_client.logger('clans')
-    bot.google_logger = google_log_client.logger('syncer')
-    bot.board_log = google_log_client.logger('boards')
-
-    logging.getLogger('discord').setLevel(logging.INFO)
-    logging.getLogger('discord.http').setLevel(logging.WARNING)
-    logging.getLogger('discord.state').setLevel(logging.WARNING)
+    logging.getLogger('disnake').setLevel(logging.INFO)
+    logging.getLogger('disnake.http').setLevel(logging.WARNING)
+    logging.getLogger('disnake.state').setLevel(logging.WARNING)
     logging.getLogger('websockets.protocol').setLevel(logging.WARNING)
     logging.getLogger('coc').setLevel(logging.INFO)
     logging.getLogger('coc.events').setLevel(logging.INFO)
@@ -44,11 +45,9 @@ def setup_logging(bot, test_syncer=False):
     stream_handler.setFormatter(fmt)
     log.addHandler(stream_handler)
 
-    bot.error_webhooks = itertools.cycle([discord.Webhook.partial(
-        id=creds.log_hook_id,
-        token=creds.log_hook_token,
-        adapter=discord.AsyncWebhookAdapter(session=bot.session)
-                                            )])
+    bot.error_webhooks = itertools.cycle(
+        [disnake.Webhook.partial(id=creds.log_hook_id, token=creds.log_hook_token, session=bot.session)]
+    )
     # add handler to the logger
     # handler = logging.handlers.SysLogHandler('/dev/log')
     #
@@ -101,27 +100,11 @@ def setup_logging(bot, test_syncer=False):
 
 
 def add_hooks(bot):
-    bot.error_webhook = discord.Webhook.partial(id=creds.error_hook_id,
-                                                token=creds.error_hook_token,
-                                                adapter=discord.AsyncWebhookAdapter(
-                                                    session=bot.session)
-                                                )
-    bot.join_log_webhook = discord.Webhook.partial(id=creds.join_log_hook_id,
-                                                   token=creds.join_log_hook_token,
-                                                   adapter=discord.AsyncWebhookAdapter(
-                                                        session=bot.session)
-                                                   )
-    bot.feedback_webhook = discord.Webhook.partial(id=creds.feedback_hook_id,
-                                                   token=creds.feedback_hook_token,
-                                                   adapter=discord.AsyncWebhookAdapter(
-                                                        session=bot.session)
-                                                   )
-    bot.command_webhook = discord.Webhook.partial(id=creds.command_hook_id,
-                                                  token=creds.command_hook_token,
-                                                  adapter=discord.AsyncWebhookAdapter(
-                                                      session=bot.session
-                                                  )
-                                                  )
+    bot.error_webhook = disnake.Webhook.partial(id=creds.error_hook_id, token=creds.error_hook_token, session=bot.session)
+    bot.join_log_webhook = disnake.Webhook.partial(id=creds.join_log_hook_id, token=creds.join_log_hook_token, session=bot.session)
+    bot.feedback_webhook = disnake.Webhook.partial(id=creds.feedback_hook_id, token=creds.feedback_hook_token, session=bot.session)
+    bot.command_webhook = disnake.Webhook.partial(id=creds.command_hook_id, token=creds.command_hook_token, session=bot.session)
+
     return bot
 
 

@@ -1,7 +1,7 @@
-from discord.ext import commands
+from disnake.ext import commands
 import asyncio
 import traceback
-import discord
+import disnake
 import inspect
 import textwrap
 import importlib
@@ -43,7 +43,7 @@ class PerformanceMocker:
         # This makes it so pagination sessions just abruptly end on __init__
         # Most checks based on permission have a bypass for the owner anyway
         # So this lie will not affect the actual command invocation.
-        perms = discord.Permissions.all()
+        perms = disnake.Permissions.all()
         perms.administrator = False
         perms.embed_links = False
         perms.add_reactions = False
@@ -115,7 +115,7 @@ class Admin(commands.Cog):
     async def safe_send(self, ctx, fmt):
         if len(fmt) > 8000:
             fp = io.BytesIO(fmt.encode('utf-8'))
-            return await ctx.send('Too many results...', file=discord.File(fp, 'results.txt'))
+            return await ctx.send('Too many results...', file=disnake.File(fp, 'results.txt'))
 
         if len(fmt) < 2000:
             await ctx.send(fmt)
@@ -415,7 +415,7 @@ class Admin(commands.Cog):
             csv += '\n'
 
         fmt = f'Returned {rows} rows in {timer:.2f}ms*'
-        return await ctx.send(fmt, file=discord.File(filename="sql-query-results.csv", fp=io.BytesIO(csv.encode("utf-8"))))
+        return await ctx.send(fmt, file=disnake.File(filename="sql-query-results.csv", fp=io.BytesIO(csv.encode("utf-8"))))
 
 
 def setup(bot):

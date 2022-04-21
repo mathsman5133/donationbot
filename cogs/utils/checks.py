@@ -1,5 +1,5 @@
-import discord
-from discord.ext import commands
+import disnake
+from disnake.ext import commands
 
 PATRON_PERK_ROLES = [605349824472154134, 683559116731318423]
 HELPER_ROLE = 705550299699478609
@@ -12,7 +12,7 @@ class NoConfigFailure(commands.CheckFailure):
 async def helper_check(bot, user):
     try:
         support_member = await bot.get_guild(594276321937326091).fetch_member(user.id)
-    except discord.NotFound:
+    except disnake.NotFound:
         return False
     else:
         if any(r.id == HELPER_ROLE for r in support_member.roles):

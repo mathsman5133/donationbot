@@ -1,8 +1,8 @@
 # https://github.com/Rapptz/RoboDanny/blob/rewrite/cogs/utils/context.py
 
-from discord.ext import commands
+from disnake.ext import commands
 import asyncio
-import discord
+import disnake
 
 class _ContextDBAcquire:
     __slots__ = ('ctx', 'timeout')
@@ -117,7 +117,7 @@ class Context(commands.Context):
                   f'2\N{combining enclosing keycap} for option 2, etc. or \N{CROSS MARK} to select none.'
 
         author_id = author_id or self.author.id
-        msg = await self.send(embed=discord.Embed(colour=self.bot.colour, description=fmt))
+        msg = await self.send(embed=disnake.Embed(colour=self.bot.colour, description=fmt))
 
         confirm = None
 

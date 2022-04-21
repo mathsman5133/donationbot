@@ -1,9 +1,9 @@
-import datetime
+/.import datetime
 import typing
 
-import discord
+import disnake
 
-from discord.ext import commands
+from disnake.ext import commands
 
 from cogs.utils.checks import requires_config, manage_guild
 from cogs.utils.converters import PlayerConverter, ClanChannelComboConverter
@@ -18,7 +18,7 @@ class Aliases(commands.Cog, name='\u200bAliases'):
 
     @commands.command()
     @requires_config('event')
-    async def claim(self, ctx, user: typing.Optional[discord.Member] = None, *, player: str):
+    async def claim(self, ctx, user: typing.Optional[disnake.Member] = None, *, player: str):
         """Link a clash account to your discord account
 
         **Parameters**
@@ -43,7 +43,7 @@ class Aliases(commands.Cog, name='\u200bAliases'):
 
     @commands.command(name='multiclaim')
     @requires_config('event')
-    async def multi_claim(self, ctx, user: discord.Member, *players: str):
+    async def multi_claim(self, ctx, user: disnake.Member, *players: str):
         """Helper command to link many clash accounts to a user's discord.
 
         Note: unlike `+claim`, a discord mention **is not optional** - mention yourself if you want.
