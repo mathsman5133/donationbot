@@ -132,7 +132,7 @@ class HTMLImages:
                 if clan_tag:
                     clan = await self.coc_client.get_clan(clan_tag)
                     if clan:
-                        b = await clan.badge.save(f'assets/board_icons/{emoji_or_clan_id}.png')
+                        b = await clan.badge.save(path)
                         if b:
                             return Path(f'assets/board_icons/{emoji_or_clan_id}.png').resolve().as_uri()
                 else:
