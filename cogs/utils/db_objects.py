@@ -1,4 +1,4 @@
-import discord
+import disnake
 
 from collections import namedtuple
 from datetime import datetime, timedelta
@@ -46,11 +46,11 @@ class LogConfig:
         self.detailed: bool = record['detailed']
 
     @property
-    def guild(self) -> discord.Guild:
+    def guild(self) -> disnake.Guild:
         return self.bot.get_guild(self.guild_id)
 
     @property
-    def channel(self) -> discord.TextChannel:
+    def channel(self) -> disnake.TextChannel:
         return self.bot.get_channel(self.channel_id)
 
     @property
@@ -79,11 +79,11 @@ class BoardConfig:
         self.season_id: int = record['season_id']
 
     @property
-    def guild(self) -> discord.Guild:
+    def guild(self) -> disnake.Guild:
         return self.bot.get_guild(self.guild_id)
 
     @property
-    def channel(self) -> discord.TextChannel:
+    def channel(self) -> disnake.TextChannel:
         return self.bot.get_channel(self.channel_id)
 
     async def messages(self) -> list:
@@ -109,14 +109,14 @@ class DatabaseMessage:
         self.channel_id: int = record['channel_id']
 
     @property
-    def guild(self) -> discord.Guild:
+    def guild(self) -> disnake.Guild:
         return self.bot.get_guild(self.guild_id)
 
     @property
-    def channel(self) -> discord.TextChannel:
+    def channel(self) -> disnake.TextChannel:
         return self.bot.get_channel(self.channel_id)
 
-    async def get_message(self) -> discord.Message:
+    async def get_message(self) -> disnake.Message:
         return await self.bot.utils.get_message(self.channel, self.message_id)
 
 

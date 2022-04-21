@@ -5,13 +5,13 @@ import math
 from collections import namedtuple, defaultdict
 
 import coc
-import discord
+import disnake
 import disnake
 
 from disnake.ext import commands
 
-# from discord.ext import commands
-# from discord.ext.commands.core import _CaseInsensitiveDict
+# from disnake.ext import commands
+from disnake.ext.commands.core import _CaseInsensitiveDict
 
 from cogs.utils.converters import ConvertToPlayers
 from cogs.utils.paginator import StatsAttacksPaginator, StatsDefensesPaginator, StatsTrophiesPaginator, \
@@ -21,17 +21,18 @@ from cogs.utils.paginator import StatsAttacksPaginator, StatsDefensesPaginator, 
 
 FakeClan = namedtuple("FakeClan", "tag")
 Achievements = commands.option_enum(coc.enums.ACHIEVEMENT_ORDER)
+print(len(coc.enums.ACHIEVEMENT_ORDER))
 
 async def autocomp_achievement(intr: disnake.ApplicationCommandInteraction, user_input: str):
-    return [ach for ach in coc.enums.ACHIEVEMENT_ORDER if user_input.lower() in ach]
+    return [ach for ach in coc.enums.ACHIEVEMENT_ORDER if user_input.lower() in ach.lower()]
 
 
 class CustomPlayer(coc.Player):
     def get_caseinsensitive_achievement(self, name):
-        # if self._achievements is None:
-        #     self._achievements = _CaseInsensitiveDict()
-        #     for achievement in getattr(self, "_iter_achievements"):
-        #         self._achievements[achievement.name] = achievement
+        if self._achievements is None:
+            self._achievements = _CaseInsensitiveDict()
+            for achievement in getattr(self, "_iter_achievements"):
+                self._achievements[achievement.name] = achievement
 
         try:
             return self._achievements[name]
@@ -266,8 +267,7 @@ class Stats(commands.Cog):
         await ctx.trigger_typing()
 
     @commands.slash_command(
-        name="attacks",
-        description="Get top attack wins for a clan or player. If you specify nobody, it will get all attacks for your server."
+        description="Get top attack wins for a clan or player."
     )
     async def attacks(
         self,
@@ -315,7 +315,8 @@ class Stats(commands.Cog):
 
         att_sum = defaultdict(int)
         for player in data:
-            att_sum[player.clan.tag] += player.attack_wins
+            print(str(player), player.clan)
+            att_sum[player.clan and player.clan.tag] += player.attack_wins
 
         title = f"Top Attack Wins"
         emojis = await self._get_emojis(intr.guild.id)
@@ -329,11 +330,10 @@ class Stats(commands.Cog):
             description=description,
             emojis=emojis,
         )
-        await p.paginate()
+        await p.start()
 
     @commands.slash_command(
-        name="defenses",
-        description="Get top defense wins for a clan or player. If you specify nobody, it will get all defenses for your server."
+        description="Get top defense wins for a clan or player."
     )
     async def defenses(
         self,
@@ -381,7 +381,7 @@ class Stats(commands.Cog):
 
         def_sum = defaultdict(int)
         for player in data:
-            def_sum[player.clan.tag] += player.defense_wins
+            def_sum[player.clan and player.clan.tag] += player.defense_wins
 
         title = f"Top Defense Wins"
         emojis = await self._get_emojis(intr.guild.id)
@@ -395,12 +395,9 @@ class Stats(commands.Cog):
             description=description,
             emojis=emojis,
         )
-        await p.paginate()
+        await p.start()
 
-    @commands.command(
-        name="donations",
-        description="Get top donations for a clan or player. If you specify nobody, it will get all donations for your server."
-    )
+    @commands.slash_command(description="Get top donations for a clan or player.")
     async def donations(
         self,
         intr: disnake.ApplicationCommandInteraction,
@@ -470,12 +467,9 @@ class Stats(commands.Cog):
             description=description,
             emojis=emojis,
         )
-        await p.paginate()
+        await p.start()
 
-    @commands.command(
-        name="received",
-        description="Get top troops received for a clan or player. If you specify nobody, it will get all received stats for your server."
-    )
+    @commands.slash_command(description="Get top troops received for a clan or player.")
     async def received(
         self,
         intr: disnake.ApplicationCommandInteraction,
@@ -546,12 +540,9 @@ class Stats(commands.Cog):
             description=description,
             emojis=emojis,
         )
-        await p.paginate()
+        await p.start()
 
-    @commands.command(
-        name="trophies",
-        description="Get top trophies counts for a clan or player. If you specify nobody, it will get all counts for your server."
-    )
+    @commands.slash_command(description="Get top trophies counts for a clan or player.")
     async def trophies(
         self,
         intr: disnake.ApplicationCommandInteraction,
@@ -607,12 +598,9 @@ class Stats(commands.Cog):
         p = StatsTrophiesPaginator(
             intr, data=data, page_count=math.ceil(len(data) / 20), title=title, description=description, emojis=emojis
         )
-        await p.paginate()
+        await p.start()
 
-    @commands.command(
-        name="lastonline",
-        description="Get recent last-online status for a clan or player. If you specify nobody, it will get all stats for your server."
-    )
+    @commands.slash_command(description="Get recent last-online status for a clan or player.")
     async def lastonline(
             self,
             intr: disnake.ApplicationCommandInteraction,
@@ -664,16 +652,13 @@ class Stats(commands.Cog):
         p = StatsLastOnlinePaginator(
             intr, data=data, page_count=math.ceil(len(data) / 20), title=title, description=description, emojis=emojis
         )
-        await p.paginate()
+        await p.start()
 
-    @commands.command(
-        name="achievements",
-        description="Get top achievement counts for a clan/player. If you specify nobody, it will get all stats for your server."
-    )
-    async def achievement(
+    @commands.slash_command(description="Get top achievement counts for a clan/player.")
+    async def achievements(
         self,
         intr: disnake.ApplicationCommandInteraction,
-        achievement: Achievements,
+        achievement: str = commands.Param(autocomplete=autocomp_achievement),
         player: str = commands.Param(default=None, description="Player #tag or name."),
         clan: str = commands.Param(default=None, description="Clan #tag or name."),
         user: disnake.Member = commands.Param(default=None, description="User in this server."),
@@ -732,21 +717,18 @@ class Stats(commands.Cog):
 
         data_sum = defaultdict(int)
         for player in data:
-            data_sum[player.clan.tag] += player.get_ach_value(achievement)
+            data_sum[player.clan and player.clan.tag] += player.get_ach_value(achievement)
 
         emojis = await self._get_emojis(intr.guild.id)
         description = "*" + data[0].get_caseinsensitive_achievement(achievement).info + "*\n\n"
         description += self._get_description(emojis, players, lambda tag: f"({data_sum[tag]})", sum(data_sum.values()))
 
         p = StatsAchievementPaginator(
-            intr, data=data, page_count=math.ceil(len(data) / 20), title=title, description=description, achievement=achievement, emojis=emojis
+            intr, data=data, page_count=math.ceil(len(data) / 20), title=title, description=description, emojis=emojis, achievement=achievement
         )
-        await p.paginate()
+        await p.start()
 
-    @commands.command(
-        name="accounts",
-        description="Get accounts added to the bot for clan/players. If you specify nobody, it will get all accounts for your server."
-    )
+    @commands.slash_command(description="Get accounts added to the bot for clan/players.")
     async def accounts(
         self,
         intr: disnake.ApplicationCommandInteraction,
@@ -809,7 +791,7 @@ class Stats(commands.Cog):
         p = StatsAccountsPaginator(
             intr, data=data, page_count=math.ceil(len(players) / 20), title=title, description=description
         )
-        await p.paginate()
+        await p.start()
 
 
 def setup(bot):

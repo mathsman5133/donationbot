@@ -1,6 +1,6 @@
 import asyncio
 import datetime
-import discord
+import disnake
 import logging
 import textwrap
 import itertools
@@ -9,7 +9,7 @@ import time
 import coc
 import pytz
 
-from discord.ext import commands, tasks
+from disnake.ext import commands, tasks
 
 from cogs.utils.db_objects import SlimEventConfig
 from cogs.utils.formatters import readable_time, LineWrapper
@@ -321,7 +321,7 @@ class BackgroundManagement(commands.Cog):
     async def safe_send(channel, msg):
         try:
             return await channel.send(msg)
-        except (discord.HTTPException, discord.NotFound, AttributeError):
+        except (disnake.HTTPException, disnake.NotFound, AttributeError):
             log.error(f'Tried to send event info to {channel} but was rejected. Please inform them.')
 
     async def on_event_start(self, event):
@@ -363,11 +363,11 @@ class BackgroundManagement(commands.Cog):
             return
 
         if board_type == 'donation':
-            colour = discord.Colour.gold()
+            colour = disnake.Colour.gold()
         else:
-            colour = discord.Colour.purple()
+            colour = disnake.Colour.purple()
 
-        e = discord.Embed(colour=colour)
+        e = disnake.Embed(colour=colour)
 
         e.set_author(name='Event in Progress!')
 
@@ -391,7 +391,7 @@ class BackgroundManagement(commands.Cog):
         e.set_footer(text='Event Ends').timestamp = event.finish
         try:
             msg = await board_channel.send(embed=e)
-        except (AttributeError, discord.NotFound, discord.HTTPException):
+        except (AttributeError, disnake.NotFound, disnake.HTTPException):
             log.error(f'Tried to update {board_type}board for event {event.event_name} '
                       f'({event.id}) but couldn\'t find the channel. '
                       f'Please let them know! Guild ID {guild_id}, Channel ID {channel_id}')
@@ -475,7 +475,7 @@ class BackgroundManagement(commands.Cog):
 
     @commands.Cog.listener()
     async def on_guild_join(self, guild):
-        e = discord.Embed(colour=0x53dda4, title='New Guild')  # green colour
+        e = disnake.Embed(colour=0x53dda4, title='New Guild')  # green colour
         await self.send_guild_stats(e, guild)
         query = "INSERT INTO guilds (guild_id) VALUES ($1) ON CONFLICT (guild_id) DO NOTHING"
         await self.bot.pool.execute(query, guild.id)
@@ -485,21 +485,21 @@ class BackgroundManagement(commands.Cog):
             try:
                 await guild.system_channel.send(embed=e)
                 return
-            except (discord.Forbidden, discord.HTTPException):
+            except (disnake.Forbidden, disnake.HTTPException):
                 pass
         for c in guild.channels:
-            if not isinstance(c, discord.TextChannel):
+            if not isinstance(c, disnake.TextChannel):
                 continue
             if c.permissions_for(c.guild.get_member(self.bot.user.id)).send_messages:
                 try:
                     await c.send(embed=e)
-                except (discord.Forbidden, discord.HTTPException):
+                except (disnake.Forbidden, disnake.HTTPException):
                     pass
                 return
 
     @commands.Cog.listener()
     async def on_guild_remove(self, guild):
-        e = discord.Embed(colour=0xdd5f53, title='Left Guild')  # red colour
+        e = disnake.Embed(colour=0xdd5f53, title='Left Guild')  # red colour
         await self.send_guild_stats(e, guild)
         query = """UPDATE logs 
                    SET toggle = False 
@@ -540,7 +540,7 @@ class BackgroundManagement(commands.Cog):
                                VALUES ($1, $2, $3, $4, $5, $6)
                 """
 
-        # e = discord.Embed(title='Command', colour=discord.Colour.green())
+        # e = disnake.Embed(title='Command', colour=disnake.Colour.green())
         # e.add_field(name='Name', value=ctx.command.qualified_name)
         # e.add_field(name='Author', value=f'{ctx.author} (ID: {ctx.author.id})')
         #
@@ -561,7 +561,7 @@ class BackgroundManagement(commands.Cog):
 
     @commands.Cog.listener()
     async def on_clan_claim(self, ctx, clan):
-        e = discord.Embed(colour=discord.Colour.blue(), title='Clan Claimed')
+        e = disnake.Embed(colour=disnake.Colour.blue(), title='Clan Claimed')
         await self.send_claim_clan_stats(e, clan, ctx.guild)
         # await self.bot.background.sync_temp_event_tasks()
 
@@ -573,7 +573,7 @@ class BackgroundManagement(commands.Cog):
 
     @commands.Cog.listener()
     async def on_clan_unclaim(self, ctx, clan):
-        e = discord.Embed(colour=discord.Colour.dark_blue(), title='Clan Unclaimed')
+        e = disnake.Embed(colour=disnake.Colour.dark_blue(), title='Clan Unclaimed')
         await self.send_claim_clan_stats(e, clan, ctx.guild)
         # await self.bot.background.sync_temp_event_tasks()
 
@@ -593,7 +593,7 @@ class BackgroundManagement(commands.Cog):
 
         bots = sum(m.bot for m in guild.members)
         total = guild.member_count
-        online = sum(m.status is discord.Status.online for m in guild.members)
+        online = sum(m.status is disnake.Status.online for m in guild.members)
         e.add_field(name='Members', value=str(total))
         e.add_field(name='Bots', value=f'{bots} ({bots / total:.2%})')
         e.add_field(name='Online', value=f'{online} ({online / total:.2%})')
@@ -644,7 +644,7 @@ class BackgroundManagement(commands.Cog):
 
         bots = sum(m.bot for m in guild.members)
         total = guild.member_count
-        online = sum(m.status is discord.Status.online for m in guild.members)
+        online = sum(m.status is disnake.Status.online for m in guild.members)
         e.add_field(name='Guild Members', value=str(total))
         e.add_field(name='Guild Bots', value=f'{bots} ({bots / total:.2%})')
         e.add_field(name='Guild Online', value=f'{online} ({online / total:.2%})')

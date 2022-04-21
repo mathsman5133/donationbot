@@ -1,5 +1,5 @@
 import datetime
-import discord
+import disnake
 import textwrap
 import traceback
 import logging
@@ -9,7 +9,7 @@ import coc
 
 from cogs.utils import formatters, paginator, checks
 
-from discord.ext import commands
+from disnake.ext import commands
 
 import creds
 
@@ -19,7 +19,7 @@ log = logging.getLogger()
 async def error_handler(ctx, error):
     error = getattr(error, 'original', error)
 
-    if isinstance(error, (commands.MissingPermissions, RuntimeError, discord.Forbidden)):
+    if isinstance(error, (commands.MissingPermissions, RuntimeError, disnake.Forbidden)):
         log.info('command raised no bot permissions: %s, author: %s, error: %s', ctx.invoked_with, ctx.author.id, error)
         return await ctx.send(str(error) if error else "Please double-check the bot's permissions and try again.")
 
@@ -49,10 +49,10 @@ async def error_handler(ctx, error):
 
     ctx.command.reset_cooldown(ctx)
 
-    if isinstance(error, (discord.Forbidden, discord.NotFound, paginator.CannotPaginate)):
+    if isinstance(error, (disnake.Forbidden, disnake.NotFound, paginator.CannotPaginate)):
         return
 
-    e = discord.Embed(title='Command Error', colour=0xcc3366)
+    e = disnake.Embed(title='Command Error', colour=0xcc3366)
     e.add_field(name='Name', value=ctx.command.qualified_name)
     e.add_field(name='Author', value=f'{ctx.author} (ID: {ctx.author.id})')
 
@@ -71,7 +71,7 @@ async def error_handler(ctx, error):
     if len(exc) > 2000:
         fp = io.BytesIO(exc.encode('utf-8'))
         e.description = "Traceback was too long."
-        return await ctx.send(embed=e, file=discord.File(fp, 'traceback.txt'))
+        return await ctx.send(embed=e, file=disnake.File(fp, 'traceback.txt'))
 
     e.description = f'```py\n{exc}\n```'
 
@@ -85,12 +85,12 @@ async def error_handler(ctx, error):
         await ctx.send('Uh oh! Something broke. This error has been reported; '
                        'the owner is working on it. Please join the support server: '
                        'https://discord.gg/ePt8y4V to stay updated!')
-    except discord.Forbidden:
+    except disnake.Forbidden:
         pass
 
 
 async def discord_event_error(bot, event_method, *args, **kwargs):
-    e = discord.Embed(title='Discord Event Error', colour=0xa32952)
+    e = disnake.Embed(title='Discord Event Error', colour=0xa32952)
     e.add_field(name='Event', value=event_method)
     e.description = f'```py\n{traceback.format_exc()}\n```'
     e.timestamp = datetime.datetime.utcnow()
@@ -108,7 +108,7 @@ async def discord_event_error(bot, event_method, *args, **kwargs):
 
 
 async def clash_event_error(bot, event_name, exception, *args, **kwargs):
-    e = discord.Embed(title='COC Event Error', colour=0xa32952)
+    e = disnake.Embed(title='COC Event Error', colour=0xa32952)
     e.add_field(name='Event', value=event_name)
     e.description = f'```py\n{traceback.format_exc()}\n```'
     e.timestamp = datetime.datetime.utcnow()

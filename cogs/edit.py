@@ -1,4 +1,4 @@
-import discord
+import disnake
 import asyncio
 import typing
 import datetime
@@ -7,7 +7,7 @@ import logging
 
 from time import perf_counter as pc
 
-from discord.ext import commands
+from disnake.ext import commands
 from cogs.utils.checks import requires_config, manage_guild
 from cogs.utils.formatters import CLYTable
 from cogs.utils.converters import ClanConverter, DateConverter, TextChannel
@@ -163,7 +163,7 @@ class Edit(commands.Cog):
             await ctx.send_help(ctx.command)
 
     @edit_donationboard.command(name='background', aliases=['icon', 'bg'])
-    async def edit_donationboard_icon(self, ctx, channel: typing.Optional[discord.TextChannel], *, url: str = None):
+    async def edit_donationboard_icon(self, ctx, channel: typing.Optional[disnake.TextChannel], *, url: str = None):
         """Change or add an background for a donationboard.
 
         **Parameters**
@@ -183,7 +183,7 @@ class Edit(commands.Cog):
         await self.do_edit_board_url(ctx, channel or ctx.channel, url, 'donation')
 
     @edit_donationboard.command(name='title')
-    async def edit_donationboard_title(self, ctx, channel: typing.Optional[discord.TextChannel], *, title: str):
+    async def edit_donationboard_title(self, ctx, channel: typing.Optional[disnake.TextChannel], *, title: str):
         """Specify a title for a donationboard.
 
         **Parameters**
@@ -202,7 +202,7 @@ class Edit(commands.Cog):
         await self.do_edit_board_title(ctx, channel or ctx.channel, title, 'donation')
 
     @edit_donationboard.command(name='perpage')
-    async def edit_donationboard_per_page(self, ctx, channel: typing.Optional[discord.TextChannel], per_page: int):
+    async def edit_donationboard_per_page(self, ctx, channel: typing.Optional[disnake.TextChannel], per_page: int):
         """Change how many players are displayed on each page of a donationboard.
 
         By default, it is 15 for the first and second pages, then 20, 25, 25, 50 etc.
@@ -233,7 +233,7 @@ class Edit(commands.Cog):
             await ctx.send_help(ctx.command)
 
     @edit_legendboard.command(name='background', aliases=['bg', 'icon'])
-    async def edit_legendboard_icon(self, ctx, channel: typing.Optional[discord.TextChannel], *, url: str = None):
+    async def edit_legendboard_icon(self, ctx, channel: typing.Optional[disnake.TextChannel], *, url: str = None):
         """Add or change the background for a legendboard.
 
         **Parameters**
@@ -253,7 +253,7 @@ class Edit(commands.Cog):
         await self.do_edit_board_url(ctx, channel or ctx.channel, url, 'legend')
 
     @edit_legendboard.command(name='title')
-    async def edit_legendboard_title(self, ctx, channel: typing.Optional[discord.TextChannel], *, title: str):
+    async def edit_legendboard_title(self, ctx, channel: typing.Optional[disnake.TextChannel], *, title: str):
         """Change the title for a legendboard.
 
         **Parameters**
@@ -272,7 +272,7 @@ class Edit(commands.Cog):
         await self.do_edit_board_title(ctx, channel or ctx.channel, title, 'legend')
 
     @edit_legendboard.command(name='perpage')
-    async def edit_legendboard_per_page(self, ctx, channel: typing.Optional[discord.TextChannel], *, per_page: int):
+    async def edit_legendboard_per_page(self, ctx, channel: typing.Optional[disnake.TextChannel], *, per_page: int):
         """Change how many players are displayed on each page of a legendboard.
 
         By default, it is 15 for the first and second pages, then 20, 25, 25, 50 etc.
@@ -295,7 +295,7 @@ class Edit(commands.Cog):
         await self.do_edit_board_perpage(ctx, channel or ctx.channel, per_page, 'legend')
     #
     # @edit_legendboard.command(name='columns', aliases=['column'])
-    # async def edit_legendboard_columns(self, ctx, channel: typing.Optional[discord.TextChannel], *, combination: str):
+    # async def edit_legendboard_columns(self, ctx, channel: typing.Optional[disnake.TextChannel], *, combination: str):
     #
 
     @edit.group(name='warboard')
@@ -307,7 +307,7 @@ class Edit(commands.Cog):
             await ctx.send_help(ctx.command)
 
     @edit_warboard.command(name='background', aliases=['bg', 'icon'])
-    async def edit_warboard_icon(self, ctx, channel: typing.Optional[discord.TextChannel], *, url: str = None):
+    async def edit_warboard_icon(self, ctx, channel: typing.Optional[disnake.TextChannel], *, url: str = None):
         """Add or change the background for a warboard.
 
         **Parameters**
@@ -327,7 +327,7 @@ class Edit(commands.Cog):
         await self.do_edit_board_url(ctx, channel or ctx.channel, url, 'war')
 
     @edit_warboard.command(name='title')
-    async def edit_warboard_title(self, ctx, channel: typing.Optional[discord.TextChannel], *, title: str):
+    async def edit_warboard_title(self, ctx, channel: typing.Optional[disnake.TextChannel], *, title: str):
         """Change the title for a warboard.
 
         **Parameters**
@@ -346,7 +346,7 @@ class Edit(commands.Cog):
         await self.do_edit_board_title(ctx, channel or ctx.channel, title, 'war')
 
     @edit_warboard.command(name='perpage')
-    async def edit_warboard_per_page(self, ctx, channel: typing.Optional[discord.TextChannel], *, per_page: int):
+    async def edit_warboard_per_page(self, ctx, channel: typing.Optional[disnake.TextChannel], *, per_page: int):
         """Change how many players are displayed on each page of a warboard.
 
         By default, it is 15 for the first and second pages, then 20, 25, 25, 50 etc.
@@ -377,7 +377,7 @@ class Edit(commands.Cog):
             await ctx.send_help(ctx.command)
 
     @edit_trophyboard.command(name='background', aliases=['bg', 'icon'])
-    async def edit_trophyboard_icon(self, ctx, channel: typing.Optional[discord.TextChannel], *, url: str = None):
+    async def edit_trophyboard_icon(self, ctx, channel: typing.Optional[disnake.TextChannel], *, url: str = None):
         """Add or change the background for a trophyboard.
 
         **Parameters**
@@ -397,7 +397,7 @@ class Edit(commands.Cog):
         await self.do_edit_board_url(ctx, channel or ctx.channel, url, 'trophy')
 
     @edit_trophyboard.command(name='title')
-    async def edit_trophyboard_title(self, ctx, channel: typing.Optional[discord.TextChannel], *, title: str):
+    async def edit_trophyboard_title(self, ctx, channel: typing.Optional[disnake.TextChannel], *, title: str):
         """Change the title for a trophyboard.
 
         **Parameters**
@@ -416,7 +416,7 @@ class Edit(commands.Cog):
         await self.do_edit_board_title(ctx, channel or ctx.channel, title, 'trophy')
 
     @edit_trophyboard.command(name='perpage')
-    async def edit_trophyboard_per_page(self, ctx, channel: typing.Optional[discord.TextChannel], per_page: int):
+    async def edit_trophyboard_per_page(self, ctx, channel: typing.Optional[disnake.TextChannel], per_page: int):
         """Change how many players are displayed on each page of a trophyboard.
 
         By default, it is 15 for the first and second pages, then 20, 25, 25, 50 etc.
@@ -496,7 +496,7 @@ class Edit(commands.Cog):
         await self.do_edit_log_interval(ctx, channel or ctx.channel, minutes, 'donation')
 
     @edit_donationlog.command(name='toggle')
-    async def edit_donationlog_toggle(self, ctx, channel: discord.TextChannel = None):
+    async def edit_donationlog_toggle(self, ctx, channel: disnake.TextChannel = None):
         """Toggle the donation log on.
 
         **Format**
@@ -511,7 +511,7 @@ class Edit(commands.Cog):
         await self.do_edit_log_toggle(ctx, channel or ctx.channel, 'donation')
 
     @edit_donationlog.command(name='style')
-    async def edit_donationlog_style(self, ctx, channel: discord.TextChannel = None):
+    async def edit_donationlog_style(self, ctx, channel: disnake.TextChannel = None):
         """Toggle the donation style. This alternates between detailed and basic versions.
 
         **Format**
@@ -539,13 +539,13 @@ class Edit(commands.Cog):
             )
 
         if detailed['detailed']:
-            embed = discord.Embed(
+            embed = disnake.Embed(
                 description=f"Donationlog has been set to maximum detail. An example is below. Use `{ctx.prefix}edit donationlog style` to change to the basic version."
             )
             embed.set_image(url="https://cdn.discordapp.com/attachments/681438398455742536/681438506857398307/demo_detailed.JPG")
 
         else:
-            embed = discord.Embed(
+            embed = disnake.Embed(
                 description=f"Donationlog has been set to basic detail. An example is below. Use `{ctx.prefix}edit donationlog style` to change to maximum detail version."
             )
             embed.set_image(url="https://cdn.discordapp.com/attachments/681438398455742536/681438471805861926/demo_basic.JPG")
@@ -582,7 +582,7 @@ class Edit(commands.Cog):
         await self.do_edit_log_interval(ctx, channel or ctx.channel, minutes, 'trophy')
 
     @edit_trophylog.command(name='toggle')
-    async def edit_trophylog_toggle(self, ctx, channel: discord.TextChannel = None):
+    async def edit_trophylog_toggle(self, ctx, channel: disnake.TextChannel = None):
         """Toggle the trophy log on and off.
 
         **Format**
@@ -651,7 +651,7 @@ class Edit(commands.Cog):
                 render = table.events_list()
                 fmt += f'{render}\n\nPlease select the reaction that corresponds with the event you would ' \
                        f'like to remove.'
-                e = discord.Embed(colour=self.bot.colour,
+                e = disnake.Embed(colour=self.bot.colour,
                                   description=fmt)
                 msg = await ctx.send(embed=e)
                 for r in reactions:
@@ -784,7 +784,7 @@ class Edit(commands.Cog):
 
             fmt = (f'**Event Info:**\n\n{new_event_name}\n{new_start.strftime("%d %b %Y %H:%M")}\n'
                    f'{new_finish.strftime("%d %b %Y %H:%M")}')
-            e = discord.Embed(colour=discord.Colour.green(),
+            e = disnake.Embed(colour=disnake.Colour.green(),
                               description=fmt)
             await ctx.send(embed=e)
             self.bot.dispatch('event_register')

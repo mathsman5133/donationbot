@@ -1,7 +1,5 @@
 import asyncio
 import datetime
-import coc
-import discord
 import aiohttp
 import traceback
 import creds
@@ -12,6 +10,8 @@ import logging
 import json
 
 import asyncpg
+import coc
+import disnake
 import sentry_sdk
 
 from coc.ext import discordlinks
@@ -69,13 +69,7 @@ coc_client = coc.login(
 links_client = discordlinks.login(creds.links_username, creds.links_password)
 
 description = "A simple discord bot to track donations of clan families in clash of clans."
-intents = discord.Intents.none()
-intents.guilds = True
-intents.guild_messages = True
-intents.guild_reactions = True
-intents.members = True
-intents.emojis = True
-
+intents = disnake.Intents(guilds=True, guild_messages=True, guild_reactions=True, members=True, emojis=True)
 
 log = logging.getLogger()
 
@@ -108,12 +102,12 @@ async def setup_db():
 class DonationBot(commands.AutoShardedBot):
     def __init__(self):
         super().__init__(command_prefix="!", intents=intents, chunk_guilds_at_startup=False,
-                         allowed_mentions=discord.AllowedMentions.none(),
+                         allowed_mentions=disnake.AllowedMentions.none(),
                          test_guilds=[594276321937326091], sync_commands_debug=True)
 
         self.prefixes = dict()
 
-        self.colour = discord.Colour.blurple()
+        self.colour = disnake.Colour.blurple()
 
         self.coc = coc_client
         self.links = links_client
@@ -171,8 +165,10 @@ class DonationBot(commands.AutoShardedBot):
     #     await self.process_commands(message)
 
     async def process_application_commands(self, interaction):
+        log.info("Received interaction command %s", str(interaction))
+        await interaction.response.defer()
         async with self.pool.acquire(timeout=60.0) as conn:
-            interaction.conn = conn
+            interaction.db = conn
             await super().process_application_commands(interaction)
     #
     # async def process_commands(self, message):
@@ -246,7 +242,7 @@ class DonationBot(commands.AutoShardedBot):
             for user_id in to_fetch:
                 try:
                     member = await guild.fetch_member(user_id)
-                except discord.HTTPException:
+                except disnake.HTTPException:
                     pass
                 else:
                     results.append(member)
@@ -283,7 +279,7 @@ class DonationBot(commands.AutoShardedBot):
             for user_id in to_fetch:
                 try:
                     user = await self.fetch_user(user_id)
-                except discord.HTTPException:
+                except disnake.HTTPException:
                     pass
                 else:
                     results.append(user)

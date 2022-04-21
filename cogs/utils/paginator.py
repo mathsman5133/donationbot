@@ -1,11 +1,11 @@
 import asyncio
-import discord
+import disnake
 import inspect
 import textwrap
 
 from datetime import datetime
 
-from discord.ext.commands import Paginator as CommandPaginator
+from disnake.ext.commands import Paginator as CommandPaginator
 
 from cogs.utils.emoji_lookup import misc
 from cogs.utils.formatters import CLYTable, get_render_type, events_time, readable_time
@@ -13,6 +13,212 @@ from cogs.utils.formatters import CLYTable, get_render_type, events_time, readab
 
 class CannotPaginate(Exception):
     pass
+
+
+class ViewPaginator(disnake.ui.View):
+    def __init__(self, interaction: disnake.MessageInteraction, data, page_count, title, description, emojis):
+        super().__init__(timeout=180)
+
+        self.table = CLYTable()
+        self.data = data
+        self.player_data = []
+        self.entries = [None for _ in range(page_count)]
+        self.title = title or ""
+        self.description = description or ""
+        self.emojis = emojis or ""
+
+        self.page = 1
+        self.rows_per_page = 20
+        self.page_count = page_count
+        self.embed = disnake.Embed()
+        self.interaction = interaction
+
+    def create_row(self, index, player):
+        ...
+
+    async def prepare_entry(self):
+        ...
+
+    async def get_embed(self):
+        # entries = self.entries[self.page - 1]
+
+        if self.page_count > 1:
+            text = f'Page {self.page}/{self.page_count}'
+            self.embed.set_footer(text=text)
+
+        table = await self.prepare_entry()
+        self.embed.description = self.description + table or ""
+        self.embed.set_author(
+            name=textwrap.shorten(self.title, width=240, placeholder='...'),
+            icon_url=self.interaction.guild.icon.url
+        )
+
+        return self.embed
+
+    async def start(self):
+        await self.prepare_entry()
+        embed = await self.get_embed()
+        if self.page_count > 1:
+            await self.interaction.edit_original_message(embed=embed, view=self)
+        else:
+            await self.interaction.edit_original_message(embed=embed)
+            # self.stop()
+
+    @disnake.ui.button(label="Previous", style=disnake.ButtonStyle.blurple)
+    async def previous(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction):
+        if self.page == 1:
+            await interaction.response.pong()
+            return
+
+        self.page -= 1
+        await interaction.response.edit_message(embed=await self.get_embed())
+
+    @disnake.ui.button(label="Next", style=disnake.ButtonStyle.blurple)
+    async def next(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction):
+        if self.page == self.page_count:
+            await interaction.response.pong()
+            return
+
+        self.page += 1
+        await interaction.response.edit_message(embed=await self.get_embed())
+
+    @disnake.ui.button(label="Cancel", style=disnake.ButtonStyle.grey)
+    async def cancel(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction):
+        await self.interaction.edit_original_message(view=None)
+
+
+class StatsAttacksPaginator(ViewPaginator):
+    def create_row(self, index, player):
+        self.table.add_row([index, self.emojis.get(player.clan and player.clan.tag, ""), player.attack_wins, player.name])
+
+    async def prepare_entry(self):
+        self.table.clear_rows()
+        if not self.player_data:
+            self.player_data = sorted(self.data, key=lambda p: p.attack_wins, reverse=True)
+
+        base = (self.page - 1) * self.rows_per_page
+        data = self.player_data[base:base + self.rows_per_page]
+        for index, player in enumerate(data, start=base):
+            self.create_row(index + 1, player)
+
+        return self.table.trophyboard_attacks()
+
+
+class StatsDefensesPaginator(ViewPaginator):
+    def create_row(self, index, player):
+        self.table.add_row([index, self.emojis.get(player.clan and player.clan.tag, ""), player.defense_wins, player.name])
+
+    async def prepare_entry(self):
+        self.table.clear_rows()
+        if not self.player_data:
+            self.player_data = sorted(self.data, key=lambda p: p.defense_wins, reverse=True)
+
+        base = (self.page - 1) * self.rows_per_page
+        data = self.data[base:base + self.rows_per_page]
+        for index, player in enumerate(data, start=base):
+            self.create_row(index + 1, player)
+
+        return self.table.trophyboard_defenses()
+
+
+class StatsGainsPaginator(ViewPaginator):
+    def create_row(self, i, data):
+        self.table.add_row([i, self.emojis.get(data['clan_tag'], ""), data['gain'], data['player_name']])
+
+    async def prepare_entry(self):
+        self.table.clear_rows()
+        base = (self.page - 1) * self.rows_per_page
+        data = self.data[base:base + self.rows_per_page]
+        data = [n[1] for n in data]
+
+        for i, row in enumerate(data, start=base):
+            self.create_row(i + 1, row)
+
+        return self.table.trophyboard_gain()
+
+
+class StatsTrophiesPaginator(ViewPaginator):
+    def create_row(self, i, data):
+        self.table.add_row([i, self.emojis.get(data['clan_tag'], ""), data['trophies'], data['player_name']])
+
+    async def prepare_entry(self):
+        self.table.clear_rows()
+        base = (self.page - 1) * self.rows_per_page
+        data = self.data[base:base + self.rows_per_page]
+        data = [n[1] for n in data]
+
+        for i, row in enumerate(data, start=base):
+            self.create_row(i + 1, row)
+
+        return self.table.trophyboard_gain()
+
+
+class StatsDonorsPaginator(ViewPaginator):
+    def create_row(self, i, data):
+        self.table.add_row([i, self.emojis.get(data['clan_tag'], ""), data['donations'], data['received'], data['player_name']])
+
+    async def prepare_entry(self):
+        self.table.clear_rows()
+        base = (self.page - 1) * self.rows_per_page
+        data = self.data[base:base + self.rows_per_page]
+        data = [n[1] for n in data]
+
+        for i, row in enumerate(data, start=base):
+            self.create_row(i + 1, row)
+
+        return self.table.donationboard_1()
+
+
+class StatsLastOnlinePaginator(ViewPaginator):
+    def create_row(self, i, data):
+        self.table.add_row([i, self.emojis.get(data['clan_tag'], ""), readable_time(data['since'].total_seconds())[:-3], data['player_name']])
+
+    async def prepare_entry(self):
+        self.table.clear_rows()
+        base = (self.page - 1) * self.rows_per_page
+        data = self.data[base:base + self.rows_per_page]
+        data = [n[1] for n in data]
+
+        for i, row in enumerate(data, start=base):
+            self.create_row(i + 1, row)
+
+        return self.table.last_online()
+
+
+class StatsAchievementPaginator(ViewPaginator):
+    def __init__(self, *args, achievement, **kwargs):
+        self.achievement = achievement
+        super().__init__(*args, **kwargs)
+
+    def create_row(self, i, player):
+        self.table.add_row([i, self.emojis.get(player.clan and player.clan.tag, ""), getattr(player, "aggr_achievement", player.get_ach_value(self.achievement)), player.name])
+
+    async def prepare_entry(self):
+        self.table.clear_rows()
+        base = (self.page - 1) * self.rows_per_page
+        data = self.data[base:base + self.rows_per_page]
+
+        for i, row in enumerate(data, start=base):
+            self.create_row(i + 1, row)
+
+        return self.table.achievement()
+
+
+class StatsAccountsPaginator(ViewPaginator):
+    def create_row(self, i, data):
+        self.table.add_row([i, data[2], data[0], data[1]])
+
+    async def prepare_entry(self):
+        self.table.clear_rows()
+        base = (self.page - 1) * self.rows_per_page
+        data = self.data[base:base + self.rows_per_page]
+        data = [n[1] for n in data]
+
+        for i, row in enumerate(data, start=base):
+            self.create_row(i + 1, row)
+
+        return self.table.accounts()
+
 
 
 class Pages:
@@ -37,11 +243,11 @@ class Pages:
 
     Attributes
     -----------
-    embed: discord.Embed
+    embed: disnake.Embed
         The embed object that is being used to send pagination info.
         Feel free to modify this externally. Only the description,
         footer fields, and colour are internally modified.
-    permissions: discord.Permissions
+    permissions: disnake.Permissions
         Our permissions for the channel.
     """
     def __init__(self, ctx, *, entries, per_page=12, show_entry_count=True):
@@ -55,7 +261,7 @@ class Pages:
         if left_over:
             pages += 1
         self.maximum_pages = pages
-        self.embed = discord.Embed(colour=discord.Colour.blurple())
+        self.embed = disnake.Embed(colour=disnake.Colour.blurple())
         self.paginating = len(entries) > per_page
         self.show_entry_count = show_entry_count
         self.reaction_emojis = [
@@ -199,7 +405,7 @@ class Pages:
         for (emoji, func) in self.reaction_emojis:
             messages.append(f'{emoji} {func.__doc__}')
 
-        embed = self.embed.copy() if self.embed else discord.Embed(colour=self.bot.colour)
+        embed = self.embed.copy() if self.embed else disnake.Embed(colour=self.bot.colour)
         embed.clear_fields()
         embed.description = '\n'.join(messages)
         embed.set_footer(text=f'We were on page {self.current_page} before this message.')
@@ -270,7 +476,7 @@ class FieldPages(Pages):
 
     def prepare_embed(self, entries, page, *, first=False):
         self.embed.clear_fields()
-        self.embed.description = discord.Embed.Empty
+        self.embed.description = disnake.Embed.Empty
 
         for key, value in entries:
             self.embed.add_field(name=key, value=value, inline=False)
@@ -530,198 +736,6 @@ class DonationsPaginator(TablePaginator):
             self.create_row(index + 1, player)
 
         return self.table.donationboard_2() + self.key
-
-
-class StatsAttacksPaginator(TablePaginator):
-    def __init__(self, ctx, data, title, page_count=1, rows_per_table=20, key='', description='', emojis=None):
-        super().__init__(
-            ctx, data, title=title, page_count=page_count, rows_per_table=rows_per_table, description=description
-        )
-        self.key = key
-        self.player_data = []
-        self.data = data
-        self.emojis = emojis or {}
-
-    def create_row(self, index, player):
-        self.table.add_row([index, self.emojis.get(player.clan and player.clan.tag, ""), player.attack_wins, player.name])
-
-    async def prepare_entry(self, page):
-        self.table.clear_rows()
-        if not self.player_data:
-            self.player_data = sorted(self.data, key=lambda p: p.attack_wins, reverse=True)
-
-        base = (page - 1) * self.rows_per_table
-        data = self.player_data[base:base + self.rows_per_table]
-        for index, player in enumerate(data, start=base):
-            self.create_row(index + 1, player)
-
-        return self.table.trophyboard_attacks() + self.key
-
-
-class StatsDefensesPaginator(TablePaginator):
-    def __init__(self, ctx, data, title, page_count=1, rows_per_table=20, key='', description='', emojis=None):
-        super().__init__(
-            ctx, data, title=title, page_count=page_count, rows_per_table=rows_per_table, description=description
-        )
-        self.key = key
-        self.player_data = []
-        self.data = data
-        self.emojis = emojis or {}
-
-    def create_row(self, index, player):
-        self.table.add_row([index, self.emojis.get(player.clan and player.clan.tag, ""), player.defense_wins, player.name])
-
-    async def prepare_entry(self, page):
-        self.table.clear_rows()
-        if not self.player_data:
-            self.player_data = sorted(self.data, key=lambda p: p.defense_wins, reverse=True)
-
-        base = (page - 1) * self.rows_per_table
-        data = self.data[base:base + self.rows_per_table]
-        for index, player in enumerate(data, start=base):
-            self.create_row(index + 1, player)
-
-        return self.table.trophyboard_defenses() + self.key
-
-
-class StatsGainsPaginator(TablePaginator):
-    def __init__(self, ctx, data, title, page_count=1, rows_per_table=20, key='', description='', emojis=None):
-        super().__init__(
-            ctx, data, title=title, page_count=page_count, rows_per_table=rows_per_table, description=description
-        )
-        self.key = key
-        self.emojis = emojis or {}
-
-    def create_row(self, i, data):
-        self.table.add_row([i, self.emojis.get(data['clan_tag'], ""), data['gain'], data['player_name']])
-
-    async def prepare_entry(self, page):
-        self.table.clear_rows()
-        base = (page - 1) * self.rows_per_table
-        data = self.data[base:base + self.rows_per_table]
-        data = [n[1] for n in data]
-
-        for i, row in enumerate(data, start=base):
-            self.create_row(i + 1, row)
-
-        return self.table.trophyboard_gain() + self.key
-
-
-class StatsTrophiesPaginator(TablePaginator):
-    def __init__(self, ctx, data, title, page_count=1, rows_per_table=20, key='', description='', emojis=None):
-        super().__init__(
-            ctx, data, title=title, page_count=page_count, rows_per_table=rows_per_table, description=description
-        )
-        self.key = key
-        self.emojis = emojis or {}
-
-    def create_row(self, i, data):
-        self.table.add_row([i, self.emojis.get(data['clan_tag'], ""), data['trophies'], data['player_name']])
-
-    async def prepare_entry(self, page):
-        self.table.clear_rows()
-        base = (page - 1) * self.rows_per_table
-        data = self.data[base:base + self.rows_per_table]
-        data = [n[1] for n in data]
-
-        for i, row in enumerate(data, start=base):
-            self.create_row(i + 1, row)
-
-        return self.table.trophyboard_gain() + self.key
-
-
-class StatsDonorsPaginator(TablePaginator):
-    def __init__(self, ctx, data, title, page_count=1, rows_per_table=20, key='', description='', emojis=None):
-        super().__init__(
-            ctx, data, title=title, page_count=page_count, rows_per_table=rows_per_table, description=description
-        )
-        self.key = key
-        self.emojis = emojis or {}
-
-    def create_row(self, i, data):
-        self.table.add_row([i, self.emojis.get(data['clan_tag'], ""), data['donations'], data['received'], data['player_name']])
-
-    async def prepare_entry(self, page):
-        self.table.clear_rows()
-        base = (page - 1) * self.rows_per_table
-        data = self.data[base:base + self.rows_per_table]
-        data = [n[1] for n in data]
-
-        for i, row in enumerate(data, start=base):
-            self.create_row(i + 1, row)
-
-        return self.table.donationboard_1() + self.key
-
-
-class StatsLastOnlinePaginator(TablePaginator):
-    def __init__(self, ctx, data, title, page_count=1, rows_per_table=20, key='', description='', emojis=None):
-        super().__init__(
-            ctx, data, title=title, page_count=page_count, rows_per_table=rows_per_table, description=description
-        )
-        self.key = key
-        self.emojis = emojis or {}
-
-    def create_row(self, i, data):
-        self.table.add_row([i, self.emojis.get(data['clan_tag'], ""), readable_time(data['since'].total_seconds())[:-3], data['player_name']])
-
-    async def prepare_entry(self, page):
-        self.table.clear_rows()
-        base = (page - 1) * self.rows_per_table
-        data = self.data[base:base + self.rows_per_table]
-        data = [n[1] for n in data]
-
-        for i, row in enumerate(data, start=base):
-            self.create_row(i + 1, row)
-
-        return self.table.last_online() + self.key
-
-
-class StatsAchievementPaginator(TablePaginator):
-    def __init__(self, ctx, data, title, page_count=1, rows_per_table=20, key='', description='', achievement='', emojis=None):
-        super().__init__(
-            ctx, data, title=title, page_count=page_count, rows_per_table=rows_per_table, description=description
-        )
-        self.key = key
-        self.achievement = achievement
-        self.emojis = emojis or {}
-
-    def create_row(self, i, player):
-        self.table.add_row([i, self.emojis.get(player.clan and player.clan.tag, ""), getattr(player, "aggr_achievement", player.get_ach_value(self.achievement)), player.name])
-
-    async def prepare_entry(self, page):
-        self.table.clear_rows()
-        base = (page - 1) * self.rows_per_table
-        data = self.data[base:base + self.rows_per_table]
-
-        for i, row in enumerate(data, start=base):
-            self.create_row(i + 1, row[1])
-            print(row)
-
-        return self.table.achievement() + self.key
-
-
-class StatsAccountsPaginator(TablePaginator):
-    def __init__(self, ctx, data, title, page_count=1, rows_per_table=20, key='', description='', emojis=None):
-        super().__init__(
-            ctx, data, title=title, page_count=page_count, rows_per_table=rows_per_table, description=description
-        )
-        self.key = key
-        self.emojis = emojis or {}
-
-    def create_row(self, i, data):
-        self.table.add_row([i, data[2], data[0], data[1]])
-
-    async def prepare_entry(self, page):
-        self.table.clear_rows()
-        base = (page - 1) * self.rows_per_table
-        data = self.data[base:base + self.rows_per_table]
-        data = [n[1] for n in data]
-
-        for i, row in enumerate(data, start=base):
-            self.create_row(i + 1, row)
-
-        return self.table.accounts() + self.key
-
 
 
 class LastOnlinePaginator(TablePaginator):

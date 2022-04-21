@@ -2,7 +2,7 @@ import logging
 import psutil
 import os
 import asyncio
-import discord
+import disnake
 import itertools
 import io
 import math
@@ -13,7 +13,7 @@ import statistics
 from matplotlib import pyplot as plt
 import numpy as np
 
-from discord.ext import commands
+from disnake.ext import commands
 from cogs.utils.db_objects import LogConfig, BoardConfig, SlimEventConfig
 from cogs.utils.paginator import Pages, EmbedPages
 from cogs.utils.formatters import CLYTable, readable_time, TabularData
@@ -90,17 +90,18 @@ class Info(commands.Cog, name='\u200bInfo'):
 
     @property
     def invite_link(self):
-        perms = discord.Permissions.none()
-        perms.read_messages = True
-        perms.external_emojis = True
-        perms.send_messages = True
-        perms.manage_channels = True
-        perms.manage_messages = True
-        perms.embed_links = True
-        perms.read_message_history = True
-        perms.add_reactions = True
-        perms.attach_files = True
-        return discord.utils.oauth_url(self.bot.client_id, perms)
+        perms = disnake.Permissions(
+            read_messages=True,
+            external_emojis=True,
+            send_messages=True,
+            manage_channels=True,
+            manage_messages=True,
+            embed_links=True,
+            read_message_history=True,
+            add_reactions=True,
+            attach_files=True
+        )
+        return disnake.utils.oauth_url(self.bot.client_id, permissions=perms, scopes=("bot", "applications.commands"))
 
     @property
     def support_invite(self):
@@ -108,24 +109,24 @@ class Info(commands.Cog, name='\u200bInfo'):
 
     @property
     def welcome_message(self):
-        e = discord.Embed(colour=self.bot.colour, description=WELCOME_MESSAGE.format(invite=self.invite_link))
+        e = disnake.Embed(colour=self.bot.colour, description=WELCOME_MESSAGE.format(invite=self.invite_link))
         e.set_author(name='Hello! I\'m the Donation Tracker!', icon_url=self.bot.user.avatar_url)
         return e
 
-    @commands.command(aliases=['join'])
+    @commands.slash_command(description="Get the bot's invite link")
     async def invite(self, ctx):
         """Get an invite to add the bot to your server."""
-        await ctx.send(f'<{self.invite_link}>')
+        await ctx.send(f"<{self.invite_link}>")
 
-    @commands.command()
+    @commands.slash_command(description="Get an invite link to the support server.")
     async def support(self, ctx):
         """Get an invite link to the support server."""
         await ctx.send(f'<{self.support_invite}>')
 
-    @commands.command(aliases=['patreon', 'patrons'])
+    @commands.slash_command(description="Get information about the bot's patreon.")
     async def patron(self, ctx):
         """Get information about the bot's patreon."""
-        e = discord.Embed(
+        e = disnake.Embed(
             title='Donation Tracker Patrons',
             colour=self.bot.colour
         )
@@ -142,27 +143,6 @@ class Info(commands.Cog, name='\u200bInfo'):
         e.description += '\n• '.join(str(n) for n in self.bot.get_guild(594276321937326091).members if
                                      any(r.id == 605349824472154134 for r in n.roles))
         await ctx.send(embed=e)
-
-    @commands.command()
-    async def feedback(self, ctx, *, content):
-        """Give feedback on the bot."""
-        e = discord.Embed(title='Feedback', colour=discord.Colour.green())
-        channel = self.bot.get_channel(595384367573106718)
-        if channel is None:
-            return
-
-        e.set_author(name=str(ctx.author), icon_url=ctx.author.avatar_url)
-        e.description = content
-        e.timestamp = ctx.message.created_at
-
-        if ctx.guild is not None:
-            e.add_field(name='Guild', value=f'{ctx.guild.name} (ID: {ctx.guild.id})', inline=False)
-
-        e.add_field(name='Channel', value=f'{ctx.channel} (ID: {ctx.channel.id})', inline=False)
-        e.set_footer(text=f'Author ID: {ctx.author.id}')
-
-        await channel.send(embed=e)
-        await ctx.send(f'{ctx.tick(True)} Successfully sent feedback')
 
     @commands.command()
     async def welcome(self, ctx):
@@ -196,7 +176,7 @@ class Info(commands.Cog, name='\u200bInfo'):
         # b.seek(0)
         fmt = "\n".join(f'Shard ID: {i}, Latency: {n*1000:.2f}ms' for i, n in self.bot.latencies)
         await ctx.send(f'Pong!\n{fmt}\nAverage Latency: {self.bot.latency*1000:.2f}ms')
-        # await ctx.send(f'Pong!\n{fmt}\nAverage Latency: {self.bot.latency*1000:.2f}ms', file=discord.File(b, f'cocapi.png'))
+        # await ctx.send(f'Pong!\n{fmt}\nAverage Latency: {self.bot.latency*1000:.2f}ms', file=disnake.File(b, f'cocapi.png'))
         plt.close()
 
     @commands.command(hidden=True)
@@ -225,7 +205,7 @@ class Info(commands.Cog, name='\u200bInfo'):
         ]
 
         bad_inner_tasks = ", ".join(hex(id(t)) for t in inner_tasks if t.done() and t._exception is not None)
-        embed = discord.Embed()
+        embed = disnake.Embed()
         embed.add_field(name='Inner Tasks',
                         value=f'Total: {len(inner_tasks)}\nFailed: {bad_inner_tasks or "None"}')
         embed.add_field(name='Events Waiting', value=f'Total: {len(event_tasks)}', inline=False)
@@ -275,8 +255,8 @@ class Info(commands.Cog, name='\u200bInfo'):
                 ))
             ]
             for group_name, command_names in groups:
-                embed = discord.Embed(
-                    colour=discord.Colour.blue(),
+                embed = disnake.Embed(
+                    colour=disnake.Colour.blue(),
                 )
                 embed.set_author(name=group_name, icon_url=ctx.me.avatar_url)
                 for name in command_names:
@@ -317,7 +297,7 @@ class Info(commands.Cog, name='\u200bInfo'):
             if command is None:
                 return await ctx.send(f"No command called `{query}` found.")
 
-            embed = discord.Embed(colour=discord.Colour.blurple())
+            embed = disnake.Embed(colour=disnake.Colour.blurple())
 
             if command.full_parent_name:
                 embed.title = ctx.prefix + command.full_parent_name + " " + command.name
@@ -383,7 +363,7 @@ class Info(commands.Cog, name='\u200bInfo'):
             if not channel:
                 continue
 
-            embed = discord.Embed(colour=self.bot.colour, description="")
+            embed = disnake.Embed(colour=self.bot.colour, description="")
             embed.set_author(name=f"Info for #{channel}", icon_url=guild.me.avatar_url)
 
             donationlog = await self.bot.utils.log_config(channel.id, "donation")
@@ -454,7 +434,7 @@ class Info(commands.Cog, name='\u200bInfo'):
 
         embeds = []
         for clan in clans:
-            embed = discord.Embed(description="")
+            embed = disnake.Embed(description="")
             embed.set_author(name=f"{clan} ({clan.tag})", icon_url=clan.badge.medium)
 
             query = "SELECT channel_id FROM clans WHERE clan_tag = $1 AND guild_id = $2"
@@ -515,7 +495,7 @@ class Info(commands.Cog, name='\u200bInfo'):
         ----------------------------
         • `manage_server` permissions
         """
-        e = discord.Embed(color=self.bot.colour,
+        e = disnake.Embed(color=self.bot.colour,
                           description=f'Donation Log info for {ctx.guild}.')
 
         query = """SELECT channel_id,
@@ -586,7 +566,7 @@ class Info(commands.Cog, name='\u200bInfo'):
 
         fmt += '\n'.join(data)
 
-        e = discord.Embed(colour=self.bot.colour,
+        e = disnake.Embed(colour=self.bot.colour,
                           description=fmt if len(fmt) < 2048 else f'{fmt[:2040]}...')
 
         e.set_author(name='DonationBoard Info',
@@ -633,7 +613,7 @@ class Info(commands.Cog, name='\u200bInfo'):
 
         fmt += '\n'.join(data)
 
-        e = discord.Embed(colour=self.bot.colour,
+        e = disnake.Embed(colour=self.bot.colour,
                           description=fmt if len(fmt) < 2048 else f'{fmt[:2040]}...')
         e.set_author(name='TrophyBoard Info',
                      icon_url=ctx.config.icon_url or 'https://cdn.discordapp.com/emojis/592028799768592405.png?v=1')
@@ -649,7 +629,7 @@ class Info(commands.Cog, name='\u200bInfo'):
         if id_:
             ctx.config = await ctx.bot.utils.event_config_id(id_)
 
-        e = discord.Embed(colour=self.bot.colour)
+        e = disnake.Embed(colour=self.bot.colour)
 
         e.set_author(name=f'Event Information: {ctx.config.event_name}')
 
@@ -698,7 +678,7 @@ class Info(commands.Cog, name='\u200bInfo'):
         for n in fetch:
             table.add_row([n[0], n[1], n[2].strftime('%d-%b-%Y'), n[3].strftime('%d-%b-%Y')])
 
-        e = discord.Embed(colour=self.bot.colour,
+        e = disnake.Embed(colour=self.bot.colour,
                           description=f'```\n{table.render()}\n```',
                           title='Event Info',
                           timestamp=datetime.utcnow()
@@ -715,7 +695,7 @@ class Info(commands.Cog, name='\u200bInfo'):
         for n in fetch:
             table.add_row([n[0], n[1].strftime('%d-%b-%Y'), n[2].strftime('%d-%b-%Y')])
 
-        e = discord.Embed(colour=self.bot.colour,
+        e = disnake.Embed(colour=self.bot.colour,
                           description=f'```\n{table.render()}\n```',
                           title='Season Info',
                           timestamp=datetime.utcnow()
@@ -735,7 +715,7 @@ class Info(commands.Cog, name='\u200bInfo'):
             else:
                 denied.append(name)
 
-        e = discord.Embed(colour=member.colour, title=f'Permissions for Donation Tracker in #{channel}')
+        e = disnake.Embed(colour=member.colour, title=f'Permissions for Donation Tracker in #{channel}')
         e.description = "**Allowed**" + "\n".join(f"{misc['online']}{n}" for n in allowed)
         await ctx.send(embed=e)
 
@@ -743,7 +723,7 @@ class Info(commands.Cog, name='\u200bInfo'):
         await ctx.send(embed=e)
 
     @commands.command(hidden=True, aliases=['perms'])
-    async def permissions(self, ctx, channel: discord.TextChannel = None):
+    async def permissions(self, ctx, channel: disnake.TextChannel = None):
         await self.say_permissions(ctx, ctx.me, channel or ctx.channel)
 
     @commands.command(hidden=True)
@@ -830,7 +810,7 @@ class Info(commands.Cog, name='\u200bInfo'):
             )
 
         rows = [{k: v for k, v in row.items()} for row in fetch]
-        await ctx.send(file=discord.File(filename="donation-tracker-player-export.csv", fp=self.convert_rows_to_bytes(rows)))
+        await ctx.send(file=disnake.File(filename="donation-tracker-player-export.csv", fp=self.convert_rows_to_bytes(rows)))
 
     @dump.command(name="legend", aliases=["legends", "leg"])
     async def dump_legends(self, ctx, *, argument: ConvertToPlayers = None):
@@ -885,7 +865,7 @@ class Info(commands.Cog, name='\u200bInfo'):
             )
 
         rows = [{k: v for k, v in row.items()} for row in fetch]
-        await ctx.send(file=discord.File(filename="donation-tracker-legends-export.csv", fp=self.convert_rows_to_bytes(rows)))
+        await ctx.send(file=disnake.File(filename="donation-tracker-legends-export.csv", fp=self.convert_rows_to_bytes(rows)))
 
     @dump.command(name="war")
     async def dump_war(self, ctx, *, argument: ConvertToPlayers = None):
@@ -968,7 +948,7 @@ class Info(commands.Cog, name='\u200bInfo'):
                 "missed_attack_count": by_star.get(-1, {}).get('star_count', 0),
             })
 
-        await ctx.send(file=discord.File(filename="donation-tracker-war-export.csv", fp=self.convert_rows_to_bytes(to_send)))
+        await ctx.send(file=disnake.File(filename="donation-tracker-war-export.csv", fp=self.convert_rows_to_bytes(to_send)))
 
     @dump.before_invoke
     @dump_legends.before_invoke

@@ -1,7 +1,7 @@
 import itertools
 import math
 
-import discord
+import disnake
 
 from collections import namedtuple
 from datetime import datetime
@@ -165,7 +165,7 @@ async def get_detailed_log(coc_client, all_clan_events, raw_events: bool = False
         hex_ = bytes.hex(str.encode(clan.tag))[:20]
 
         for lines in get_line_chunks(messages):
-            e = discord.Embed(
+            e = disnake.Embed(
                 colour=int(int(''.join(filter(lambda x: x.isdigit(), hex_))) ** 0.3),
                 description="\n".join(lines)
             )

@@ -1,11 +1,11 @@
 import asyncio
 import typing
 
-import discord
+import disnake
 import logging
 
 from collections import namedtuple
-from discord.ext import commands
+from disnake.ext import commands
 
 from cogs.add import BOARD_PLACEHOLDER
 from cogs.utils.db_objects import DatabaseMessage, BoardConfig
@@ -17,13 +17,13 @@ log = logging.getLogger(__name__)
 MockPlayer = namedtuple('MockPlayer', 'clan name')
 mock = MockPlayer('Unknown', 'Unknown')
 
-REFRESH_EMOJI = discord.PartialEmoji(name="refresh", id=694395354841350254, animated=False)
-LEFT_EMOJI = discord.PartialEmoji(name="\N{BLACK LEFT-POINTING TRIANGLE}\ufe0f", id=None, animated=False)    # [:arrow_left:]
-RIGHT_EMOJI = discord.PartialEmoji(name="\N{BLACK RIGHT-POINTING TRIANGLE}\ufe0f", id=None, animated=False)   # [:arrow_right:]
-PERCENTAGE_EMOJI = discord.PartialEmoji(name="percent", id=694463772135260169, animated=False)
-GAIN_EMOJI = discord.PartialEmoji(name="gain", id=696280508933472256, animated=False)
-LAST_ONLINE_EMOJI = discord.PartialEmoji(name="lastonline", id=696292732599271434, animated=False)
-HISTORICAL_EMOJI = discord.PartialEmoji(name="historical", id=694812540290465832, animated=False)
+REFRESH_EMOJI = disnake.PartialEmoji(name="refresh", id=694395354841350254, animated=False)
+LEFT_EMOJI = disnake.PartialEmoji(name="\N{BLACK LEFT-POINTING TRIANGLE}\ufe0f", id=None, animated=False)    # [:arrow_left:]
+RIGHT_EMOJI = disnake.PartialEmoji(name="\N{BLACK RIGHT-POINTING TRIANGLE}\ufe0f", id=None, animated=False)   # [:arrow_right:]
+PERCENTAGE_EMOJI = disnake.PartialEmoji(name="percent", id=694463772135260169, animated=False)
+GAIN_EMOJI = disnake.PartialEmoji(name="gain", id=696280508933472256, animated=False)
+LAST_ONLINE_EMOJI = disnake.PartialEmoji(name="lastonline", id=696292732599271434, animated=False)
+HISTORICAL_EMOJI = disnake.PartialEmoji(name="historical", id=694812540290465832, animated=False)
 
 GLOBAL_BOARDS_CHANNEL_ID = 663683345108172830
 
@@ -130,7 +130,7 @@ class DonationBoard(commands.Cog):
 
     @commands.Cog.listener()
     async def on_guild_channel_delete(self, channel):
-        if not isinstance(channel, discord.TextChannel):
+        if not isinstance(channel, disnake.TextChannel):
             return
 
         query = "DELETE FROM messages WHERE channel_id = $1;"
@@ -187,7 +187,7 @@ class DonationBoard(commands.Cog):
 
         try:
             new_msg = await channel.send(BOARD_PLACEHOLDER.format(board=board_type))
-        except (discord.NotFound, discord.Forbidden):
+        except (disnake.NotFound, disnake.Forbidden):
             return
 
         query = "INSERT INTO messages (guild_id, message_id, channel_id) VALUES ($1, $2, $3)"
@@ -224,11 +224,11 @@ class DonationBoard(commands.Cog):
         await ctx.confirm()
 
     @commands.Cog.listener()
-    async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent):
+    async def on_raw_reaction_add(self, payload: disnake.RawReactionActionEvent):
         await self.reaction_action(payload)
 
     @commands.Cog.listener()
-    async def on_raw_reaction_remove(self, payload: discord.RawReactionActionEvent):
+    async def on_raw_reaction_remove(self, payload: disnake.RawReactionActionEvent):
         await self.reaction_action(payload)
 
     async def reaction_action(self, payload):

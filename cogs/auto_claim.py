@@ -1,9 +1,9 @@
 import asyncio
 import logging
 
-import discord
+import disnake
 
-from discord.ext import commands
+from disnake.ext import commands
 from fuzzywuzzy import process
 
 from cogs.utils.checks import manage_guild
@@ -31,7 +31,7 @@ class AutoClaim(commands.Cog):
         if shard.is_ws_ratelimited():
             try:
                 member = await guild.fetch_member(member_id)
-            except discord.HTTPException:
+            except disnake.HTTPException:
                 return None
             else:
                 return member
@@ -69,7 +69,7 @@ class AutoClaim(commands.Cog):
         links = {tag: user_id for tag, user_id in await self.bot.links.get_links(*(row['player_tag'] for row in fetch))}
 
         can_delete_messages = channel.permissions_for(me).manage_messages
-        allowed_mentions = discord.AllowedMentions.none()
+        allowed_mentions = disnake.AllowedMentions.none()
 
         def check(message):
             return message.channel == channel and message.author.id == author_id
@@ -159,7 +159,7 @@ class AutoClaim(commands.Cog):
             if can_delete_messages:
                 try:
                     await response.delete()
-                except discord.Forbidden:
+                except disnake.Forbidden:
                     can_delete_messages = False
                 except:
                     pass

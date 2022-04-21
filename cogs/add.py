@@ -1,4 +1,4 @@
-import discord
+import disnake
 import asyncio
 import typing
 import datetime
@@ -9,7 +9,7 @@ import math
 
 import emoji as pckgemoji
 
-from discord.ext import commands
+from disnake.ext import commands
 
 from syncboards import emojis, titles, default_sort_by, BOARD_PLACEHOLDER
 from cogs.utils.checks import manage_guild, helper_check
@@ -219,7 +219,7 @@ class Add(commands.Cog):
             await ctx.send("That clan has not been added. Try adding it and try again.")
 
     @add.command(name='discord', aliases=['claim', 'link'])
-    async def add_discord(self, ctx, user: typing.Optional[discord.Member] = None, *, player: str):
+    async def add_discord(self, ctx, user: typing.Optional[disnake.Member] = None, *, player: str):
         """Link a clash account to your discord account
 
         **Parameters**
@@ -257,7 +257,7 @@ class Add(commands.Cog):
         await ctx.send(f"👌 Player successfully added.")
 
     @add.command(name='multidiscord', aliases=['multi_discord', 'multiclaim', 'multi_claim', 'multilink', 'multi_link'])
-    async def add_multi_discord(self, ctx, user: discord.Member, *players: str):
+    async def add_multi_discord(self, ctx, user: disnake.Member, *players: str):
         """Helper command to link many clash accounts to a user's discord.
 
         **Parameters**
@@ -296,10 +296,10 @@ class Add(commands.Cog):
                 return
 
             overwrites = {
-                ctx.me: discord.PermissionOverwrite(read_messages=True, send_messages=True,
+                ctx.me: disnake.PermissionOverwrite(read_messages=True, send_messages=True,
                                                     read_message_history=True, embed_links=True,
                                                     manage_messages=True, add_reactions=True),
-                ctx.guild.default_role: discord.PermissionOverwrite(read_messages=True,
+                ctx.guild.default_role: disnake.PermissionOverwrite(read_messages=True,
                                                                     send_messages=False,
                                                                     read_message_history=True)
             }
@@ -307,11 +307,11 @@ class Add(commands.Cog):
                 channel = await ctx.guild.create_text_channel(name="dt-boards",
                                                               overwrites=overwrites,
                                                               reason=f'{ctx.author} created a boards channel.')
-            except discord.Forbidden:
+            except disnake.Forbidden:
                 log.info('+add %sboard no channel permissions (HTTP exception caught)', type_)
                 await ctx.send(f':x: I do not have permissions to create the {type_}board channel.')
                 return
-            except discord.HTTPException:
+            except disnake.HTTPException:
                 log.info('+add %sboard creating channel failed', type_)
                 await ctx.send(f':x: Creating the channel failed. Try checking the name?')
                 return
@@ -394,7 +394,7 @@ class Add(commands.Cog):
 
     @add.command(name="trophyboard")
     @manage_guild()
-    async def add_trophyboard(self, ctx, *, channel: discord.TextChannel = None):
+    async def add_trophyboard(self, ctx, *, channel: disnake.TextChannel = None):
         """Registers a trophy-board to the channel, or creates a new channel for you.
 
         If you don't pass in a channel (#mention), it will create a new #dt-boards channel for you.
@@ -416,7 +416,7 @@ class Add(commands.Cog):
 
     @add.command(name='donationboard')
     @manage_guild()
-    async def add_donationboard(self, ctx, *, channel: discord.TextChannel = None):
+    async def add_donationboard(self, ctx, *, channel: disnake.TextChannel = None):
         """Registers a donation-board to the channel, or creates a new channel for you.
 
         If you don't pass in a channel (#mention), it will create a new #dt-boards channel for you.
@@ -438,7 +438,7 @@ class Add(commands.Cog):
 
     @add.command(name='legendboard')
     @manage_guild()
-    async def add_legendboard(self, ctx, channel: discord.TextChannel = None):
+    async def add_legendboard(self, ctx, channel: disnake.TextChannel = None):
         """Create a legend board for your server.
 
         This is a mini-board (like a donation or trophyboard) that will update when legend players attack,
@@ -465,7 +465,7 @@ class Add(commands.Cog):
 
     @add.command(name='warboard', disabled=True)
     @manage_guild()
-    async def add_warboard(self, ctx, channel: discord.TextChannel = None):
+    async def add_warboard(self, ctx, channel: disnake.TextChannel = None):
         """Create a war board for your server.
 
         **Parameters**
@@ -536,7 +536,7 @@ class Add(commands.Cog):
 
     @add.command(name='donationlog')
     @manage_guild()
-    async def add_donationlog(self, ctx, channel: discord.TextChannel = None):
+    async def add_donationlog(self, ctx, channel: disnake.TextChannel = None):
         """Create a donation log for your server.
 
         **Parameters**
@@ -556,7 +556,7 @@ class Add(commands.Cog):
 
     @add.command(name='trophylog')
     @manage_guild()
-    async def add_trophylog(self, ctx, channel: discord.TextChannel = None):
+    async def add_trophylog(self, ctx, channel: disnake.TextChannel = None):
         """Create a trophy log for your server.
 
         **Parameters**
@@ -574,7 +574,7 @@ class Add(commands.Cog):
         await self.do_log_add(ctx, channel or ctx.channel, "trophy")
 
     @add.command(name='legendlog', aliases=['legendlogs'])
-    async def edit_legendboard_logs(self, ctx, board_channel: discord.TextChannel = None, log_channel: discord.TextChannel = None):
+    async def edit_legendboard_logs(self, ctx, board_channel: disnake.TextChannel = None, log_channel: disnake.TextChannel = None):
         """Add a channel where legend board logs are sent at the end of each legend day.
 
         It is suggested to make this channel different from #dt-boards, in order to improve readability of other boards.
@@ -725,7 +725,7 @@ class Add(commands.Cog):
         if not valid_tags:
             return await ctx.send("I couldn't find any valid #player tags from your message. Please try again.")
 
-        clan_id = discord.utils.find(lambda tag: tag and tag.strip().isdigit(), player_tags)
+        clan_id = disnake.utils.find(lambda tag: tag and tag.strip().isdigit(), player_tags)
         if clan_id:
             clan_id = clan_id.strip()
         else:
@@ -764,7 +764,7 @@ class Add(commands.Cog):
         if not valid_tags:
             return await ctx.send("I couldn't find any valid #player tags from your message. Please try again.")
 
-        clan_id = discord.utils.find(lambda tag: tag and tag.strip().isdigit(), player_tags)
+        clan_id = disnake.utils.find(lambda tag: tag and tag.strip().isdigit(), player_tags)
         if clan_id:
             clan_id = clan_id.strip()
         else:

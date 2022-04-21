@@ -1,13 +1,13 @@
 import os
 
-import discord
+import disnake
 
 from creds import backups_url
 
-webhook = discord.Webhook.from_url(backups_url, adapter=discord.RequestsWebhookAdapter())
+webhook = disnake.SyncWebhook.from_url(backups_url)
 
 for fp in os.listdir("/home/mathsman/backups2"):
     try:
-        webhook.send(file=discord.File("/home/mathsman/backups2/" + fp))
+        webhook.send(file=disnake.File("/home/mathsman/backups2/" + fp))
     except Exception as e:
         print(e)

@@ -1,5 +1,5 @@
 import coc
-import discord
+import disnake
 import logging
 import re
 import itertools
@@ -7,7 +7,7 @@ import typing
 import time
 
 from datetime import datetime
-from discord.ext import commands
+from disnake.ext import commands
 from coc.utils import correct_tag
 
 from cogs.utils.checks import is_patron_pred
@@ -197,9 +197,9 @@ class FetchedUser(commands.Converter):
             raise commands.BadArgument('Not a valid user ID.')
         try:
             return await ctx.bot.fetch_user(argument)
-        except discord.NotFound:
+        except disnake.NotFound:
             raise commands.BadArgument('User not found.') from None
-        except discord.HTTPException:
+        except disnake.HTTPException:
             raise commands.BadArgument('An error occurred while fetching the user.') from None
 
 
@@ -252,11 +252,11 @@ class CustomActivityMemberConverter(commands.IDConverter):
         if match is None:
             # not a mention...
             potential_discriminator = argument[-4:]
-            result = discord.utils.get(guild.members, name=argument[:-5], discriminator=potential_discriminator)
+            result = disnake.utils.get(guild.members, name=argument[:-5], discriminator=potential_discriminator)
         else:
             user_id = int(match.group(1))
             result = guild.get_member(user_id) \
-                     or discord.utils.get(ctx.message.mentions, id=user_id) \
+                     or disnake.utils.get(ctx.message.mentions, id=user_id) \
                      or await ctx.bot.fetch_user(user_id)
 
         if result is None:
@@ -266,9 +266,9 @@ class CustomActivityMemberConverter(commands.IDConverter):
 
 class ActivityArgumentConverter(commands.Converter):
     async def convert(self, ctx, argument):
-        guild = None  # discord.Guild
-        channel = None  # discord.TextChannel
-        user = None  # discord.Member
+        guild = None  # disnake.Guild
+        channel = None  # disnake.TextChannel
+        user = None  # disnake.Member
         clan = None  # (tag, name)
         player = None  # (tag, name)
 
