@@ -416,9 +416,12 @@ class SyncBoards:
         bot.loop.create_task(self.on_init())
         bot.loop.create_task(self.set_season_id())
 
+        self.reset_season_id.add_exception_type(Exception)
+        self.reset_season_id.start()
+
         self.start_loops = start_loop
         if start_loop:
-            for task in (self.update_board_loops, self.reset_season_id, self.flush_saved_board_icons):
+            for task in (self.update_board_loops, self.flush_saved_board_icons):
                 task.add_exception_type(Exception)
                 task.start()
 
