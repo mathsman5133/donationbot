@@ -52,7 +52,6 @@ class Edit(commands.Cog):
         )
 
     @app_commands.command(
-        name="edit donationboard",
         description="Get a unique URL to edit the donationboard via a web browser.",
     )
     @app_commands.describe(channel='The channel the board is located in')

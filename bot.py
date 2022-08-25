@@ -66,6 +66,13 @@ intents.guild_reactions = True
 intents.members = True
 intents.emojis = True
 
+coc_client = coc.EventsClient(
+    key_names=key_names,
+    throttle_limit=30,
+    key_count=1,
+    key_scopes=creds.scopes,
+    throttler=coc.BatchThrottler,
+)
 
 log = logging.getLogger()
 
@@ -96,7 +103,7 @@ async def setup_db():
 
 
 class DonationBot(commands.AutoShardedBot):
-    def __init__(self, coc_client):
+    def __init__(self):
         super().__init__(command_prefix=get_pref, case_insensitive=True,
                          description=description, pm_help=None, help_attrs=dict(hidden=True),
                          intents=intents, chunk_guilds_at_startup=False, allowed_mentions=discord.AllowedMentions.none())
@@ -105,7 +112,6 @@ class DonationBot(commands.AutoShardedBot):
 
         self.colour = discord.Colour.blurple()
 
-        self.coc = coc_client
         self.links = links_client
 
         self.client_id = creds.client_id
@@ -125,6 +131,12 @@ class DonationBot(commands.AutoShardedBot):
         self.fake_clan_guilds = {}
 
     async def setup_hook(self):
+        setup_logging(bot)
+
+        await coc_client.login(creds.email, creds.password)
+        self.coc = coc_client
+        self.pool = await setup_db()
+
         for e in initial_extensions:
             try:
                 await self.load_extension(e)  # load cogs
@@ -280,23 +292,8 @@ class DonationBot(commands.AutoShardedBot):
 
 
 if __name__ == '__main__':
-    loop = asyncio.get_event_loop()
-
-    coc_client = coc.login(
-        creds.email,
-        creds.password,
-        client=coc.EventsClient,
-        key_names=key_names,
-        throttle_limit=30,
-        key_count=1,
-        key_scopes=creds.scopes,
-        throttler=coc.BatchThrottler,
-    )
-
     try:
         bot = DonationBot(coc_client)
-        bot.pool = loop.run_until_complete(setup_db())  # add db as attribute
-        setup_logging(bot)
         bot.run(creds.bot_token)  # run bot
 
     except Exception:
