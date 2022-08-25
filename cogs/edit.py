@@ -42,7 +42,7 @@ class Edit(commands.Cog):
         return res == 1
 
     @app_commands.command(description="Generate an access token to use on the web editor")
-    @app_commands.checks.has_permission(manage_guild=True)
+    @app_commands.checks.has_permissions(manage_guild=True)
     async def accesstoken(self, interaction: discord.Interaction):
         access_token = await self.generate_access_token(interaction.guild.id, interaction.user.id, self.bot.pool)
         await interaction.response.send_message(
@@ -56,7 +56,7 @@ class Edit(commands.Cog):
         description="Get a unique URL to edit the donationboard via a web browser.",
     )
     @app_commands.describe(channel='The channel the board is located in')
-    @app_commands.checks.has_permission(manage_guild=True)
+    @app_commands.checks.has_permissions(manage_guild=True)
     async def edit_donationboard(self, interaction: discord.Interaction, channel: discord.TextChannel):
         if not await self.board_exists(channel.id, "donation", self.bot.pool):
             return await interaction.response.send_message(

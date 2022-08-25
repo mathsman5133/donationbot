@@ -56,16 +56,6 @@ else:
     key_names = 'windows'
 
 
-coc_client = coc.login(
-    creds.email,
-    creds.password,
-    client=coc.EventsClient,
-    key_names=key_names,
-    throttle_limit=30,
-    key_count=1,
-    key_scopes=creds.scopes,
-    throttler=coc.BatchThrottler,
-)
 links_client = discordlinks.login(creds.links_username, creds.links_password)
 
 description = "A simple discord bot to track donations of clan families in clash of clans."
@@ -106,7 +96,7 @@ async def setup_db():
 
 
 class DonationBot(commands.AutoShardedBot):
-    def __init__(self):
+    def __init__(self, coc_client):
         super().__init__(command_prefix=get_pref, case_insensitive=True,
                          description=description, pm_help=None, help_attrs=dict(hidden=True),
                          intents=intents, chunk_guilds_at_startup=False, allowed_mentions=discord.AllowedMentions.none())
@@ -292,8 +282,19 @@ class DonationBot(commands.AutoShardedBot):
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()
 
+    coc_client = coc.login(
+        creds.email,
+        creds.password,
+        client=coc.EventsClient,
+        key_names=key_names,
+        throttle_limit=30,
+        key_count=1,
+        key_scopes=creds.scopes,
+        throttler=coc.BatchThrottler,
+    )
+
     try:
-        bot = DonationBot()
+        bot = DonationBot(coc_client)
         bot.pool = loop.run_until_complete(setup_db())  # add db as attribute
         setup_logging(bot)
         bot.run(creds.bot_token)  # run bot

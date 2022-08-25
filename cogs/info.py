@@ -100,7 +100,7 @@ class Info(commands.Cog, name='\u200bInfo'):
         perms.read_message_history = True
         perms.add_reactions = True
         perms.attach_files = True
-        return discord.utils.oauth_url(self.bot.client_id, perms)
+        return discord.utils.oauth_url(self.bot.client_id, permissions=perms)
 
     @property
     def support_invite(self):

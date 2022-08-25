@@ -20,7 +20,6 @@ import creds
 
 from botlog import setup_logging
 
-from bot import setup_db
 from cogs.utils.db_objects import BoardConfig
 
 
@@ -791,6 +790,8 @@ class SyncBoards:
 
 
 if __name__ == "__main__":
+    from bot import setup_db
+
     coc_client = coc.login(creds.email, creds.password, key_names='boards')
     pool = loop.run_until_complete(setup_db())
 
