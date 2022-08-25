@@ -28,6 +28,47 @@ HISTORICAL_EMOJI = discord.PartialEmoji(name="historical", id=694812540290465832
 GLOBAL_BOARDS_CHANNEL_ID = 663683345108172830
 
 
+class PersistentView(discord.ui.View):
+    def __init__(self, bot, update_board):
+        super().__init__(timeout=None)
+        self.bot = bot
+        self.update_board = update_board
+        self.add_item(discord.ui.Button(label="Edit Board", url="https://donation-tracker-site.vercel.app/donationboard/594276321937326091?cid=595077004676562944"))
+
+    @discord.ui.button(
+        label='Refresh', style=discord.ButtonStyle.blue,
+        custom_id='board:donation:595077004676562944:refresh',
+        emoji=REFRESH_EMOJI
+    )
+    async def refresh_support(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.reaction_action(interaction, button)
+
+    async def reaction_action(self, interaction, button):
+        await self.bot.wait_until_ready()
+        message_id = interaction.message.id
+
+        query = "SELECT * FROM boards WHERE message_id = $1"
+        fetch = await self.bot.pool.fetchrow(query, message_id)
+        if not fetch:
+            return
+
+        if button.label == "Previous Page":
+            fetch = await self.bot.pool.fetchrow('UPDATE boards SET page = page + 1, toggle=True WHERE message_id = $1 RETURNING *', message_id)
+
+        elif button.label == "Next Page":
+            fetch = await self.bot.pool.fetchrow('UPDATE boards SET page = page - 1, toggle=True WHERE message_id = $1 AND page > 1 RETURNING *', message_id)
+
+        elif button.label == "Refresh":
+            query = "UPDATE boards SET page=1, season_id=0, toggle=True WHERE message_id = $1 RETURNING *"
+            fetch = await self.bot.pool.fetchrow(query, message_id)
+
+        if not fetch:
+            return
+
+        config = BoardConfig(bot=self.bot, record=fetch)
+        await self.update_board(None, config=config)
+
+
 class DonationBoard(commands.Cog):
     """Contains all DonationBoard Configurations.
     """
@@ -49,11 +90,18 @@ class DonationBoard(commands.Cog):
 
         self.board_updater = None
 
+        bot.add_view(PersistentView(self.bot, self.update_board))
         bot.loop.create_task(self.on_init())
 
     async def on_init(self):
         await self.bot.wait_until_ready()
         self.board_updater = SyncBoards(self.bot, start_loop=False, session=self.bot.session, fake_clan_guilds=self.bot.fake_clan_guilds)
+
+    @commands.command()
+    @commands.is_owner()
+    async def test_button(self, ctx, channel: discord.TextChannel, message_id: int):
+        msg = await channel.fetch_message(message_id)
+        await msg.edit(view=PersistentView(self.bot, self.update_board))
 
     @commands.command()
     async def rb(self, ctx, *, board_type: str = None):
