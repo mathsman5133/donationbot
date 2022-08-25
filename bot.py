@@ -293,7 +293,7 @@ class DonationBot(commands.AutoShardedBot):
 
 if __name__ == '__main__':
     try:
-        bot = DonationBot(coc_client)
+        bot = DonationBot()
         bot.run(creds.bot_token)  # run bot
 
     except Exception:
