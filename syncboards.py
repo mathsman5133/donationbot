@@ -706,7 +706,7 @@ class SyncBoards:
             log.info('diverting board to %s channel_id', divert_to)
             try:
                 params = discord.http.handle_message_parameters(file=discord.File(render, f'{config.type}board.png'))
-                await self.bot.http.send_message(channel_id=divert_to, params)
+                await self.bot.http.send_message(channel_id=divert_to, params=params)
             except:
                 log.info('failed to send legend log to channel %s', config.channel_id)
             return
