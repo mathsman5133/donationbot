@@ -198,7 +198,7 @@ class Syncer:
         try:
             log.debug(f'sending message to {channel_id}')
             params = discord.http.handle_message_parameters(content=content, embed=embed)
-            return await bot.http.send_message(channel_id, content, params)
+            return await bot.http.send_message(channel_id, params=params)
         except (discord.Forbidden, discord.NotFound):
             await pool.execute("UPDATE logs SET toggle = FALSE WHERE channel_id = $1", channel_id)
             return

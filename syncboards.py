@@ -478,7 +478,7 @@ class SyncBoards:
     async def set_new_message(self, config):
         try:
             params = discord.http.handle_message_parameters(content=BOARD_PLACEHOLDER.format(board=config.type))
-            message = await self.bot.http.send_message(config.channel_id, params)
+            message = await self.bot.http.send_message(config.channel_id, params=params)
         except (discord.Forbidden, discord.NotFound):
             await self.pool.execute("UPDATE boards SET toggle = FALSE WHERE channel_id = $1", config.channel_id)
             return
@@ -724,7 +724,7 @@ class SyncBoards:
                 content=None,
                 embed=embed,
             )
-            await self.bot.http.edit_message(config.channel_id, config.message_id, params)
+            await self.bot.http.edit_message(config.channel_id, config.message_id, params=params)
         except discord.NotFound:
             await self.set_new_message(config)
         except discord.HTTPException:
@@ -736,7 +736,7 @@ class SyncBoards:
             await self.bot.http.edit_message(
                 config.channel_id,
                 config.message_id,
-                params
+                params=params
             )
         except:
             log.exception('trying to send board for %s', config.channel_id)
