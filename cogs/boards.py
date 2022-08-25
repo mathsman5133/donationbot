@@ -42,7 +42,7 @@ class PersistentView(discord.ui.View):
     )
     async def refresh_support(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self.reaction_action(interaction, button)
-        await interaction.response.pong()
+        await interaction.response.defer()
 
     async def reaction_action(self, interaction, button):
         await self.bot.wait_until_ready()
