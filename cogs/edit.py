@@ -1,5 +1,6 @@
 import discord
 import asyncio
+import secrets
 import typing
 import datetime
 import re
@@ -7,6 +8,7 @@ import logging
 
 from time import perf_counter as pc
 
+from discord import app_commands
 from discord.ext import commands
 from cogs.utils.checks import requires_config, manage_guild
 from cogs.utils.formatters import CLYTable
@@ -15,6 +17,7 @@ from cogs.utils import checks
 
 log = logging.getLogger(__name__)
 
+ROUTE = "https://donation-tracker-site.vercel.app"
 url_validator = re.compile(r"^(?:http(s)?://)?[\w.-]+(?:.[\w.-]+)+[\w\-_~:/?#[\]@!$&'()*+,;=.]+"
                            r"(.jpg|.jpeg|.png|.gif)+[\w\-_~:/?#[\]@!$&'()*+,;=.]*$")
 
@@ -24,6 +27,46 @@ class Edit(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
+
+    @staticmethod
+    async def generate_access_token(guild_id, user_id, pool):
+        access_token = secrets.token_urlsafe(5)
+        await pool.execute("INSERT INTO access_tokens (user_id, guild_id, access_token) VALUES ($1, $2, $3) "
+                             "ON CONFLICT (user_id, guild_id) DO UPDATE SET access_token=$3",
+                             user_id, guild_id, access_token)
+        return access_token
+
+    @staticmethod
+    async def board_exists(channel_id, board_type, pool):
+        res = await pool.fetchrow("SELECT 1 FROM boards WHERE channel_id=$1 AND board_type=$2", channel_id, board_type)
+        return res == 1
+
+    @app_commands.command(description="Generate an access token to use on the web editor")
+    @app_commands.checks.has_permission(manage_guild=True)
+    async def accesstoken(self, interaction: discord.Interaction):
+        access_token = await self.generate_access_token(interaction.guild.id, interaction.user.id, self.bot.pool)
+        await interaction.response.send_message(
+            f"Your access token is: `{access_token}`. Don't share this with anyone else!"
+            f"\n\n*Any previous access tokens will be invalidated*.",
+            ephemeral=True
+        )
+
+    @app_commands.command(
+        name="edit donationboard",
+        description="Get a unique URL to edit the donationboard via a web browser.",
+    )
+    @app_commands.describe(channel='The channel the board is located in')
+    @app_commands.checks.has_permission(manage_guild=True)
+    async def edit_donationboard(self, interaction: discord.Interaction, channel: discord.TextChannel):
+        if not await self.board_exists(channel.id, "donation", self.bot.pool):
+            return await interaction.response.send_message(
+                f"No donationboard found in {channel.mention}.", ephemeral=True
+            )
+
+        access_token = await self.generate_access_token(interaction.guild.id, interaction.user.id, self.bot.pool)
+        await interaction.response.send_message(
+            f"{ROUTE}/donationboard/{interaction.guild.id}?cid={channel.id}&token={access_token}", ephemeral=True
+        )
 
     @commands.group()
     async def edit(self, ctx):
