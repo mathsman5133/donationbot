@@ -36,7 +36,7 @@ class PersistentView(discord.ui.View):
         self.add_item(discord.ui.Button(label="Edit Board", url="https://donation-tracker-site.vercel.app/donationboard/594276321937326091?cid=595077004676562944"))
 
     @discord.ui.button(
-        label='Refresh', style=discord.ButtonStyle.blue,
+        label='Refresh', style=discord.ButtonStyle.primary,
         custom_id='board:donation:595077004676562944:refresh',
         emoji=REFRESH_EMOJI
     )
