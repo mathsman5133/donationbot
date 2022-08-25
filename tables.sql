@@ -304,6 +304,15 @@ create table war_missed_attacks (
 );
 create index player_tag_idx on war_missed_attacks (player_tag);
 
+create table access_tokens (
+    id serial primary key,
+
+    user_id bigint,
+    guild_id bigint,
+    access_token text
+);
+alter table access_tokens add unique (user_id, guild_id);
+
 
 CREATE OR REPLACE FUNCTION public.get_event_id(guild_id bigint)
  RETURNS integer
