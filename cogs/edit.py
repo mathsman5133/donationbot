@@ -52,11 +52,12 @@ class Edit(commands.Cog):
         )
 
     @app_commands.command(
+        name="edit-donationboard",
         description="Get a unique URL to edit the donationboard via a web browser.",
     )
     @app_commands.describe(channel='The channel the board is located in')
     @app_commands.checks.has_permissions(manage_guild=True)
-    async def edit_donationboard(self, interaction: discord.Interaction, channel: discord.TextChannel):
+    async def edit_donationboard_slash(self, interaction: discord.Interaction, channel: discord.TextChannel):
         if not await self.board_exists(channel.id, "donation", self.bot.pool):
             return await interaction.response.send_message(
                 f"No donationboard found in {channel.mention}.", ephemeral=True
