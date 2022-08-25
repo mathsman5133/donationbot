@@ -65,6 +65,7 @@ intents.guild_messages = True
 intents.guild_reactions = True
 intents.members = True
 intents.emojis = True
+intents.messages = True
 
 coc_client = coc.EventsClient(
     key_names=key_names,
