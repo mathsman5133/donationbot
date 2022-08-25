@@ -39,7 +39,7 @@ class Edit(commands.Cog):
     @staticmethod
     async def board_exists(channel_id, board_type, pool):
         res = await pool.fetchrow("SELECT 1 FROM boards WHERE channel_id=$1 AND type=$2", channel_id, board_type)
-        return res == 1
+        return res is not None
 
     @app_commands.command(description="Generate an access token to use on the web editor")
     @app_commands.checks.has_permissions(manage_guild=True)
