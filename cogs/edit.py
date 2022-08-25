@@ -65,7 +65,8 @@ class Edit(commands.Cog):
 
         access_token = await self.generate_access_token(interaction.guild.id, interaction.user.id, self.bot.pool)
         await interaction.response.send_message(
-            f"{ROUTE}/donationboard/{interaction.guild.id}?cid={channel.id}&token={access_token}", ephemeral=True
+            f"{ROUTE}/donationboard/{interaction.guild.id}?cid={channel.id}&accesstoken={access_token}\n\n"
+            f"*This link has your unique access token. Don't share it with others!*", ephemeral=True
         )
 
     @commands.group()
