@@ -278,5 +278,5 @@ class SeasonConfig(commands.Cog, command_attrs=dict(hidden=True)):
         pass  # todo: management for start and end of events
 
 
-def setup(bot):
-    bot.add_cog(SeasonConfig(bot))
+async def setup(bot):
+    await bot.add_cog(SeasonConfig(bot))

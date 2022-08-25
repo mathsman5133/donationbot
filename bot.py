@@ -122,7 +122,7 @@ class DonationBot(commands.AutoShardedBot):
         self.dbl_token = creds.dbl_token
         self.owner_ids = {230214242618441728, 251150854571163648}  # maths, tuba
         self.locked_guilds = set()
-        self.session = aiohttp.ClientSession(loop=self.loop)
+        self.session = aiohttp.ClientSession()
 
         add_hooks(self)
         self.before_invoke(self.before_command_invoke)
@@ -134,9 +134,10 @@ class DonationBot(commands.AutoShardedBot):
 
         self.fake_clan_guilds = {}
 
+    async def setup_hook(self):
         for e in initial_extensions:
             try:
-                self.load_extension(e)  # load cogs
+                await self.load_extension(e)  # load cogs
             except Exception:
                 traceback.print_exc()
 

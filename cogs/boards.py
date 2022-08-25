@@ -292,5 +292,5 @@ class DonationBoard(commands.Cog):
         await self.board_updater.update_board(config, **kwargs)
 
 
-def setup(bot):
-    bot.add_cog(DonationBoard(bot))
+async def setup(bot):
+    await bot.add_cog(DonationBoard(bot))

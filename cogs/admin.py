@@ -418,5 +418,5 @@ class Admin(commands.Cog):
         return await ctx.send(fmt, file=discord.File(filename="sql-query-results.csv", fp=io.BytesIO(csv.encode("utf-8"))))
 
 
-def setup(bot):
-    bot.add_cog(Admin(bot))
+async def setup(bot):
+    await bot.add_cog(Admin(bot))

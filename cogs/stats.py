@@ -615,5 +615,5 @@ class Stats(commands.Cog):
         await p.paginate()
 
 
-def setup(bot):
-    bot.add_cog(Stats(bot))
+async def setup(bot):
+    await bot.add_cog(Stats(bot))

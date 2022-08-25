@@ -985,5 +985,5 @@ class Edit(commands.Cog):
         await ctx.confirm()
 
 
-def setup(bot):
-    bot.add_cog(Edit(bot))
+async def setup(bot):
+    await bot.add_cog(Edit(bot))

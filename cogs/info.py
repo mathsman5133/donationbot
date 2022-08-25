@@ -977,8 +977,8 @@ class Info(commands.Cog, name='\u200bInfo'):
         await ctx.trigger_typing()
 
 
-def setup(bot):
+async def setup(bot):
     if not hasattr(bot, 'command_stats'):
         bot.command_stats = Counter()
 
-    bot.add_cog(Info(bot))
+    await bot.add_cog(Info(bot))

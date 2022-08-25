@@ -431,7 +431,7 @@ class SyncBoards:
     async def on_init(self):
         self.webhooks = itertools.cycle(
             discord.Webhook.partial(
-                payload['id'], payload['token'], adapter=discord.AsyncWebhookAdapter(session=self.session)
+                payload['id'], payload['token'], session=self.session
             ) for payload in await self.bot.http.guild_webhooks(691779140059267084)
         )
 

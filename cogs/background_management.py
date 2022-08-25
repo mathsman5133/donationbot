@@ -655,5 +655,5 @@ class BackgroundManagement(commands.Cog):
         await self.bot.join_log_webhook.send(embed=e)
 
 
-def setup(bot):
-    bot.add_cog(BackgroundManagement(bot))
+async def setup(bot):
+    await bot.add_cog(BackgroundManagement(bot))

@@ -311,5 +311,5 @@ class Activity(commands.Cog):
         await ctx.trigger_typing()
 
 
-def setup(bot):
-    bot.add_cog(Activity(bot))
+async def setup(bot):
+    await bot.add_cog(Activity(bot))
