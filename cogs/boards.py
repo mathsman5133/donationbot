@@ -36,12 +36,13 @@ class PersistentView(discord.ui.View):
         self.add_item(discord.ui.Button(label="Edit Board", url="https://donation-tracker-site.vercel.app/donationboard/594276321937326091?cid=595077004676562944"))
 
     @discord.ui.button(
-        label='Refresh', style=discord.ButtonStyle.primary,
+        label='Refresh', style=discord.ButtonStyle.secondary,
         custom_id='board:donation:595077004676562944:refresh',
         emoji=REFRESH_EMOJI
     )
     async def refresh_support(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self.reaction_action(interaction, button)
+        await interaction.response.pong()
 
     async def reaction_action(self, interaction, button):
         await self.bot.wait_until_ready()
