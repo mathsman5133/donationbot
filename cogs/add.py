@@ -8,7 +8,9 @@ import logging
 import math
 
 import emoji as pckgemoji
+from typing import Optional
 
+from discord import app_commands
 from discord.ext import commands
 
 from syncboards import emojis, titles, default_sort_by, BOARD_PLACEHOLDER
@@ -25,24 +27,27 @@ url_validator = re.compile(r"^(?:http(s)?://)?[\w.-]+(?:.[\w.-]+)+[\w\-_~:/?#[\]
                            r"(.jpg|.jpeg|.png|.gif)+[\w\-_~:/?#[\]@!$&'()*+,;=.]*$")
 
 custom_emoji = re.compile("<(?P<animated>a?):(?P<name>[a-zA-Z0-9_]{2,32}):(?P<id>[0-9]{18,22})>")
-unicode_regex = re.compile(u'(' + u'|'.join(re.escape(u)  for u in sorted(pckgemoji.unicode_codes.EMOJI_ALIAS_UNICODE_ENGLISH.values(), key=len, reverse=True)) + u')')
+unicode_regex = re.compile(u'(' + u'|'.join(re.escape(u) for u in sorted(pckgemoji.unicode_codes.EMOJI_ALIAS_UNICODE_ENGLISH.values(), key=len, reverse=True)) + u')')
 
 
-class Add(commands.Cog):
+class Add(commands.GroupCog, name="add"):
     """Add clans, players, trophy and donationboards, logs and more."""
 
-    def __init__(self, bot):
+    def __init__(self, bot: commands.Bot):
         self.bot = bot
+        super().__init__()
 
-    @commands.group()
-    async def add(self, ctx):
-        """[Group] Allows the user to add a variety of features to the bot."""
-        if ctx.invoked_subcommand is None:
-            return await ctx.send_help(ctx.command)
+    # @commands.group()
+    # async def add(self, ctx):
+    #     """[Group] Allows the user to add a variety of features to the bot."""
+    #     if ctx.invoked_subcommand is None:
+    #         return await ctx.send_help(ctx.command)
 
-    @add.command(name='clan')
+    @app_commands.command(name="clan")
+    @app_commands.describe(clan_tag="The #clan-tag of the clan to add.")
+    @app_commands.describe(channel="The channel you want to add the clan to, defaults to your current channel.")
     @checks.manage_guild()
-    async def add_clan(self, ctx, *, clan_tag: str, channel: str = None):
+    async def add_clan(self, interaction: discord.Interaction, clan_tag: str, channel: Optional[discord.TextChannel]):
         """Link a clan to a channel in your server.
         This will add all accounts in clan to the database, if not already added.
 
@@ -63,69 +68,67 @@ class Add(commands.Cog):
         **Required Permissions**
         :warning: Manage Server
         """
-        await ctx.trigger_typing()
-        if channel:
-            pass  # it's been invoked from another command
-        elif not ctx.message.channel_mentions:
-            channel = ctx.channel
-        elif len(ctx.message.channel_mentions) > 1:
-            return await ctx.send("Please only mention 1 channel.")
-        else:
-            channel = ctx.message.channel_mentions[0]
+        db = await self.bot.pool.acquire()
+        channel = channel or interaction.channel
 
-        body = clan_tag
+        corrected_tag = coc.utils.correct_tag(clan_tag)
+        fake_clan_tag = clan_tag if clan_tag.strip().isdigit() and len(clan_tag) == 6 else None
 
-        clan_tag = coc.utils.correct_tag(body.replace(channel.mention, "").strip())
+        if not (coc.utils.is_valid_tag(corrected_tag) or fake_clan_tag):
+            await interaction.response.send_message("That doesn't look like a proper clan tag. Please try again.")
+            return
 
-        fake_clan_tag = body.replace(channel.mention, "").strip()
-        print(fake_clan_tag)
-        fake_clan_tag = fake_clan_tag if fake_clan_tag.isdigit() and len(fake_clan_tag) == 6 else None
-        print(fake_clan_tag)
-        if not (coc.utils.is_valid_tag(clan_tag) or fake_clan_tag):
-            return await ctx.send("That doesn't look like a proper clan tag. Please try again.")
-
-        current = await ctx.db.fetch("SELECT DISTINCT clan_tag FROM clans WHERE guild_id = $1", ctx.guild.id)
+        current = await db.fetch("SELECT DISTINCT clan_tag FROM clans WHERE guild_id = $1", interaction.guild.id)
         # if len(current) > 3 and not checks.is_patron_pred(ctx):
         #     return await ctx.send('You must be a patron to have more than 4 clans claimed per server. '
         #                           'See more info with `+patron`, or join the support server for more help: '
         #                           f'{self.bot.support_invite}')
 
-        if await ctx.db.fetch("SELECT id FROM clans WHERE clan_tag = $1 AND channel_id = $2", fake_clan_tag or clan_tag, channel.id):
-            return await ctx.send('This clan has already been linked to the channel. Please try again.')
+        if await db.fetch("SELECT id FROM clans WHERE clan_tag = $1 AND channel_id = $2", fake_clan_tag or clan_tag, channel.id):
+            await interaction.response.send_message('This clan has already been linked to the channel. Please try again.')
+            return
 
         if not fake_clan_tag:
             try:
-                clan = await ctx.bot.coc.get_clan(clan_tag)
+                clan = await self.bot.coc.get_clan(clan_tag)
             except coc.NotFound:
-                return await ctx.send(f'Clan not found with `{clan_tag}` tag.')
+                await interaction.response.send_message(f'Clan not found with `{clan_tag}` tag.')
+                return
 
-            fetch = await ctx.db.fetch("SELECT player_tag FROM players WHERE user_id = $1 AND verified = True",
-                                       ctx.author.id)
+            fetch = await db.fetch("SELECT player_tag FROM players WHERE user_id = $1 AND verified = True", interaction.user.id)
             members = [n for n in (clan.get_member(m['player_tag']) for m in fetch) if n]
             is_verified = any(member.role in (coc.Role.elder, coc.Role.co_leader, coc.Role.leader) for member in members)
 
             check = is_verified \
-                    or await self.bot.is_owner(ctx.author) \
+                    or await self.bot.is_owner(interaction.user) \
                     or clan_tag in (n['clan_tag'] for n in current) \
-                    or ctx.guild.id in (RCS_GUILD_ID, MONZETTI_GUILD_ID) \
-                    or await helper_check(self.bot, ctx.author) is True
+                    or interaction.guild.id in (RCS_GUILD_ID, MONZETTI_GUILD_ID) \
+                    or await helper_check(self.bot, interaction.user) is True
 
             if not check and not fetch:
-                return await ctx.send("Please verify your account before adding a clan: `+verify #playertag`. "
-                                      "See `+help verify` for more information.\n\n"
-                                      "This is a security feature of the bot to ensure you are an elder or above of the clan.")
+                await interaction.response.send_message(
+                    "Please verify your account before adding a clan: `+verify #playertag`. "
+                    "See `+help verify` for more information.\n\n"
+                    "This is a security feature of the bot to ensure you are an elder or above of the clan."
+                )
+                return
             if not members and not check:
-                return await ctx.send("Please ensure your verified account(s) are in the clan, and try again.")
+                await interaction.response.send_message("Please ensure your verified account(s) are in the clan, and try again.")
+                return
             if members and not check:
-                return await ctx.send("Your verified account(s) are not an elder or above. Please try again.")
+                await interaction.response.send_message("Your verified account(s) are not an elder or above. Please try again.")
+                return
+
         else:
             clan = "FakeClan"
 
         query = "INSERT INTO clans (clan_tag, guild_id, channel_id, clan_name, fake_clan) VALUES ($1, $2, $3, $4, $5)"
-        await ctx.db.execute(query, fake_clan_tag or clan.tag, ctx.guild.id, channel.id, str(clan), fake_clan_tag is not None)
+        await db.execute(query, fake_clan_tag or clan.tag, interaction.guild.id, channel.id, str(clan), fake_clan_tag is not None)
 
         if not fake_clan_tag:
             log.info("Adding clan members, clan %s has %s members", clan_tag, len(clan.members))
+            await interaction.response.defer()
+
             season_id = await self.bot.seasonconfig.get_season_id()
             query = """INSERT INTO players (
                                             player_tag, 
@@ -146,7 +149,7 @@ class Add(commands.Cog):
             # async with ctx.db.transaction():
             async for member in clan.get_detailed_members():
                 log.info("`+add clan`, adding member: %s to clan %s", clan_tag, member)
-                await ctx.db.execute(
+                await db.execute(
                     query,
                     member.tag,
                     member.donations,
@@ -159,13 +162,14 @@ class Add(commands.Cog):
                     member.legend_statistics and member.legend_statistics.legend_trophies or 0
                 )
 
-        await ctx.send(f"👌 {clan} ({fake_clan_tag or clan.tag}) successfully added to {channel.mention}.")
-        ctx.channel = channel  # modify for `on_clan_claim` listener
-        self.bot.dispatch('clan_claim', ctx, clan)
+        await interaction.response.send_message(f"👌 {clan} ({fake_clan_tag or clan.tag}) successfully added to {channel.mention}.")
+        self.bot.dispatch('clan_claim', interaction, clan)
 
-    @add.command(name='emoji')
+    @app_commands.command(name="clan")
+    @app_commands.describe(clan_tag="The #clan-tag of the clan to add.")
+    @app_commands.describe(emoji="The emoji - can be custom or unicode")
     @checks.manage_guild()
-    async def add_emoji(self, ctx, *, clan: str, emoji: str = None):
+    async def add_emoji(self, interaction: discord.Interaction, clan_tag: str, emoji: str):
         """Add an emoji to a clan for use with leaderboard commands.
 
         The emoji will appear after the number ranking on commands such as `+don` to show which clan the member is in.
@@ -183,31 +187,30 @@ class Add(commands.Cog):
         :white_check_mark: `+add emoji #P0LYJC8C :the_best_clan:`
         :white_check_mark: `+add emoji Reddit Elephino :elephino:`
         """
-        custom = custom_emoji.search(clan)
+        custom = custom_emoji.search(emoji)
         if custom:
             emoji = self.bot.get_emoji(int(custom.group('id')))
             emoji_id = emoji.id
         else:
 
-            find = unicode_regex.search(clan)
+            find = unicode_regex.search(emoji)
             if not find:
-                return await ctx.send("I couldn't find an emoji in your message!")
+                await interaction.response.send_message("That didn't look like an emoji to me :/")
+                return
 
             emoji = find[0]
             emoji_id = emoji
 
         if not emoji:
-            return await ctx.send(
-                ":x: It seems as though I don't have access to that emoji! "
-                "\nMake sure it's on a server I share, and try again."
-            )
+            await interaction.response.send_message(":x: It seems as though I don't have access to that emoji! \n"
+                                                    "Make sure it's on a server I share, and try again.")
+            return
 
-        clan = clan.replace(str(emoji), "").strip()
-
-        if coc.utils.is_valid_tag(coc.utils.correct_tag(clan)):
-            clan_tag = coc.utils.correct_tag(clan)
+        clan_tag = coc.utils.correct_tag(clan_tag)
+        if coc.utils.is_valid_tag(clan_tag):
+            clan_tag = coc.utils.correct_tag(clan_tag)
         else:
-            fetch = await ctx.db.fetchrow("SElECT clan_tag FROM clans WHERE clan_name LIKE $1 AND guild_id = $2", clan, ctx.guild.id)
+            fetch = await db.fetchrow("SElECT clan_tag FROM clans WHERE clan_name LIKE $1 AND guild_id = $2", clan, ctx.guild.id)
             if not fetch:
                 return await ctx.send(":x: I couldn't find that clan. Please try again with the tag.")
             clan_tag = fetch['clan_tag']
@@ -812,132 +815,6 @@ class Add(commands.Cog):
 
         p = StatsAccountsPaginator(ctx, data=data, page_count=math.ceil(len(fetch) / 20), title=title)
         await p.paginate()
-
-    # @add.command(name="event")
-    # @checks.manage_guild()
-    # async def add_event(self, ctx, *, event_name: str = None):
-    #     """Allows user to add a new trophy push event. Trophy Push events override season statistics for trophy
-    #     counts.
-    #
-    #     This command is interactive and will ask you questions about the new event. After the initial command,
-    #     the bot will ask you further questions about the event.
-    #
-    #     **Parameters**
-    #     :key: Name of the event
-    #
-    #     **Format**
-    #     :information_source: `+add event EVENT NAME`
-    #
-    #     **Example**
-    #     :white_check_mark: `+add event Donation Bot Event`
-    #
-    #     **Required Permissions**
-    #     :warning: Manage Server
-    #     """
-    #     if ctx.config:
-    #         if ctx.config.start > datetime.datetime.now():
-    #             return await ctx.send(f'This server is already set up for {ctx.config.event_name}. Please use '
-    #                                   f'`+remove event` if you would like to remove this event and create a new one.')
-    #
-    #     def check_author(m):
-    #         return m.author == ctx.author
-    #
-    #     if not event_name:
-    #         try:
-    #             await ctx.send('Please enter the name of the new event.')
-    #             response = await ctx.bot.wait_for('message', check=check_author, timeout=60.0)
-    #             event_name = response.content
-    #         except asyncio.TimeoutError:
-    #             return await ctx.send('I can\'t wait all day. Try again later.')
-    #
-    #     for i in range(5):
-    #         try:
-    #             await ctx.send(f'What date does the {event_name} begin?  (YYYY-MM-DD)')
-    #             response = await ctx.bot.wait_for('message', check=check_author, timeout=60.0)
-    #             start_date = await DateConverter().convert(ctx, response.clean_content)
-    #             break
-    #         except (ValueError, commands.BadArgument):
-    #             await ctx.send('Date must be in the YYYY-MM-DD format.')
-    #         except asyncio.TimeoutError:
-    #             return await ctx.send('Yawn! Time\'s up. You\'re going to have to start over some other time.')
-    #     else:
-    #         return await ctx.send(
-    #             'I don\'t really know what happened, but I can\'t figure out what the start '
-    #             'date is. Please start over and let\'s see what happens')
-    #
-    #     try:
-    #         await ctx.send('And what time does this fantastic event begin? (Please provide HH:MM in UTC)')
-    #         response = await ctx.bot.wait_for('message', check=check_author, timeout=60.0)
-    #         hour, minute = map(int, response.content.split(':'))
-    #         if hour < 13:
-    #             try:
-    #                 await ctx.send('And is that AM or PM?')
-    #                 response = await ctx.bot.wait_for('message', check=check_author, timeout=60.0)
-    #                 if response.content.lower() == 'pm':
-    #                     hour += 12
-    #             except asyncio.TimeoutError:
-    #                 if hour < 6:
-    #                     await ctx.send('Well I\'ll just go with PM then.')
-    #                     hour += 12
-    #                 else:
-    #                     await ctx.send('I\'m going to assume you want AM.')
-    #         start_time = datetime.time(hour, minute)
-    #     except asyncio.TimeoutError:
-    #         return await ctx.send('I was asking for time, but you ran out of it. You\'ll have to start over again.')
-    #
-    #     event_start = datetime.datetime.combine(start_date, start_time)
-    #
-    #     try:
-    #         await ctx.send('What is the end date for the event? (YYYY-MM-DD)')
-    #         response = await ctx.bot.wait_for('message', check=check_author, timeout=60.0)
-    #         year, month, day = map(int, response.content.split('-'))
-    #         end_date = datetime.date(year, month, day)
-    #     except asyncio.TimeoutError:
-    #         return await ctx.send('I can\'t wait all day. Try again later.')
-    #
-    #     answer = await ctx.prompt('Does the event end at the same time of day?')
-    #     if answer:
-    #         end_time = start_time
-    #     elif answer is None:
-    #         end_time = start_time
-    #         await ctx.send('You must have fallen asleep. I\'ll just set the end time to match the start time.')
-    #     else:
-    #         try:
-    #             await ctx.send('What time does the event end? (Please provide HH:MM in UTC)')
-    #             response = await ctx.bot.wait_for('message', check=check_author, timeout=60.0)
-    #             hour, minute = map(int, response.content.split(':'))
-    #             end_time = datetime.time(hour, minute)
-    #         except asyncio.TimeoutError:
-    #             end_time = start_time
-    #             await ctx.send('You must have fallen asleep. I\'ll just set the end time to match the start time.')
-    #
-    #     event_end = datetime.datetime.combine(end_date, end_time)
-    #
-    #     try:
-    #         await ctx.send('Which #channel do you want me to send updates '
-    #                        '(event starting, ending, records broken etc.) to?')
-    #         response = await ctx.bot.wait_for('message', check=check_author, timeout=60.0)
-    #         try:
-    #             channel = await commands.TextChannelConverter().convert(ctx, response.content)
-    #         except commands.BadArgument:
-    #             return await ctx.send('Uh oh.. I didn\'t like that channel! '
-    #                                   'Try the command again with a channel # mention or ID.')
-    #     except asyncio.TimeoutError:
-    #         return await ctx.send('I can\'t wait all day. Try again later.')
-    #
-    #     query = 'INSERT INTO events (guild_id, event_name, start, finish, channel_id) VALUES ($1, $2, $3, $4, $5) RETURNING id'
-    #     event_id = await ctx.db.fetchrow(query, ctx.guild.id, event_name, event_start, event_end, channel.id)
-    #     log.info(f"{event_name} added to events table for {ctx.guild} by {ctx.author}")
-    #
-    #     query = 'UPDATE clans SET in_event = True WHERE guild_id = $1'
-    #     await ctx.db.execute(query, ctx.guild.id)
-    #
-    #     fmt = (f'**Event Created:**\n\n{event_name}\n{event_start.strftime("%d %b %Y %H:%M")}\n'
-    #            f'{event_end.strftime("%d %b %Y %H:%M")}\n\nEnjoy your event!')
-    #     e = discord.Embed(colour=discord.Colour.green(),
-    #                       description=fmt)
-    #     await ctx.send(embed=e)
-    #     self.bot.dispatch('event_register')
 
 
 def setup(bot):
