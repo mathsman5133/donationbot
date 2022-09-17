@@ -52,7 +52,15 @@ class CustomClan(coc.Clan):
 
 coc_client = coc.login(creds.email, creds.password, client=coc.EventsClient, key_names="test2", throttle_limit=30, key_count=3, scopes=creds.scopes, cache_max_size=None)
 coc_client.clan_cls = CustomClan
-bot = commands.Bot(command_prefix="+")
+
+intents = discord.Intents.none()
+intents.guilds = True
+intents.guild_messages = True
+intents.guild_reactions = True
+intents.members = True
+intents.emojis = True
+
+bot = commands.Bot(command_prefix="+", intents=intents)
 bot.session = aiohttp.ClientSession()
 pool = asyncio.get_event_loop().run_until_complete(setup_db())
 setup_logging(bot)
