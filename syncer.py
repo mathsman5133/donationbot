@@ -1448,6 +1448,10 @@ class Syncer:
             self._log_tasks[(channel_id, type_)] = bot.loop.create_task(self.create_temp_event_task(channel_id, type_))
 
 
-if __name__ == "__main__":
-    asyncio.get_event_loop().run_until_complete(bot.login(creds.bot_token))
+async def main():
+    await bot.login(creds.bot_token)
     Syncer().start()
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

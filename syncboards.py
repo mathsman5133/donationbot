@@ -69,7 +69,7 @@ If a board doesn't appear, please make sure you have `+add clan #clantag #dt-boa
 GLOBAL_BOARDS_CHANNEL_ID = 663683345108172830
 
 log = logging.getLogger(__name__)
-loop = asyncio.get_event_loop()
+
 
 class HTMLImages:
     def __init__(self, players, title=None, image=None, sort_by=None, footer=None, offset=None, board_type='donation', fonts=None, session=None, coc_client=None):
@@ -800,11 +800,13 @@ class SyncBoards:
             log.exception('resetting legend boards')
 
 
-if __name__ == "__main__":
+async def main():
     from bot import setup_db
 
-    coc_client = coc.login(creds.email, creds.password, key_names='boards')
-    pool = loop.run_until_complete(setup_db())
+    client = coc.Client(key_names="boards")
+    coc_client = await client.login(creds.email, creds.password)
+
+    pool = await setup_db()
 
     intents = discord.Intents.none()
     intents.guilds = True
@@ -817,7 +819,11 @@ if __name__ == "__main__":
     stateless_bot.session = aiohttp.ClientSession()
     setup_logging(stateless_bot)
 
-    loop.run_until_complete(stateless_bot.login(creds.bot_token))
+    await stateless_bot.login(creds.bot_token)
 
     SyncBoards(stateless_bot, start_loop=True, coc_client=coc_client, pool=pool)
-    loop.run_forever()
+    asyncio.get_event_loop().run_forever()
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
