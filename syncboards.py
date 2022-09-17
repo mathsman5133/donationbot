@@ -791,7 +791,15 @@ if __name__ == "__main__":
     coc_client = coc.login(creds.email, creds.password, key_names='boards')
     pool = loop.run_until_complete(setup_db())
 
-    stateless_bot = discord.Client()
+    intents = discord.Intents.none()
+    intents.guilds = True
+    intents.guild_messages = True
+    intents.guild_reactions = True
+    intents.members = True
+    intents.emojis = True
+
+    stateless_bot = discord.Client(intents=intents)
+
     stateless_bot.session = aiohttp.ClientSession()
     setup_logging(stateless_bot)
 
