@@ -412,8 +412,9 @@ class SyncBoards:
         self.session = aiohttp.ClientSession()
         self.throttler = coc.BasicThrottler(1)
 
-        bot.loop.create_task(self.on_init())
-        bot.loop.create_task(self.set_season_id())
+        self.loop = asyncio.get_event_loop()
+        self.loop.create_task(self.on_init())
+        self.loop.create_task(self.set_season_id())
 
         self.reset_season_id.add_exception_type(Exception)
         self.reset_season_id.start()
@@ -464,7 +465,7 @@ class SyncBoards:
         current_tasks = []
         for n in fetch:
             config = BoardConfig(bot=self.bot, record=n)
-            current_tasks.append(self.bot.loop.create_task(self.run_board(config)))
+            current_tasks.append(self.loop.create_task(self.run_board(config)))
 
         await asyncio.gather(*current_tasks)
 
