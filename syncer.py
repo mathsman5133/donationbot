@@ -61,17 +61,15 @@ intents.members = True
 intents.emojis = True
 
 bot = commands.Bot(command_prefix="+", intents=intents)
-bot.session = aiohttp.ClientSession()
-pool = asyncio.get_event_loop().run_until_complete(setup_db())
-setup_logging(bot)
 
 EVENTS_BEFORE_REFRESHING_BOARD = 10
 EVENTS_BEFORE_REFRESHING_LEGEND_BOARD = 3
 
 
 class Syncer:
-    def __init__(self):
+    def __init__(self, pool):
         loop = asyncio.get_event_loop()
+        self.pool = pool
 
         self.season_id = None
         loop.create_task(self.get_season_id())
@@ -100,7 +98,7 @@ class Syncer:
         self.war_tasks = {}
 
     async def get_season_id(self):
-        fetch = await pool.fetchrow("SELECT id FROM seasons WHERE start < now() ORDER BY start DESC;")
+        fetch = await self.pool.fetchrow("SELECT id FROM seasons WHERE start < now() ORDER BY start DESC;")
         self.season_id = fetch['id']
 
     def start(self):
@@ -141,7 +139,7 @@ class Syncer:
     async def season_start(self):
         await self.safe_send(594286547449282587, "New season has started!")
 
-        fetch = await pool.fetchrow(
+        fetch = await self.pool.fetchrow(
             "INSERT INTO seasons (start, finish) VALUES ($1, $2) RETURNING id",
             coc.utils.get_season_start(),
             coc.utils.get_season_end()
@@ -178,18 +176,18 @@ class Syncer:
                     ON CONFLICT (season_id, player_tag)
                     DO NOTHING;
                 """
-        await pool.execute(query, self.season_id - 1)
+        await self.pool.execute(query, self.season_id - 1)
 
         await self.safe_send(594286547449282587, "Syncer has added players :ok_hand:")
 
     async def add_temp_events(self, log_type, channel_id, fmt):
         query = """INSERT INTO tempevents (channel_id, fmt, type) VALUES ($1, $2, $3)"""
-        await pool.execute(query, channel_id, fmt, log_type)
+        await self.pool.execute(query, channel_id, fmt, log_type)
         log.debug(f'Added a message for channel id {channel_id} to tempevents db')
 
     async def add_detailed_temp_events(self, channel_id, clan_tag, events):
         query = "INSERT INTO detailedtempevents (channel_id, clan_tag, exact, combo, unknown) VALUES ($1, $2, $3, $4, $5)"
-        await pool.execute(
+        await self.pool.execute(
             query,
             channel_id,
             clan_tag,
@@ -208,7 +206,7 @@ class Syncer:
             params = discord.http.handle_message_parameters(content=content, embed=embed)
             return await bot.http.send_message(channel_id, params=params)
         except (discord.Forbidden, discord.NotFound):
-            await pool.execute("UPDATE logs SET toggle = FALSE WHERE channel_id = $1", channel_id)
+            await self.pool.execute("UPDATE logs SET toggle = FALSE WHERE channel_id = $1", channel_id)
             return
         except:
             log.exception(f"{channel_id} failed to send {content} {embed}")
@@ -273,7 +271,7 @@ class Syncer:
 
         try:
             s = time.perf_counter()
-            fetch = await pool.fetch("SELECT DISTINCT(clan_tag) FROM clans WHERE fake_clan = False")
+            fetch = await self.pool.fetch("SELECT DISTINCT(clan_tag) FROM clans WHERE fake_clan = False")
             log.info(f"Setting {len(fetch)} tags to update")
             coc_client._clan_updates = [n[0] for n in fetch if coc.utils.is_valid_tag(n[0])]
         except:
@@ -301,10 +299,10 @@ class Syncer:
                    DO UPDATE SET counter = activity_query.counter + excluded.counter
                    """
         # async with self.last_updated_batch_lock:
-        await pool.execute(query, list(self.last_updated_tags), self.season_id)
+        await self.pool.execute(query, list(self.last_updated_tags), self.season_id)
         nice = [{"player_tag": player_tag, "clan_tag": clan_tag, "counter": counter} for
                 ((player_tag, clan_tag), counter) in self.last_updated_counter.most_common()]
-        await pool.execute(query2, nice)
+        await self.pool.execute(query2, nice)
         self.last_updated_tags.clear()
         self.last_updated_counter.clear()
 
@@ -344,8 +342,8 @@ class Syncer:
         clan_tags = list(set(n['clan_tag'] for n in data))
         player_tags = list(set(p['player_tag'] for p in data))
 
-        fetch = await pool.fetch(query, clan_tags)
-        fetch2 = await pool.fetch(query2, player_tags)
+        fetch = await self.pool.fetch(query, clan_tags)
+        fetch2 = await self.pool.fetch(query2, player_tags)
 
         clan_tag_to_channel_data = {}
         for row in itertools.chain(fetch, fetch2):
@@ -357,7 +355,7 @@ class Syncer:
         log.info('for trophylogs there are %s clan tags/channel data entries', len(clan_tag_to_channel_data))
 
         query = """SELECT DISTINCT player_tag, fake_clan_tag FROM players WHERE season_id = $1 AND fake_clan_tag is not null AND player_tag = ANY($2::TEXT[])"""
-        fetch = await pool.fetch(query, self.season_id, player_tags)
+        fetch = await self.pool.fetch(query, self.season_id, player_tags)
         fake_clan_players = {row['player_tag']: row['fake_clan_tag'] for row in fetch}
         events = []
         for event in data:
@@ -442,8 +440,8 @@ class Syncer:
         player_tags = list(set(p['player_tag'] for p in self.donationlog_batch_data))
 
         log.debug(f"clan tags: {clan_tags}")
-        fetch = await pool.fetch(query, clan_tags)
-        fetch2 = await pool.fetch(query2, player_tags)
+        fetch = await self.pool.fetch(query, clan_tags)
+        fetch2 = await self.pool.fetch(query2, player_tags)
 
         clan_tag_to_channel_data = {}
         for row in itertools.chain(fetch, fetch2):
@@ -453,7 +451,7 @@ class Syncer:
                 clan_tag_to_channel_data[row['clan_tag']] = [LogConfig(bot=None, record=row)]
 
         query = """SELECT DISTINCT player_tag, fake_clan_tag FROM players WHERE season_id = $1 AND fake_clan_tag is not null AND player_tag = ANY($2::TEXT[])"""
-        fetch = await pool.fetch(query, self.season_id, player_tags)
+        fetch = await self.pool.fetch(query, self.season_id, player_tags)
         fake_clan_players = {row['player_tag']: row['fake_clan_tag'] for row in fetch}
 
         events = []
@@ -555,7 +553,7 @@ class Syncer:
                                  player_name = excluded.player_name,
                                  clan_tag = excluded.clan_tag
                 """
-        await pool.execute(query, list(self.legend_data.values()))
+        await self.pool.execute(query, list(self.legend_data.values()))
         self.legend_data.clear()
 
     async def bulk_board_insert(self):
@@ -653,22 +651,22 @@ class Syncer:
                 #             log.info('players update db request returned %s in %s ms', r, (time.perf_counter() - start)*1000)
                 #         print('done out of transaction')
                 t = time.perf_counter()
-                response = await pool.execute(query, list(self.board_batch_data.values()), self.season_id)
+                response = await self.pool.execute(query, list(self.board_batch_data.values()), self.season_id)
                 log.info(f'Registered donations/received to the database. Resp: {response} Timing: {(time.perf_counter() - t)*1000}ms.')
 
-                # response = await pool.execute(query2, list(self.board_batch_data.values()))
+                # response = await self.pool.execute(query2, list(self.board_batch_data.values()))
                 # log.info(f'Registered donations/received to the events database. Status Code {response}.')
                 async with self.last_updated_batch_lock:
                     tags = set(tag for (tag, counter) in self.boards_counter.items() if counter > EVENTS_BEFORE_REFRESHING_BOARD)
-                    response = await pool.execute(query3, list(tags), ['donation', 'trophy'])
-                    response = await pool.execute(query4, list(tags), ['donation', 'trophy'])
+                    response = await self.pool.execute(query3, list(tags), ['donation', 'trophy'])
+                    response = await self.pool.execute(query4, list(tags), ['donation', 'trophy'])
                     for k in tags:
                         self.boards_counter.pop(k, None)
 
                 async with self.legend_data_lock:
                     tags = set(tag for (tag, counter) in self.legend_counter.items() if counter > EVENTS_BEFORE_REFRESHING_LEGEND_BOARD)
-                    response2 = await pool.execute(query3, list(tags), ['legend'])
-                    response2 = await pool.execute(query4, list(tags), ['legend'])
+                    response2 = await self.pool.execute(query3, list(tags), ['legend'])
+                    response2 = await self.pool.execute(query4, list(tags), ['legend'])
                     for k in tags:
                         self.legend_counter.pop(k, None)
 
@@ -828,7 +826,7 @@ class Syncer:
     @tasks.loop(hours=1)
     async def event_player_updater(self):
         query = "SELECT DISTINCT player_tag FROM eventplayers WHERE live = True;"
-        fetch = await pool.fetch(query)
+        fetch = await self.pool.fetch(query)
 
         query = """UPDATE eventplayers
                    SET donations             = x.end_fin + x.end_sic - eventplayers.start_friend_in_need - eventplayers.start_sharing_is_caring,
@@ -880,7 +878,7 @@ class Syncer:
                 }
             )
             await asyncio.sleep(0.01)
-        await pool.execute(query, to_insert)
+        await self.pool.execute(query, to_insert)
         log.info(f'Loop for event updates finished. Took {(time.perf_counter() - start)*1000}ms')
 
     #
@@ -954,7 +952,7 @@ class Syncer:
                     """
 
         member = await coc_client.get_player(member.tag)
-        response = await pool.execute(
+        response = await self.pool.execute(
             player_query,
             member.tag,
             member.donations,
@@ -990,7 +988,7 @@ class Syncer:
                     DO UPDATE SET clan_tag = $11
                 """
 
-        response = await pool.execute(
+        response = await self.pool.execute(
             player_query,
             player.tag,
             player.donations,
@@ -1017,7 +1015,7 @@ class Syncer:
                    AND events.start <= now()
                    AND events.finish >= now()
                 """
-        fetch = await pool.fetch(query, clan.tag)
+        fetch = await self.pool.fetch(query, clan.tag)
         if not fetch:
             return
 
@@ -1043,7 +1041,7 @@ class Syncer:
                         """
 
         for n in fetch:
-            response = await pool.execute(
+            response = await self.pool.execute(
                 event_query,
                 player.tag,
                 player.trophies,
@@ -1063,13 +1061,13 @@ class Syncer:
     @coc.ClanEvents.member_leave()
     async def on_clan_member_leave(self, member, clan):
         query = "UPDATE players SET clan_tag = null where player_tag = $1 AND season_id = $2"
-        await pool.execute(query, member.tag, self.season_id)
+        await self.pool.execute(query, member.tag, self.season_id)
 
     # @tasks.loop(seconds=60.0)
     # async def update_clan_tags(self):
     #     try:
     #         query = "SELECT DISTINCT(clan_tag) FROM clans"
-    #         fetch = await pool.fetch(query)
+    #         fetch = await self.pool.fetch(query)
     #         log.info(f"Setting {len(fetch)} tags to update")
     #         coc_client._clan_updates = [n[0] for n in fetch]
     #     except:
@@ -1134,7 +1132,7 @@ class Syncer:
             )
             RETURNING 1
             """
-            result = await pool.fetch(query, attacks_to_load)
+            result = await self.pool.fetch(query, attacks_to_load)
             log.info('saving %s attacks for %s clan because war ended.', len(result), new_war.clan_tag)
 
             max_attacks = max(len(member.attacks) for member in new_war.clan.members)
@@ -1163,7 +1161,7 @@ class Syncer:
             DO NOTHING
             RETURNING 1
             """
-            result = await pool.fetch(query, missed_attacks)
+            result = await self.pool.fetch(query, missed_attacks)
             log.info('saving %s missed attacks for %s clan because war ended.', len(result), new_war.clan_tag)
 
             query = """
@@ -1178,7 +1176,7 @@ class Syncer:
                 WHERE boards.channel_id = x.channel_id
                 AND type = 'war'
             """
-            await pool.execute(query, new_war.clan_tag)
+            await self.pool.execute(query, new_war.clan_tag)
 
             self.war_tasks.pop(new_war.clan_tag)
             return
@@ -1206,7 +1204,7 @@ class Syncer:
                 else:
                     log.info('running end of war things for %s clan tag', war.clan_tag)
                     query = "SELECT MAX(attack_order) as max FROM war_attacks WHERE prep_start_time = $1 AND clan_tag = $2"
-                    fetch = await pool.fetch(query, war.preparation_start_time.time, war.clan_tag)
+                    fetch = await self.pool.fetch(query, war.preparation_start_time.time, war.clan_tag)
                     if len(war.clan.attacks) > len(fetch):
                         maybe_load.append((war, fetch))
 
@@ -1253,7 +1251,7 @@ class Syncer:
                 destruction DECIMAL
             )
             """
-            await pool.execute(query, attacks_to_load)
+            await self.pool.execute(query, attacks_to_load)
 
             query = """
             INSERT INTO war_missed_attacks (clan_tag, prep_start_time, player_tag, attacks_missed)
@@ -1269,7 +1267,7 @@ class Syncer:
             DO NOTHING
             RETURNING 1
             """
-            result = await pool.fetch(query, missed_attacks)
+            result = await self.pool.fetch(query, missed_attacks)
             log.info('saving %s missed attacks for %s clan because war ended.', len(result), len(tags))
 
             query = """
@@ -1284,7 +1282,7 @@ class Syncer:
                 WHERE boards.channel_id = x.channel_id
                 AND type = 'war'
             """
-            await pool.execute(query, list(set(r['clan_tag'] for r in attacks_to_load)))
+            await self.pool.execute(query, list(set(r['clan_tag'] for r in attacks_to_load)))
 
         except Exception as exc:
             log.exception('failed to run war syncer.')
@@ -1329,7 +1327,7 @@ class Syncer:
                    WHERE toggle = True 
                    AND "interval" > make_interval()
                 """
-        fetch = await pool.fetch(query)
+        fetch = await self.pool.fetch(query)
         for n in fetch:
             channel_id, type_ = n[0], n[1]
             key = (channel_id, type_)
@@ -1356,7 +1354,7 @@ class Syncer:
         log.info(f'Successfully synced {len(fetch)} channel tasks.')
 
     async def fetch_config(self, channel_id, type):
-        fetch = await pool.fetchrow("SELECT * FROM logs WHERE channel_id = $1 AND type = $2", channel_id, type)
+        fetch = await self.pool.fetchrow("SELECT * FROM logs WHERE channel_id = $1 AND type = $2", channel_id, type)
         return fetch and LogConfig(record=fetch, bot=None)
 
     async def create_temp_event_task(self, channel_id, type_):
@@ -1372,7 +1370,7 @@ class Syncer:
 
                 if type_ == "donation" and config.detailed:
                     query = "DELETE FROM detailedtempevents WHERE channel_id = $1 RETURNING clan_tag, exact, combo, unknown"
-                    fetch = await pool.fetch(query, channel_id)
+                    fetch = await self.pool.fetch(query, channel_id)
 
                     if not fetch:
                         continue
@@ -1425,7 +1423,7 @@ class Syncer:
 
                 else:
                     query = "DELETE FROM tempevents WHERE channel_id = $1 AND type = $2 RETURNING fmt"
-                    fetch = await pool.fetch(query, channel_id, type_)
+                    fetch = await self.pool.fetch(query, channel_id, type_)
                     p = LineWrapper()
 
                     for n in fetch:
@@ -1449,9 +1447,13 @@ class Syncer:
 
 
 async def main():
+    bot.session = aiohttp.ClientSession()
+    pool = await setup_db()
+    setup_logging(bot)
+
     await coc_client.login(creds.email, creds.password)
     await bot.login(creds.bot_token)
-    Syncer().start()
+    Syncer(pool).start()
 
 
 if __name__ == "__main__":
