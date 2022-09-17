@@ -182,5 +182,5 @@ class Utils(commands.Cog):
                                fetch['channel_id'], fetch['guild_id'])
 
 
-def setup(bot):
-    bot.add_cog(Utils(bot))
+async def setup(bot):
+    await bot.add_cog(Utils(bot))

@@ -377,5 +377,5 @@ class Remove(commands.Cog):
         return await ctx.send(f"{fetch[index]['event_name']} has been removed.")
 
 
-def setup(bot):
-    bot.add_cog(Remove(bot))
+async def setup(bot):
+    await bot.add_cog(Remove(bot))

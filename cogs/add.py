@@ -940,5 +940,5 @@ class Add(commands.Cog):
     #     self.bot.dispatch('event_register')
 
 
-def setup(bot):
-    bot.add_cog(Add(bot))
+async def setup(bot):
+    await bot.add_cog(Add(bot))

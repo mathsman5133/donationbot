@@ -20,7 +20,6 @@ import creds
 
 from botlog import setup_logging
 
-from bot import setup_db
 from cogs.utils.db_objects import BoardConfig
 
 
@@ -431,7 +430,7 @@ class SyncBoards:
     async def on_init(self):
         self.webhooks = itertools.cycle(
             discord.Webhook.partial(
-                payload['id'], payload['token'], adapter=discord.AsyncWebhookAdapter(session=self.session)
+                payload['id'], payload['token'], session=self.session
             ) for payload in await self.bot.http.guild_webhooks(691779140059267084)
         )
 
@@ -478,7 +477,8 @@ class SyncBoards:
 
     async def set_new_message(self, config):
         try:
-            message = await self.bot.http.send_message(config.channel_id, content=BOARD_PLACEHOLDER.format(board=config.type))
+            params = discord.http.handle_message_parameters(content=BOARD_PLACEHOLDER.format(board=config.type))
+            message = await self.bot.http.send_message(config.channel_id, params=params)
         except (discord.Forbidden, discord.NotFound):
             await self.pool.execute("UPDATE boards SET toggle = FALSE WHERE channel_id = $1", config.channel_id)
             return
@@ -705,7 +705,8 @@ class SyncBoards:
         if divert_to:
             log.info('diverting board to %s channel_id', divert_to)
             try:
-                await self.bot.http.send_files(channel_id=divert_to, files=[discord.File(render, f'{config.type}board.png')])
+                params = discord.http.handle_message_parameters(file=discord.File(render, f'{config.type}board.png'))
+                await self.bot.http.send_message(channel_id=divert_to, params=params)
             except:
                 log.info('failed to send legend log to channel %s', config.channel_id)
             return
@@ -719,15 +720,23 @@ class SyncBoards:
         embed.set_footer(text="Last Updated", icon_url="https://cdn.discordapp.com/avatars/427301910291415051/8fd702a4bbec20941c72bc651279c05c.webp?size=1024")
 
         try:
-            await self.bot.http.edit_message(config.channel_id, config.message_id, content=None, embed=embed.to_dict())
+            params = discord.http.handle_message_parameters(
+                content=None,
+                embed=embed,
+            )
+            await self.bot.http.edit_message(config.channel_id, config.message_id, params=params)
         except discord.NotFound:
             await self.set_new_message(config)
         except discord.HTTPException:
             await self.pool.execute("UPDATE boards SET toggle = FALSE WHERE channel_id = $1", config.channel_id)
+
+            params = discord.http.handle_message_parameters(
+                content="Please enable `Embed Links` permission for me to update your board.",
+            )
             await self.bot.http.edit_message(
                 config.channel_id,
                 config.message_id,
-                content="Please enable `Embed Links` permission for me to update your board."
+                params=params
             )
         except:
             log.exception('trying to send board for %s', config.channel_id)
@@ -791,6 +800,8 @@ class SyncBoards:
 
 
 if __name__ == "__main__":
+    from bot import setup_db
+
     coc_client = coc.login(creds.email, creds.password, key_names='boards')
     pool = loop.run_until_complete(setup_db())
 

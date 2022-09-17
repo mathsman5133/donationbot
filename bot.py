@@ -56,16 +56,6 @@ else:
     key_names = 'windows'
 
 
-coc_client = coc.login(
-    creds.email,
-    creds.password,
-    client=coc.EventsClient,
-    key_names=key_names,
-    throttle_limit=30,
-    key_count=1,
-    key_scopes=creds.scopes,
-    throttler=coc.BatchThrottler,
-)
 links_client = discordlinks.login(creds.links_username, creds.links_password)
 
 description = "A simple discord bot to track donations of clan families in clash of clans."
@@ -76,6 +66,13 @@ intents.guild_reactions = True
 intents.members = True
 intents.emojis = True
 
+coc_client = coc.EventsClient(
+    key_names=key_names,
+    throttle_limit=30,
+    key_count=1,
+    key_scopes=creds.scopes,
+    throttler=coc.BatchThrottler,
+)
 
 log = logging.getLogger()
 
@@ -115,14 +112,13 @@ class DonationBot(commands.AutoShardedBot):
 
         self.colour = discord.Colour.blurple()
 
-        self.coc = coc_client
         self.links = links_client
 
         self.client_id = creds.client_id
         self.dbl_token = creds.dbl_token
         self.owner_ids = {230214242618441728, 251150854571163648}  # maths, tuba
         self.locked_guilds = set()
-        self.session = aiohttp.ClientSession(loop=self.loop)
+        self.session = aiohttp.ClientSession()
 
         add_hooks(self)
         self.before_invoke(self.before_command_invoke)
@@ -134,9 +130,16 @@ class DonationBot(commands.AutoShardedBot):
 
         self.fake_clan_guilds = {}
 
+    async def setup_hook(self):
+        setup_logging(bot)
+
+        await coc_client.login(creds.email, creds.password)
+        self.coc = coc_client
+        self.pool = await setup_db()
+
         for e in initial_extensions:
             try:
-                self.load_extension(e)  # load cogs
+                await self.load_extension(e)  # load cogs
             except Exception:
                 traceback.print_exc()
 
@@ -289,12 +292,8 @@ class DonationBot(commands.AutoShardedBot):
 
 
 if __name__ == '__main__':
-    loop = asyncio.get_event_loop()
-
     try:
         bot = DonationBot()
-        bot.pool = loop.run_until_complete(setup_db())  # add db as attribute
-        setup_logging(bot)
         bot.run(creds.bot_token)  # run bot
 
     except Exception:

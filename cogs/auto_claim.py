@@ -232,5 +232,5 @@ class AutoClaim(commands.Cog):
             return await ctx.send(f"{TICK} Autoclaim command cancelled. Thank you.")
 
 
-def setup(bot):
-    bot.add_cog(AutoClaim(bot))
+async def setup(bot):
+    await bot.add_cog(AutoClaim(bot))

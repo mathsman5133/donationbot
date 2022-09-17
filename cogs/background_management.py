@@ -34,7 +34,7 @@ def seconds_until_5am():
 class BackgroundManagement(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.next_event_starts.start()
+        # self.next_event_starts.start()
         # self.daily_history_updater.start()
         # asyncio.ensure_future(self.sync_temp_event_tasks())
         #self.sync_activity_stats.start()
@@ -43,7 +43,7 @@ class BackgroundManagement(commands.Cog):
         # self.event_player_updater.start()
 
     def cog_unload(self):
-        self.next_event_starts.cancel()
+        # self.next_event_starts.cancel()
         # self.daily_history_updater.cancel()
         for k, v in self._log_tasks:
             v.cancel()
@@ -655,5 +655,5 @@ class BackgroundManagement(commands.Cog):
         await self.bot.join_log_webhook.send(embed=e)
 
 
-def setup(bot):
-    bot.add_cog(BackgroundManagement(bot))
+async def setup(bot):
+    await bot.add_cog(BackgroundManagement(bot))

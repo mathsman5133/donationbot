@@ -82,5 +82,5 @@ class Deprecated(commands.Cog, command_attrs=dict(hidden=True)):
         return
 
 
-def setup(bot):
-    bot.add_cog(Deprecated(bot))
+async def setup(bot):
+    await bot.add_cog(Deprecated(bot))
