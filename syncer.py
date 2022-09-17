@@ -50,7 +50,7 @@ class CustomClan(coc.Clan):
     def members(self):
         return list(self._members.values())
 
-coc_client = coc.login(creds.email, creds.password, client=coc.EventsClient, key_names="test2", throttle_limit=30, key_count=3, scopes=creds.scopes, cache_max_size=None)
+coc_client = coc.EventsClient(client=coc.EventsClient, key_names="test2", throttle_limit=30, key_count=3, scopes=creds.scopes, cache_max_size=None)
 coc_client.clan_cls = CustomClan
 
 intents = discord.Intents.none()
@@ -1449,6 +1449,7 @@ class Syncer:
 
 
 async def main():
+    await coc_client.login(creds.email, creds.password)
     await bot.login(creds.bot_token)
     Syncer().start()
 

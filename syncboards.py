@@ -804,7 +804,7 @@ async def main():
     from bot import setup_db
 
     client = coc.Client(key_names="boards")
-    coc_client = await client.login(creds.email, creds.password)
+    await client.login(creds.email, creds.password)
 
     pool = await setup_db()
 
@@ -821,7 +821,7 @@ async def main():
 
     await stateless_bot.login(creds.bot_token)
 
-    SyncBoards(stateless_bot, start_loop=True, coc_client=coc_client, pool=pool)
+    SyncBoards(stateless_bot, start_loop=True, coc_client=client, pool=pool)
     asyncio.get_event_loop().run_forever()
 
 
