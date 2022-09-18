@@ -44,11 +44,8 @@ class CustomClanMember(coc.ClanMember):
 class CustomClan(coc.Clan):
     def _from_data(self, data: dict) -> None:
         client = self._client
-        self._members = {m['tag']: CustomClanMember(data=m, client=client) for m in data.get("memberList", [])}
+        self._iter_members = (CustomClanMember(data=m, client=client) for m in data.get("memberList", []))
 
-    @coc.utils.cached_property("_cs_members")
-    def members(self):
-        return list(self._members.values())
 
 intents = discord.Intents.none()
 intents.guilds = True
@@ -1190,7 +1187,7 @@ class Syncer:
             maybe_load = []
             async for war in self.coc_client.get_clan_wars(tags):
                 if not (war and war.end_time):
-                    log.info('skipping war %s, clan_tag %s', war, war.clan_tag)
+                    log.debug('skipping war %s, clan_tag %s', war, war.clan_tag)
                     continue
                 if war.end_time.time > now:
                     # create sleeper task
