@@ -1449,7 +1449,7 @@ async def main():
 
         await bot.login(creds.bot_token)
         print("done bot")
-        await asyncio.sleep(5)
+        await asyncio.sleep(1)
 
         coc_client = coc.EventsClient(
             key_names="test2", throttle_limit=30, key_count=3, scopes=creds.scopes,
@@ -1459,8 +1459,9 @@ async def main():
         await coc_client.login(creds.email, creds.password)
 
         print("done coc")
-        await asyncio.sleep(5)
+        await asyncio.sleep(1)
         await Syncer(pool, coc_client).start()
+        asyncio.get_event_loop().run_forever()
         print(coc_client.loop.is_running(), "Loop running?")
 
 
