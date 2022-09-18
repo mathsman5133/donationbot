@@ -26,7 +26,7 @@ from cogs.utils.formatters import LineWrapper
 
 
 log = logging.getLogger(__name__)
-log.setLevel(logging.INFO)
+log.setLevel(logging.DEBUG)
 sentry_sdk.init(creds.SENTRY_KEY)
 
 
@@ -1450,6 +1450,7 @@ async def main():
         coc_client = coc.EventsClient(client=coc.EventsClient, key_names="test2", throttle_limit=30, key_count=3,
                                       scopes=creds.scopes, cache_max_size=None, loop=bot.loop)
         coc_client.clan_cls = CustomClan
+        print(coc_client.loop.is_running(), "Loop running?")
 
         await coc_client.login(creds.email, creds.password)
         await bot.login(creds.bot_token)
