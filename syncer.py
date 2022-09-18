@@ -68,26 +68,24 @@ EVENTS_BEFORE_REFRESHING_LEGEND_BOARD = 3
 
 class Syncer:
     def __init__(self, pool):
-        loop = asyncio.get_event_loop()
         self.pool = pool
 
         self.season_id = None
-        loop.create_task(self.get_season_id())
 
-        self.board_batch_lock = asyncio.Lock(loop=loop)
+        self.board_batch_lock = asyncio.Lock()
         self.board_batch_data = {}
 
-        self.donationlog_batch_lock = asyncio.Lock(loop=loop)
+        self.donationlog_batch_lock = asyncio.Lock()
         self.donationlog_batch_data = []
 
-        self.trophylog_batch_lock = asyncio.Lock(loop=loop)
+        self.trophylog_batch_lock = asyncio.Lock()
         self.trophylog_batch_data = []
 
-        self.last_updated_batch_lock = asyncio.Lock(loop=loop)
+        self.last_updated_batch_lock = asyncio.Lock()
         self.last_updated_tags = set()
         self.last_updated_counter = Counter()
 
-        self.legend_data_lock = asyncio.Lock(loop=loop)
+        self.legend_data_lock = asyncio.Lock()
         self.legend_data = {}
         self.legend_counter = Counter()
         self.legend_day = None
@@ -101,9 +99,10 @@ class Syncer:
         fetch = await self.pool.fetchrow("SELECT id FROM seasons WHERE start < now() ORDER BY start DESC;")
         self.season_id = fetch['id']
 
-    def start(self):
-        self.loop = loop = asyncio.get_event_loop()
-        loop.create_task(self.fetch_webhooks())
+    async def start(self):
+        await self.fetch_webhooks()
+        await self.get_season_id()
+
         self.set_legend_trophies.start()
 
         print("STARTING")
@@ -1452,7 +1451,7 @@ async def main():
 
         await coc_client.login(creds.email, creds.password)
         await bot.login(creds.bot_token)
-        Syncer(pool).start()
+        await Syncer(pool).start()
 
 
 if __name__ == "__main__":

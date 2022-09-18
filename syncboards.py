@@ -412,10 +412,6 @@ class SyncBoards:
         self.session = aiohttp.ClientSession()
         self.throttler = coc.BasicThrottler(1)
 
-        self.loop = asyncio.get_event_loop()
-        self.loop.create_task(self.on_init())
-        self.loop.create_task(self.set_season_id())
-
         self.reset_season_id.add_exception_type(Exception)
         self.reset_season_id.start()
 
@@ -434,6 +430,8 @@ class SyncBoards:
                 payload['id'], payload['token'], session=self.session
             ) for payload in await self.bot.http.guild_webhooks(691779140059267084)
         )
+
+        await self.set_season_id()
 
     async def set_season_id(self):
         fetch = await self.pool.fetchrow("SELECT id FROM seasons WHERE start < now() ORDER BY start DESC;")
@@ -823,7 +821,8 @@ async def main():
         setup_logging(stateless_bot)
         await stateless_bot.login(creds.bot_token)
 
-        SyncBoards(stateless_bot, start_loop=True, coc_client=client, pool=pool)
+        sb = SyncBoards(stateless_bot, start_loop=True, coc_client=client, pool=pool)
+        await sb.on_init()
 
 
 if __name__ == "__main__":
