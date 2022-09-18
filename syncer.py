@@ -127,8 +127,6 @@ class Syncer:
 
         self.load_wars.start()
 
-        coc_client.run_forever()
-
     # @coc_client.event
     @coc.ClientEvents.event_error()
     async def on_event_error(self, exception):
