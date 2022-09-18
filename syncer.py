@@ -1451,7 +1451,7 @@ async def main():
 
         coc_client = coc.EventsClient(
             key_names="test2", throttle_limit=30, key_count=3, scopes=creds.scopes,
-            cache_max_size=None, loop=asyncio.new_event_loop(),
+            cache_max_size=None,
         )
         coc_client.clan_cls = CustomClan
         await coc_client.login(creds.email, creds.password)

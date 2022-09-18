@@ -66,13 +66,6 @@ intents.guild_reactions = True
 intents.members = True
 intents.emojis = True
 
-coc_client = coc.EventsClient(
-    key_names=key_names,
-    throttle_limit=30,
-    key_count=1,
-    key_scopes=creds.scopes,
-    throttler=coc.BatchThrottler,
-)
 
 log = logging.getLogger()
 
@@ -132,6 +125,14 @@ class DonationBot(commands.AutoShardedBot):
 
     async def setup_hook(self):
         setup_logging(bot)
+
+        coc_client = coc.EventsClient(
+            key_names=key_names,
+            throttle_limit=30,
+            key_count=1,
+            key_scopes=creds.scopes,
+            throttler=coc.BatchThrottler,
+        )
 
         await coc_client.login(creds.email, creds.password)
         self.coc = coc_client
