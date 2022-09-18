@@ -64,8 +64,9 @@ EVENTS_BEFORE_REFRESHING_LEGEND_BOARD = 3
 
 
 class Syncer:
-    def __init__(self, pool):
+    def __init__(self, pool, coc_client):
         self.pool = pool
+        self.coc_client = coc_client
 
         self.season_id = None
 
@@ -116,7 +117,7 @@ class Syncer:
             self.maintenance_completed,
             self.dispatch_callbacks,
         )
-        coc_client.add_events(*listeners)
+        self.coc_client.add_events(*listeners)
 
         self.sync_temp_event_tasks.add_exception_type(Exception, BaseException)
         self.sync_temp_event_tasks.start()
@@ -267,7 +268,7 @@ class Syncer:
             s = time.perf_counter()
             fetch = await self.pool.fetch("SELECT DISTINCT(clan_tag) FROM clans WHERE fake_clan = False")
             log.info(f"Setting {len(fetch)} tags to update")
-            coc_client._clan_updates = [n[0] for n in fetch if coc.utils.is_valid_tag(n[0])]
+            self.coc_client._clan_updates = [n[0] for n in fetch if coc.utils.is_valid_tag(n[0])]
         except:
             log.exception("setting clan tags failed")
         else:
@@ -491,7 +492,7 @@ class Syncer:
 
             if config.detailed:
                 if config.seconds > 0:
-                    responses = await get_detailed_log(coc_client, events, raw_events=True)
+                    responses = await get_detailed_log(self.coc_client, events, raw_events=True)
                     # in this case, responses will be in
                     # [(clan_tag, {"exact": [str], "combo": [str], "unknown": [str]})] form.
 
@@ -499,7 +500,7 @@ class Syncer:
                         await self.add_detailed_temp_events(channel_id, clan_tag, items)
                     continue
 
-                embeds = await get_detailed_log(coc_client, events)
+                embeds = await get_detailed_log(self.coc_client, events)
                 for x in embeds:
                     log.debug(f'Dispatching a log to channel (ID {channel_id}), {x}')
 
@@ -859,7 +860,7 @@ class Syncer:
 
         log.info(f'Starting loop for event updates. {len(fetch)} players to update!')
         start = time.perf_counter()
-        async for player in coc_client.get_players((n[0] for n in fetch), update_cache=False):
+        async for player in self.coc_client.get_players((n[0] for n in fetch), update_cache=False):
             to_insert.append(
                 {
                     'player_tag': player.tag,
@@ -945,7 +946,7 @@ class Syncer:
                         DO UPDATE SET clan_tag = $6, best_trophies = $8, legend_trophies = $9
                     """
 
-        member = await coc_client.get_player(member.tag)
+        member = await self.coc_client.get_player(member.tag)
         response = await self.pool.execute(
             player_query,
             member.tag,
@@ -960,7 +961,7 @@ class Syncer:
         )
         log.debug(f"ran player joined for player {member} of clan {clan}")
         return
-        player = await coc_client.get_player(member.tag)
+        player = await self.coc_client.get_player(member.tag)
         player_query = """INSERT INTO players (
                                         player_tag, 
                                         donations, 
@@ -1082,7 +1083,7 @@ class Syncer:
         await asyncio.sleep(war.end_time.seconds_until - 600)
         while True:
             try:
-                new_war = await coc_client.get_clan_war(war.clan_tag)
+                new_war = await self.coc_client.get_clan_war(war.clan_tag)
             except Exception as exc:
                 log.info('exception occured trying to fetch war for %s, exc: %s', war.clan_tag, exc)
                 self.war_tasks.pop(war.clan_tag)
@@ -1178,16 +1179,16 @@ class Syncer:
     @tasks.loop(hours=12.0)
     async def load_wars(self):
         try:
-            while not coc_client._clan_updates:
+            while not self.coc_client._clan_updates:
                 log.info('sleeping until we have some clan tags to run for')
                 await asyncio.sleep(15)
 
-            tags = set(coc_client._clan_updates) - set(self.war_tasks.keys())
+            tags = set(self.coc_client._clan_updates) - set(self.war_tasks.keys())
             log.info('loading %s wars', len(tags))
             now = datetime.datetime.utcnow()
 
             maybe_load = []
-            async for war in coc_client.get_clan_wars(tags):
+            async for war in self.coc_client.get_clan_wars(tags):
                 if not (war and war.end_time):
                     log.info('skipping war %s, clan_tag %s', war, war.clan_tag)
                     continue
@@ -1287,7 +1288,7 @@ class Syncer:
     @tasks.loop(seconds=120.0)
     async def send_stats(self):
         try:
-            stats = coc_client.http.stats.items()
+            stats = self.coc_client.http.stats.items()
             if len(stats) > 2:
                 columns = 2
                 rows = math.ceil(len(stats) / 2)
@@ -1389,7 +1390,7 @@ class Syncer:
                         p.add_lines(get_events_fmt(events_fmt))
 
                         try:
-                            clan = await coc_client.get_clan(clan_tag)
+                            clan = await self.coc_client.get_clan(clan_tag)
                         except coc.NotFound:
                             log.exception(f'{clan_tag} not found')
                             continue
@@ -1452,7 +1453,7 @@ async def main():
 
         await coc_client.login(creds.email, creds.password)
         await bot.login(creds.bot_token)
-        await Syncer(pool).start()
+        await Syncer(pool, coc_client).start()
 
 
 if __name__ == "__main__":
