@@ -822,8 +822,8 @@ async def main():
 
         sb = SyncBoards(stateless_bot, start_loop=True, coc_client=client, pool=pool)
         await sb.on_init()
-        asyncio.get_event_loop().run_forever()
 
 
 if __name__ == "__main__":
     asyncio.get_event_loop().run_until_complete(main())
+    asyncio.get_event_loop().run_forever()
