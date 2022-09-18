@@ -122,7 +122,7 @@ class Syncer:
         # self.sync_temp_event_tasks.add_exception_type(Exception, BaseException)
         # self.sync_temp_event_tasks.start()
 
-        self.load_wars.start()
+        # self.load_wars.start()
 
     # @coc_client.event
     @coc.ClientEvents.event_error()
