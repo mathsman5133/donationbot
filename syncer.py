@@ -1439,20 +1439,19 @@ class Syncer:
 
 
 async def main():
-    async with bot:
-        bot.session = aiohttp.ClientSession()
-        pool = await setup_db()
-        setup_logging(bot)
+    bot.session = aiohttp.ClientSession()
+    pool = await setup_db()
+    setup_logging(bot)
 
-        await bot.login(creds.bot_token)
+    await bot.login(creds.bot_token)
 
-        coc_client = coc.EventsClient(
-            key_names="test2", throttle_limit=30, key_count=3, scopes=creds.scopes,
-            cache_max_size=None,
-        )
-        coc_client.clan_cls = CustomClan
-        await coc_client.login(creds.email, creds.password)
-        await Syncer(pool, coc_client).start()
+    coc_client = coc.EventsClient(
+        key_names="test2", throttle_limit=30, key_count=3, scopes=creds.scopes,
+        cache_max_size=None,
+    )
+    coc_client.clan_cls = CustomClan
+    await coc_client.login(creds.email, creds.password)
+    await Syncer(pool, coc_client).start()
 
 
 if __name__ == "__main__":
