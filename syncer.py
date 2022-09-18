@@ -119,8 +119,8 @@ class Syncer:
         )
         self.coc_client.add_events(*listeners)
 
-        self.sync_temp_event_tasks.add_exception_type(Exception, BaseException)
-        self.sync_temp_event_tasks.start()
+        # self.sync_temp_event_tasks.add_exception_type(Exception, BaseException)
+        # self.sync_temp_event_tasks.start()
 
         self.load_wars.start()
 
@@ -206,7 +206,7 @@ class Syncer:
         except:
             log.exception(f"{channel_id} failed to send {content} {embed}")
 
-    @tasks.loop(seconds=0.0)
+    # @tasks.loop(seconds=0.0)
     async def set_legend_trophies(self):
         log.info('running legend trophies')
         now = datetime.datetime.utcnow()
@@ -818,7 +818,7 @@ class Syncer:
         if new_trophies > old_trophies:
             await self.update(player.tag, player.clan and player.clan.tag)
 
-    @tasks.loop(hours=1)
+    # @tasks.loop(hours=1)
     async def event_player_updater(self):
         query = "SELECT DISTINCT player_tag FROM eventplayers WHERE live = True;"
         fetch = await self.pool.fetch(query)
@@ -1176,7 +1176,7 @@ class Syncer:
             self.war_tasks.pop(new_war.clan_tag)
             return
 
-    @tasks.loop(hours=12.0)
+    # @tasks.loop(hours=12.0)
     async def load_wars(self):
         try:
             while not self.coc_client._clan_updates:
@@ -1285,7 +1285,7 @@ class Syncer:
     async def fetch_webhooks(self):
         bot.error_webhooks = itertools.cycle([await bot.fetch_webhook(id_) for id_ in (749580949968388126, 749580957362946089, 749580961477296138, 749580975511568554, 749580988530556978, 749581056184942603)])
 
-    @tasks.loop(seconds=120.0)
+    # @tasks.loop(seconds=120.0)
     async def send_stats(self):
         try:
             stats = self.coc_client.http.stats.items()
@@ -1314,7 +1314,7 @@ class Syncer:
         except Exception:
             log.exception("sending stats")
 
-    @tasks.loop(hours=1.0)
+    # @tasks.loop(hours=1.0)
     async def sync_temp_event_tasks(self):
         # await bot.wait_until_ready()
         query = """SELECT channel_id, type 
@@ -1449,10 +1449,13 @@ async def main():
 
         await bot.login(creds.bot_token)
 
-        coc_client = coc.EventsClient(client=coc.EventsClient, key_names="test2", throttle_limit=30, key_count=3,
-                                      scopes=creds.scopes, cache_max_size=None, loop=bot.loop)
+        coc_client = coc.EventsClient(
+            key_names="test2", throttle_limit=30, key_count=3, scopes=creds.scopes,
+            cache_max_size=None,
+        )
         coc_client.clan_cls = CustomClan
         await coc_client.login(creds.email, creds.password)
+
         await Syncer(pool, coc_client).start()
         print(coc_client.loop.is_running(), "Loop running?")
 
