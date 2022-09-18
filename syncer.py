@@ -1448,6 +1448,8 @@ async def main():
         setup_logging(bot)
 
         await bot.login(creds.bot_token)
+        print("done bot")
+        await asyncio.sleep(5)
 
         coc_client = coc.EventsClient(
             key_names="test2", throttle_limit=30, key_count=3, scopes=creds.scopes,
@@ -1456,6 +1458,8 @@ async def main():
         coc_client.clan_cls = CustomClan
         await coc_client.login(creds.email, creds.password)
 
+        print("done coc")
+        await asyncio.sleep(5)
         await Syncer(pool, coc_client).start()
         print(coc_client.loop.is_running(), "Loop running?")
 
