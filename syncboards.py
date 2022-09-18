@@ -748,7 +748,6 @@ class SyncBoards:
         except:
             log.exception('failed to flush saved board icons')
 
-
     @tasks.loop(seconds=5.0)
     async def legend_board_reset(self):
         log.info('running legend trophies')

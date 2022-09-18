@@ -50,9 +50,6 @@ class CustomClan(coc.Clan):
     def members(self):
         return list(self._members.values())
 
-coc_client = coc.EventsClient(client=coc.EventsClient, key_names="test2", throttle_limit=30, key_count=3, scopes=creds.scopes, cache_max_size=None)
-coc_client.clan_cls = CustomClan
-
 intents = discord.Intents.none()
 intents.guilds = True
 intents.guild_messages = True
@@ -1448,6 +1445,10 @@ async def main():
         bot.session = aiohttp.ClientSession()
         pool = await setup_db()
         setup_logging(bot)
+
+        coc_client = coc.EventsClient(client=coc.EventsClient, key_names="test2", throttle_limit=30, key_count=3,
+                                      scopes=creds.scopes, cache_max_size=None, loop=bot.loop)
+        coc_client.clan_cls = CustomClan
 
         await coc_client.login(creds.email, creds.password)
         await bot.login(creds.bot_token)
