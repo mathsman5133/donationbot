@@ -822,8 +822,8 @@ async def main():
     await stateless_bot.login(creds.bot_token)
 
     SyncBoards(stateless_bot, start_loop=True, coc_client=client, pool=pool)
-    asyncio.get_running_loop().run_forever()
 
 
 if __name__ == "__main__":
     asyncio.run(main())
+    asyncio.get_running_loop().run_forever()

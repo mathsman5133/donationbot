@@ -1453,8 +1453,7 @@ async def main():
     await bot.login(creds.bot_token)
     Syncer(pool).start()
 
-    asyncio.get_running_loop().run_forever()
-
 
 if __name__ == "__main__":
     asyncio.run(main())
+    asyncio.get_running_loop().run_forever()
