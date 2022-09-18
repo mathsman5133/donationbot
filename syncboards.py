@@ -819,11 +819,11 @@ async def main():
     stateless_bot.session = aiohttp.ClientSession()
     setup_logging(stateless_bot)
 
-    await stateless_bot.login(creds.bot_token)
+    async with stateless_bot:
+        await stateless_bot.login(creds.bot_token)
 
-    SyncBoards(stateless_bot, start_loop=True, coc_client=client, pool=pool)
+        SyncBoards(stateless_bot, start_loop=True, coc_client=client, pool=pool)
 
 
 if __name__ == "__main__":
     asyncio.run(main())
-    asyncio.get_event_loop().run_forever()

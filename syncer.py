@@ -1449,11 +1449,11 @@ async def main():
     pool = await setup_db()
     setup_logging(bot)
 
-    await coc_client.login(creds.email, creds.password)
-    await bot.login(creds.bot_token)
-    Syncer(pool).start()
+    async with bot:
+        await coc_client.login(creds.email, creds.password)
+        await bot.login(creds.bot_token)
+        Syncer(pool).start()
 
 
 if __name__ == "__main__":
     asyncio.run(main())
-    asyncio.get_event_loop().run_forever()
