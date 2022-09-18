@@ -101,7 +101,7 @@ class Syncer:
         await self.fetch_webhooks()
         await self.get_season_id()
 
-        self.set_legend_trophies.start()
+        # self.set_legend_trophies.start()
 
         print("STARTING")
 
