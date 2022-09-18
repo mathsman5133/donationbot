@@ -1445,11 +1445,11 @@ class Syncer:
 
 
 async def main():
-    bot.session = aiohttp.ClientSession()
-    pool = await setup_db()
-    setup_logging(bot)
-
     async with bot:
+        bot.session = aiohttp.ClientSession()
+        pool = await setup_db()
+        setup_logging(bot)
+
         await coc_client.login(creds.email, creds.password)
         await bot.login(creds.bot_token)
         Syncer(pool).start()
