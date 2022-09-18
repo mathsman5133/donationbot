@@ -101,7 +101,7 @@ class Syncer:
         await self.fetch_webhooks()
         await self.get_season_id()
 
-        self.set_legend_trophies.start()
+        # self.set_legend_trophies.start()
 
         print("STARTING")
 
@@ -122,7 +122,7 @@ class Syncer:
         self.sync_temp_event_tasks.add_exception_type(Exception, BaseException)
         self.sync_temp_event_tasks.start()
 
-        self.load_wars.start()
+        # self.load_wars.start()
 
     # @coc_client.event
     @coc.ClientEvents.event_error()
@@ -1448,11 +1448,18 @@ async def main():
         setup_logging(bot)
 
         await bot.login(creds.bot_token)
+        print("done bot")
+        await asyncio.sleep(5)
 
-        coc_client = coc.EventsClient(client=coc.EventsClient, key_names="test2", throttle_limit=30, key_count=3,
-                                      scopes=creds.scopes, cache_max_size=None, loop=bot.loop)
+        coc_client = coc.EventsClient(
+            key_names="test2", throttle_limit=30, key_count=3, scopes=creds.scopes,
+            cache_max_size=None,
+        )
         coc_client.clan_cls = CustomClan
         await coc_client.login(creds.email, creds.password)
+
+        print("done coc")
+        await asyncio.sleep(5)
         await Syncer(pool, coc_client).start()
         print(coc_client.loop.is_running(), "Loop running?")
 
