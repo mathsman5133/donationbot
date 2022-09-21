@@ -39,6 +39,7 @@ class Add(commands.Cog, name="add"):
     add_group = app_commands.Group(name="add", description="Add clans, players, trophy and donationboards, logs and more.")
 
     @add_group.command(name="clan", description="Link a clan to a channel in your server.")
+    @app_commands.describe(clan_tag="The clan tag to add", channel="The channel to add the clan to. Will default to current channel.")
     # @app_commands.checks.has_permissions(manage_guild=True)
     async def add_clan(self, intr: discord.Interaction, clan_tag: str, channel: discord.TextChannel):
         """Link a clan to a channel in your server.
@@ -62,6 +63,7 @@ class Add(commands.Cog, name="add"):
                 :warning: Manage Server
                 """
         await intr.response.defer(thinking=True)
+        channel = channel or intr.channel
 
         real_clan_tag = coc.utils.correct_tag(clan_tag)
         fake_clan_tag = clan_tag.strip() if clan_tag.strip().isdigit() and len(clan_tag) == 6 else None
