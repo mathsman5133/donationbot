@@ -9,6 +9,7 @@ import math
 
 import emoji as pckgemoji
 
+from discord import app_commands
 from discord.ext import commands
 
 from syncboards import emojis, titles, default_sort_by, BOARD_PLACEHOLDER
@@ -28,11 +29,123 @@ custom_emoji = re.compile("<(?P<animated>a?):(?P<name>[a-zA-Z0-9_]{2,32}):(?P<id
 unicode_regex = re.compile(u'(' + u'|'.join(re.escape(u)  for u in sorted(pckgemoji.unicode_codes.EMOJI_ALIAS_UNICODE_ENGLISH.values(), key=len, reverse=True)) + u')')
 
 
-class Add(commands.Cog):
+class Add(commands.GroupCog, name="add"):
     """Add clans, players, trophy and donationboards, logs and more."""
 
     def __init__(self, bot):
         self.bot = bot
+        super().__init__()
+
+    @app_commands.command(name="clan", description="Generate an access token to use on the web editor")
+    @app_commands.checks.has_permissions(manage_guild=True)
+    async def add_clan(self, intr: discord.Interaction, clan_tag: str, channel: discord.TextChannel):
+        """Link a clan to a channel in your server.
+                This will add all accounts in clan to the database, if not already added.
+
+                Note: you must be an Elder or above in-game to add a clan. In order for the bot to verify this, please run `+verify #playertag`
+
+                **Parameters**
+                :key: A discord channel (#mention). If you don't have this, it will use the channel you're in
+                :key: A clan tag
+
+                **Format**
+                :information_source: `+add clan #CLAN_TAG`
+                :information_source: `+add clan #CHANNEL #CLAN_TAG`
+
+                **Example**
+                :white_check_mark: `+add clan #P0LYJC8C`
+                :white_check_mark: `+add clan #trophyboard #P0LYJC8C`
+
+                **Required Permissions**
+                :warning: Manage Server
+                """
+        await intr.response.defer(thinking=True)
+
+        real_clan_tag = coc.utils.correct_tag(clan_tag)
+        fake_clan_tag = clan_tag.strip() if clan_tag.strip().isdigit() and len(clan_tag) == 6 else None
+
+        if not (coc.utils.is_valid_tag(clan_tag) or fake_clan_tag):
+            return await intr.response.send_message("That doesn't look like a proper clan tag. Please try again.")
+
+        clan_tag = fake_clan_tag if fake_clan_tag.isdigit() and len(fake_clan_tag) == 6 else real_clan_tag
+
+        current = await self.bot.pool.fetch("SELECT DISTINCT clan_tag FROM clans WHERE guild_id = $1", intr.guild_id)
+        # if len(current) > 3 and not checks.is_patron_pred(ctx):
+        #     return await ctx.send('You must be a patron to have more than 4 clans claimed per server. '
+        #                           'See more info with `+patron`, or join the support server for more help: '
+        #                           f'{self.bot.support_invite}')
+
+        if await self.bot.pool.fetch("SELECT id FROM clans WHERE clan_tag = $1 AND channel_id = $2", real_clan_tag, channel.id):
+            return await intr.response.send_message('This clan has already been linked to the channel. Please try again.')
+
+        if "#" in real_clan_tag:
+            try:
+                clan = await self.bot.coc.get_clan(real_clan_tag)
+            except coc.NotFound:
+                return await intr.response.send_message(f'Clan not found with `{real_clan_tag}` tag.')
+
+            fetch = await self.bot.pool.fetch("SELECT player_tag FROM players WHERE user_id = $1 AND verified = True", intr.user.id)
+            members = [n for n in (clan.get_member(m['player_tag']) for m in fetch) if n]
+            is_verified = any(
+                member.role in (coc.Role.elder, coc.Role.co_leader, coc.Role.leader) for member in members)
+
+            check = is_verified \
+                    or await self.bot.is_owner(intr.user) \
+                    or real_clan_tag in (n['clan_tag'] for n in current) \
+                    or intr.guild_id in (RCS_GUILD_ID, MONZETTI_GUILD_ID) \
+                    or await helper_check(self.bot, intr.user) is True
+
+            if not check and not fetch:
+                return await intr.response.send_message("Please verify your account before adding a clan: `+verify #playertag`. "
+                                                        "See `+help verify` for more information.\n\n"
+                                                        "This is a security feature of the bot to ensure you are an elder or above of the clan.")
+            if not members and not check:
+                return await intr.response.send_message("Please ensure your verified account(s) are in the clan, and try again.")
+            if members and not check:
+                return await intr.response.send_message("Your verified account(s) are not an elder or above. Please try again.")
+        else:
+            clan = "FakeClan"
+
+        query = "INSERT INTO clans (clan_tag, guild_id, channel_id, clan_name, fake_clan) VALUES ($1, $2, $3, $4, $5)"
+        await self.bot.pool.execute(query, fake_clan_tag or clan.tag, intr.guild_id, channel.id, str(clan), fake_clan_tag is not None)
+
+        if not fake_clan_tag:
+            log.info("Adding clan members, clan %s has %s members", real_clan_tag, len(clan.members))
+            season_id = await self.bot.seasonconfig.get_season_id()
+            query = """INSERT INTO players (
+                                                    player_tag, 
+                                                    donations, 
+                                                    received, 
+                                                    trophies, 
+                                                    start_trophies, 
+                                                    season_id,
+                                                    clan_tag,
+                                                    player_name,
+                                                    best_trophies,
+                                                    legend_trophies
+                                                    ) 
+                                VALUES ($1,$2,$3,$4,$4,$5,$6,$7,$8,$9) 
+                                ON CONFLICT (player_tag, season_id) 
+                                DO UPDATE SET clan_tag = $6
+                            """
+            # async with ctx.db.transaction():
+            async for member in clan.get_detailed_members():
+                log.info("`+add clan`, adding member: %s to clan %s", real_clan_tag, member)
+                await self.bot.pool.execute(
+                    query,
+                    member.tag,
+                    member.donations,
+                    member.received,
+                    member.trophies,
+                    season_id,
+                    clan.tag,
+                    member.name,
+                    member.best_trophies,
+                    member.legend_statistics and member.legend_statistics.legend_trophies or 0
+                )
+
+        await intr.response.send_message(f"👌 {clan} ({fake_clan_tag or clan.tag}) successfully added to {channel.mention}.")
+        self.bot.dispatch('clan_claim', intr, clan)
 
     @commands.group()
     async def add(self, ctx):
