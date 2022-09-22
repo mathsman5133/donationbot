@@ -71,8 +71,6 @@ class Add(commands.Cog, name="add"):
         if not (coc.utils.is_valid_tag(clan_tag) or fake_clan_tag):
             return await intr.response.send_message("That doesn't look like a proper clan tag. Please try again.")
 
-        clan_tag = fake_clan_tag if fake_clan_tag.isdigit() and len(fake_clan_tag) == 6 else real_clan_tag
-
         current = await self.bot.pool.fetch("SELECT DISTINCT clan_tag FROM clans WHERE guild_id = $1", intr.guild_id)
         # if len(current) > 3 and not checks.is_patron_pred(ctx):
         #     return await ctx.send('You must be a patron to have more than 4 clans claimed per server. '
