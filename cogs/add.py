@@ -69,7 +69,7 @@ class Add(commands.Cog, name="add"):
         fake_clan_tag = clan_tag.strip() if clan_tag.strip().isdigit() and len(clan_tag) == 6 else None
 
         if not (coc.utils.is_valid_tag(clan_tag) or fake_clan_tag):
-            return await intr.response.send_message("That doesn't look like a proper clan tag. Please try again.")
+            return await intr.response.edit_original_response("That doesn't look like a proper clan tag. Please try again.")
 
         current = await self.bot.pool.fetch("SELECT DISTINCT clan_tag FROM clans WHERE guild_id = $1", intr.guild_id)
         # if len(current) > 3 and not checks.is_patron_pred(ctx):
@@ -78,13 +78,13 @@ class Add(commands.Cog, name="add"):
         #                           f'{self.bot.support_invite}')
 
         if await self.bot.pool.fetch("SELECT id FROM clans WHERE clan_tag = $1 AND channel_id = $2", real_clan_tag, channel.id):
-            return await intr.response.send_message('This clan has already been linked to the channel. Please try again.')
+            return await intr.response.edit_original_response('This clan has already been linked to the channel. Please try again.')
 
         if "#" in real_clan_tag:
             try:
                 clan = await self.bot.coc.get_clan(real_clan_tag)
             except coc.NotFound:
-                return await intr.response.send_message(f'Clan not found with `{real_clan_tag}` tag.')
+                return await intr.response.edit_original_response(f'Clan not found with `{real_clan_tag}` tag.')
 
             fetch = await self.bot.pool.fetch("SELECT player_tag FROM players WHERE user_id = $1 AND verified = True", intr.user.id)
             members = [n for n in (clan.get_member(m['player_tag']) for m in fetch) if n]
@@ -98,13 +98,13 @@ class Add(commands.Cog, name="add"):
                     or await helper_check(self.bot, intr.user) is True
 
             if not check and not fetch:
-                return await intr.response.send_message("Please verify your account before adding a clan: `+verify #playertag`. "
+                return await intr.response.edit_original_response("Please verify your account before adding a clan: `+verify #playertag`. "
                                                         "See `+help verify` for more information.\n\n"
                                                         "This is a security feature of the bot to ensure you are an elder or above of the clan.")
             if not members and not check:
-                return await intr.response.send_message("Please ensure your verified account(s) are in the clan, and try again.")
+                return await intr.response.edit_original_response("Please ensure your verified account(s) are in the clan, and try again.")
             if members and not check:
-                return await intr.response.send_message("Your verified account(s) are not an elder or above. Please try again.")
+                return await intr.response.edit_original_response("Your verified account(s) are not an elder or above. Please try again.")
         else:
             clan = "FakeClan"
 
@@ -146,7 +146,7 @@ class Add(commands.Cog, name="add"):
                     member.legend_statistics and member.legend_statistics.legend_trophies or 0
                 )
 
-        await intr.response.send_message(f"👌 {clan} ({fake_clan_tag or clan.tag}) successfully added to {channel.mention}.")
+        await intr.response.edit_original_response(f"👌 {clan} ({fake_clan_tag or clan.tag}) successfully added to {channel.mention}.")
         self.bot.dispatch('clan_claim', intr, clan)
 
     # @commands.group()
