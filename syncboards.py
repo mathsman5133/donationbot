@@ -466,17 +466,15 @@ class SyncBoards:
         current_tasks = []
         for n in fetch:
             config = BoardConfig(bot=self.bot, record=n)
-            current_tasks.append(self.loop.create_task(self.run_board(config)))
+            current_tasks.append(asyncio.create_task(self.run_board(config)))
 
         res = await asyncio.gather(*current_tasks)
-        log.info("res is %s", str(res))
 
     async def run_board(self, config):
         try:
-            # async with self.throttler:
-            log.info("updating board for channel: %s, title: %s", config.channel_id, config.title)
-            await self.update_board(config)
-            return 1
+            async with self.throttler:
+                log.info("updating board for channel: %s, title: %s", config.channel_id, config.title)
+                await self.update_board(config)
         except:
             log.exception("board error.... CHANNEL ID: %s", config.channel_id)
 
