@@ -454,11 +454,14 @@ class SyncBoards:
 
     @tasks.loop(seconds=5.0)
     async def update_board_loops(self):
+        log.info("starting loop to update boards")
         if not self.webhooks:
+            log.info("no webhooks, skipping")
             return
 
         fetch = await self.pool.fetch("UPDATE boards SET need_to_update=False WHERE need_to_update=True AND toggle=True RETURNING *")
         self.fake_clan_guilds = {row['guild_id'] for row in await self.pool.fetch("SELECT DISTINCT guild_id FROM clans WHERE fake_clan=True")}
+        log.info("updating %s boards", len(fetch))
 
         current_tasks = []
         for n in fetch:
