@@ -813,19 +813,19 @@ async def main():
 
     stateless_bot = discord.Client(intents=intents)
 
-    async with stateless_bot:
+    # async with stateless_bot:
 
-        client = coc.Client(key_names="boards")
-        await client.login(creds.email, creds.password)
+    client = coc.Client(key_names="boards")
+    await client.login(creds.email, creds.password)
 
-        pool = await setup_db()
+    pool = await setup_db()
 
-        stateless_bot.session = aiohttp.ClientSession()
-        setup_logging(stateless_bot)
-        await stateless_bot.login(creds.bot_token)
+    stateless_bot.session = aiohttp.ClientSession()
+    setup_logging(stateless_bot)
+    await stateless_bot.login(creds.bot_token)
 
-        sb = SyncBoards(stateless_bot, start_loop=True, coc_client=client, pool=pool)
-        await sb.on_init()
+    sb = SyncBoards(stateless_bot, start_loop=True, coc_client=client, pool=pool)
+    await sb.on_init()
 
 
 if __name__ == "__main__":
