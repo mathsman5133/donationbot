@@ -110,7 +110,7 @@ class Info(commands.Cog, name='\u200bInfo'):
     @property
     def welcome_message(self):
         e = discord.Embed(colour=self.bot.colour, description=WELCOME_MESSAGE.format(invite=self.invite_link))
-        e.set_author(name='Hello! I\'m the Donation Tracker!', icon_url=self.bot.user.avatar_url)
+        e.set_author(name='Hello! I\'m the Donation Tracker!', icon_url=self.bot.user.display_avatar.url)
         return e
 
     @app_commands.command(description="Get an invite to add the bot to your server.")
