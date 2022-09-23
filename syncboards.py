@@ -473,6 +473,7 @@ class SyncBoards:
     async def run_board(self, config):
         try:
             async with self.throttler:
+                log.info("updating board for channel: %s, title: %s", config.channel_id, config.title)
                 await self.update_board(config)
         except:
             log.exception("board error.... CHANNEL ID: %s", config.channel_id)
