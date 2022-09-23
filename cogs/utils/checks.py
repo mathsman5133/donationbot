@@ -1,4 +1,6 @@
 import discord
+
+from discord import app_commands
 from discord.ext import commands
 
 PATRON_PERK_ROLES = [605349824472154134, 683559116731318423]
@@ -21,32 +23,32 @@ async def helper_check(bot, user):
             return False
 
 
-async def check_guild_permissions(ctx, perms, check=all):
-    if await ctx.bot.is_owner(ctx.author):
+async def check_guild_permissions(intr, perms, check=all):
+    if await intr.client.is_owner(intr.user):
         return True
-    is_owner = await ctx.bot.is_owner(ctx.author)
+    is_owner = await intr.client.is_owner(intr.user)
     if is_owner:
         return True
 
-    if ctx.guild is None:
+    if intr.guild is None:
         raise commands.CheckFailure('You must be in a guild to run this command!')
-    if ctx.guild.id == 594276321937326091:
+    if intr.guild_id == 594276321937326091:
         # custom message for the support server
         raise commands.CheckFailure("You should run this command in your server! Get the invite link with `+invite`.")
-    if await helper_check(ctx.bot, ctx.author):
+    if await helper_check(intr.client, intr.user):
         return True
 
-    resolved = ctx.author.guild_permissions
+    resolved = intr.user.resolved_permissions
     return check(getattr(resolved, name, None) == value for name, value in perms.items())
 
 
 def manage_guild():
-    async def pred(ctx):
-        perms = await check_guild_permissions(ctx, {'manage_guild': True})
+    async def pred(interaction: discord.Interaction):
+        perms = await check_guild_permissions(interaction, {'manage_guild': True})
         if not perms:
             raise commands.CheckFailure('You must have `Manage Server` permissions to use this command!')
         return True
-    return commands.check(pred)
+    return app_commands.check(pred)
 
 
 def is_patron_pred(ctx):

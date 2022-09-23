@@ -13,6 +13,7 @@ import statistics
 from matplotlib import pyplot as plt
 import numpy as np
 
+from discord import app_commands
 from discord.ext import commands
 from cogs.utils.db_objects import LogConfig, BoardConfig, SlimEventConfig
 from cogs.utils.paginator import Pages, EmbedPages
@@ -112,64 +113,22 @@ class Info(commands.Cog, name='\u200bInfo'):
         e.set_author(name='Hello! I\'m the Donation Tracker!', icon_url=self.bot.user.avatar_url)
         return e
 
-    @commands.command(aliases=['join'])
-    async def invite(self, ctx):
+    @app_commands.command(description="Get an invite to add the bot to your server.")
+    async def invite(self, intr: discord.Interaction):
         """Get an invite to add the bot to your server."""
-        await ctx.send(f'<{self.invite_link}>')
+        await intr.response.send_message(f'<{self.invite_link}>')
 
-    @commands.command()
-    async def support(self, ctx):
+    @app_commands.command(description="Get an invite link to the support server.")
+    async def support(self, intr: discord.Interaction):
         """Get an invite link to the support server."""
-        await ctx.send(f'<{self.support_invite}>')
+        await intr.response.send_message(f'<{self.support_invite}>')
 
-    @commands.command(aliases=['patreon', 'patrons'])
-    async def patron(self, ctx):
-        """Get information about the bot's patreon."""
-        e = discord.Embed(
-            title='Donation Tracker Patrons',
-            colour=self.bot.colour
-        )
-        e.description = 'Patreon provides funds to keep the Donation Tracker servers alive, ' \
-                        'and to enable future development.\n\nTracking donations requires a lot of ' \
-                        'processing power; that\'s how you can help!\n\nAs a patron, ' \
-                        'you will get a few special rewards:\n' \
-                        '• A special hoisted role and a secret patreon channel\n' \
-                        '• Ability to claim more than 4 clans per guild.\n' \
-                        '• The nice warm fuzzy feeling knowing you\'re keeping the ' \
-                        'bot free for everyone else.\n\n' \
-                        '[Link to sign up](https://www.patreon.com/join/donationtracker?)' \
-                        '\n\nThese are our current patrons!\n• '
-        e.description += '\n• '.join(str(n) for n in self.bot.get_guild(594276321937326091).members if
-                                     any(r.id == 605349824472154134 for r in n.roles))
-        await ctx.send(embed=e)
-
-    @commands.command()
-    async def feedback(self, ctx, *, content):
-        """Give feedback on the bot."""
-        e = discord.Embed(title='Feedback', colour=discord.Colour.green())
-        channel = self.bot.get_channel(595384367573106718)
-        if channel is None:
-            return
-
-        e.set_author(name=str(ctx.author), icon_url=ctx.author.avatar_url)
-        e.description = content
-        e.timestamp = ctx.message.created_at
-
-        if ctx.guild is not None:
-            e.add_field(name='Guild', value=f'{ctx.guild.name} (ID: {ctx.guild.id})', inline=False)
-
-        e.add_field(name='Channel', value=f'{ctx.channel} (ID: {ctx.channel.id})', inline=False)
-        e.set_footer(text=f'Author ID: {ctx.author.id}')
-
-        await channel.send(embed=e)
-        await ctx.send(f'{ctx.tick(True)} Successfully sent feedback')
-
-    @commands.command()
-    async def welcome(self, ctx):
+    @app_commands.command()
+    async def welcome(self, intr: discord.Interaction):
         """Displays my welcome message."""
-        await ctx.send(embed=self.welcome_message)
+        await intr.response.send_message(embed=self.welcome_message)
 
-    @commands.command(hidden=True)
+    @commands.command()
     async def ping(self, ctx):
         # stats = self.bot.coc.http.stats
         # med = []
@@ -198,147 +157,6 @@ class Info(commands.Cog, name='\u200bInfo'):
         await ctx.send(f'Pong!\n{fmt}\nAverage Latency: {self.bot.latency*1000:.2f}ms')
         # await ctx.send(f'Pong!\n{fmt}\nAverage Latency: {self.bot.latency*1000:.2f}ms', file=discord.File(b, f'cocapi.png'))
         plt.close()
-
-    @commands.command(hidden=True)
-    @commands.is_owner()
-    async def process(self, ctx):
-        memory_usage = self.process.memory_full_info().uss / 1024 ** 2
-        cpu_usage = self.process.cpu_percent() / psutil.cpu_count()
-        await ctx.send(f'{memory_usage:.2f} MiB\n{cpu_usage:.2f}% CPU')
-
-    @commands.command(hidden=True)
-    @commands.is_owner()
-    async def tasks(self, ctx):
-        task_retriever = asyncio.Task.all_tasks
-        all_tasks = task_retriever(loop=self.bot.loop)
-
-        event_tasks = [
-            t for t in all_tasks
-            if 'Client._run_event' in repr(t) and not t.done()
-        ]
-
-        cogs_directory = os.path.dirname(__file__)
-        tasks_directory = os.path.join('discord', 'ext', 'tasks', 'init.py')
-        inner_tasks = [
-            t for t in all_tasks
-            if cogs_directory in repr(t) or tasks_directory in repr(t)
-        ]
-
-        bad_inner_tasks = ", ".join(hex(id(t)) for t in inner_tasks if t.done() and t._exception is not None)
-        embed = discord.Embed()
-        embed.add_field(name='Inner Tasks',
-                        value=f'Total: {len(inner_tasks)}\nFailed: {bad_inner_tasks or "None"}')
-        embed.add_field(name='Events Waiting', value=f'Total: {len(event_tasks)}', inline=False)
-        await ctx.send(embed=embed)
-
-    @commands.command()
-    async def help(self, ctx, *, query: str = None):
-        if query is None:
-            groups = [
-                ("Clan Tracking Commands", (
-                    "accounts",
-                    "activity bar",
-                    "activity line",
-                    "achievement",
-                    "attacks",
-                    "defenses",
-                    "donations",
-                    "lastonline",
-                    "trophies",
-                    "dump",
-                    "showboard",
-                )),
-                ("Setup Commands", (
-                    "add boards",
-                    "[add|edit|remove] donationboard",
-                    "[add|edit|remove] trophyboard",
-                    "[add|edit|remove] warboard",
-                    "[add|edit|remove] legendboard",
-                    "[add|remove] legendlog",
-                    "[add|edit|remove] donationlog",
-                    "[add|edit|remove] trophylog",
-                    "[add|remove] clan",
-                    "[add|remove] discord",
-                    "[add|remove] emoji",
-                    "edit darkmode",
-                    "edit prefix",
-                    "edit timezone",
-                    "claim",
-                    "autoclaim"
-                )),
-                ("Meta Commands", (
-                    "invite",
-                    "support",
-                    "info [season|clan]",
-                    "patreon",
-                    "welcome"
-                ))
-            ]
-            for group_name, command_names in groups:
-                embed = discord.Embed(
-                    colour=discord.Colour.blue(),
-                )
-                embed.set_author(name=group_name, icon_url=ctx.me.avatar_url)
-                for name in command_names:
-                    if name.startswith("["):
-                        cmd = ctx.bot.get_command("add " + name.split(" ")[1])
-                    else:
-                        cmd = ctx.bot.get_command(name)
-                    if not cmd:
-                        continue
-                    fmt = f"{misc['online']} {cmd.short_doc}"
-
-                    if isinstance(cmd, commands.Group):
-                        fmt += f"\n{misc['idle']}Use `{ctx.prefix}help {name}` for subcommands."
-                    try:
-                        can_run = await cmd.can_run(ctx)
-                    except commands.CheckFailure:
-                        can_run = False
-
-                    if not can_run:
-                        fmt += f"\n{misc['offline']}You don't have the required permissions to run this command."
-
-                    name = ctx.prefix + name
-                    # if cmd.full_parent_name:
-                    #     name += cmd.full_parent_name + " "
-                    # name += cmd.name
-                    name += f" {cmd.signature.replace('[use_channel=False]', '')}"
-
-                    embed.add_field(name=name, value=fmt, inline=False)
-
-                if group_name == "Meta Commands":
-                    embed.add_field(name="Problems? Bug?", value=f"Please join the [Support Server]({self.support_invite})", inline=False)
-                    embed.add_field(name="Feeling generous?", value=f"Please support us on [Patreon](https://www.patreon.com/donationtracker)!")
-
-                await ctx.send(embed=embed)
-
-        else:
-            command = self.bot.get_command(query)
-            if command is None:
-                return await ctx.send(f"No command called `{query}` found.")
-
-            embed = discord.Embed(colour=discord.Colour.blurple())
-
-            if command.full_parent_name:
-                embed.title = ctx.prefix + command.full_parent_name + " " + command.name
-            else:
-                embed.title = ctx.prefix + command.name
-
-            if command.description:
-                embed.description = f'{command.description}\n\n{command.help}'
-            else:
-                embed.description = command.help or 'No help found...'
-
-            if isinstance(command, commands.Group):
-                for subcommand in command.commands:
-                    embed.add_field(name=ctx.prefix + subcommand.full_parent_name + " " + subcommand.name, value=subcommand.short_doc)
-
-            try:
-                await command.can_run(ctx)
-            except commands.CheckAnyFailure:
-                embed.description += f"\n{misc['offline']}You don't have the required permissions to run this command."
-
-            await ctx.send(embed=embed)
 
     @commands.group(invoke_without_command=True)
     async def info(self, ctx, channel: GlobalChannel = None):
@@ -640,76 +458,11 @@ class Info(commands.Cog, name='\u200bInfo'):
 
         await ctx.send(embed=e)
 
-    @info.command(name='event')
-    @requires_config('event', error=True)
-    async def info_event(self, ctx, id_: int = None):
-        """Gives you info about guild's event"""
-        if not ctx.config and not (id_ and await self.bot.is_owner(ctx.author)):
-            return await ctx.send('Please setup an event using `+add event`.')
-        if id_:
-            ctx.config = await ctx.bot.utils.event_config_id(id_)
-
-        e = discord.Embed(colour=self.bot.colour)
-
-        e.set_author(name=f'Event Information: {ctx.config.event_name}')
-
-        now = datetime.utcnow()
-        start_seconds = (ctx.config.start - now).total_seconds()
-        end_seconds = (ctx.config.finish - now).total_seconds()
-
-        fmt = f':name_badge: **Name:** {ctx.config.event_name}\n' \
-              f':id: **Event ID:** {ctx.config.id}\n' \
-              f"{misc['green_clock']} **{'Starts In ' if start_seconds > 0 else 'Started'}:**" \
-              f" {readable_time(start_seconds)}\n" \
-              f":alarm_clock: **{'Ends In' if end_seconds > 0 else 'Ended'}:** {readable_time(end_seconds)}\n"
-
-        channel = self.bot.get_channel(ctx.config.channel_id)
-        data = []
-
-        if channel is None:
-            data.append(f"{misc['number']}**Updates Channel:** #deleted-channel")
-        else:
-            data.append(f"{misc['number']}**Updates Channel:** {channel.mention}")
-
-        query = "SELECT DISTINCT clan_tag, clan_name FROM clans WHERE guild_id = $1 AND in_event=True ORDER BY clan_name;"
-        fetch = await ctx.db.fetch(query, ctx.config.guild_id)
-
-        e.add_field(name='Participating Clans',
-                    value='\n'.join(f"{misc['online']}{n[1]} ({n[0]})" for n in fetch) or 'None Found.'
-                    )
-
-        fmt += '\n'.join(data)
-        e.description = fmt
-
-        await ctx.send(embed=e)
-
-    @info.command(name='events')
-    async def info_events(self, ctx):
-        """GET Event IDs and start/finish times for events."""
-        if not await self.bot.is_owner(ctx.author):
-            query = "SELECT id, event_name, start, finish FROM events WHERE guild_id = $1 ORDER BY start DESC"
-            fetch = await ctx.db.fetch(query, ctx.guild.id)
-        else:
-            query = "SELECT id, event_name, start, finish FROM events ORDER BY start DESC"
-            fetch = await ctx.db.fetch(query)
-
-        table = TabularData()
-        table.set_columns(['ID', 'Name', 'Start', 'Finish'])
-        for n in fetch:
-            table.add_row([n[0], n[1], n[2].strftime('%d-%b-%Y'), n[3].strftime('%d-%b-%Y')])
-
-        e = discord.Embed(colour=self.bot.colour,
-                          description=f'```\n{table.render()}\n```',
-                          title='Event Info',
-                          timestamp=datetime.utcnow()
-                          )
-        await ctx.send(embed=e)
-
-    @info.command(name='season')
-    async def info_season(self, ctx):
+    @app_commands.command(name='season_info')
+    async def info_season(self, intr: discord.Interaction):
         """Get Season IDs and start/finish times and info."""
         query = "SELECT id, start, finish FROM seasons ORDER BY id DESC"
-        fetch = await ctx.db.fetch(query)
+        fetch = await self.bot.pool.fetch(query)
         table = TabularData()
         table.set_columns(['ID', 'Start', 'Finish'])
         for n in fetch:
@@ -723,7 +476,7 @@ class Info(commands.Cog, name='\u200bInfo'):
         e.add_field(name='Current Season',
                     value=readable_time((fetch[0][2] - datetime.utcnow()).total_seconds())[:-4] + ' left',
                     inline=False)
-        await ctx.send(embed=e)
+        await intr.response.send_message(embed=e)
 
     async def say_permissions(self, ctx, member, channel):
         permissions = channel.permissions_for(member)
