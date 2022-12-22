@@ -51,6 +51,7 @@ class PersistentBoardView(discord.ui.View):
         await interaction.response.defer()
 
     async def reaction_action(self, interaction, button):
+        await interaction.response.defer()
         await self.bot.wait_until_ready()
         message_id = interaction.message.id
 
