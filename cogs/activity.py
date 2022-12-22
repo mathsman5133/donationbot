@@ -154,7 +154,7 @@ class Activity(commands.Cog):
         player="The player name to search for.",
         days="The number of days to search for.",
     )
-    async def activity_bar(self, intr: discord.Interaction, clan: str, player: str, days: int):
+    async def activity_bar(self, intr: discord.Interaction, clan: str = None, player: str = None, days: int = 365):
         """Get a graph showing the approximate activity/online times for a clan.
 
         This command will return a graph that is generated from approximate activity readers
@@ -247,7 +247,7 @@ class Activity(commands.Cog):
                                 FROM cte2 
                                 GROUP BY hour_digit
                                 """
-            res2 = await self.bot.pool.fetch(query, fetch['clan_tag'], str(days or 365))
+            res2 = await self.bot.pool.fetch(query, fetch['clan_tag'], str(days))
             res = [(fetch['clan_name'], res2)]
         elif player:
             query = """
@@ -271,7 +271,7 @@ class Activity(commands.Cog):
                     GROUP BY "hour"
                     ORDER BY "hour"
                     """
-            res2 = await self.bot.pool.fetch(query, fetch['player_tag'], str(days or 365))
+            res2 = await self.bot.pool.fetch(query, fetch['player_tag'], str(days))
             res = [(fetch['player_name'], res2)]
         else:
             fetch = None
@@ -334,7 +334,7 @@ class Activity(commands.Cog):
         name="line", description="See long-term changes in activity/online times for a clan or player."
     )
     @app_commands.describe(clan="The clan name to search for", player="The player name to search for.")
-    async def activity_line(self, intr: discord.Interaction, clan: str, player: str):
+    async def activity_line(self, intr: discord.Interaction, clan: str = None, player: str = None):
         """Get a graph showing the change in activity for a clan or player over time.
 
         This command will return a graph that is generated from approximate activity readers
