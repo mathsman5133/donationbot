@@ -28,18 +28,24 @@ HISTORICAL_EMOJI = discord.PartialEmoji(name="historical", id=694812540290465832
 GLOBAL_BOARDS_CHANNEL_ID = 663683345108172830
 
 
-class PersistentView(discord.ui.View):
-    def __init__(self, bot, update_board):
+class PersistentBoardView(discord.ui.View):
+    def __init__(self, bot, update_board, guild_id, channel_id, board_type):
         super().__init__(timeout=None)
         self.bot = bot
         self.update_board = update_board
-        self.add_item(discord.ui.Button(label="Edit Board", url="https://donation-tracker-site.vercel.app/donationboard/594276321937326091?cid=595077004676562944"))
 
-    @discord.ui.button(
-        label='Refresh', style=discord.ButtonStyle.secondary,
-        custom_id='board:donation:595077004676562944:refresh',
-        emoji=REFRESH_EMOJI
-    )
+        self.add_item(discord.ui.Button(
+            label="Refresh",
+            style=discord.ButtonStyle.secondary,
+            custom_id=f"board:{board_type}:{channel_id}:refresh",
+            emoji=REFRESH_EMOJI,
+        ))
+
+        self.add_item(discord.ui.Button(
+            label="Edit Board",
+            url=f"https://donation-tracker-site.vercel.app/{board_type}board/{guild_id}?cid={channel_id}"
+        ))
+
     async def refresh_support(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self.reaction_action(interaction, button)
         await interaction.response.defer()
@@ -91,18 +97,26 @@ class DonationBoard(commands.Cog):
 
         self.board_updater = None
 
-        bot.add_view(PersistentView(self.bot, self.update_board))
         bot.loop.create_task(self.on_init())
 
     async def on_init(self):
         await self.bot.wait_until_ready()
-        self.board_updater = SyncBoards(self.bot, start_loop=False, session=self.bot.session, fake_clan_guilds=self.bot.fake_clan_guilds)
+        self.board_updater = SyncBoards(
+            self.bot, start_loop=False, session=self.bot.session, fake_clan_guilds=self.bot.fake_clan_guilds
+        )
+
+        fetch = await self.bot.pool.fetch("SELECT channel_id, guild_id, type FROM boards WHERE toggle=True")
+        for row in fetch:
+            if row["type"] == "donation":
+                self.bot.add_view(
+                    PersistentBoardView(self.bot, self.update_board, row["guild_id"], row["channel_id"], row["type"])
+                )
 
     @commands.command()
     @commands.is_owner()
-    async def test_button(self, ctx, channel: discord.TextChannel, message_id: int):
+    async def test_button(self, ctx, channel: discord.TextChannel, message_id: int, board_type: str):
         msg = await channel.fetch_message(message_id)
-        await msg.edit(view=PersistentView(self.bot, self.update_board))
+        await msg.edit(view=PersistentBoardView(self.bot, self.update_board, ctx.guild.id, channel.id, board_type))
 
     @commands.command()
     async def rb(self, ctx, *, board_type: str = None):

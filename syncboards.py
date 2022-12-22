@@ -459,9 +459,12 @@ class SyncBoards:
             log.info("no webhooks, skipping")
             return
 
-        fetch = await self.pool.fetch("UPDATE boards SET need_to_update=False WHERE need_to_update=True AND toggle=True RETURNING *")
-        self.fake_clan_guilds = {row['guild_id'] for row in await self.pool.fetch("SELECT DISTINCT guild_id FROM clans WHERE fake_clan=True")}
-        log.info("updating %s boards", len(fetch))
+        try:
+            fetch = await self.pool.fetch("UPDATE boards SET need_to_update=False WHERE need_to_update=True AND toggle=True RETURNING *")
+            self.fake_clan_guilds = {row['guild_id'] for row in await self.pool.fetch("SELECT DISTINCT guild_id FROM clans WHERE fake_clan=True")}
+            log.info("updating %s boards", len(fetch))
+        except Exception as exc:
+            log.exception("failed to fetch boards that need to be updated...", exc_info=exc)
 
         current_tasks = []
         for n in fetch:
