@@ -36,8 +36,6 @@ class CustomButton(discord.ui.Button):
         super().__init__(*args, **kwargs)
 
     async def callback(self, interaction: discord.Interaction):
-        await interaction.response.defer()
-
         await self.bot.wait_until_ready()
         message_id = interaction.message.id
 
@@ -61,6 +59,7 @@ class CustomButton(discord.ui.Button):
 
         config = BoardConfig(bot=self.bot, record=fetch)
         await self.update_board(None, config=config)
+        await interaction.response.defer()
 
 
 class PersistentBoardView(discord.ui.View):
