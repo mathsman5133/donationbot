@@ -880,7 +880,7 @@ class Edit(commands.Cog):
     @app_commands.command(
         name="refresh", description="Manually refresh all players in the database with current statistics from the API."
     )
-    @app_commands.checks.cooldown(1, 60 * 60, key=lambda i: i.intr.guild_id)
+    @app_commands.checks.cooldown(1, 60 * 60, key=lambda i: i.guild_id)
     async def refresh(self, intr: discord.Interaction):
         """Manually refresh all players in the database with current statistics from the API.
 
