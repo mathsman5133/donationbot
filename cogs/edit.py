@@ -877,9 +877,11 @@ class Edit(commands.Cog):
         await ctx.db.execute(query, player_data, await self.bot.seasonconfig.get_season_id())
         await ctx.tick()
 
-    @commands.command()
-    @commands.cooldown(1, 60 * 60, commands.BucketType.guild)
-    async def refresh(self, ctx):
+    @app_commands.command(
+        name="refresh", description="Manually refresh all players in the database with current statistics from the API."
+    )
+    @app_commands.checks.cooldown(1, 60 * 60, key=lambda i: i.intr.guild_id)
+    async def refresh(self, intr: discord.Interaction):
         """Manually refresh all players in the database with current statistics from the API.
 
         Note: this command may take some time, as it will fetch every player from each clan on the server individually.
@@ -893,7 +895,11 @@ class Edit(commands.Cog):
         **Cooldowns**
         :hourglass: You can only call this command once every **1 hour**
         """
-        await ctx.trigger_typing()
+        fetch = await self.bot.pool.fetch("SELECT DISTINCT clan_tag FROM clans WHERE guild_id=$1", intr.guild_id)
+        if not fetch:
+            return await intr.response.send_message("Uh oh, it seems you don't have any clans added. Please add a clan and try again.")
+
+        await intr.response.defer(thinking=True)
 
         query = """UPDATE players SET donations   = public.get_don_rec_max(x.donations, x.donations, players.donations),
                                       received    = public.get_don_rec_max(x.received, x.received, players.received),
@@ -920,9 +926,6 @@ class Edit(commands.Cog):
                    WHERE players.player_tag = x.player_tag
                    AND players.season_id = $2                      
                 """
-        fetch = await ctx.db.fetch("SELECT DISTINCT clan_tag FROM clans WHERE guild_id=$1", ctx.guild.id)
-        if not fetch:
-            return await ctx.send("Uh oh, it seems you don't have any clans added. Please add a clan and try again.")
         clan_tags = [row['clan_tag'] for row in fetch]
 
         log.info('running +refresh for %s', clan_tags)
@@ -951,22 +954,24 @@ class Edit(commands.Cog):
         log.info('+refresh took %sms to fetch %s players', (pc() - s)*1000, len(player_tags))
 
         s = pc()
-        query3 = "UPDATE players SET clan_tag = '' WHERE clan_tag = ANY($1::TEXT[]) AND NOT player_tag = ANY($2::TEXT[]) AND season_id=$3"
-        left_clan_count = await ctx.db.execute(query3, clan_tags, player_tags, season_id)
+        query3 = "UPDATE players SET clan_tag = '' WHERE clan_tag = ANY($1::TEXT[]) " \
+                 "AND NOT player_tag = ANY($2::TEXT[]) AND season_id=$3"
+        left_clan_count = await self.bot.pool.execute(query3, clan_tags, player_tags, season_id)
         log.info('+refresh took %sms to set clan tags to null for %s', (pc() - s)*1000, left_clan_count)
 
         s = pc()
-        update_players_count = await ctx.db.execute(query, players, season_id)
+        update_players_count = await self.bot.pool.execute(query, players, season_id)
         log.info('+refresh took %sms to update %s players', (pc() - s)*1000, update_players_count)
 
-        boards = await ctx.db.execute("UPDATE boards SET need_to_update=True WHERE guild_id=$1", ctx.guild.id)
+        boards = await self.bot.pool.execute("UPDATE boards SET need_to_update=True WHERE guild_id=$1", intr.guild_id)
 
-        await ctx.send("All done - I've queued the boards to be updated soon, too.\n\n"
-                       f"I updated:\n"
-                       f"- {len(clan_tags)} Clans\n"
-                       f"- {len(players)} Players\n"
-                       f"- {boards.split(' ')[-1]} Boards\n"
-                       )
+        await intr.edit_original_response(
+            content="All done - I've queued the boards to be updated soon, too.\n\n"
+                    f"I updated:\n"
+                    f"- {len(clan_tags)} Clans\n"
+                    f"- {len(players)} Players\n"
+                    f"- {boards.split(' ')[-1]} Boards\n"
+        )
 
     @commands.command(hidden=True)
     @commands.is_owner()
