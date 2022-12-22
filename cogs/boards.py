@@ -117,6 +117,12 @@ class DonationBoard(commands.Cog):
     async def test_button(self, ctx, channel: discord.TextChannel, message_id: int, board_type: str):
         msg = await channel.fetch_message(message_id)
         await msg.edit(view=PersistentBoardView(self.bot, self.update_board, ctx.guild.id, channel.id, board_type))
+        try:
+            await msg.clear_reactions()
+        except:
+            await ctx.send("No permission to clear reactions.")
+        else:
+            await ctx.send("Done.")
 
     @commands.command()
     async def rb(self, ctx, *, board_type: str = None):
