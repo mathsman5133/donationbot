@@ -28,30 +28,16 @@ HISTORICAL_EMOJI = discord.PartialEmoji(name="historical", id=694812540290465832
 GLOBAL_BOARDS_CHANNEL_ID = 663683345108172830
 
 
-class PersistentBoardView(discord.ui.View):
-    def __init__(self, bot, update_board, guild_id, channel_id, board_type):
-        super().__init__(timeout=None)
-        self.bot = bot
-        self.update_board = update_board
+class CustomButton(discord.ui.Button):
+    def __init__(self, *args, **kwargs):
+        self.bot = kwargs.pop("bot")
+        self.update_board = kwargs.pop("update_board")
 
-        self.add_item(discord.ui.Button(
-            label="Refresh",
-            style=discord.ButtonStyle.secondary,
-            custom_id=f"board:{board_type}:{channel_id}:refresh",
-            emoji=REFRESH_EMOJI,
-        ))
+        super().__init__(*args, **kwargs)
 
-        self.add_item(discord.ui.Button(
-            label="Edit Board",
-            url=f"https://donation-tracker-site.vercel.app/{board_type}board/{guild_id}?cid={channel_id}"
-        ))
-
-    async def refresh_support(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await self.reaction_action(interaction, button)
+    async def callback(self, interaction: discord.Interaction):
         await interaction.response.defer()
 
-    async def reaction_action(self, interaction, button):
-        await interaction.response.defer()
         await self.bot.wait_until_ready()
         message_id = interaction.message.id
 
@@ -60,13 +46,13 @@ class PersistentBoardView(discord.ui.View):
         if not fetch:
             return
 
-        if button.label == "Previous Page":
+        if self.label == "Previous Page":
             fetch = await self.bot.pool.fetchrow('UPDATE boards SET page = page + 1, toggle=True WHERE message_id = $1 RETURNING *', message_id)
 
-        elif button.label == "Next Page":
+        elif self.label == "Next Page":
             fetch = await self.bot.pool.fetchrow('UPDATE boards SET page = page - 1, toggle=True WHERE message_id = $1 AND page > 1 RETURNING *', message_id)
 
-        elif button.label == "Refresh":
+        elif self.label == "Refresh":
             query = "UPDATE boards SET page=1, season_id=0, toggle=True WHERE message_id = $1 RETURNING *"
             fetch = await self.bot.pool.fetchrow(query, message_id)
 
@@ -75,6 +61,24 @@ class PersistentBoardView(discord.ui.View):
 
         config = BoardConfig(bot=self.bot, record=fetch)
         await self.update_board(None, config=config)
+
+
+class PersistentBoardView(discord.ui.View):
+    def __init__(self, bot, update_board, guild_id, channel_id, board_type):
+        super().__init__(timeout=None)
+        self.add_item(CustomButton(
+            label="Refresh",
+            style=discord.ButtonStyle.secondary,
+            custom_id=f"board:{board_type}:{channel_id}:refresh",
+            emoji=REFRESH_EMOJI,
+            bot=bot,
+            update_board=update_board
+        ))
+
+        self.add_item(discord.ui.Button(
+            label="Edit Board",
+            url=f"https://donation-tracker-site.vercel.app/{board_type}board/{guild_id}?cid={channel_id}"
+        ))
 
 
 class DonationBoard(commands.Cog):
