@@ -721,7 +721,7 @@ class SyncBoards:
         logged_board_message = await next(self.webhooks).send(
             perf_log, file=discord.File(render, f'{config.type}board.png'), wait=True
         )
-        embed = discord.Embed(timestamp=datetime.utcnow())
+        embed = discord.Embed(timestamp=discord.utils.utcnow())
         embed.set_image(url=logged_board_message.attachments[0].url)
         embed.set_footer(text="Last Updated", icon_url="https://cdn.discordapp.com/avatars/427301910291415051/8fd702a4bbec20941c72bc651279c05c.webp?size=1024")
 
