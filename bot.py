@@ -56,8 +56,6 @@ else:
     key_names = 'windows'
 
 
-links_client = discordlinks.login(creds.links_username, creds.links_password)
-
 description = "A simple discord bot to track donations of clan families in clash of clans."
 intents = discord.Intents.none()
 intents.guilds = True
@@ -105,8 +103,6 @@ class DonationBot(commands.AutoShardedBot):
 
         self.colour = discord.Colour.blurple()
 
-        self.links = links_client
-
         self.client_id = creds.client_id
         self.dbl_token = creds.dbl_token
         self.owner_ids = {230214242618441728, 251150854571163648}  # maths, tuba
@@ -137,6 +133,8 @@ class DonationBot(commands.AutoShardedBot):
         await coc_client.login(creds.email, creds.password)
         self.coc = coc_client
         self.pool = await setup_db()
+
+        self.links = await discordlinks.login(creds.links_username, creds.links_password)
 
         for e in initial_extensions:
             try:
