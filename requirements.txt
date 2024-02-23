@@ -10,3 +10,7 @@ numpy
 sentry-sdk
 lru-dict
 pytz
+emoji==1.5.0
+google-cloud-logging
+fuzzywuzzy
+seaborn

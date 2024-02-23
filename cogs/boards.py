@@ -90,7 +90,7 @@ class DonationBoard(commands.Cog):
 
         self._to_be_deleted = set()
 
-        self._batch_lock = asyncio.Lock(loop=bot.loop)
+        self._batch_lock = asyncio.Lock()
         self._data_batch = {}
 
         self.tags_to_update = set()
