@@ -7,7 +7,6 @@ import math
 import itertools
 import sys
 from google.cloud import logging as glogging
-from oauth2client.service_account import ServiceAccountCredentials
 
 def setup_logging(bot, test_syncer=False):
     google_log_client = glogging.Client(project='donationbot')
