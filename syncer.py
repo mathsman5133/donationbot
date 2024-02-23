@@ -1446,7 +1446,7 @@ async def main():
     await bot.login(creds.bot_token)
 
     coc_client = coc.EventsClient(
-        key_names="test2", throttle_limit=30, key_count=3, scopes=creds.scopes,
+        key_names="donbot_syncer", throttle_limit=30, key_count=3, scopes=creds.scopes,
         cache_max_size=None,
     )
     coc_client.clan_cls = CustomClan

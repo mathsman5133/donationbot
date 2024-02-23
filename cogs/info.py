@@ -202,7 +202,7 @@ class Info(commands.Cog, name='\u200bInfo'):
                 continue
 
             embed = discord.Embed(colour=self.bot.colour, description="")
-            embed.set_author(name=f"Info for #{channel}", icon_url=guild.me.avatar_url)
+            embed.set_author(name=f"Info for #{channel}", icon_url=guild.me.avatar.url)
 
             donationlog = await self.bot.utils.log_config(channel.id, "donation")
             if donationlog:

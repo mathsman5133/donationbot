@@ -46,10 +46,10 @@ if creds.live and not beta:
         )
     )
     command_prefix = None
-    key_names = 'test'
+    key_names = 'donbot_bot'
 elif beta:
     command_prefix = '//'
-    key_names = 'test'
+    key_names = 'donbot_bot'
     creds.bot_token = creds.beta_bot_token
 else:
     command_prefix = '//'
@@ -104,8 +104,7 @@ class DonationBot(commands.AutoShardedBot):
         self.colour = discord.Colour.blurple()
 
         self.client_id = creds.client_id
-        self.dbl_token = creds.dbl_token
-        self.owner_ids = {230214242618441728, 251150854571163648}  # maths, tuba
+        self.owner_ids = {230214242618441728, 251150854571163648, 275020657312530434}  # maths, tuba
         self.locked_guilds = set()
         self.session = aiohttp.ClientSession()
 

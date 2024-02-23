@@ -80,7 +80,7 @@ async def error_handler(ctx, error):
         await ctx.send(embed=e)
         return
 
-    await ctx.bot.error_webhook.send(embed=e)
+    # await ctx.bot.error_webhook.send(embed=e)
     try:
         await ctx.send('Uh oh! Something broke. This error has been reported; '
                        'the owner is working on it. Please join the support server: '
