@@ -389,6 +389,8 @@ header {
         s = time.perf_counter()
         stdout, stderr = await proc.communicate(input=self.html.encode('utf-8'))
         log.debug((time.perf_counter() - s)*1000)
+        if stderr:
+            log.error("Board creation for channel %s, error: %s", 'test', stderr)
         b = io.BytesIO(stdout)
         b.seek(0)
         return b
