@@ -382,7 +382,7 @@ header {
 
         s = time.perf_counter()
         proc = await asyncio.create_subprocess_shell(
-            "wkhtmltoimage - -", stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
+            "wkhtmltoimage --enable-local-file-access - -", stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
             stdin=asyncio.subprocess.PIPE,
         )
         log.debug((time.perf_counter() - s)*1000)
