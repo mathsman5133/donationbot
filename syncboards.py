@@ -818,7 +818,7 @@ async def main():
 
     # async with stateless_bot:
 
-    client = coc.Client(key_names="boards")
+    client = coc.Client(key_names="donbot_syncer")
     await client.login(creds.email, creds.password)
 
     pool = await setup_db()
