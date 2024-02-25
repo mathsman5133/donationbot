@@ -57,9 +57,10 @@ class CustomButton(discord.ui.Button):
         if not fetch:
             return
 
+        await interaction.response.defer()
+
         config = BoardConfig(bot=self.bot, record=fetch)
         await self.update_board(None, config=config)
-        await interaction.response.defer()
 
 
 class PersistentBoardView(discord.ui.View):
