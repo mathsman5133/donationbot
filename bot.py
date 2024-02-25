@@ -180,6 +180,9 @@ class DonationBot(commands.AutoShardedBot):
 
         await self.process_commands(message)
 
+    async def on_interaction(self, interaction: discord.Interaction):
+        log.info("New interaction, author: %s, channel: %s, name: %s", interaction.user.name, interaction.channel.name, interaction.namespace)
+
     async def process_commands(self, message):
         # we have a couple attributes to add to context, lets add them now (easy db connection etc.)
         ctx = await self.get_context(message, cls=context.Context)
