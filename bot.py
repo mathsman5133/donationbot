@@ -20,6 +20,7 @@ from discord.ext import commands
 from botlog import setup_logging, add_hooks
 from cogs.utils import context
 from cogs.utils.error_handler import error_handler, discord_event_error
+from cogs.utils.command_tree import CustomCommandTree
 
 sentry_sdk.init(creds.SENTRY_KEY)
 initial_extensions = [
@@ -95,9 +96,17 @@ async def setup_db():
 
 class DonationBot(commands.AutoShardedBot):
     def __init__(self):
-        super().__init__(command_prefix=get_pref, case_insensitive=True,
-                         description=description, pm_help=None, help_attrs=dict(hidden=True),
-                         intents=intents, chunk_guilds_at_startup=False, allowed_mentions=discord.AllowedMentions.none())
+        super().__init__(
+            command_prefix=get_pref,
+            case_insensitive=True,
+            description=description,
+            pm_help=None,
+            help_attrs=dict(hidden=True),
+            intents=intents,
+            chunk_guilds_at_startup=False,
+            allowed_mentions=discord.AllowedMentions.none(),
+            tree_cls=CustomCommandTree,
+        )
 
         self.prefixes = dict()
 

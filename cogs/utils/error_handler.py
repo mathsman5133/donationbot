@@ -39,6 +39,7 @@ async def error_handler(ctx, error):
     if isinstance(error, commands.CommandOnCooldown):
         if await ctx.bot.is_owner(ctx.author):
             return await ctx.reinvoke()
+
         time = formatters.readable_time(error.retry_after)
         log.info('command raised cooldown error: %s', ctx.invoked_with)
         return await ctx.send(f'You\'re on cooldown. Please try again in: {time}')
