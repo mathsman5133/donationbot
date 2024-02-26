@@ -39,6 +39,7 @@ class CustomClanMember(coc.ClanMember):
         self.donations = data_get("donations")
         self.received = data_get("donationsReceived")
         self.league_id = data_get("league", {}).get("id", None)
+        self.town_hall = data_get("townHallLevel")
 
 
 class CustomClan(coc.Clan):
