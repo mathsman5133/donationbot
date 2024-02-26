@@ -555,9 +555,10 @@ class Syncer:
                                       league_id = x.league_id,
                                       clan_tag  = x.clan_tag,
                                       player_name = x.player_name,
-                                      best_trophies = public.get_best_trophies(x.trophies, players.best_trophies)
+                                      best_trophies = public.get_best_trophies(x.trophies, players.best_trophies),
+                                      townhall = x.townhall
                         FROM(
-                            SELECT x.player_tag, x.old_dons, x.new_dons, x.old_rec, x.new_rec, x.trophies, x.league_id, x.clan_tag, x.player_name
+                            SELECT x.player_tag, x.old_dons, x.new_dons, x.old_rec, x.new_rec, x.trophies, x.league_id, x.clan_tag, x.player_name, x.townhall
                                 FROM jsonb_to_recordset($1::jsonb)
                             AS x(player_tag TEXT, 
                                  old_dons INTEGER, 
@@ -566,6 +567,7 @@ class Syncer:
                                  new_rec INTEGER,
                                  trophies INTEGER,
                                  league_id INTEGER,
+                                 townhall INTEGER,
                                  clan_tag TEXT,
                                  player_name TEXT
                                  )
@@ -702,6 +704,7 @@ class Syncer:
                     'new_rec': player.received,
                     'trophies': player.trophies,
                     'league_id': player.league_id,
+                    'townhall': player.town_hall,
                     'clan_tag': player.clan and player.clan.tag,
                     'player_name': player.name,
                     'player_tag': player.tag,
@@ -744,6 +747,7 @@ class Syncer:
                     'new_rec': new_received,
                     'trophies': player.trophies,
                     'league_id': player.league_id,
+                    'townhall': player.town_hall,
                     'clan_tag': player.clan and player.clan.tag,
                     'player_name': player.name,
                     'player_tag': player.tag,
@@ -783,6 +787,7 @@ class Syncer:
                     'new_rec': player.received,
                     'trophies': new_trophies,
                     'league_id': player.league_id,
+                    'townhall': player.town_hall,
                     'clan_tag': player.clan and player.clan.tag,
                     'player_name': player.name
                 }
