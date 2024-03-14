@@ -1,7 +1,7 @@
 while true
 do
   export GOOGLE_APPLICATION_CREDENTIALS=~/donationbot/donationbot-edea027e4e1c.json
-  source ~/donbotvenv/bin/activate
+  source ~/venv/bin/activate
   cd ~/donationbot
   python3 syncboards.py
   echo `date`" Boards Stopped"
