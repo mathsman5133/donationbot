@@ -158,6 +158,7 @@ class EditBoardModal(discord.ui.Modal, title="Edit Board"):
         self.add_item(self.perpage_input)
         self.add_item(self.sortby_input)
         self.add_item(self.iconurl_input)
+        super().__init__()
 
     async def on_submit(self, interaction: Interaction, /) -> None:
         query = """UPDATE boards SET title=$1,
