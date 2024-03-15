@@ -7,6 +7,15 @@ I may have faced, *why* I do something how I do it, referring to applicable sect
 
 Due to the dynamic nature of an open-source repository, any code-links I share will be hardcoded and may become stale as the bot progresses.
 
+# Installing Tips
+Installation is pretty straight forward. Some rough steps are below.
+
+Requirements (roughly in order of priority to get stuff working):
+- Python 3 (I use 3.11, any recent version >3.8 should be fine)
+- Install `requirements.txt` with pip
+- Postgres (I use 16, anything recent-ish should be fine)
+- wkhtmltoimage (AKA wkhtmltopdf, the actual package you're after is wkhtmltox - find the latest one [here](https://github.com/wkhtmltopdf/packaging/releases). Be careful about choosing the right package for your architecture!)
+
 
 # 
 ### Interacting with the Clash of Clans API.
