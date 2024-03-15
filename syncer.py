@@ -1410,13 +1410,6 @@ class Syncer:
                             embeds.append(e)
 
                     for n in embeds:
-                        bot.message_log.log_struct(
-                            dict(
-                                guild_id=config.guild_id,
-                                channel_id=channel_id,
-                                type='{}log'.format(type_),
-                            )
-                        )
                         asyncio.ensure_future(self.safe_send(config.channel_id, embed=n))
 
                 else:
@@ -1427,13 +1420,6 @@ class Syncer:
                     for n in fetch:
                         p.add_lines(n[0].split("\n"))
                     for page in p.pages:
-                        bot.message_log.log_struct(
-                            dict(
-                                guild_id=config.guild_id,
-                                channel_id=channel_id,
-                                type='{}log'.format(type_),
-                            )
-                        )
                         asyncio.ensure_future(self.safe_send(config.channel_id, page))
 
         except asyncio.CancelledError:

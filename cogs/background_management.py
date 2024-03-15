@@ -516,19 +516,6 @@ class BackgroundManagement(commands.Cog):
     async def on_command(self, ctx):
         command = ctx.command.qualified_name
 
-        self.bot.command_log.log_struct(
-            dict(
-                guild_id=ctx.guild.id,
-                guild_name=ctx.guild.name,
-                channel_id=ctx.channel.id,
-                channel_name=ctx.channel.name,
-                author=str(ctx.author).replace(',', ';').replace('\n', ';'),
-                author_id=ctx.author.id,
-                command=command,
-                shard=ctx.guild.shard_id
-            )
-        )
-
         self.bot.command_stats[command] += 1
         message = ctx.message
         if ctx.guild is None:
@@ -578,15 +565,6 @@ class BackgroundManagement(commands.Cog):
         # await self.bot.background.sync_temp_event_tasks()
 
     async def send_guild_stats(self, e, guild):
-        self.bot.guild_log.log_struct(
-            dict(
-                guild_id=guild.id,
-                guild_name=guild.name,
-                shard=guild.shard_id,
-                added='New Guild' in e.title,
-            )
-        )
-
         e.add_field(name='Name', value=guild.name)
         e.add_field(name='ID', value=guild.id)
         e.add_field(name='Owner', value=f'{guild.owner} (ID: {guild.owner and guild.owner.id})')
@@ -607,18 +585,6 @@ class BackgroundManagement(commands.Cog):
         await self.bot.join_log_webhook.send(embed=e)
 
     async def send_claim_clan_stats(self, e, clan, guild):
-        self.bot.clan_log.log_struct(
-            dict(
-                clan_name=str(clan),
-                clan_tag=clan and clan.tag,
-                guild_id=guild.id,
-                guild_name=guild.name,
-                shard=guild.shard_id,
-                added='Claimed' in e.title,
-                bot_added=str(guild.me.joined_at),
-            )
-        )
-
         e.add_field(name='Name', value=str(clan))
         e.add_field(name='Tag', value=clan and clan.tag)
 

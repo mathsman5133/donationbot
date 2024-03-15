@@ -5,21 +5,8 @@ import logging
 import logging.handlers
 import math
 import itertools
-import sys
-from google.cloud import logging as glogging
 
 def setup_logging(bot, test_syncer=False):
-    google_log_client = glogging.Client(project='donationbot')
-    google_log_client.setup_logging()
-
-    bot.message_log = google_log_client.logger('messages')
-
-    bot.command_log = google_log_client.logger('commands')
-    bot.guild_log = google_log_client.logger('guilds')
-    bot.clan_log = google_log_client.logger('clans')
-    bot.google_logger = google_log_client.logger('syncer')
-    bot.board_log = google_log_client.logger('boards')
-
     logging.getLogger('discord').setLevel(logging.INFO)
     logging.getLogger('discord.http').setLevel(logging.WARNING)
     logging.getLogger('discord.state').setLevel(logging.WARNING)

@@ -703,13 +703,6 @@ class SyncBoards:
                    f"Build Image Perf: {s2 * 1000}ms\n" \
                    f"Channel: {config.channel_id}\n" \
                    f"Guild: {config.guild_id}"
-        self.bot.board_log.log_struct(dict(
-            perf_counter=(time.perf_counter() - start) * 1000,
-            build_image_perf=s2*1000,
-            channel_id=config.channel_id,
-            guild_id=config.guild_id,
-            type=config.type
-        ))
         if divert_to:
             log.info('diverting board to %s channel_id', divert_to)
             try:
