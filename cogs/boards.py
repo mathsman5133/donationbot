@@ -39,6 +39,7 @@ class CustomButton(discord.ui.Button):
         super().__init__(*args, **kwargs)
 
     async def callback(self, interaction: discord.Interaction):
+        log.info("calling callback")
         # await self.bot.wait_until_ready()
         message_id = interaction.message.id
 
@@ -61,6 +62,7 @@ class CustomButton(discord.ui.Button):
             fetch = await self.bot.pool.fetchrow(query, message_id)
 
         elif self.label == "Edit Board":
+            log.info("calling send modal")
             config = BoardConfig(bot=self.bot, record=fetch)
             await interaction.response.send_modal(EditBoardModal(self.bot, config))
             return
