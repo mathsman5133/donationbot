@@ -284,11 +284,13 @@ class DonationBoard(commands.Cog):
         )
 
         fetch = await self.bot.pool.fetch("SELECT channel_id, guild_id, type FROM boards WHERE toggle=True")
+        log.info(f"Initialising button views for {len(fetch)} boards")
         for row in fetch:
             if row["type"] == "donation":
                 self.bot.add_view(
                     PersistentBoardView(self.bot, self.update_board, row["guild_id"], row["channel_id"], row["type"])
                 )
+        log.info("Finished")
 
     @commands.command()
     @commands.is_owner()
