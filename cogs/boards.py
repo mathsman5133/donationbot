@@ -135,16 +135,15 @@ class EditBoardModal(discord.ui.Modal, title="Edit Board"):
             default=self.config.title,
             required=False
         )
-
         self.perpage_input = discord.ui.TextInput(
-            label=f"Sort by ({ValidBoardSorting.get_human_readable(self.config.type)}), or blank for default.",
-            placeholder=ValidBoardSorting.reverseparse(self.config.type, self.config.sort_by),
+            label="Players per page",
+            placeholder="Enter a number (e.g. 20), or leave blank for default.",
+            default=self.config.per_page(),
             required=False
         )
         self.sortby_input = discord.ui.TextInput(
-            label="Players per page",
-            placeholder="Enter a number (e.g. 20), or leave blank for default.",
-            default=self.config.render_per_page(),
+            label=f"Sort by ({ValidBoardSorting.get_human_readable(self.config.type)}), or blank for default.",
+            placeholder=ValidBoardSorting.reverseparse(self.config.type, self.config.sort_by),
             required=False
         )
         self.iconurl_input = discord.ui.TextInput(
@@ -217,7 +216,7 @@ class PersistentBoardView(discord.ui.View):
             emoji=LEFT_EMOJI,
             bot=bot,
             update_board=update_board,
-            row=0,
+            row=1,
         ))
 
         self.add_item(CustomButton(
@@ -227,7 +226,7 @@ class PersistentBoardView(discord.ui.View):
             emoji=RIGHT_EMOJI,
             bot=bot,
             update_board=update_board,
-            row=0,
+            row=1,
         ))
 
 
