@@ -39,7 +39,7 @@ class CustomButton(discord.ui.Button):
         super().__init__(*args, **kwargs)
 
     async def callback(self, interaction: discord.Interaction):
-        await self.bot.wait_until_ready()
+        # await self.bot.wait_until_ready()
         message_id = interaction.message.id
 
         query = "SELECT * FROM boards WHERE message_id = $1"
