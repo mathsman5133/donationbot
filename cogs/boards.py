@@ -47,7 +47,7 @@ class CustomButton(discord.ui.Button):
         if not fetch:
             return
 
-        if self.label == "Previous Page":
+        if self.label == "Previous":
             fetch = await self.bot.pool.fetchrow('UPDATE boards SET page = page + 1, toggle=True WHERE message_id = $1 RETURNING *', message_id)
 
         elif self.label == "Next Page":
@@ -138,7 +138,7 @@ class EditBoardModal(discord.ui.Modal, title="Edit Board"):
         self.perpage_input = discord.ui.TextInput(
             label="Players per page",
             placeholder="Enter a number (e.g. 20), or leave blank for default.",
-            default=self.config.per_page(),
+            default=self.config.per_page,
             required=False
         )
         self.sortby_input = discord.ui.TextInput(
@@ -220,7 +220,7 @@ class PersistentBoardView(discord.ui.View):
         ))
 
         self.add_item(CustomButton(
-            label="Next",
+            label="Next Page",
             style=discord.ButtonStyle.secondary,
             custom_id=f"board:{board_type}:{channel_id}:next",
             emoji=RIGHT_EMOJI,
