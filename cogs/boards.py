@@ -5,6 +5,8 @@ import discord
 import logging
 
 from collections import namedtuple
+
+from discord import Interaction
 from discord.ext import commands
 
 from cogs.add import BOARD_PLACEHOLDER
@@ -18,6 +20,7 @@ MockPlayer = namedtuple('MockPlayer', 'clan name')
 mock = MockPlayer('Unknown', 'Unknown')
 
 REFRESH_EMOJI = discord.PartialEmoji(name="refresh", id=694395354841350254, animated=False)
+GEAR_EMOJI = discord.PartialEmoji(name="dtgear", id=1218024515578105907, animated=False)
 LEFT_EMOJI = discord.PartialEmoji(name="\N{BLACK LEFT-POINTING TRIANGLE}\ufe0f", id=None, animated=False)    # [:arrow_left:]
 RIGHT_EMOJI = discord.PartialEmoji(name="\N{BLACK RIGHT-POINTING TRIANGLE}\ufe0f", id=None, animated=False)   # [:arrow_right:]
 PERCENTAGE_EMOJI = discord.PartialEmoji(name="percent", id=694463772135260169, animated=False)
@@ -54,10 +57,131 @@ class CustomButton(discord.ui.Button):
             query = "UPDATE boards SET page=1, season_id=0, toggle=True WHERE message_id = $1 RETURNING *"
             fetch = await self.bot.pool.fetchrow(query, message_id)
 
+        elif self.label == "Edit Board":
+            config = BoardConfig(bot=self.bot, record=fetch)
+            await interaction.response.send_modal(EditBoardModal(self.bot, config))
+            return
+
         if not fetch:
             return
 
         await interaction.response.defer()
+
+        config = BoardConfig(bot=self.bot, record=fetch)
+        await self.update_board(None, config=config)
+
+        # msg = await interaction.channel.fetch_message(message_id)
+        # await msg.edit(view=PersistentBoardView(
+        #     self.bot, self.update_board, interaction.guild_id, interaction.channel_id, config.type
+        # ))
+
+
+class ValidBoardSorting:
+    options = {
+        "donation": {
+            "donations": "donations",
+            "received": "received",
+            "ratio": "ratio",
+            "last on": "last_online ASC, player_name",
+            "default": "donations",
+        },
+        "trophy": {
+            "trophies": "trophies",
+            "gain": "gain",
+            "last on": "last_online ASC, player_name",
+            "default": "donations",
+        },
+        "legend": {
+            "initial": "starting",
+            "gain": "gain",
+            "loss": "loss",
+            "final": "finishing",
+            "default": "donations",
+        }
+    }
+
+    @staticmethod
+    def parse_item(board_type, value):
+        value = value.strip()
+        try:
+            return ValidBoardSorting.options[board_type][value]
+        except KeyError:
+            return ValidBoardSorting.options[board_type]["default"]
+
+    @staticmethod
+    def get_human_readable(board_type):
+        if board_type == "donation":
+            return "donations, received or last on"
+        if board_type == "trophy":
+            return "trophies, gain or last on"
+        if board_type == "legend":
+            return "initial, gain, loss or final"
+
+    @staticmethod
+    def reverseparse(board_type, value):
+        opts = ValidBoardSorting.options[board_type]
+        reverse = {v: k for v, k in opts.items()}
+        return reverse.get(value, opts["default"])
+
+
+class EditBoardModal(discord.ui.Modal, title="Edit Board"):
+    def __init__(self, bot, config: BoardConfig):
+        self.bot = bot
+        self.config = config
+
+        self.title_input = discord.ui.TextInput(
+            label="Board Title",
+            placeholder="The title to show at the top of your board image.",
+            default=self.config.title,
+            required=False
+        )
+
+        self.perpage_input = discord.ui.TextInput(
+            label=f"Sort by ({ValidBoardSorting.get_human_readable(self.config.type)}), or blank for default.",
+            placeholder=ValidBoardSorting.reverseparse(self.config.type, self.config.sort_by),
+            required=False
+        )
+        self.sortby_input = discord.ui.TextInput(
+            label="Players per page",
+            placeholder="Enter a number (e.g. 20), or leave blank for default.",
+            default=self.config.render_per_page(),
+            required=False
+        )
+        self.iconurl_input = discord.ui.TextInput(
+            label="Background Image URL",
+            placeholder="Paste the URL of the image you want on the board background.",
+            default=self.config.icon_url,
+            required=False,
+            max_length=50,
+        )
+
+        self.add_item(self.title_input)
+        self.add_item(self.perpage_input)
+        self.add_item(self.sortby_input)
+        self.add_item(self.iconurl_input)
+
+    async def on_submit(self, interaction: Interaction, /) -> None:
+        query = """UPDATE boards SET title=$1,
+                                     per_page=$2,
+                                     sort_by=$3,
+                                     icon_url=$4
+                    WHERE message_id = $5
+                    RETURNING *
+                """
+
+        try:
+            perpage = int(self.perpage_input.value)
+        except ValueError:
+            perpage = 0
+
+        sortby = ValidBoardSorting.parse_item(self.config.type, self.sortby_input.value)
+        url = self.iconurl_input.value
+        if url in ['default', 'none', 'remove']:
+            url = None
+
+        fetch = await self.bot.pool.fetchrow(query, self.title_input.value, perpage, sortby, url)
+
+        await interaction.response.send_message(f"Configuration successfully updated!", ephemeral=True)
 
         config = BoardConfig(bot=self.bot, record=fetch)
         await self.update_board(None, config=config)
@@ -72,12 +196,38 @@ class PersistentBoardView(discord.ui.View):
             custom_id=f"board:{board_type}:{channel_id}:refresh",
             emoji=REFRESH_EMOJI,
             bot=bot,
-            update_board=update_board
+            update_board=update_board,
+            row=0,
         ))
 
-        self.add_item(discord.ui.Button(
+        self.add_item(CustomButton(
             label="Edit Board",
-            url=f"https://donation-tracker-site.vercel.app/{board_type}board/{guild_id}?cid={channel_id}"
+            style=discord.ButtonStyle.secondary,
+            custom_id=f"board:{board_type}:{channel_id}:edit",
+            emoji=GEAR_EMOJI,
+            bot=bot,
+            update_board=update_board,
+            row=0,
+        ))
+
+        self.add_item(CustomButton(
+            label="Previous",
+            style=discord.ButtonStyle.secondary,
+            custom_id=f"board:{board_type}:{channel_id}:prev",
+            emoji=LEFT_EMOJI,
+            bot=bot,
+            update_board=update_board,
+            row=0,
+        ))
+
+        self.add_item(CustomButton(
+            label="Next",
+            style=discord.ButtonStyle.secondary,
+            custom_id=f"board:{board_type}:{channel_id}:next",
+            emoji=RIGHT_EMOJI,
+            bot=bot,
+            update_board=update_board,
+            row=0,
         ))
 
 
