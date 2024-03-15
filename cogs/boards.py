@@ -45,6 +45,9 @@ class CustomButton(discord.ui.Button):
         query = "SELECT * FROM boards WHERE message_id = $1"
         fetch = await self.bot.pool.fetchrow(query, message_id)
         if not fetch:
+            await interaction.response.send_message(
+                "It appears you don't have a board setup here. Please set one up!", ephemeral=True
+            )
             return
 
         if self.label == "Previous":
@@ -62,6 +65,12 @@ class CustomButton(discord.ui.Button):
             await interaction.response.send_modal(EditBoardModal(self.bot, config))
             return
 
+        else:
+            await interaction.response.send_message(
+                "Oops, it seems we couldn't find that button! Please try again later or message support.", ephemeral=True
+            )
+            return
+
         if not fetch:
             return
 
@@ -74,6 +83,12 @@ class CustomButton(discord.ui.Button):
         # await msg.edit(view=PersistentBoardView(
         #     self.bot, self.update_board, interaction.guild_id, interaction.channel_id, config.type
         # ))
+
+    async def on_error(self, interaction: discord.Interaction, error: Exception) -> None:
+        await interaction.response.send_message('Oops! Something went wrong.', ephemeral=True)
+
+        # Make sure we know what the error actually is
+        log.exception(f"Board Modal Error. Channel ID: {self.config.channel_id}", exc_info=error)
 
 
 class ValidBoardSorting:
@@ -138,7 +153,7 @@ class EditBoardModal(discord.ui.Modal, title="Edit Board"):
         self.perpage_input = discord.ui.TextInput(
             label="Players per page",
             placeholder="Enter a number (e.g. 20), or leave blank for default.",
-            default=self.config.per_page,
+            default=str(self.config.per_page),
             required=False
         )
         self.sortby_input = discord.ui.TextInput(
@@ -185,6 +200,12 @@ class EditBoardModal(discord.ui.Modal, title="Edit Board"):
 
         config = BoardConfig(bot=self.bot, record=fetch)
         await self.update_board(None, config=config)
+
+    async def on_error(self, interaction: discord.Interaction, error: Exception) -> None:
+        await interaction.response.send_message('Oops! Something went wrong.', ephemeral=True)
+
+        # Make sure we know what the error actually is
+        log.exception(f"Board Modal Error. Channel ID: {self.config.channel_id}", exc_info=error)
 
 
 class PersistentBoardView(discord.ui.View):
