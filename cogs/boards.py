@@ -157,7 +157,7 @@ class EditBoardModal(discord.ui.Modal, title="Edit Board"):
         self.perpage_input = discord.ui.TextInput(
             label="Players per page",
             placeholder="Enter a number (e.g. 20), or leave blank for default.",
-            default=str(self.config.per_page),
+            default=str(self.config.per_page or ""),
             required=False
         )
         self.sortby_input = discord.ui.TextInput(
@@ -197,7 +197,7 @@ class EditBoardModal(discord.ui.Modal, title="Edit Board"):
         if url in ['default', 'none', 'remove']:
             url = None
 
-        fetch = await self.bot.pool.fetchrow(query, self.title_input.value, perpage, sortby, url)
+        fetch = await self.bot.pool.fetchrow(query, self.title_input.value, perpage, sortby, url, self.config.message_id)
 
         await interaction.response.send_message(f"Configuration successfully updated!", ephemeral=True)
 

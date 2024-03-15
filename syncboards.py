@@ -38,9 +38,9 @@ emojis = {
     "war": (REFRESH_EMOJI, LEFT_EMOJI, RIGHT_EMOJI),
 }
 backgrounds = {
-    "donation": Path("assets/rocky-wall.png").resolve().as_uri(),
-    "trophy": Path("assets/background-2.png").resolve().as_uri(),
-    "legend": Path("assets/surfboards.png.png").resolve().as_uri(),
+    "donation": Path("assets/clash_cliffs.png").resolve().as_uri(),
+    "trophy": Path("assets/surfboards.png").resolve().as_uri(),
+    "legend": Path("assets/snowyfield.png").resolve().as_uri(),
     "war": "https://cdn.discordapp.com/attachments/594286547449282587/824491008099876885/BG-coc_BALLOON.jpg",
 }
 titles = {
