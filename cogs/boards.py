@@ -161,7 +161,7 @@ class EditBoardModal(discord.ui.Modal, title="Edit Board"):
             required=False
         )
         self.sortby_input = discord.ui.TextInput(
-            label=f"Sort by ({ValidBoardSorting.get_human_readable(self.config.type)}), or blank for default.",
+            label=f"Sort by ({ValidBoardSorting.get_human_readable(self.config.type)})",
             placeholder=ValidBoardSorting.reverseparse(self.config.type, self.config.sort_by),
             required=False
         )
