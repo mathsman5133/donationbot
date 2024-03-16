@@ -246,6 +246,32 @@ class EditBoardModal(discord.ui.Modal, title="Edit Board"):
         log.exception(f"Board Modal Error. Channel ID: {self.config.channel_id}", exc_info=error)
 
 
+class BoardChannelSelectView(discord.ui.View):
+    channel: discord.TextChannel
+
+    def __init__(self, author_id):
+        super().__init__()
+        self.author_id = author_id
+
+    @discord.ui.select(cls=discord.ui.ChannelSelect, placeholder="Choose a channel...", channel_types=[discord.ChannelType.text])
+    async def select_channel_action(self, interaction: Interaction["DonationBot"], select: discord.ui.ChannelSelect):
+        channel = select.values[0].resolve()
+        if not channel.permissions_for(channel.guild.get_member(interaction.client.user.id)).send_messages:
+            await interaction.response.send_message(
+                "I don't have permission to send messages in that channel!", ephemeral=True
+            )
+            return False
+
+        self.channel = channel
+        self.stop()
+
+    async def interaction_check(self, interaction: discord.Interaction, /) -> bool:
+        if interaction.user.id != self.author_id:
+            await interaction.response.send_message("This menu is not for you!", ephemeral=True)
+            return False
+        return True
+
+
 class BoardCreateConfirmation(discord.ui.View):
     def __init__(self, *, author_id: int):
         super().__init__()
@@ -266,7 +292,7 @@ class BoardCreateConfirmation(discord.ui.View):
 
     @discord.ui.button(label="Yes", style=discord.ButtonStyle.green)
     async def yes(self, interaction: discord.Interaction, button: discord.ui.Button):
-        self.value = "selected_channel"
+        self.value = "new_channel"
         await interaction.delete_original_response()
         self.stop()
 
@@ -276,9 +302,9 @@ class BoardCreateConfirmation(discord.ui.View):
         await interaction.delete_original_response()
         self.stop()
 
-    @discord.ui.button(label="Create New Channel", style=discord.ButtonStyle.blurple)
+    @discord.ui.button(label="Use Existing Channel", style=discord.ButtonStyle.blurple)
     async def new_channel(self, interaction: discord.Interaction, button: discord.ui.Button):
-        self.value = "new_channel"
+        self.value = "existing_channel"
         await interaction.delete_original_response()
         self.stop()
 
@@ -289,6 +315,7 @@ class AddClanModal(discord.ui.Modal, title="Add Clan"):
     def __init__(self, menu: "BoardSetupMenu"):
         super().__init__()
         self.menu = menu
+        self.bot = menu.bot
 
     async def on_submit(self, interaction: Interaction["DonationBot"], /) -> None:
         await interaction.response.defer(thinking=True, ephemeral=True)
@@ -422,13 +449,22 @@ class BoardSetupMenu(discord.ui.View):
         return [BoardConfig(bot=self.cog.bot, record=row) for row in fetch]
 
     async def load_default_channel(self):
-        fetch = await self.cog.bot.pool.fetchrow("SELECT channel_id FROM boards WHERE guild_id=$1", self.guild.id)
-        channel = self.guild.get_channel(fetch["channel_id"])
+        fetch = await self.cog.bot.pool.fetch("SELECT channel_id FROM boards WHERE guild_id=$1", self.guild.id)
+        channels = [self.guild.get_channel(row["channel_id"]) for row in fetch]
+        if not channels:
+            return
 
-        self.configs = await self.get_all_boards_config(fetch["channel_id"])
+        channel = channels[0]
+        self.configs = await self.get_all_boards_config(channel)
         await self.set_new_channel_selected(channel)
 
-        self.channel_select_action.default_values = [discord.SelectDefaultValue.from_channel(channel)]
+        self.channel_select_action.options = [
+            discord.SelectOption(
+                label=f"#{c.name}",
+                value=str(c.id),
+                default=c == channel
+            ) for c in channels
+        ]
 
     async def set_new_channel_selected(self, channel):
         types_enabled = [c.type for c in self.configs]
@@ -437,6 +473,10 @@ class BoardSetupMenu(discord.ui.View):
             option.default = option.value in types_enabled
 
         await self.sync_clans()
+
+        self.channel_select_action.disabled = False
+        self.board_type_select_action.disabled = False
+        self.clan_select_action.disabled = False
 
     async def create_board_channel(self, interaction: discord.Interaction["DonationBot"]):
         if not interaction.app_permissions.manage_channels:
@@ -476,39 +516,16 @@ class BoardSetupMenu(discord.ui.View):
             f"Feel free to add clans and boards using the menu above.", ephemeral=True
         )
 
-    @discord.ui.select(cls=discord.ui.ChannelSelect, placeholder="Select board channel to configure...", row=0, options=[], max_values=1, channel_types=[discord.ChannelType.text])
-    async def channel_select_action(self, interaction: discord.Interaction["DonationBot"], select: discord.ui.ChannelSelect):
-        channel = select.values[0].resolve()
+    @discord.ui.select(placeholder="Select board channel to configure...", row=0, options=[], max_values=1)
+    async def channel_select_action(self, interaction: discord.Interaction["DonationBot"], select: discord.ui.Select):
+        channel = self.bot.get_channel(int(select.values[0]))
         configs = await self.get_all_boards_config(channel.id)
 
         log.info(f"resolving channel {channel.id} and config {configs}")
 
-        if not configs:
-            message = f"{channel.mention} doesn't currently have a board setup. Would you like me to set one up in this channel?\n\n" \
-                      f"It is important that the board channel is an empty channel where I am the only one with " \
-                      f"permission to send messages.\nI will send one message per board - and continue to edit " \
-                      f"them forever. Many board messages are now years old and still working normally."
-
-            confirm = BoardCreateConfirmation(author_id=interaction.user.id)
-            await interaction.response.send_message(message, ephemeral=True, view=confirm)
-            await confirm.wait()
-            if not confirm.value:
-                return
-
-            if confirm.value == "new_channel":
-                await self.create_board_channel(interaction)
-            else:
-                await self.set_new_channel_selected(channel)
-                await interaction.response.send_message(
-                    f"Added {channel.mention} as a new board channel. "
-                    f"Feel free to add clans and boards with the original menu.",
-                    ephemeral=True
-                )
-        else:
-            self.configs = configs
-            await self.set_new_channel_selected(channel)
-            await interaction.response.defer()
-            return
+        self.configs = configs
+        await self.set_new_channel_selected(channel)
+        await interaction.response.defer()
 
     @discord.ui.select(placeholder='Select board types to enable...', row=1, max_values=3, options=[
         discord.SelectOption(label="Donation Board", value="donation", description="An auto-updating donations leaderboard", emoji=DONATE_EMOJI),
@@ -596,6 +613,36 @@ class BoardSetupMenu(discord.ui.View):
     async def add_clan_action(self, interaction: discord.Interaction["DonationBot"], button: discord.ui.Button):
         await interaction.response.send_modal(AddClanModal(self))
 
+    @discord.ui.button(label="Add Channel", style=discord.ButtonStyle.secondary, row=3)
+    async def add_channel_action(self, interaction: discord.Interaction["DonationBot"], button: discord.ui.Button):
+        message = f"Would you like me to create a new channel, or would you like to use an existing channel?\n\n" \
+                  f"It is important that the board channel is an empty channel where I am the only one with " \
+                  f"permission to send messages.\nI will send one message per board - and continue to edit " \
+                  f"them forever. Many board messages are now years old and still working normally."
+
+        confirm = BoardCreateConfirmation(author_id=interaction.user.id)
+        await interaction.response.send_message(message, view=confirm)
+        await confirm.wait()
+        if not confirm.value:
+            return
+
+        if confirm.value == "new_channel":
+            await self.create_board_channel(interaction)
+        else:
+            view = BoardChannelSelectView(interaction.user.id)
+            await interaction.response.edit_message(view=view)
+            await view.wait()
+
+            await self.set_new_channel_selected(view.channel)
+            await interaction.response.edit_message(
+                f"Added {view.channel.mention} as a new board channel. "
+                f"Feel free to add clans and boards with the original menu.", view=None
+            )
+
+    @discord.ui.button(label="Help", style=discord.ButtonStyle.secondary, row=3)
+    async def help_action(self, interaction: discord.Interaction["DonationBot"], button: discord.ui.Button):
+        await interaction.response.send_message("Todo")
+
 
 class DonationBoard(commands.Cog):
     """Contains all DonationBoard Configurations.
@@ -656,7 +703,16 @@ class DonationBoard(commands.Cog):
     async def setupboard(self, ctx):
         view = BoardSetupMenu(self, ctx.author, ctx.guild)
         await view.load_default_channel()
-        msg = await ctx.send("This menu allows you to configure boards for your sever.", view=view)
+
+        message = "This menu allows you to configure boards for your sever."
+        if view.channel is None:
+            message += "\n\nPlease start by adding a board channel with the button."
+
+            view.channel_select_action.disabled = True
+            view.board_type_select_action.disabled = True
+            view.clan_select_action.disabled = True
+
+        msg = await ctx.send(message, view=view)
         view.message = msg
 
     @commands.command()
