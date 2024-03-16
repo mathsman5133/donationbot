@@ -63,7 +63,7 @@ class BoardButton(
         return 0 if key in ("refresh", "edit") else 1
 
     @classmethod
-    async def from_custom_id(cls, interaction: discord.Interaction[DonationBot], item: discord.ui.Button, match: re.Match[str]):
+    async def from_custom_id(cls, interaction: discord.Interaction["DonationBot"], item: discord.ui.Button, match: re.Match[str]):
         cog: typing.Optional[DonationBoard] = interaction.client.get_cog("DonationBoard")
         if cog is None:
             await interaction.response.send_message(
@@ -74,7 +74,7 @@ class BoardButton(
         config = await cog.get_board_config(int(match['id']))
         return cls(config, cog, match["type"], item.label, match["command"])
 
-    async def callback(self, interaction: discord.Interaction[DonationBot]):
+    async def callback(self, interaction: discord.Interaction["DonationBot"]):
         message_id = interaction.message.id
 
         if self.key == "prev":
@@ -229,7 +229,7 @@ class EditBoardModal(discord.ui.Modal, title="Edit Board"):
 class DonationBoard(commands.Cog):
     """Contains all DonationBoard Configurations.
     """
-    def __init__(self, bot: DonationBot):
+    def __init__(self, bot: "DonationBot"):
         self.bot = bot
 
         self.clan_updates = []
