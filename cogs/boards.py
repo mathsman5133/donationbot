@@ -444,7 +444,7 @@ class BoardSetupMenu(discord.ui.View):
             return set()
         return {r["type"] for r in fetch}
 
-    async def get_all_boards_config(self, channel_id):
+    async def get_all_boards_config(self, channel_id: int):
         fetch = await self.cog.bot.pool.fetch("SELECT * FROM boards WHERE channel_id=$1", channel_id)
         return [BoardConfig(bot=self.cog.bot, record=row) for row in fetch]
 
@@ -455,7 +455,7 @@ class BoardSetupMenu(discord.ui.View):
             return
 
         channel = channels[0]
-        self.configs = await self.get_all_boards_config(channel)
+        self.configs = await self.get_all_boards_config(channel.id)
         await self.set_new_channel_selected(channel)
 
         self.channel_select_action.options = [
