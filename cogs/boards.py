@@ -97,13 +97,12 @@ class BoardButton(
             return
 
         else:
-            await interaction.response.send_message("Sorry, we couldn't find that button. Please try again later.")
+            await interaction.response.send_message("Sorry, something went wrong. Please try again later.")
             return
 
-        await interaction.response.defer()
-
         config = BoardConfig(bot=self.cog.bot, record=fetch)
-        await self.update_board(None, config=config)
+        await interaction.response.defer()
+        await self.cog.update_board(None, config=config)
 
     async def on_error(self, interaction: discord.Interaction, error: Exception) -> None:
         await interaction.response.send_message('Oops! Something went wrong.', ephemeral=True)
@@ -175,7 +174,7 @@ class EditBoardModal(discord.ui.Modal, title="Edit Board"):
         )
         self.perpage_input = discord.ui.TextInput(
             label="Players per page",
-            placeholder="Enter a number (e.g. 20), or leave blank.",
+            placeholder="Enter a number (e.g. 20), or leave blank",
             default=str(self.config.per_page or ""),
             required=False
         )
@@ -186,7 +185,7 @@ class EditBoardModal(discord.ui.Modal, title="Edit Board"):
         )
         self.iconurl_input = discord.ui.TextInput(
             label="Background Image URL",
-            placeholder="URL of the image you want on the board background.",
+            placeholder="URL of the image",
             default=self.config.icon_url,
             required=False,
             max_length=50,
