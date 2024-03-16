@@ -248,6 +248,7 @@ class EditBoardModal(discord.ui.Modal, title="Edit Board"):
 
 class BoardCreateConfirmation(discord.ui.View):
     def __init__(self, *, author_id: int):
+        super().__init__()
         self.author_id = author_id
         self.message = None
         self.value = None
