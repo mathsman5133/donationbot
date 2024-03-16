@@ -423,7 +423,7 @@ class BoardSetupMenu(discord.ui.View):
         channel = self.guild.get_channel(fetch["channel_id"])
 
         self.configs = await self.get_all_boards_config(fetch["channel_id"])
-        await self.set_new_channel_selected(channel.id)
+        await self.set_new_channel_selected(channel)
 
         self.channel_select_action.default_values = [discord.SelectDefaultValue.from_channel(channel)]
 
