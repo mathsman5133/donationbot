@@ -166,11 +166,10 @@ width: 2500px;
         else:
             body = """
 body {
-width: 1200px;
+width: 100%;
 }
 """
             width = "width: 100%;"
-        body = ""
         self.html += """
 <!DOCTYPE html>
 <meta charset="UTF-8">
