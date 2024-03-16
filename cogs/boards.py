@@ -561,18 +561,18 @@ class BoardSetupMenu(discord.ui.View):
 
     async def sync_clans(self):
         fetch = await self.bot.pool.fetch(
-            "SELECT DISTINCT clan_tag, clan_name, channel_id=$1 as 'in_channel' FROM clans WHERE guild_id=$2",
-            self.channel.id, self.channel.guild.id
+            "SELECT DISTINCT clan_tag, clan_name FROM clans WHERE guild_id=$1", self.channel.guild.id
         )
+        current_clans = await self.get_channel_clans()
 
         self.clan_name_lookup = {r["clan_tag"]: r["clan_name"] for r in fetch}
 
         self.clan_select_action.options = [
             discord.SelectOption(
-                label=f"{row['clan_name']} ({row['clan_tag']})",
-                value=row["clan_tag"],
-                default=row['in_channel'],
-            ) for row in fetch
+                label=f"{name} ({tag})",
+                value=tag,
+                default=tag in current_clans,
+            ) for tag, name in self.clan_name_lookup.items()
         ]
         self.clan_select_action.max_values = len(self.clan_name_lookup)
 
