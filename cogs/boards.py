@@ -367,6 +367,7 @@ class BoardSetupMenu(discord.ui.View):
         self.bot = cog.bot
 
         self.channel = None
+        self.message = None
         self.configs = []
 
     async def interaction_check(self, interaction: discord.Interaction, /) -> bool:
@@ -375,6 +376,12 @@ class BoardSetupMenu(discord.ui.View):
         else:
             await interaction.response.send_message("This menu is not for you!", ephemeral=True)
             return False
+
+    async def on_timeout(self) -> None:
+        try:
+            await self.message.delete()
+        except:
+            pass
 
     async def create_board(self, board_type):
         msg = await self.selected_channel.send(BOARD_PLACEHOLDER.format(board=board_type))
@@ -413,14 +420,19 @@ class BoardSetupMenu(discord.ui.View):
 
     async def load_default_channel(self):
         fetch = await self.cog.bot.pool.fetchrow("SELECT channel_id FROM boards WHERE guild_id=$1", self.guild.id)
+        channel = self.guild.get_channel(fetch["channel_id"])
+
         self.configs = await self.get_all_boards_config(fetch["channel_id"])
-        await self.set_new_channel_selected(self.guild.get_channel(fetch["channel_id"]))
+        await self.set_new_channel_selected(channel.id)
+
+        self.channel_select_action.default_values = [discord.SelectDefaultValue.from_channel(channel)]
 
     async def set_new_channel_selected(self, channel):
         types_enabled = [c.type for c in self.configs]
         self.channel = channel
         for option in self.board_type_select_action.options:
             option.default = option.value in types_enabled
+
         await self.sync_clans()
 
     async def create_board_channel(self, interaction: discord.Interaction["DonationBot"]):
@@ -463,7 +475,7 @@ class BoardSetupMenu(discord.ui.View):
 
     @discord.ui.select(cls=discord.ui.ChannelSelect, placeholder="Select board channel to configure...", row=0, options=[], max_values=1, channel_types=[discord.ChannelType.text])
     async def channel_select_action(self, interaction: discord.Interaction["DonationBot"], select: discord.ui.ChannelSelect):
-        channel = select.values[0]
+        channel = select.values[0].resolve()
         configs = await self.get_all_boards_config(channel.id)
 
         if not configs:
@@ -528,7 +540,7 @@ class BoardSetupMenu(discord.ui.View):
         fetch = await self.cog.bot.pool.fetch("SELECT DISTINCT clan_tag FROM clans WHERE channel_id = $1", self.channel.id)
         return fetch and {r["clan_tag"] for r in fetch} or set()
 
-    @discord.ui.select(placeholder="Select clans to add to the board...", row=2, options=[])
+    @discord.ui.select(placeholder="Select clans to add to the board...", row=2, options=[], max_values=25)
     async def clan_select_action(self, interaction: discord.Interaction["DonationBot"], select: discord.ui.Select):
         await interaction.response.defer(ephemeral=True)
 
@@ -620,7 +632,8 @@ class DonationBoard(commands.Cog):
     async def setupboard(self, ctx):
         view = BoardSetupMenu(self, ctx.author, ctx.guild)
         await view.load_default_channel()
-        await ctx.send(view=view)
+        msg = await ctx.send("This menu allows you to configure boards for your sever.", view=view)
+        view.message = msg
 
     @commands.command()
     @commands.is_owner()
