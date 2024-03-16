@@ -80,24 +80,23 @@ class BoardButton(
 
     async def callback(self, interaction: discord.Interaction["DonationBot"]):
         message_id = interaction.message.id
-        log.info("Updating board, message_id %s, key %s", message_id, self.key)
 
+        fetch = None
         if self.key == "prev":
-            fetch = await self.cog.bot.pool.fetchrow('UPDATE boards SET page = page + 1, toggle=True WHERE message_id = $1 RETURNING *', message_id)
-            log.info("key prev, fetch %s", fetch)
+            fetch = await self.cog.bot.pool.fetchrow('UPDATE boards SET page = page - 1, toggle=True WHERE message_id = $1 AND page > 1 RETURNING *', message_id)
+            if not fetch:
+                await interaction.response.send_message("You can't go back past the first page.")
+                return
 
         elif self.key == "next":
-            fetch = await self.cog.bot.pool.fetchrow('UPDATE boards SET page = page - 1, toggle=True WHERE message_id = $1 AND page > 1 RETURNING *', message_id)
-            log.info("key next, fetch %s", fetch)
+            fetch = await self.cog.bot.pool.fetchrow('UPDATE boards SET page = page + 1, toggle=True WHERE message_id = $1 RETURNING *', message_id)
 
         elif self.key == "refresh":
             query = "UPDATE boards SET page=1, season_id=0, toggle=True WHERE message_id = $1 RETURNING *"
             fetch = await self.cog.bot.pool.fetchrow(query, message_id)
-            log.info("key refresh, fetch %s", fetch)
 
         elif self.key == "edit":
-            log.info("calling send modal")
-            await interaction.response.send_modal(EditBoardModal(self.cog.bot, self.config))
+            await interaction.response.send_modal(EditBoardModal(self.config, self.cog))
             return
 
         if not fetch:
@@ -164,11 +163,12 @@ class ValidBoardSorting:
 
 
 class EditBoardModal(discord.ui.Modal, title="Edit Board"):
-    def __init__(self, bot, config: BoardConfig):
+    def __init__(self, config: BoardConfig, cog: "DonationBoard"):
         super().__init__()
 
-        self.bot = bot
+        self.bot = cog.bot
         self.config = config
+        self.cog = cog
 
         self.title_input = discord.ui.TextInput(
             label="Board Title",
@@ -224,7 +224,7 @@ class EditBoardModal(discord.ui.Modal, title="Edit Board"):
         await interaction.response.send_message(f"Configuration successfully updated!", ephemeral=True)
 
         config = BoardConfig(bot=self.bot, record=fetch)
-        await self.update_board(None, config=config)
+        await self.cog.update_board(None, config=config)
 
     async def on_error(self, interaction: discord.Interaction, error: Exception) -> None:
         await interaction.response.send_message('Oops! Something went wrong.', ephemeral=True)
