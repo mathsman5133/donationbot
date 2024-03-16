@@ -364,6 +364,7 @@ class BoardSetupMenu(discord.ui.View):
         self.user = user
         self.guild = guild
         self.cog = cog
+        self.bot = cog.bot
 
         self.channel = None
         self.configs = []
@@ -391,7 +392,7 @@ class BoardSetupMenu(discord.ui.View):
                         RETURNING *;
                         """
         fetch = await self.cog.bot.pool.fetchrow(
-            query, self.channel.guild_id, self.channel.id, msg.id, board_type, titles[board_type], default_sort_by[board_type]
+            query, self.channel.guild.id, self.channel.id, msg.id, board_type, titles[board_type], default_sort_by[board_type]
         )
         config = BoardConfig(bot=self.cog.bot, record=fetch)
         await msg.edit(view=self.cog.create_new_board_view(config))
@@ -454,7 +455,7 @@ class BoardSetupMenu(discord.ui.View):
             return
 
         self.configs = []
-        self.set_new_channel_selected(channel)
+        await self.set_new_channel_selected(channel)
         await interaction.response.send_message(
             f"Successfully created the new boards channel {channel.mention}. "
             f"Feel free to add clans and boards using the menu above.", ephemeral=True
