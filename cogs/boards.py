@@ -2,6 +2,7 @@ import asyncio
 import typing
 import re
 
+import coc
 import discord
 import logging
 
@@ -10,7 +11,7 @@ from collections import namedtuple
 from discord import Interaction
 from discord.ext import commands
 
-from cogs.add import BOARD_PLACEHOLDER
+from cogs.add import BOARD_PLACEHOLDER, titles, default_sort_by
 from cogs.utils.db_objects import DatabaseMessage, BoardConfig
 from syncboards import SyncBoards, default_sort_by
 
@@ -31,6 +32,9 @@ PERCENTAGE_EMOJI = discord.PartialEmoji(name="percent", id=694463772135260169, a
 GAIN_EMOJI = discord.PartialEmoji(name="gain", id=696280508933472256, animated=False)
 LAST_ONLINE_EMOJI = discord.PartialEmoji(name="lastonline", id=696292732599271434, animated=False)
 HISTORICAL_EMOJI = discord.PartialEmoji(name="historical", id=694812540290465832, animated=False)
+LEGEND_EMOJI = discord.PartialEmoji.from_str("<:LegendLeague:601612163169255436>")
+TROPHY_EMOJI = discord.PartialEmoji.from_str("<:trophygold:632521243278442505>")
+DONATE_EMOJI = discord.PartialEmoji.from_str("<:donated_cc:684682634277683405>")
 
 GLOBAL_BOARDS_CHANNEL_ID = 663683345108172830
 
@@ -110,7 +114,7 @@ class BoardButton(
     async def interaction_check(self, interaction: discord.Interaction["DonationBot"], /):
         if self.key == "edit" and not interaction.permissions.manage_guild:
             await interaction.response.send_message(
-                "Sorry, you have to have Manage Server permissions to edit the board. Perhaps ask an admin?", ephemeral=True
+                "Sorry, you need Manage Server permissions to edit the board. Perhaps ask an admin?", ephemeral=True
             )
             return False
 
@@ -242,16 +246,319 @@ class EditBoardModal(discord.ui.Modal, title="Edit Board"):
         log.exception(f"Board Modal Error. Channel ID: {self.config.channel_id}", exc_info=error)
 
 
+class BoardCreateConfirmation(discord.ui.View):
+    def __init__(self, *, author_id: int):
+        self.author_id = author_id
+        self.message = None
+        self.value = None
+
+    async def interaction_check(self, interaction: discord.Interaction, /) -> bool:
+        if interaction.user.id == self.author_id:
+            return True
+        else:
+            await interaction.response.send_message("This menu is not for you!", ephemeral=True)
+            return False
+
+    async def on_timeout(self) -> None:
+        if self.message:
+            await self.message.delete()
+
+    @discord.ui.button(label="Yes", style=discord.ButtonStyle.green)
+    async def yes(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.value = "selected_channel"
+        await interaction.delete_original_response()
+        self.stop()
+
+    @discord.ui.button(label="No", style=discord.ButtonStyle.red)
+    async def no(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.value = None
+        await interaction.delete_original_response()
+        self.stop()
+
+    @discord.ui.button(label="Create New Channel", style=discord.ButtonStyle.blurple)
+    async def no(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.value = "new_channel"
+        await interaction.delete_original_response()
+        self.stop()
+
+
+class AddClanModal(discord.ui.Modal, title="Add Clan"):
+    def __init__(self, menu: "BoardSetupMenu"):
+        super().__init__()
+        self.menu = menu
+
+        self.clantag_input = discord.ui.TextInput(
+            label="Clan Tag",
+            placeholder="#clantag as found in-game.",
+            required=True,
+            max_length=10,
+        )
+
+        self.add_item(self.clantag_input)
+
+    async def on_submit(self, interaction: Interaction["DonationBot"], /) -> None:
+        await interaction.response.defer(thinking=True, ephemeral=True)
+        coc_client: "coc.Client" = await self.menu.cog.bot.coc
+        try:
+            clan = await coc_client.get_clan(self.clantag_input.value)
+        except coc.NotFound:
+            await interaction.response.send_message("Sorry, that clan tag was invalid. Please try again", ephemeral=True)
+            return
+        except coc.HTTPException as exc:
+            await interaction.response.send_message("Sorry, something broke. Please try again.", ephemeral=True)
+            log.error("Error trying to add / find coc clan", exc_info=exc)
+            return
+
+        query = "INSERT INTO clans (clan_tag, guild_id, channel_id, clan_name, fake_clan) VALUES ($1, $2, $3, $4, $5)"
+        await self.bot.pool.execute(query, clan.tag, interaction.guild_id, self.menu.channel.id, str(clan), False)
+
+        message = f"Successfully added {clan.name} ({clan.tag}) to {self.menu.channel.mention}.\n\n"
+        await interaction.response.send_message(message + f"Please wait while I add all the clan members.", ephemeral=True)
+
+        log.info("Adding clan members, clan %s has %s members", clan.tag, len(clan.members))
+        season_id = await self.bot.seasonconfig.get_season_id()
+        query = """INSERT INTO players (
+                                        player_tag, 
+                                        donations, 
+                                        received, 
+                                        trophies, 
+                                        start_trophies, 
+                                        season_id,
+                                        clan_tag,
+                                        player_name,
+                                        best_trophies,
+                                        legend_trophies
+                                        ) 
+                    VALUES ($1,$2,$3,$4,$4,$5,$6,$7,$8,$9) 
+                    ON CONFLICT (player_tag, season_id) 
+                    DO UPDATE SET clan_tag = $6
+                """
+        async for member in clan.get_detailed_members():
+            log.info("`+add clan`, adding member: %s to clan %s", clan.tag, member)
+            await self.bot.pool.execute(
+                query,
+                member.tag,
+                member.donations,
+                member.received,
+                member.trophies,
+                season_id,
+                clan.tag,
+                member.name,
+                member.best_trophies,
+                member.legend_statistics and member.legend_statistics.legend_trophies or 0
+            )
+
+        await interaction.edit_original_response(content=message + "Successfully added all clan members.")
+        await self.menu.sync_clans()
+
+
 class BoardSetupMenu(discord.ui.View):
     message: discord.Message
+    channel: discord.TextChannel
 
-    def __init__(self, cog: "DonationBoard", user: discord.abc.User):
+    def __init__(self, cog: "DonationBoard", user: discord.abc.User, guild: discord.Guild):
         super().__init__(timeout=600)
 
+        self.clan_name_lookup = {}
+
         self.user = user
+        self.guild = guild
         self.cog = cog
 
-        # self.channel_select =
+        self.channel = None
+        self.configs = []
+
+    async def interaction_check(self, interaction: discord.Interaction, /) -> bool:
+        if interaction.user.id == self.user.id:
+            return True
+        else:
+            await interaction.response.send_message("This menu is not for you!", ephemeral=True)
+            return False
+
+    async def create_board(self, board_type):
+        msg = await self.selected_channel.send(BOARD_PLACEHOLDER.format(board=board_type))
+        query = """INSERT INTO boards (
+                                guild_id,
+                                channel_id,
+                                message_id,
+                                type,
+                                title,
+                                sort_by
+                            )
+                        VALUES ($1, $2, $3, $4, $5, $6)
+                        ON CONFLICT (channel_id, type)
+                        DO UPDATE SET message_id = $3, toggle = True
+                        RETURNING *;
+                        """
+        fetch = await self.cog.bot.pool.fetchrow(
+            query, self.channel.guild_id, self.channel.id, msg.id, board_type, titles[board_type], default_sort_by[board_type]
+        )
+        config = BoardConfig(bot=self.cog.bot, record=fetch)
+        await msg.edit(view=self.cog.create_new_board_view(config))
+        await self.bot.donationboard.update_board(message_id=msg.id)
+
+    async def delete_board(self, board_type):
+        await self.cog.bot.pool.fetchrow("DELETE FROM boards WHERE channel_id=$1 AND type=$2", self.channel.id, board_type)
+
+    async def get_board_types(self) -> set[str]:
+        fetch = await self.cog.bot.pool.fetch("SELECT type FROM boards WHERE channel_id=$1", self.channel.id)
+        if not fetch:
+            return set()
+        return {r["type"] for r in fetch}
+
+    async def get_all_boards_config(self, channel_id):
+        fetch = await self.cog.bot.pool.fetch("SELECT * FROM boards WHERE channel_id=$1", channel_id)
+        return [BoardConfig(bot=self.cog.bot, record=row) for row in fetch]
+
+    async def load_default_channel(self):
+        fetch = await self.cog.bot.pool.fetchrow("SELECT channel_id FROM boards WHERE guild_id=$1", self.guild.id)
+        self.configs = await self.get_all_boards_config(fetch["channel_id"])
+        await self.set_new_channel_selected(self.guild.get_channel(fetch["channel_id"]))
+
+    async def set_new_channel_selected(self, channel):
+        types_enabled = [c.type for c in self.configs]
+        self.channel = channel
+        for option in self.board_type_select_action.options:
+            option.default = option.value in types_enabled
+        await self.sync_clans()
+
+    async def create_board_channel(self, interaction: discord.Interaction["DonationBot"]):
+        if not interaction.app_permissions.manage_channels:
+            log.info('+add board no create channel permissions')
+            await interaction.response.send_message(
+                f'Failed! I need manage channels permission to create your board channel.', ephemeral=True
+            )
+            return
+
+        overwrites = {
+            interaction.guild.me: discord.PermissionOverwrite(
+                read_messages=True, send_messages=True, read_message_history=True,
+                embed_links=True, manage_messages=True, add_reactions=True,
+            ),
+            interaction.guild.default_role: discord.PermissionOverwrite(
+                read_messages=True, send_messages=False, read_message_history=True,
+            ),
+        }
+
+        try:
+            channel = await interaction.guild.create_text_channel(
+                name="dt-boards", overwrites=overwrites, reason=f'{interaction.user} created a boards channel.'
+            )
+        except discord.Forbidden:
+            log.info('+add board no channel permissions (HTTP exception caught)')
+            await interaction.response.send_message(f'I do not have permissions to create the board channel.', ephemeral=True)
+            return
+        except discord.HTTPException:
+            log.info('+add board creating channel failed')
+            await interaction.response.send_message(f'Creating the channel failed. Try checking the name?', ephemeral=True)
+            return
+
+        self.configs = []
+        self.set_new_channel_selected(channel)
+        await interaction.response.send_message(
+            f"Successfully created the new boards channel {channel.mention}. "
+            f"Feel free to add clans and boards using the menu above.", ephemeral=True
+        )
+
+    @discord.ui.select(cls=discord.ui.ChannelSelect, placeholder="Select board channel to configure...", row=0, options=[], max_values=1, channel_types=[discord.ChannelType.text])
+    async def channel_select_action(self, interaction: discord.Interaction["DonationBot"], select: discord.ui.ChannelSelect):
+        channel = select.values[0]
+        configs = await self.get_all_boards_config(channel.id)
+
+        if not configs:
+            message = f"{channel.mention} doesn't currently have a board setup. Would you like me to set one up in this channel?\n\n" \
+                      f"It is important that the board channel is an empty channel where I am the only one with " \
+                      f"permission to send messages.\nI will send one message per board - and continue to edit " \
+                      f"them forever. Many board messages are now years old and still working normally."
+
+            confirm = BoardCreateConfirmation(author_id=interaction.user.id)
+            await interaction.response.send_message(message, ephemeral=True, view=confirm)
+            await confirm.wait()
+            if not confirm.value:
+                return
+
+            if confirm.value == "new_channel":
+                await self.create_board_channel(interaction)
+            else:
+                await self.set_new_channel_selected(channel)
+                await interaction.response.send_message(
+                    f"Added {channel.mention} as a new board channel. "
+                    f"Feel free to add clans and boards with the original menu.",
+                    ephemeral=True
+                )
+        else:
+            self.configs = configs
+            await self.set_new_channel_selected(channel)
+            return
+
+    @discord.ui.select(placeholder='Select board types to enable...', row=1, max_values=3, options=[
+        discord.SelectOption(label="Donation Board", value="donation", description="An auto-updating donations leaderboard", emoji=DONATE_EMOJI),
+        discord.SelectOption(label="Trophy Board", value="trophy", description="An auto-updating trophy leaderboard", emoji=TROPHY_EMOJI),
+        discord.SelectOption(label="Legend Board", value="legend", description="An auto-updating legends leaderboard", emoji=LEGEND_EMOJI)
+    ])
+    async def board_type_select_action(self, interaction: discord.Interaction["DonationBot"], select: discord.ui.Select):
+        await interaction.response.defer(ephemeral=True)
+
+        parse = {"donation": "Donation Board", "trophy": "Trophy Board", "legend": "Legend Board"}
+
+        current = await self.get_board_types()
+        new_select = set(select.values)
+        new = new_select - current
+        old = current - new_select
+
+        for row in new:
+            await self.create_board(row)
+            await interaction.followup.send(f"I've created a new {parse[row].lower()} in {self.channel.mention}.", ephemeral=True)
+        for row in old:
+            await self.delete_board(row)
+            await interaction.followup.send(f"I've removed the {parse[row].lower()} from {self.channel.mention}.", ephemeral=True)
+
+        if not (new or old):
+            await interaction.followup.send(f"All your boards are already setup.", ephemeral=True)
+
+    async def get_clan_name(self, tag):
+        try:
+            return self.clan_name_lookup[tag]
+        except KeyError:
+            clan = await self.cog.bot.coc.get_clan(tag)
+            return clan and clan.name
+
+    async def get_channel_clans(self) -> set[str]:
+        fetch = await self.cog.bot.pool.fetch("SELECT DISTINCT clan_tag FROM clans WHERE channel_id = $1", self.channel.id)
+        return fetch and {r["clan_tag"] for r in fetch} or set()
+
+    @discord.ui.select(placeholder="Select clans to add to the board...", row=2, options=[])
+    async def clan_select_action(self, interaction: discord.Interaction["DonationBot"], select: discord.ui.Select):
+        await interaction.response.defer(ephemeral=True)
+
+        current = await self.get_channel_clans()
+
+        new = set(select.values) - current
+        old = current - set(select.values)
+
+        for tag in new:
+            name = await self.get_clan_name(tag)
+            query = "INSERT INTO clans (clan_tag, guild_id, channel_id, clan_name, fake_clan) VALUES ($1, $2, $3, $4, $5)"
+            await self.bot.pool.execute(query, tag, self.channel.guild.id, self.channel.id, name, "#" in tag)
+            await interaction.followup.send(f"Successfully added {name} ({tag}) to {self.channel.mention}.", ephemeral=True)
+
+        for tag in old:
+            name = await self.get_clan_name(tag)
+            await self.bot.pool.execute("DELETE FROM clans WHERE channel_id=$1 AND clan_tag=$2", self.channel.id, tag)
+            await interaction.followup.send(f"Successfully removed {name} ({tag}) from {self.channel.mention}.", ephemeral=True)
+
+    async def sync_clans(self):
+        fetch = await self.bot.pool.fetch("SELECT clan_tag, clan_name FROM clans WHERE channel_id=$1", self.channel.id)
+        self.clan_name_lookup = {r["clan_tag"]: r["clan_name"] for r in fetch}
+
+        self.clan_select_action.options = [
+            discord.SelectOption(label=f"{name} ({tag})", value=tag) for name, tag in self.clan_name_lookup.items()
+        ]
+
+    @discord.ui.button(label="Add Clan", style=discord.ButtonStyle.secondary, row=2)
+    async def add_clan_action(self, interaction: discord.Interaction["DonationBot"], button: discord.ui.Button):
+        await interaction.response.send_message(view=AddClanModal(self))
+
 
 class DonationBoard(commands.Cog):
     """Contains all DonationBoard Configurations.
@@ -293,17 +600,34 @@ class DonationBoard(commands.Cog):
             return BoardConfig(bot=self.bot, record=fetch)
         return None
 
+    async def get_board_config_type(self, channel_id, board_type):
+        query = "SELECT * FROM boards WHERE channel_id = $1 AND type = $2"
+        fetch = await self.bot.pool.fetchrow(query, channel_id, board_type)
+        if fetch:
+            return BoardConfig(bot=self.bot, record=fetch)
+        return None
+
+    def create_new_board_view(self, config):
+        view = discord.ui.View(timeout=None)
+        for label, key in (("Refresh\u200b", "refresh"), ("Edit Board", "edit"), ("Previous", "prev"), ("Next Page", "next")):
+            view.add_item(BoardButton(config, self, label, key))
+
+        return view
+
+    @commands.command()
+    @commands.is_owner()
+    async def setupboard(self, ctx):
+        view = BoardSetupMenu(self, ctx.author, ctx.guild)
+        await view.load_default_channel()
+        await ctx.send(view=view)
+
     @commands.command()
     @commands.is_owner()
     async def test_button(self, ctx, message_id: int):
         config = await self.get_board_config(message_id)
         msg = await config.channel.fetch_message(message_id)
 
-        view = discord.ui.View(timeout=None)
-        for label, key in (("Refresh\u200b", "refresh"), ("Edit Board", "edit"), ("Previous", "prev"), ("Next Page", "next")):
-            view.add_item(BoardButton(config, self, label, key))
-
-        await msg.edit(view=view)
+        await msg.edit(view=self.create_new_board_view(config))
         try:
             await msg.clear_reactions()
         except:
