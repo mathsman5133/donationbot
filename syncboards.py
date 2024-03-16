@@ -170,7 +170,7 @@ width: 1200px;
 }
 """
             width = "width: 100%;"
-
+        body = ""
         self.html += """
 <!DOCTYPE html>
 <meta charset="UTF-8">
@@ -252,6 +252,10 @@ header {
   letter-spacing: 1.5px;
   opacity: 1;
 }
+
+.title{
+font-weight: bold;
+}
 </style>
         """
 
@@ -259,7 +263,7 @@ header {
         self.html += '<body>'
 
     def add_title(self):
-        self.html += f"<header>{self.title}</header>"
+        self.html += f"<header><h1>{self.title}</h1></header>"
 
     def add_image(self):
         self.html += f'<img id="bgimg" src="{self.image}" alt="Test"></img>'
