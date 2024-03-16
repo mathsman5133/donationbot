@@ -72,6 +72,10 @@ class BoardButton(
             return
 
         config = await cog.get_board_config(int(match['id']))
+        if config is None:
+            await interaction.response.send_message("Sorry, we couldn't find your board.", ephemeral=True)
+            log.info(f"Couldn't find board config from button match, ID {match['id']}, channel {interaction.channel_id}")
+            return
         return cls(config, cog, item.label, match["command"])
 
     async def callback(self, interaction: discord.Interaction["DonationBot"]):
