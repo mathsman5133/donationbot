@@ -110,8 +110,9 @@ class BoardButton(
     async def interaction_check(self, interaction: discord.Interaction["DonationBot"], /):
         if self.key == "edit" and not interaction.permissions.manage_guild:
             await interaction.response.send_message(
-                "Sorry, you have to have Manage Server permissions to edit the board. Perhaps ask an admin?"
+                "Sorry, you have to have Manage Server permissions to edit the board. Perhaps ask an admin?", ephemeral=True
             )
+            return False
 
         return True
 
