@@ -292,7 +292,7 @@ class AddClanModal(discord.ui.Modal, title="Add Clan"):
 
     async def on_submit(self, interaction: Interaction["DonationBot"], /) -> None:
         await interaction.response.defer(thinking=True, ephemeral=True)
-        coc_client: "coc.Client" = await self.menu.cog.bot.coc
+        coc_client: "coc.Client" = self.menu.cog.bot.coc
         try:
             clan = await coc_client.get_clan(self.clan_tag.value)
         except coc.NotFound:
@@ -560,11 +560,19 @@ class BoardSetupMenu(discord.ui.View):
             await interaction.followup.send(f"Successfully removed {name} ({tag}) from {self.channel.mention}.", ephemeral=True)
 
     async def sync_clans(self):
-        fetch = await self.bot.pool.fetch("SELECT DISTINCT clan_tag, clan_name FROM clans WHERE channel_id=$1", self.channel.id)
+        fetch = await self.bot.pool.fetch(
+            "SELECT DISTINCT clan_tag, clan_name, channel_id=$1 as 'in_channel' FROM clans WHERE guild_id=$2",
+            self.channel.id, self.channel.guild.id
+        )
+
         self.clan_name_lookup = {r["clan_tag"]: r["clan_name"] for r in fetch}
 
         self.clan_select_action.options = [
-            discord.SelectOption(label=f"{name} ({tag})", value=tag) for tag, name in self.clan_name_lookup.items()
+            discord.SelectOption(
+                label=f"{row['clan_name']} ({row['clan_tag']})",
+                value=row["clan_tag"],
+                default=row['in_channel'],
+            ) for row in fetch
         ]
         self.clan_select_action.max_values = len(self.clan_name_lookup)
 
