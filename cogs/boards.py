@@ -80,6 +80,7 @@ class BoardButton(
 
     async def callback(self, interaction: discord.Interaction["DonationBot"]):
         message_id = interaction.message.id
+        log.info("Updating board, message_id %s, key %s", message_id, self.key)
 
         if self.key == "prev":
             fetch = await self.cog.bot.pool.fetchrow('UPDATE boards SET page = page + 1, toggle=True WHERE message_id = $1 RETURNING *', message_id)
