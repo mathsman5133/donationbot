@@ -277,17 +277,14 @@ class BoardCreateConfirmation(discord.ui.View):
         self.stop()
 
     @discord.ui.button(label="Create New Channel", style=discord.ButtonStyle.blurple)
-    async def no(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def new_channel(self, interaction: discord.Interaction, button: discord.ui.Button):
         self.value = "new_channel"
         await interaction.delete_original_response()
         self.stop()
 
 
 class AddClanModal(discord.ui.Modal, title="Add Clan"):
-    clan_tag = discord.ui.TextInput(
-        label="Clan Tag", placeholder="#clantag as found in-game.",
-        style=discord.TextStyle.short, required=True, max_length=10
-    )
+    clan_tag = discord.ui.TextInput(label="Clan Tag", placeholder="#clantag as found in-game.", max_length=10)
 
     def __init__(self, menu: "BoardSetupMenu"):
         super().__init__()
@@ -573,7 +570,7 @@ class BoardSetupMenu(discord.ui.View):
 
     @discord.ui.button(label="Add Clan", style=discord.ButtonStyle.secondary, row=3)
     async def add_clan_action(self, interaction: discord.Interaction["DonationBot"], button: discord.ui.Button):
-        await interaction.response.send_message(view=AddClanModal(self))
+        await interaction.response.send_modal(AddClanModal(self))
 
 
 class DonationBoard(commands.Cog):
