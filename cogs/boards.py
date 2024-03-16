@@ -100,12 +100,20 @@ class BoardButton(
             return
 
         if not fetch:
-            await interaction.response.send_message("Sorry, something went wrong. Please try again later.")
+            await interaction.response.send_message("Sorry, something went wrong. Please try again later.", ephemeral=True)
             return
 
         config = BoardConfig(bot=self.cog.bot, record=fetch)
         await interaction.response.defer()
         await self.cog.update_board(None, config=config)
+
+    async def interaction_check(self, interaction: discord.Interaction["DonationBot"], /):
+        if self.key == "edit" and not interaction.permissions.manage_guild:
+            await interaction.response.send_message(
+                "Sorry, you have to have Manage Server permissions to edit the board. Perhaps ask an admin?"
+            )
+
+        return True
 
     async def on_error(self, interaction: discord.Interaction, error: Exception) -> None:
         await interaction.response.send_message('Oops! Something went wrong.', ephemeral=True)
@@ -232,6 +240,17 @@ class EditBoardModal(discord.ui.Modal, title="Edit Board"):
         # Make sure we know what the error actually is
         log.exception(f"Board Modal Error. Channel ID: {self.config.channel_id}", exc_info=error)
 
+
+class BoardSetupMenu(discord.ui.View):
+    message: discord.Message
+
+    def __init__(self, cog: "DonationBoard", user: discord.abc.User):
+        super().__init__(timeout=600)
+
+        self.user = user
+        self.cog = cog
+
+        # self.channel_select =
 
 class DonationBoard(commands.Cog):
     """Contains all DonationBoard Configurations.
