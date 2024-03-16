@@ -283,24 +283,20 @@ class BoardCreateConfirmation(discord.ui.View):
 
 
 class AddClanModal(discord.ui.Modal, title="Add Clan"):
+    clan_tag = discord.ui.TextInput(
+        label="Clan Tag", placeholder="#clantag as found in-game.",
+        style=discord.TextStyle.short, required=True, max_length=10
+    )
+
     def __init__(self, menu: "BoardSetupMenu"):
         super().__init__()
         self.menu = menu
-
-        self.clantag_input = discord.ui.TextInput(
-            label="Clan Tag",
-            placeholder="#clantag as found in-game.",
-            required=True,
-            max_length=10,
-        )
-
-        self.add_item(self.clantag_input)
 
     async def on_submit(self, interaction: Interaction["DonationBot"], /) -> None:
         await interaction.response.defer(thinking=True, ephemeral=True)
         coc_client: "coc.Client" = await self.menu.cog.bot.coc
         try:
-            clan = await coc_client.get_clan(self.clantag_input.value)
+            clan = await coc_client.get_clan(self.clan_tag.value)
         except coc.NotFound:
             await interaction.response.send_message("Sorry, that clan tag was invalid. Please try again", ephemeral=True)
             return
@@ -313,7 +309,9 @@ class AddClanModal(discord.ui.Modal, title="Add Clan"):
         await self.bot.pool.execute(query, clan.tag, interaction.guild_id, self.menu.channel.id, str(clan), False)
 
         message = f"Successfully added {clan.name} ({clan.tag}) to {self.menu.channel.mention}.\n\n"
-        await interaction.response.send_message(message + f"Please wait while I add all the clan members.", ephemeral=True)
+        await interaction.response.send_message(
+            message + f"Please wait while I add all the clan members.", ephemeral=True
+        )
 
         log.info("Adding clan members, clan %s has %s members", clan.tag, len(clan.members))
         season_id = await self.bot.seasonconfig.get_season_id()
@@ -478,6 +476,8 @@ class BoardSetupMenu(discord.ui.View):
         channel = select.values[0].resolve()
         configs = await self.get_all_boards_config(channel.id)
 
+        log.info(f"resolving channel {channel.id} and config {configs}")
+
         if not configs:
             message = f"{channel.mention} doesn't currently have a board setup. Would you like me to set one up in this channel?\n\n" \
                       f"It is important that the board channel is an empty channel where I am the only one with " \
@@ -502,6 +502,7 @@ class BoardSetupMenu(discord.ui.View):
         else:
             self.configs = configs
             await self.set_new_channel_selected(channel)
+            await interaction.response.defer()
             return
 
     @discord.ui.select(placeholder='Select board types to enable...', row=1, max_values=3, options=[
