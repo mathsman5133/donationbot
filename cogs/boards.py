@@ -449,7 +449,7 @@ class BoardSetupMenu(discord.ui.View):
         return [BoardConfig(bot=self.cog.bot, record=row) for row in fetch]
 
     async def load_default_channel(self):
-        fetch = await self.cog.bot.pool.fetch("SELECT channel_id FROM boards WHERE guild_id=$1", self.guild.id)
+        fetch = await self.cog.bot.pool.fetch("SELECT DISTINCT channel_id FROM boards WHERE guild_id=$1", self.guild.id)
         channels = [self.guild.get_channel(row["channel_id"]) for row in fetch]
         channels = [c for c in channels if c]
         if not channels:
