@@ -540,7 +540,7 @@ class BoardSetupMenu(discord.ui.View):
         fetch = await self.cog.bot.pool.fetch("SELECT DISTINCT clan_tag FROM clans WHERE channel_id = $1", self.channel.id)
         return fetch and {r["clan_tag"] for r in fetch} or set()
 
-    @discord.ui.select(placeholder="Select clans to add to the board...", row=2, options=[], max_values=25)
+    @discord.ui.select(placeholder="Select clans to add to the board...", row=2, options=[], max_values=1)
     async def clan_select_action(self, interaction: discord.Interaction["DonationBot"], select: discord.ui.Select):
         await interaction.response.defer(ephemeral=True)
 
@@ -567,6 +567,7 @@ class BoardSetupMenu(discord.ui.View):
         self.clan_select_action.options = [
             discord.SelectOption(label=f"{name} ({tag})", value=tag) for tag, name in self.clan_name_lookup.items()
         ]
+        self.clan_select_action.max_values = len(self.clan_name_lookup)
 
     @discord.ui.button(label="Add Clan", style=discord.ButtonStyle.secondary, row=3)
     async def add_clan_action(self, interaction: discord.Interaction["DonationBot"], button: discord.ui.Button):
