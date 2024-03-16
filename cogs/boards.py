@@ -82,18 +82,18 @@ class BoardButton(
         message_id = interaction.message.id
 
         if self.key == "prev":
-            fetch = await self.bot.pool.fetchrow('UPDATE boards SET page = page + 1, toggle=True WHERE message_id = $1 RETURNING *', message_id)
+            fetch = await self.cog.bot.pool.fetchrow('UPDATE boards SET page = page + 1, toggle=True WHERE message_id = $1 RETURNING *', message_id)
 
         elif self.key == "next":
-            fetch = await self.bot.pool.fetchrow('UPDATE boards SET page = page - 1, toggle=True WHERE message_id = $1 AND page > 1 RETURNING *', message_id)
+            fetch = await self.cog.bot.pool.fetchrow('UPDATE boards SET page = page - 1, toggle=True WHERE message_id = $1 AND page > 1 RETURNING *', message_id)
 
         elif self.key == "refresh":
             query = "UPDATE boards SET page=1, season_id=0, toggle=True WHERE message_id = $1 RETURNING *"
-            fetch = await self.bot.pool.fetchrow(query, message_id)
+            fetch = await self.cog.bot.pool.fetchrow(query, message_id)
 
         elif self.key == "edit":
             log.info("calling send modal")
-            await interaction.response.send_modal(EditBoardModal(self.bot, self.config))
+            await interaction.response.send_modal(EditBoardModal(self.cog.bot, self.config))
             return
 
         else:
@@ -102,7 +102,7 @@ class BoardButton(
 
         await interaction.response.defer()
 
-        config = BoardConfig(bot=self.bot, record=fetch)
+        config = BoardConfig(bot=self.cog.bot, record=fetch)
         await self.update_board(None, config=config)
 
     async def on_error(self, interaction: discord.Interaction, error: Exception) -> None:
