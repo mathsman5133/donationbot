@@ -72,7 +72,7 @@ class BoardButton(
             return
 
         config = await cog.get_board_config(int(match['id']))
-        return cls(config, cog, match["type"], item.label, match["command"])
+        return cls(config, cog, item.label, match["command"])
 
     async def callback(self, interaction: discord.Interaction["DonationBot"]):
         message_id = interaction.message.id
