@@ -71,7 +71,7 @@ class BoardButton(
             )
             return
 
-        config = await cog.get_board_config(int(match['id']))
+        config = await cog.get_board_config(interaction.message.id)
         if config is None:
             await interaction.response.send_message("Sorry, we couldn't find your board.", ephemeral=True)
             log.info(f"Couldn't find board config from button match, ID {match['id']}, channel {interaction.channel_id}")
@@ -277,7 +277,7 @@ class DonationBoard(commands.Cog):
         msg = await config.channel.fetch_message(message_id)
 
         view = discord.ui.View(timeout=None)
-        for label, key in (("Refresh ", "refresh"), ("Edit Board", "edit"), ("Previous", "prev"), ("Next", "next")):
+        for label, key in (("Refresh\u200b", "refresh"), ("Edit Board", "edit"), ("Previous", "prev"), ("Next Page", "next")):
             view.add_item(BoardButton(config, self, label, key))
 
         await msg.edit(view=view)
