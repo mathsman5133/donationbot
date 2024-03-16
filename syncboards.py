@@ -166,8 +166,7 @@ width: 2500px;
         else:
             body = """
 body {
-width: 100%;
-height: 100%;
+width: 1200px;
 }
 """
             width = "width: 100%;"
