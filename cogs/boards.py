@@ -380,7 +380,7 @@ class BoardSetupMenu(discord.ui.View):
             pass
 
     async def create_board(self, board_type):
-        msg = await self.selected_channel.send(BOARD_PLACEHOLDER.format(board=board_type))
+        msg = await self.channel.send(BOARD_PLACEHOLDER.format(board=board_type))
         query = """INSERT INTO boards (
                                 guild_id,
                                 channel_id,
@@ -402,7 +402,14 @@ class BoardSetupMenu(discord.ui.View):
         await self.bot.donationboard.update_board(message_id=msg.id)
 
     async def delete_board(self, board_type):
-        await self.cog.bot.pool.fetchrow("DELETE FROM boards WHERE channel_id=$1 AND type=$2", self.channel.id, board_type)
+        fetch = await self.cog.bot.pool.fetchrow(
+            "DELETE FROM boards WHERE channel_id=$1 AND type=$2 RETURNING message_id", self.channel.id, board_type
+        )
+        try:
+            msg = await self.channel.fetch_message(fetch['message_id'])
+            await msg.delete()
+        except:
+            pass
 
     async def get_board_types(self) -> set[str]:
         fetch = await self.cog.bot.pool.fetch("SELECT type FROM boards WHERE channel_id=$1", self.channel.id)
@@ -548,16 +555,25 @@ class BoardSetupMenu(discord.ui.View):
         new = set(select.values) - current
         old = current - set(select.values)
 
+        added = []
+        removed = []
+
         for tag in new:
             name = await self.get_clan_name(tag)
             query = "INSERT INTO clans (clan_tag, guild_id, channel_id, clan_name, fake_clan) VALUES ($1, $2, $3, $4, $5)"
             await self.bot.pool.execute(query, tag, self.channel.guild.id, self.channel.id, name, "#" in tag)
-            await interaction.followup.send(f"Successfully added {name} ({tag}) to {self.channel.mention}.", ephemeral=True)
+            added.append((name, tag))
 
         for tag in old:
             name = await self.get_clan_name(tag)
             await self.bot.pool.execute("DELETE FROM clans WHERE channel_id=$1 AND clan_tag=$2", self.channel.id, tag)
-            await interaction.followup.send(f"Successfully removed {name} ({tag}) from {self.channel.mention}.", ephemeral=True)
+            removed.append((name, tag))
+
+        message = (added and ("Successfully added " + ", ".join(f"{name} ({tag})" for name, tag in added) + f" from {self.channel.mention}.\n\n") or "") + \
+                  (removed and ("Successfully removed" + ", ".join(f"{name} ({tag})" for name, tag in removed) + f" from {self.channel.mention}.") or "")
+
+        if message:
+            await interaction.followup.send(message, ephemeral=True)
 
     async def sync_clans(self):
         fetch = await self.bot.pool.fetch(
