@@ -549,11 +549,11 @@ class BoardSetupMenu(discord.ui.View):
             await interaction.followup.send(f"Successfully removed {name} ({tag}) from {self.channel.mention}.", ephemeral=True)
 
     async def sync_clans(self):
-        fetch = await self.bot.pool.fetch("SELECT clan_tag, clan_name FROM clans WHERE channel_id=$1", self.channel.id)
+        fetch = await self.bot.pool.fetch("SELECT DISTINCT clan_tag, clan_name FROM clans WHERE channel_id=$1", self.channel.id)
         self.clan_name_lookup = {r["clan_tag"]: r["clan_name"] for r in fetch}
 
         self.clan_select_action.options = [
-            discord.SelectOption(label=f"{name} ({tag})", value=tag) for name, tag in self.clan_name_lookup.items()
+            discord.SelectOption(label=f"{name} ({tag})", value=tag) for tag, name in self.clan_name_lookup.items()
         ]
 
     @discord.ui.button(label="Add Clan", style=discord.ButtonStyle.secondary, row=3)
