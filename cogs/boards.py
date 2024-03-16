@@ -1,5 +1,6 @@
 import asyncio
 import typing
+import re
 
 import discord
 import logging
@@ -12,6 +13,9 @@ from discord.ext import commands
 from cogs.add import BOARD_PLACEHOLDER
 from cogs.utils.db_objects import DatabaseMessage, BoardConfig
 from syncboards import SyncBoards, default_sort_by
+
+if typing.TYPE_CHECKING:
+    from bot import DonationBot
 
 
 log = logging.getLogger(__name__)
@@ -31,60 +35,71 @@ HISTORICAL_EMOJI = discord.PartialEmoji(name="historical", id=694812540290465832
 GLOBAL_BOARDS_CHANNEL_ID = 663683345108172830
 
 
-class CustomButton(discord.ui.Button):
-    def __init__(self, *args, **kwargs):
-        self.bot = kwargs.pop("bot")
-        self.update_board = kwargs.pop("update_board")
+class BoardButton(
+    discord.ui.DynamicItem[discord.ui.Button],
+    template="board:(?P<type>(donation|trophy|legend)):(?P<id>[0-9]+):(?P<command>(refresh|edit|prev|next))"
+):
+    emojis = {
+        "refresh": REFRESH_EMOJI,
+        "edit": GEAR_EMOJI,
+        "prev": LEFT_EMOJI,
+        "next": RIGHT_EMOJI,
+    }
 
-        super().__init__(*args, **kwargs)
+    def __init__(self, config: BoardConfig, cog: "DonationBoard", label, key):
+        super().__init__(discord.ui.Button(
+            label=label,
+            style=discord.ButtonStyle.secondary,
+            custom_id=f"board:{config.type}:{config.message_id}:{key}",
+            emoji=self.emojis.get(key),
+            row=self.get_row(key),
+        ))
+        self.config = config
+        self.cog = cog
+        self.key = key
 
-    async def callback(self, interaction: discord.Interaction):
-        log.info("calling callback")
-        # await self.bot.wait_until_ready()
-        message_id = interaction.message.id
+    @staticmethod
+    def get_row(key):
+        return 0 if key in ("refresh", "edit") else 1
 
-        query = "SELECT * FROM boards WHERE message_id = $1"
-        fetch = await self.bot.pool.fetchrow(query, message_id)
-        if not fetch:
+    @classmethod
+    async def from_custom_id(cls, interaction: discord.Interaction[DonationBot], item: discord.ui.Button, match: re.Match[str]):
+        cog: typing.Optional[DonationBoard] = interaction.client.get_cog("DonationBoard")
+        if cog is None:
             await interaction.response.send_message(
-                "It appears you don't have a board setup here. Please set one up!", ephemeral=True
+                "Sorry, this button doesn't work at the moment. Please try again later.", ephemeral=True
             )
             return
 
-        if self.label == "Previous":
+        config = await cog.get_board_config(int(match['id']))
+        return cls(config, cog, match["type"], item.label, match["command"])
+
+    async def callback(self, interaction: discord.Interaction[DonationBot]):
+        message_id = interaction.message.id
+
+        if self.key == "prev":
             fetch = await self.bot.pool.fetchrow('UPDATE boards SET page = page + 1, toggle=True WHERE message_id = $1 RETURNING *', message_id)
 
-        elif self.label == "Next Page":
+        elif self.key == "next":
             fetch = await self.bot.pool.fetchrow('UPDATE boards SET page = page - 1, toggle=True WHERE message_id = $1 AND page > 1 RETURNING *', message_id)
 
-        elif self.label == "Refresh":
+        elif self.key == "refresh":
             query = "UPDATE boards SET page=1, season_id=0, toggle=True WHERE message_id = $1 RETURNING *"
             fetch = await self.bot.pool.fetchrow(query, message_id)
 
-        elif self.label == "Edit Board":
+        elif self.key == "edit":
             log.info("calling send modal")
-            config = BoardConfig(bot=self.bot, record=fetch)
-            await interaction.response.send_modal(EditBoardModal(self.bot, config))
+            await interaction.response.send_modal(EditBoardModal(self.bot, self.config))
             return
 
         else:
-            await interaction.response.send_message(
-                "Oops, it seems we couldn't find that button! Please try again later or message support.", ephemeral=True
-            )
-            return
-
-        if not fetch:
+            await interaction.response.send_message("Sorry, we couldn't find that button. Please try again later.")
             return
 
         await interaction.response.defer()
 
         config = BoardConfig(bot=self.bot, record=fetch)
         await self.update_board(None, config=config)
-
-        # msg = await interaction.channel.fetch_message(message_id)
-        # await msg.edit(view=PersistentBoardView(
-        #     self.bot, self.update_board, interaction.guild_id, interaction.channel_id, config.type
-        # ))
 
     async def on_error(self, interaction: discord.Interaction, error: Exception) -> None:
         await interaction.response.send_message('Oops! Something went wrong.', ephemeral=True)
@@ -156,7 +171,7 @@ class EditBoardModal(discord.ui.Modal, title="Edit Board"):
         )
         self.perpage_input = discord.ui.TextInput(
             label="Players per page",
-            placeholder="Enter a number (e.g. 20), or leave blank for default.",
+            placeholder="Enter a number (e.g. 20), or leave blank.",
             default=str(self.config.per_page or ""),
             required=False
         )
@@ -167,7 +182,7 @@ class EditBoardModal(discord.ui.Modal, title="Edit Board"):
         )
         self.iconurl_input = discord.ui.TextInput(
             label="Background Image URL",
-            placeholder="Paste the URL of the image you want on the board background.",
+            placeholder="URL of the image you want on the board background.",
             default=self.config.icon_url,
             required=False,
             max_length=50,
@@ -211,54 +226,10 @@ class EditBoardModal(discord.ui.Modal, title="Edit Board"):
         log.exception(f"Board Modal Error. Channel ID: {self.config.channel_id}", exc_info=error)
 
 
-class PersistentBoardView(discord.ui.View):
-    def __init__(self, bot, update_board, guild_id, channel_id, board_type):
-        super().__init__(timeout=None)
-        self.add_item(CustomButton(
-            label="Refresh",
-            style=discord.ButtonStyle.secondary,
-            custom_id=f"board:{board_type}:{channel_id}:refresh",
-            emoji=REFRESH_EMOJI,
-            bot=bot,
-            update_board=update_board,
-            row=0,
-        ))
-
-        self.add_item(CustomButton(
-            label="Edit Board",
-            style=discord.ButtonStyle.secondary,
-            custom_id=f"board:{board_type}:{channel_id}:edit",
-            emoji=GEAR_EMOJI,
-            bot=bot,
-            update_board=update_board,
-            row=0,
-        ))
-
-        self.add_item(CustomButton(
-            label="Previous",
-            style=discord.ButtonStyle.secondary,
-            custom_id=f"board:{board_type}:{channel_id}:prev",
-            emoji=LEFT_EMOJI,
-            bot=bot,
-            update_board=update_board,
-            row=1,
-        ))
-
-        self.add_item(CustomButton(
-            label="Next Page",
-            style=discord.ButtonStyle.secondary,
-            custom_id=f"board:{board_type}:{channel_id}:next",
-            emoji=RIGHT_EMOJI,
-            bot=bot,
-            update_board=update_board,
-            row=1,
-        ))
-
-
 class DonationBoard(commands.Cog):
     """Contains all DonationBoard Configurations.
     """
-    def __init__(self, bot):
+    def __init__(self, bot: DonationBot):
         self.bot = bot
 
         self.clan_updates = []
@@ -276,6 +247,7 @@ class DonationBoard(commands.Cog):
 
         self.board_updater = None
 
+        bot.add_dynamic_items(BoardButton)
         bot.loop.create_task(self.on_init())
 
     async def on_init(self):
@@ -284,20 +256,27 @@ class DonationBoard(commands.Cog):
             self.bot, start_loop=False, session=self.bot.session, fake_clan_guilds=self.bot.fake_clan_guilds
         )
 
-        fetch = await self.bot.pool.fetch("SELECT channel_id, guild_id, type, message_id FROM boards WHERE toggle=True")
-        log.info(f"Initialising button views for {len(fetch)} boards")
-        for row in fetch:
-            if row["type"] == "donation":
-                self.bot.add_view(
-                    PersistentBoardView(self.bot, self.update_board, row["guild_id"], row["channel_id"], row["type"]), message_id=row["message_id"]
-                )
-        log.info("Finished")
+    async def cog_unload(self) -> None:
+        self.bot.remove_dynamic_items(BoardButton)
+
+    async def get_board_config(self, message_id: int) -> typing.Optional[BoardConfig]:
+        query = "SELECT * FROM boards WHERE message_id = $1"
+        fetch = await self.bot.pool.fetchrow(query, message_id)
+        if fetch:
+            return BoardConfig(bot=self.bot, record=fetch)
+        return None
 
     @commands.command()
     @commands.is_owner()
-    async def test_button(self, ctx, channel: discord.TextChannel, message_id: int, board_type: str):
-        msg = await channel.fetch_message(message_id)
-        await msg.edit(view=PersistentBoardView(self.bot, self.update_board, ctx.guild.id, channel.id, board_type))
+    async def test_button(self, ctx, message_id: int):
+        config = await self.get_board_config(message_id)
+        msg = await config.channel.fetch_message(message_id)
+
+        view = discord.ui.View(timeout=None)
+        for label, key in (("Refresh ", "refresh"), ("Edit Board", "edit"), ("Previous", "prev"), ("Next", "next")):
+            view.add_item(BoardButton(config, self, label, key))
+
+        await msg.edit(view=view)
         try:
             await msg.clear_reactions()
         except:
