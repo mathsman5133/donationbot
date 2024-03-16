@@ -555,7 +555,7 @@ class BoardSetupMenu(discord.ui.View):
             discord.SelectOption(label=f"{name} ({tag})", value=tag) for name, tag in self.clan_name_lookup.items()
         ]
 
-    @discord.ui.button(label="Add Clan", style=discord.ButtonStyle.secondary, row=2)
+    @discord.ui.button(label="Add Clan", style=discord.ButtonStyle.secondary, row=3)
     async def add_clan_action(self, interaction: discord.Interaction["DonationBot"], button: discord.ui.Button):
         await interaction.response.send_message(view=AddClanModal(self))
 
