@@ -459,7 +459,7 @@ class BoardSetupMenu(discord.ui.View):
         await self.set_new_channel_selected(channel)
 
         self.channel_select_action.options = [
-            discord.SelectOption(
+            c and discord.SelectOption(
                 label=f"#{c.name}",
                 value=str(c.id),
                 default=c == channel
