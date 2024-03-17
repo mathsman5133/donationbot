@@ -246,20 +246,24 @@ class EditBoardModal(discord.ui.Modal, title="Edit Board"):
         log.exception(f"Board Modal Error. Channel ID: {self.config.channel_id}", exc_info=error)
 
 
-class BoardChannelSelect(discord.ui.ChannelSelect):
+class BoardChannelSelectView(discord.ui.View):
     channel: discord.TextChannel
 
     def __init__(self, author_id):
-        super().__init__(placeholder="Choose a channel...", channel_types=[discord.ChannelType.text])
+        super().__init__()
         self.author_id = author_id
+        self.message = None
 
-    async def callback(self, interaction: Interaction["DonationBot"]):
-        channel = self.values[0].resolve()
+    @discord.ui.select(
+        cls=discord.ui.ChannelSelect, placeholder="Choose a channel...", channel_types=[discord.ChannelType.text]
+    )
+    async def callback(self, interaction: Interaction["DonationBot"], select: discord.ui.ChannelSelect):
+        channel = select.values[0].resolve()
         if not channel.permissions_for(channel.guild.get_member(interaction.client.user.id)).send_messages:
             await interaction.response.send_message(
                 "I don't have permission to send messages in that channel!", ephemeral=True
             )
-            return False
+            return
 
         self.channel = channel
         self.stop()
@@ -269,6 +273,10 @@ class BoardChannelSelect(discord.ui.ChannelSelect):
             await interaction.response.send_message("This menu is not for you!", ephemeral=True)
             return False
         return True
+
+    async def on_timeout(self) -> None:
+        if self.message:
+            await self.message.delete()
 
 
 class BoardCreateConfirmation(discord.ui.View):
@@ -296,14 +304,14 @@ class BoardCreateConfirmation(discord.ui.View):
         await interaction.delete_original_response()
         self.stop()
 
-    @discord.ui.button(label="Yes", style=discord.ButtonStyle.green)
+    @discord.ui.button(label="Create New Channel", style=discord.ButtonStyle.green)
     async def yes(self, interaction: discord.Interaction, button: discord.ui.Button):
         self.value = "new_channel"
         await interaction.defer()
         await interaction.delete_original_response()
         self.stop()
 
-    @discord.ui.button(label="No", style=discord.ButtonStyle.red)
+    @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red)
     async def no(self, interaction: discord.Interaction, button: discord.ui.Button):
         self.value = ""
         await interaction.defer()
@@ -312,17 +320,20 @@ class BoardCreateConfirmation(discord.ui.View):
 
     @discord.ui.button(label="Use Existing Channel", style=discord.ButtonStyle.blurple)
     async def new_channel(self, interaction: discord.Interaction, button: discord.ui.Button):
-        modal = BoardChannelSelect(interaction.user.id)
-        await interaction.response.send_modal(modal)
-        await interaction.delete_original_response()
-        await modal.wait()
+        view = BoardChannelSelectView(interaction.user.id)
+        await interaction.response.send_message(
+            "Select which existing channel I should create the boards in.", view=view
+        )
+        view.message = interaction.original_response()
+        await view.wait()
 
-        await self.set_new_channel_selected(modal.channel)
+        await self.set_new_channel_selected(view.channel)
         await interaction.followup.send(
-            f"Added {modal.channel.mention} as a new board channel. "
+            f"Added {view.channel.mention} as a new board channel. "
             f"Feel free to add clans and boards with the original menu."
         )
-        self.channel = modal.channel
+        await interaction.delete_original_response()
+        self.channel = view.channel
         self.value = "existing_channel"
         self.stop()
 
