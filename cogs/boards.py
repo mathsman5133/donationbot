@@ -551,6 +551,7 @@ class BoardSetupMenu(discord.ui.View):
             f"Successfully created the new boards channel {channel.mention}. "
             f"Feel free to add clans and boards using the menu above.", ephemeral=True
         )
+        await interaction.message.edit(view=self)
 
     @discord.ui.select(placeholder="Select board channel to configure...", row=0, options=[], max_values=1)
     async def channel_select_action(self, interaction: discord.Interaction["DonationBot"], select: discord.ui.Select):
@@ -562,6 +563,7 @@ class BoardSetupMenu(discord.ui.View):
         self.configs = configs
         await self.set_new_channel_selected(channel)
         await interaction.response.defer()
+        await interaction.message.edit(view=self)
 
     @discord.ui.select(placeholder='Select board types to enable...', row=1, max_values=3, options=[
         discord.SelectOption(label="Donation Board", value="donation", description="An auto-updating donations leaderboard", emoji=DONATE_EMOJI),
@@ -668,6 +670,8 @@ class BoardSetupMenu(discord.ui.View):
             await self.create_board_channel(interaction)
         else:
             await self.set_new_channel_selected(confirm.channel)
+
+        await interaction.message.edit(view=self)
 
     @discord.ui.button(label="Help", style=discord.ButtonStyle.secondary, row=3)
     async def help_action(self, interaction: discord.Interaction["DonationBot"], button: discord.ui.Button):
