@@ -262,7 +262,7 @@ font-weight: bold;
         self.html += '<body>'
 
     def add_title(self):
-        self.html += f"<header><h1>{self.title}</h1></header>"
+        self.html += f"<header><strong>{self.title}</strong></header>"
 
     def add_image(self):
         self.html += f'<img id="bgimg" src="{self.image}" alt="Test"></img>'
