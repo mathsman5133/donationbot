@@ -9,7 +9,7 @@ import logging
 
 from collections import namedtuple
 
-from discord import Interaction
+from discord import Interaction, app_commands
 from discord.ext import commands
 
 from cogs.add import BOARD_PLACEHOLDER, titles, default_sort_by
@@ -38,6 +38,13 @@ TROPHY_EMOJI = discord.PartialEmoji.from_str("<:trophygold:632521243278442505>")
 DONATE_EMOJI = discord.PartialEmoji.from_str("<:donated_cc:684682634277683405>")
 
 GLOBAL_BOARDS_CHANNEL_ID = 663683345108172830
+
+
+CHANNEL_CONFIRMATION_MESSAGE = \
+    f"Would you like me to create a new channel, or would you like to use an existing channel?\n\n" \
+    f"It is important that the board channel is an empty channel where I am the only one with " \
+    f"permission to send messages.\nI will send one message per board - and continue to edit " \
+    f"them forever. Many board messages are now years old and still working normally."
 
 
 class BoardButton(
@@ -654,13 +661,8 @@ class BoardSetupMenu(discord.ui.View):
 
     @discord.ui.button(label="Add Channel", style=discord.ButtonStyle.secondary, row=3)
     async def add_channel_action(self, interaction: discord.Interaction["DonationBot"], button: discord.ui.Button):
-        message = f"Would you like me to create a new channel, or would you like to use an existing channel?\n\n" \
-                  f"It is important that the board channel is an empty channel where I am the only one with " \
-                  f"permission to send messages.\nI will send one message per board - and continue to edit " \
-                  f"them forever. Many board messages are now years old and still working normally."
-
         confirm = BoardCreateConfirmation(author_id=interaction.user.id)
-        msg = await interaction.response.send_message(message, view=confirm)
+        msg = await interaction.response.send_message(CHANNEL_CONFIRMATION_MESSAGE, view=confirm)
         confirm.message = msg
         await confirm.wait()
         if not confirm.value:
@@ -732,21 +734,37 @@ class DonationBoard(commands.Cog):
 
         return view
 
-    @commands.command()
-    @commands.is_owner()
-    async def setupboard(self, ctx):
-        view = BoardSetupMenu(self, ctx.author, ctx.guild)
+    @app_commands.command(name='season_info')
+    @app_commands.guilds(594276321937326091, 438214860593954816)
+    async def setupboard(self, interaction: discord.Interaction):
+        view = BoardSetupMenu(self, interaction.user, interaction.guild)
         await view.load_default_channel()
 
-        message = "This menu allows you to configure boards for your sever."
+        message = "This menu allows you to configure boards for your sever.\n\n" \
+                  "I've selected a default board channel to get you started." \
+                  "If you have multiple board channels, simply change the selected channel."
+
+        no_channel_message = "It seems you haven't yet configured a channel for boards.\n\n"
         if view.channel is None:
-            message += "\n\nPlease start by adding a board channel with the button."
+            confirm = BoardCreateConfirmation(author_id=interaction.user.id)
 
-            view.channel_select_action.disabled = True
-            view.board_type_select_action.disabled = True
-            view.clan_select_action.disabled = True
+            msg = await interaction.response.send_message(
+                no_channel_message + CHANNEL_CONFIRMATION_MESSAGE, view=confirm
+            )
+            confirm.message = msg
+            await confirm.wait()
+            if not confirm.value:
+                return
 
-        msg = await ctx.send(message, view=view)
+            if confirm.value == "new_channel":
+                await view.create_board_channel(interaction)
+            else:
+                await view.set_new_channel_selected(confirm.channel)
+
+            msg = await interaction.edit_original_response(message, view=view)
+        else:
+            msg = await interaction.response.send_message(message, view=view)
+
         view.message = msg
 
     @commands.command()
