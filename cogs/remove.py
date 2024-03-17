@@ -120,120 +120,12 @@ class Remove(commands.Cog):
         await self.bot.links.delete_link(player)
         return await intr.response.send_message("👌 Player successfully removed.")
 
-    async def do_board_remove(self, intr: discord.Interaction, channel, type_):
-        fetch = await self.bot.pool.fetchrow("DELETE FROM boards WHERE channel_id=$1 AND type=$2 RETURNING message_id", channel.id, type_)
-        if not fetch:
-            return await intr.response.send_message(f":x: I couldn't find a {type_}board in {channel.mention}.")
-
-        if await self.bot.pool.fetchrow("SELECT id FROM boards WHERE channel_id = $1", channel.id) is not None:
-            try:
-                await self.bot.http.delete_message(channel.id, fetch['message_id'])
-                msg = f"👌 {type_.capitalize()}board successfully removed"
-            except discord.HTTPException:
-                msg = f"👌 {type_.capitalize()}board successfully removed, but deleting the message failed."
-
-        else:
-            try:
-                await channel.delete(reason=f'Command done by {intr.user} ({intr.user.id})')
-                msg = f"👌 {type_.capitalize()}board sucessfully removed and channel deleted."
-            except (discord.Forbidden, discord.HTTPException):
-                msg = f"👌 {type_.capitalize()}board successfully removed.\n" \
-                       "⚠ I don't have permissions to delete the channel. Please manually delete it."
-            await self.bot.pool.execute("DELETE FROM clans WHERE channel_id = $1", channel.id)
-
-        await intr.response.send_message(msg)
-
     async def do_log_remove(self, intr: discord.Interaction, channel, type_):
         fetch = await self.bot.pool.fetch("DELETE FROM logs WHERE channel_id=$1 AND type=$2 RETURNING id", channel.id, type_)
         if fetch:
             return await intr.response.send_message(f"👌 {type_.capitalize()}log successfully deleted.")
         else:
             return await intr.response.send_message(f":x: No {type_}log found for {channel.mention}.")
-
-    @remove_group.command(name='donationboard', description="Removes the channel's donationboard.")
-    @app_commands.describe(channel="The channel the donationboard is located.")
-    @checks.manage_guild()
-    async def remove_donationboard(self, intr: discord.Interaction, channel: discord.TextChannel):
-        """Removes the guild donationboard.
-
-        **Parameters**
-        :key: A discord channel. If not present, it will use the channel you're currently in.
-
-        **Format**
-        :information_source: `+remove donationboard`
-        :information_source: `+remove donationboard #CHANNEL`
-
-        **Example**
-        :white_check_mark: `+remove donationboard`
-        :white_check_mark: `+remove donationboard #donationboard`
-
-        **Required Permissions**
-        :warning: Manage Server
-        """
-        await self.do_board_remove(intr, channel or intr.channel, "donation")
-
-    @remove_group.command(name='trophyboard', description="Removes the channel's trophyboard.")
-    @app_commands.describe(channel="The channel the trophyboard is located.")
-    @manage_guild()
-    async def remove_trophyboard(self, intr: discord.Interaction, channel: discord.TextChannel):
-        """Removes a trophyboard.
-
-        **Parameters**
-        :key: A discord channel. If not present, it will use the channel you're currently in.
-
-        **Format**
-        :information_source: `+remove trophyboard`
-        :information_source: `+remove trophyboard #CHANNEL`
-
-        **Example**
-        :white_check_mark: `+remove trophyboard`
-        :white_check_mark: `+remove trophyboard #trophyboard`
-
-        **Required Permissions**
-        :warning: Manage Server
-        """
-        await self.do_board_remove(intr, channel or intr.channel, "trophy")
-
-    @remove_group.command(name='legendboard', description="Removes the channel's legendboard.")
-    @app_commands.describe(channel="The channel the legendboard is located.")
-    @manage_guild()
-    async def remove_legendboard(self, intr: discord.Interaction, channel: discord.TextChannel):
-        """Removes a channel's legend board.
-
-        **Parameters**
-        :key: A discord channel to remove the legend board from.
-
-        **Format**
-        :information_source: `+remove legendboard #CHANNEL`
-
-        **Example**
-        :white_check_mark: `+remove legendboard #logging`
-
-        **Required Permissions**
-        :warning: Manage Server
-        """
-        await self.do_board_remove(intr, channel or intr.channel, 'legend')
-
-    # @remove_group.command(name='warboard', aliases=['war board', 'warsboard'])
-    # @checks.manage_guild()
-    # async def remove_warboard(self, intr: discord.Interaction, channel: discord.TextChannel = None):
-    #     """Removes the guild warboard.
-    #
-    #     **Parameters**
-    #     :key: A discord channel. If not present, it will use the channel you're currently in.
-    #
-    #     **Format**
-    #     :information_source: `+remove warboard`
-    #     :information_source: `+remove warboard #CHANNEL`
-    #
-    #     **Example**
-    #     :white_check_mark: `+remove warboard`
-    #     :white_check_mark: `+remove warboard #dt-boards`
-    #
-    #     **Required Permissions**
-    #     :warning: Manage Server
-    #     """
-    #     await self.do_board_remove(intr, channel or intr.channel, "war")
 
     @remove_group.command(name='donationlog', description="Removes the channel's donationlog.")
     @app_commands.describe(channel="The channel the donationlog is located.")

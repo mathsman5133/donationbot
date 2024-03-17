@@ -502,7 +502,7 @@ class BoardSetupMenu(discord.ui.View):
 
         self.channel_select_action.options = [
             discord.SelectOption(
-                label=f"#{c.name} ({c.category} category)",
+                label=f"#{c.name}{c.category and f' ({c.category} category)' or ''}",
                 value=str(c.id),
                 default=c == channel
             ) for c in channels
