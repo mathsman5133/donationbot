@@ -156,7 +156,7 @@ class ValidBoardSorting:
             "gain": "gain",
             "loss": "loss",
             "final": "finishing",
-            "default": "donations",
+            "default": "finishing",
         }
     }
 
@@ -249,7 +249,10 @@ class EditBoardModal(discord.ui.Modal, title="Edit Board"):
         await self.cog.update_board(None, config=config)
 
     async def on_error(self, interaction: discord.Interaction, error: Exception) -> None:
-        await interaction.response.send_message('Oops! Something went wrong.', ephemeral=True)
+        if await interaction.original_response():
+            await interaction.followup.send("Oops! Something went wrong.", ephemeral=True)
+        else:
+            await interaction.response.send_message('Oops! Something went wrong.', ephemeral=True)
 
         # Make sure we know what the error actually is
         log.exception(f"Board Modal Error. Channel ID: {self.config.channel_id}", exc_info=error)
