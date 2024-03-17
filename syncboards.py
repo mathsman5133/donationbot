@@ -688,7 +688,7 @@ class SyncBoards:
         season_start, season_finish = await self.get_season_meta(season_id)
 
         s1 = time.perf_counter()
-        table = HTMLImages(
+        table = self.table = HTMLImages(
             players=fetch,
             title=config.title,
             image=config.icon_url,
