@@ -2,6 +2,7 @@ import asyncio
 import typing
 import re
 
+import asyncpg as asyncpg
 import coc
 import discord
 import logging
@@ -305,21 +306,14 @@ class BoardCreateConfirmation(discord.ui.View):
         self.stop()
 
     @discord.ui.button(label="Create New Channel", style=discord.ButtonStyle.green)
-    async def yes(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def new_channel(self, interaction: discord.Interaction, button: discord.ui.Button):
         self.value = "new_channel"
         await interaction.defer()
         await interaction.delete_original_response()
         self.stop()
 
-    @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red)
-    async def no(self, interaction: discord.Interaction, button: discord.ui.Button):
-        self.value = ""
-        await interaction.defer()
-        await interaction.delete_original_response()
-        self.stop()
-
     @discord.ui.button(label="Use Existing Channel", style=discord.ButtonStyle.blurple)
-    async def new_channel(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def existing_channel(self, interaction: discord.Interaction, button: discord.ui.Button):
         view = BoardChannelSelectView(interaction.user.id)
         await interaction.response.send_message(
             "Select which existing channel I should create the boards in.", view=view
@@ -327,7 +321,6 @@ class BoardCreateConfirmation(discord.ui.View):
         view.message = interaction.original_response()
         await view.wait()
 
-        await self.set_new_channel_selected(view.channel)
         await interaction.followup.send(
             f"Added {view.channel.mention} as a new board channel. "
             f"Feel free to add clans and boards with the original menu."
@@ -335,6 +328,13 @@ class BoardCreateConfirmation(discord.ui.View):
         await interaction.delete_original_response()
         self.channel = view.channel
         self.value = "existing_channel"
+        self.stop()
+
+    @discord.ui.button(label="Cancel", style=discord.ButtonStyle.red)
+    async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.value = ""
+        await interaction.defer()
+        await interaction.delete_original_response()
         self.stop()
 
 
@@ -360,7 +360,11 @@ class AddClanModal(discord.ui.Modal, title="Add Clan"):
             return
 
         query = "INSERT INTO clans (clan_tag, guild_id, channel_id, clan_name, fake_clan) VALUES ($1, $2, $3, $4, $5)"
-        await self.bot.pool.execute(query, clan.tag, interaction.guild_id, self.menu.channel.id, str(clan), False)
+        try:
+            await self.bot.pool.execute(query, clan.tag, interaction.guild_id, self.menu.channel.id, str(clan), False)
+        except asyncpg.UniqueViolationError:
+            await interaction.followup.send("You've already added that clan!", ephemeral=True)
+            return
 
         message = f"Successfully added {clan.name} ({clan.tag}) to {self.menu.channel.mention}.\n\n"
         sent = await interaction.followup.send(
@@ -502,6 +506,8 @@ class BoardSetupMenu(discord.ui.View):
         for option in self.board_type_select_action.options:
             option.default = option.value in types_enabled
 
+        log.info(f"setting {', '.join(types_enabled)} as enabled")
+
         await self.sync_clans()
 
         self.channel_select_action.disabled = False
@@ -638,6 +644,7 @@ class BoardSetupMenu(discord.ui.View):
             ) for tag, name in self.clan_name_lookup.items()
         ]
         self.clan_select_action.max_values = len(self.clan_name_lookup)
+        log.info(f"set clans enabled for channel {self.channel.id}: " + ", ".join(current_clans))
 
     @discord.ui.button(label="Add Clan", style=discord.ButtonStyle.secondary, row=3)
     async def add_clan_action(self, interaction: discord.Interaction["DonationBot"], button: discord.ui.Button):
@@ -664,7 +671,7 @@ class BoardSetupMenu(discord.ui.View):
 
     @discord.ui.button(label="Help", style=discord.ButtonStyle.secondary, row=3)
     async def help_action(self, interaction: discord.Interaction["DonationBot"], button: discord.ui.Button):
-        await interaction.response.send_message("Todo")
+        await interaction.response.send_message("Todo", ephemeral=True)
 
 
 class DonationBoard(commands.Cog):
