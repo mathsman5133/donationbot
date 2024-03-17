@@ -13,6 +13,7 @@ from discord import Interaction, app_commands
 from discord.ext import commands
 
 from cogs.add import BOARD_PLACEHOLDER, titles, default_sort_by
+from cogs.utils.checks import manage_guild
 from cogs.utils.db_objects import DatabaseMessage, BoardConfig
 from syncboards import SyncBoards, default_sort_by
 
@@ -578,7 +579,7 @@ class BoardSetupMenu(discord.ui.View):
         discord.SelectOption(label="Legend Board", value="legend", description="An auto-updating legends leaderboard", emoji=LEGEND_EMOJI)
     ])
     async def board_type_select_action(self, interaction: discord.Interaction["DonationBot"], select: discord.ui.Select):
-        await interaction.response.defer(ephemeral=True)
+        await interaction.response.defer(ephemeral=True, thinking=True)
 
         parse = {"donation": "Donation Board", "trophy": "Trophy Board", "legend": "Legend Board"}
 
@@ -589,10 +590,10 @@ class BoardSetupMenu(discord.ui.View):
 
         for row in new:
             await self.create_board(row)
-            await interaction.followup.send(f"I've created a new {parse[row].lower()} in {self.channel.mention}.", ephemeral=True)
+            await interaction.followup.send(f"Successfully created a new {parse[row].lower()} in {self.channel.mention}.", ephemeral=True)
         for row in old:
             await self.delete_board(row)
-            await interaction.followup.send(f"I've removed the {parse[row].lower()} from {self.channel.mention}.", ephemeral=True)
+            await interaction.followup.send(f"Successfully removed the {parse[row].lower()} from {self.channel.mention}.", ephemeral=True)
 
         if not (new or old):
             await interaction.followup.send(f"All your boards are already setup.", ephemeral=True)
@@ -655,11 +656,11 @@ class BoardSetupMenu(discord.ui.View):
         self.clan_select_action.max_values = len(self.clan_name_lookup)
         log.info(f"set clans enabled for channel {self.channel.id}: " + ", ".join(current_clans))
 
-    @discord.ui.button(label="Add Clan", style=discord.ButtonStyle.secondary, row=3)
+    @discord.ui.button(label="Add Clan", style=discord.ButtonStyle.green, row=3)
     async def add_clan_action(self, interaction: discord.Interaction["DonationBot"], button: discord.ui.Button):
         await interaction.response.send_modal(AddClanModal(self))
 
-    @discord.ui.button(label="Add Channel", style=discord.ButtonStyle.secondary, row=3)
+    @discord.ui.button(label="Add Channel", style=discord.ButtonStyle.green, row=3)
     async def add_channel_action(self, interaction: discord.Interaction["DonationBot"], button: discord.ui.Button):
         confirm = BoardCreateConfirmation(author_id=interaction.user.id)
         msg = await interaction.response.send_message(CHANNEL_CONFIRMATION_MESSAGE, view=confirm)
@@ -675,9 +676,30 @@ class BoardSetupMenu(discord.ui.View):
 
         await interaction.message.edit(view=self)
 
-    @discord.ui.button(label="Help", style=discord.ButtonStyle.secondary, row=3)
+    # @discord.ui.button(label="Edit Config", style=discord.ButtonStyle.blue, row=3)
+    # async def edit_config_action(self, interaction: discord.Interaction["DonationBot"], button: discord.ui.Button):
+
+    @discord.ui.button(label="Help", style=discord.ButtonStyle.red, row=3)
     async def help_action(self, interaction: discord.Interaction["DonationBot"], button: discord.ui.Button):
-        await interaction.response.send_message("Todo", ephemeral=True)
+        message = """
+This is the board configuration menu. I'll explain how it works a bit now.
+
+Boards are custom leaderboards for clans and families in Clash.
+You can choose between donation boards for showing donation information, trophy boards for trophy information and legend boards for more legend-specific data.
+
+When setting them up for the first time, I will send a message in the channel. Every time someone donates troops or gains / loses trophies, I will update the board. 
+I will edit the original message I send - forever. Many people have boards which are years old. This means it's really important that nobody else sends messages in that channel - it's a view-only channel.
+
+In this menu, you can create new boards or remove old ones, and add or remove clans from already configured boards.
+
+- The "Add Clan" button will let you add a new clan to the board that doesn't exist in the server yet.
+- The "Add Channel" button will let you add new board channel - perhaps for a second clan or different family.
+- The "Help" button will give you this message!
+
+This is a new feature - so if you find any bugs or have feedback, please let us know!
+        """
+# - The "Edit Config" button will let you edit the configuration for the current channel - title, players per page, etc.
+        await interaction.response.send_message(message, ephemeral=True)
 
 
 class DonationBoard(commands.Cog):
@@ -734,15 +756,16 @@ class DonationBoard(commands.Cog):
 
         return view
 
-    @app_commands.command(name='season_info')
-    @app_commands.guilds(594276321937326091, 438214860593954816)
+    @app_commands.command(name='setup-boards', description="Setup or configure boards for the server")
+    @manage_guild()
     async def setupboard(self, interaction: discord.Interaction):
         view = BoardSetupMenu(self, interaction.user, interaction.guild)
         await view.load_default_channel()
 
         message = "This menu allows you to configure boards for your sever.\n\n" \
-                  "I've selected a default board channel to get you started." \
-                  "If you have multiple board channels, simply change the selected channel."
+                  "I've selected a board channel to get you started.\n" \
+                  "If you have multiple board channels, simply change the selected channel.\n\n" \
+                  "If you're still confused, press the 'Help' button."
 
         no_channel_message = "It seems you haven't yet configured a channel for boards.\n\n"
         if view.channel is None:

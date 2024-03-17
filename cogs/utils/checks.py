@@ -46,7 +46,7 @@ def manage_guild():
     async def pred(interaction: discord.Interaction):
         perms = await check_guild_permissions(interaction, {'manage_guild': True})
         if not perms:
-            raise commands.CheckFailure('You must have `Manage Server` permissions to use this command!')
+            raise commands.CheckFailure('You must have `Manage Server` permissions to use this command! Perhaps ask an admin?')
         return True
     return app_commands.check(pred)
 
