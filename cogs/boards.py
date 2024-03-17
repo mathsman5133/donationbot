@@ -323,15 +323,15 @@ class BoardCreateConfirmation(discord.ui.View):
     @discord.ui.button(label="Use Existing Channel", style=discord.ButtonStyle.blurple)
     async def existing_channel(self, interaction: discord.Interaction, button: discord.ui.Button):
         view = BoardChannelSelectView(interaction.user.id)
-        await interaction.response.send_message(
+        msg = await interaction.response.send_message(
             "Select which existing channel I should create the boards in.", view=view
         )
-        view.message = interaction.original_response()
+        view.message = msg
         await view.wait()
 
         await interaction.followup.send(
             f"Added {view.channel.mention} as a new board channel. "
-            f"Feel free to add clans and boards with the original menu."
+            f"Feel free to add clans and boards with the original menu.", ephemeral=True
         )
         await interaction.delete_original_response()
         self.channel = view.channel
@@ -509,8 +509,14 @@ class BoardSetupMenu(discord.ui.View):
         ]
 
     async def set_new_channel_selected(self, channel):
-        types_enabled = [c.type for c in self.configs]
         self.channel = channel
+
+        self.configs = await self.get_all_boards_config(channel.id)
+        types_enabled = [c.type for c in self.configs]
+
+        for option in self.channel_select_action.options:
+            option.default = int(option.value) == channel.id
+
         for option in self.board_type_select_action.options:
             option.default = option.value in types_enabled
 
@@ -663,7 +669,7 @@ class BoardSetupMenu(discord.ui.View):
     @discord.ui.button(label="Add Channel", style=discord.ButtonStyle.green, row=3)
     async def add_channel_action(self, interaction: discord.Interaction["DonationBot"], button: discord.ui.Button):
         confirm = BoardCreateConfirmation(author_id=interaction.user.id)
-        msg = await interaction.response.send_message(CHANNEL_CONFIRMATION_MESSAGE, view=confirm)
+        msg = await interaction.response.send_message(CHANNEL_CONFIRMATION_MESSAGE, view=confirm, ephemeral=True)
         confirm.message = msg
         await confirm.wait()
         if not confirm.value:
@@ -673,6 +679,11 @@ class BoardSetupMenu(discord.ui.View):
             await self.create_board_channel(interaction)
         else:
             await self.set_new_channel_selected(confirm.channel)
+
+        try:
+            await msg.delete()
+        except:
+            pass
 
         await interaction.message.edit(view=self)
 
