@@ -352,7 +352,7 @@ class AddClanModal(discord.ui.Modal, title="Add Clan"):
         await self.bot.pool.execute(query, clan.tag, interaction.guild_id, self.menu.channel.id, str(clan), False)
 
         message = f"Successfully added {clan.name} ({clan.tag}) to {self.menu.channel.mention}.\n\n"
-        await interaction.response.send_message(
+        sent = await interaction.followup.send(
             message + f"Please wait while I add all the clan members.", ephemeral=True
         )
 
@@ -389,7 +389,7 @@ class AddClanModal(discord.ui.Modal, title="Add Clan"):
                 member.legend_statistics and member.legend_statistics.legend_trophies or 0
             )
 
-        await interaction.edit_original_response(content=message + "Successfully added all clan members.")
+        await sent.edit(content=message + "Successfully added all clan members.")
         await self.menu.sync_clans()
 
 
