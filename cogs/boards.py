@@ -560,6 +560,9 @@ class BoardSetupMenu(discord.ui.View):
             return
 
         self.configs = []
+        self.channel_select_action.append_option(
+            discord.SelectOption(label=f"#{channel.name}", value=str(channel.id), default=True)
+        )
         await self.set_new_channel_selected(channel)
         await interaction.response.send_message(
             f"Successfully created the new boards channel {channel.mention}. "
@@ -669,7 +672,7 @@ class BoardSetupMenu(discord.ui.View):
     @discord.ui.button(label="Add Channel", style=discord.ButtonStyle.green, row=3)
     async def add_channel_action(self, interaction: discord.Interaction["DonationBot"], button: discord.ui.Button):
         confirm = BoardCreateConfirmation(author_id=interaction.user.id)
-        msg = await interaction.response.send_message(CHANNEL_CONFIRMATION_MESSAGE, view=confirm, ephemeral=True)
+        msg = await interaction.response.send_message(CHANNEL_CONFIRMATION_MESSAGE, view=confirm)
         confirm.message = msg
         await confirm.wait()
         if not confirm.value:
@@ -679,7 +682,9 @@ class BoardSetupMenu(discord.ui.View):
             await self.create_board_channel(interaction)
         else:
             await self.set_new_channel_selected(confirm.channel)
-
+            self.channel_select_action.append_option(
+                discord.SelectOption(label=f"#{confirm.channel.name}", value=str(confirm.channel.id), default=True)
+            )
         try:
             await msg.delete()
         except:
