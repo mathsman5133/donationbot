@@ -123,6 +123,7 @@ class HTMLImages:
             self.show_clan = False
 
     async def load_or_save_custom_emoji(self, emoji_or_clan_id: str, clan_tag: str = None):
+        emoji_or_clan_id = emoji_or_clan_id.replace("#", "")
         if emoji_or_clan_id in self.emoji_data:
             return emoji_or_clan_id
         else:
@@ -384,6 +385,7 @@ font-weight: bold;
             files.append(('file', ("background.png", open(backgrounds.get(self.board_type, backgrounds["donation"]), "rb"))))
 
         print(files)
+        print(self.html)
         log.info('construction time took %sms', (time.perf_counter() - s)*1000)
 
         data = {'quality': '50', 'format': 'jpeg', 'optimizeForSpeed': 'true', 'skipNetworkIdleEvent': 'true'}
