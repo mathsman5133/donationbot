@@ -376,9 +376,9 @@ font-weight: bold;
         log.debug((time.perf_counter() - s)*1000)
 
         files = [
-            ("index.html", io.BytesIO(self.html.encode("utf-8"))),
-            ("badge.png", open("assets/reddit badge.png", "rb")),
-            *[(k, io.BytesIO(v)) for k, v in self.emoji_data.items()]
+            ('file', ("index.html", io.BytesIO(self.html.encode("utf-8")))),
+            ('file', ("badge.png", open("assets/reddit badge.png", "rb"))),
+            *[('file', (k, io.BytesIO(v))) for k, v in self.emoji_data.items()]
         ]
         if not self.image:
             files.append(("background.png", open(backgrounds.get(self.board_type, backgrounds["donation"]), "rb")))
