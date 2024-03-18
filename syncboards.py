@@ -381,7 +381,9 @@ font-weight: bold;
             *[('file', (k, io.BytesIO(v))) for k, v in self.emoji_data.items()]
         ]
         if not self.image:
-            files.append(("background.png", open(backgrounds.get(self.board_type, backgrounds["donation"]), "rb")))
+            files.append(('file', ("background.png", open(backgrounds.get(self.board_type, backgrounds["donation"]), "rb"))))
+
+        print(files)
 
         res = await self.session.post("http://localhost:3000/forms/chromium/screenshot/html", files=files, data={'skipNetworkIdleEvent': 'true'})
         return io.BytesIO(res.read())
