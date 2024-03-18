@@ -170,7 +170,7 @@ width: 2500px;
             body = """
 body {
 width: 1200px;
-background: linear-gradient(rgba(255,255,255,.2), rgba(255,255,255,.2)), url(""" + self.image or 'background.png' + """}) no-repeat;
+background: linear-gradient(rgba(255,255,255,.2), rgba(255,255,255,.2)), url(""" + (self.image or 'background.png') + """}) no-repeat;
 background-size: cover;
 }
 """
