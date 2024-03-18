@@ -39,9 +39,9 @@ emojis = {
     "war": (REFRESH_EMOJI, LEFT_EMOJI, RIGHT_EMOJI),
 }
 backgrounds = {
-    "donation": "assets/clash_cliffs.png",
-    "trophy": "assets/surfboards.png",
-    "legend": "assets/snowyfield.png",
+    "donation": "assets/wall-background_.png",
+    "trophy": "assets/SummerWardenBackground.png",
+    "legend": "assets/BattleGrassBackground.png",
     "war": "https://cdn.discordapp.com/attachments/594286547449282587/824491008099876885/BG-coc_BALLOON.jpg",
 }
 titles = {
@@ -384,11 +384,9 @@ font-weight: bold;
         if not self.image:
             files.append(('file', ("background.png", open(backgrounds.get(self.board_type, backgrounds["donation"]), "rb"))))
 
-        print(files)
-        print(self.html)
         log.info('construction time took %sms', (time.perf_counter() - s)*1000)
 
-        data = {'quality': '50', 'format': 'jpeg', 'optimizeForSpeed': 'true', 'skipNetworkIdleEvent': 'true'}
+        data = {'optimizeForSpeed': 'true', 'skipNetworkIdleEvent': 'true'}
 
         s = time.perf_counter()
         res = await self.session.post("http://localhost:3000/forms/chromium/screenshot/html", files=files, data=data)
@@ -713,7 +711,7 @@ class SyncBoards:
         if divert_to:
             log.info('diverting board to %s channel_id', divert_to)
             try:
-                params = discord.http.handle_message_parameters(file=discord.File(render, f'{config.type}board.jpeg'))
+                params = discord.http.handle_message_parameters(file=discord.File(render, f'{config.type}board.png'))
                 await self.bot.http.send_message(channel_id=divert_to, params=params)
             except Exception as e:
                 log.info('failed to send legend log to channel %s: %s', config.channel_id, e)
@@ -721,7 +719,7 @@ class SyncBoards:
 
         log.info(perf_log)
         logged_board_message = await next(self.webhooks).send(
-            perf_log, file=discord.File(render, f'{config.type}board.jpeg'), wait=True
+            perf_log, file=discord.File(render, f'{config.type}board.png'), wait=True
         )
         embed = discord.Embed(timestamp=discord.utils.utcnow())
         embed.set_image(url=logged_board_message.attachments[0].url)
