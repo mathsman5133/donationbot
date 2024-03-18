@@ -11,6 +11,7 @@ from pathlib import Path
 from datetime import datetime, timedelta
 
 import aiohttp
+import httpx
 import coc
 import discord
 
@@ -38,9 +39,9 @@ emojis = {
     "war": (REFRESH_EMOJI, LEFT_EMOJI, RIGHT_EMOJI),
 }
 backgrounds = {
-    "donation": Path("assets/clash_cliffs.png").resolve().as_uri(),
-    "trophy": Path("assets/surfboards.png").resolve().as_uri(),
-    "legend": Path("assets/snowyfield.png").resolve().as_uri(),
+    "donation": "assets/clash_cliffs.png",
+    "trophy": "assets/surfboards.png",
+    "legend": "assets/snowyfield.png",
     "war": "https://cdn.discordapp.com/attachments/594286547449282587/824491008099876885/BG-coc_BALLOON.jpg",
 }
 titles = {
@@ -77,11 +78,12 @@ class HTMLImages:
         self.session = session
         self.coc_client = coc_client
 
-        self.emoji_paths = {}
+        self.emoji_data = {}
 
         self.offset = offset or 1
         self.title = title or titles.get(board_type, backgrounds['donation'])
-        self.image = image or backgrounds.get(board_type, backgrounds['donation'])
+        self.image = image
+
         self.footer = footer
         self.fonts = fonts or "symbola, Helvetica, Verdana,courier,arial,symbola"
         self.board_type = board_type
@@ -116,34 +118,35 @@ class HTMLImages:
             # self.selected_index = [col + 1 for col in self.selected_index]
             self.show_clan = True
             self.columns.pop(1)
-            self.columns.insert(1, '<img id="icon_cls" src="' + Path("assets/reddit badge.png").resolve().as_uri() + '">')
+            self.columns.insert(1, '<img id="icon_cls" src="badge.png">')
         else:
             self.show_clan = False
 
     async def load_or_save_custom_emoji(self, emoji_or_clan_id: str, clan_tag: str = None):
-        try:
-            return self.emoji_paths[emoji_or_clan_id]
-        except KeyError:
+        if emoji_or_clan_id in self.emoji_data:
+            return emoji_or_clan_id
+        else:
             path = Path(f'assets/board_icons/{emoji_or_clan_id}.png')
             if path.is_file():
-                return path.resolve().as_uri()
+                with open(path, "rb") as fp:
+                    self.emoji_data[emoji_or_clan_id] = fp.read()
+                return emoji_or_clan_id
+
             else:
                 if clan_tag:
                     clan = await self.coc_client.get_clan(clan_tag)
                     if clan:
                         b = await clan.badge.save(path)
-                        if b:
-                            return Path(f'assets/board_icons/{emoji_or_clan_id}.png').resolve().as_uri()
+                        return b and (await self.load_or_save_custom_emoji(emoji_or_clan_id, clan_tag)) or False
                 else:
-                    async with self.session.get(f"{discord.Asset.BASE}/emojis/{emoji_or_clan_id}.png") as resp:
-                        if resp.status == 200:
-                            data = await resp.read()
-                            with open(f'assets/board_icons/{emoji_or_clan_id}.png', 'wb') as f:
-                                bytes_ = f.write(data)
-                                if bytes_:
-                                    return Path(f'assets/board_icons/{emoji_or_clan_id}.png').resolve().as_uri()
-                        else:
-                            return None
+                    resp = await self.session.get(f"{discord.Asset.BASE}/emojis/{emoji_or_clan_id}.png")
+                    if resp.status == 200:
+                        data = await resp.read()
+                        with open(f'assets/board_icons/{emoji_or_clan_id}.png', 'wb') as f:
+                            f.write(data)
+
+                        self.emoji_data[emoji_or_clan_id] = data
+                        return emoji_or_clan_id
 
     def get_readable(self, delta):
         hours, remainder = divmod(int(delta.total_seconds()), 3600)
@@ -167,6 +170,8 @@ width: 2500px;
             body = """
 body {
 width: 1200px;
+background: linear-gradient(rgba(255,255,255,.2), rgba(255,255,255,.2)), url(""" + self.image or 'background.png' + """}) no-repeat;
+background-size: cover;
 }
 """
             width = "width: 100%;"
@@ -177,15 +182,6 @@ width: 1200px;
 <head>
 <style>
 """ + body + """
-#bgimg {
-  position: absolute;
-  top: 0;
-  left: 0;
-  height: 100%;
-  width: 100%;
-  z-index:-1;
-  opacity:0.9;
-}
 #icon_cls {
     position: relative;
     height: 64px;
@@ -264,9 +260,6 @@ font-weight: bold;
     def add_title(self):
         self.html += f"<header><strong>{self.title}</strong></header>"
 
-    def add_image(self):
-        self.html += f'<img id="bgimg" src="{self.image}" alt="Test"></img>'
-
     def add_table(self, players):
         to_add = "<table>"
 
@@ -302,7 +295,7 @@ font-weight: bold;
         else:
             return ''
 
-        return uri and f'<img id="icon_clsii" src="{uri}">' or ''
+        return uri and f'<img id="icon_clsii" src="{uri}.png">' or ''
 
     async def parse_players(self):
         if self.board_type == 'donation':
@@ -371,7 +364,6 @@ font-weight: bold;
         self.add_style()
         self.add_body()
         self.add_title()
-        self.add_image()
         if len(self.players) >= 30:
             self.add_table(self.players[:int(len(self.players)/2)])
             self.add_table(self.players[int(len(self.players)/2):])
@@ -383,18 +375,15 @@ font-weight: bold;
         self.end_html()
         log.debug((time.perf_counter() - s)*1000)
 
-        s = time.perf_counter()
-        proc = await asyncio.create_subprocess_shell(
-            "wkhtmltoimage --enable-local-file-access - -", stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
-            stdin=asyncio.subprocess.PIPE,
-        )
-        log.debug((time.perf_counter() - s)*1000)
-        s = time.perf_counter()
-        stdout, stderr = await proc.communicate(input=self.html.encode('utf-8'))
-        log.debug((time.perf_counter() - s)*1000)
-        # if stderr:
-        #     log.info("Board creation for channel %s, error: %s", 'test', stderr)
-        b = io.BytesIO(stdout)
+        files = {
+            "badge.png": open("assets/reddit badge.png", "rb"),
+            **{k: io.BytesIO(v) for k, v in self.emoji_data.items()}
+        }
+        if not self.image:
+            files["background.png"] = open(backgrounds.get(self.board_type, backgrounds["donation"]), "rb")
+
+        res = await self.session.post("http://localhost:3000/forms/chromium/screenshot/html", files=files, data={'skipNetworkIdleEvent': 'true'})
+        b = io.BytesIO(await res.read())
         b.seek(0)
         return b
 
@@ -404,7 +393,9 @@ class SyncBoards:
         self.bot = bot
         self.pool = pool or bot.pool
         self.coc_client = coc_client or bot.coc
-        self.session = session or aiohttp.ClientSession()
+
+        self.aiohttp_session = session or aiohttp.ClientSession()
+        self.session = httpx.AsyncClient()
 
         self.season_id = 17
 
@@ -414,7 +405,6 @@ class SyncBoards:
         self.webhooks = None
         self.fake_clan_guilds = fake_clan_guilds or set()
 
-        self.session = aiohttp.ClientSession()
         self.throttler = coc.BasicThrottler(1)
 
         self.reset_season_id.add_exception_type(Exception)
@@ -432,11 +422,15 @@ class SyncBoards:
     async def on_init(self):
         self.webhooks = itertools.cycle(
             discord.Webhook.partial(
-                payload['id'], payload['token'], session=self.session
+                payload['id'], payload['token'], session=self.aiohttp_session
             ) for payload in await self.bot.http.guild_webhooks(691779140059267084)
         )
 
         await self.set_season_id()
+
+    async def close(self):
+        if not self.session.is_closed:
+            await self.session.aclose()
 
     async def set_season_id(self):
         fetch = await self.pool.fetchrow("SELECT id FROM seasons WHERE start < now() ORDER BY start DESC;")

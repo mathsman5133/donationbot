@@ -740,7 +740,7 @@ class DonationBoard(commands.Cog):
         self._board_channels = []
         self.season_meta = {}
 
-        self.board_updater = None
+        self.board_updater: "SyncBoards" = None
 
         bot.add_dynamic_items(BoardButton)
         bot.loop.create_task(self.on_init())
@@ -753,6 +753,7 @@ class DonationBoard(commands.Cog):
 
     async def cog_unload(self) -> None:
         self.bot.remove_dynamic_items(BoardButton)
+        await self.board_updater.close()
 
     async def get_board_config(self, message_id: int) -> typing.Optional[BoardConfig]:
         query = "SELECT * FROM boards WHERE message_id = $1"
