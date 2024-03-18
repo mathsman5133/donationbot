@@ -141,7 +141,7 @@ class HTMLImages:
                 else:
                     resp = await self.session.get(f"{discord.Asset.BASE}/emojis/{emoji_or_clan_id}.png")
                     if resp.status == 200:
-                        data = await resp.read()
+                        data = resp.read()
                         with open(f'assets/board_icons/{emoji_or_clan_id}.png', 'wb') as f:
                             f.write(data)
 
@@ -383,7 +383,7 @@ font-weight: bold;
             files["background.png"] = open(backgrounds.get(self.board_type, backgrounds["donation"]), "rb")
 
         res = await self.session.post("http://localhost:3000/forms/chromium/screenshot/html", files=files, data={'skipNetworkIdleEvent': 'true'})
-        b = io.BytesIO(await res.read())
+        b = io.BytesIO(res.read())
         b.seek(0)
         return b
 
