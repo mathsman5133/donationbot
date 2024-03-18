@@ -375,7 +375,10 @@ font-weight: bold;
         self.end_html()
         log.debug((time.perf_counter() - s)*1000)
 
+        html = io.BytesIO(self.html.encode("utf-8"))
+        html.seek(0)
         files = {
+            "index.html": html,
             "badge.png": open("assets/reddit badge.png", "rb"),
             **{k: io.BytesIO(v) for k, v in self.emoji_data.items()}
         }
