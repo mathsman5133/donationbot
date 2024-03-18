@@ -170,7 +170,7 @@ width: 2500px;
             body = """
 body {
 width: 1200px;
-background: linear-gradient(rgba(255,255,255,.2), rgba(255,255,255,.2)), url(\"""" + (self.image or 'background.png') + """\"}) no-repeat;
+background: linear-gradient(rgba(255,255,255,.2), rgba(255,255,255,.2)), url(""" + (self.image or 'background.png') + """) no-repeat;
 background-size: cover;
 }
 """
@@ -295,6 +295,7 @@ font-weight: bold;
         else:
             return ''
 
+        print(uri)
         return uri and f'<img id="icon_clsii" src="{uri}.png">' or ''
 
     async def parse_players(self):
@@ -385,11 +386,14 @@ font-weight: bold;
         print(files)
         log.info('construction time took %sms', (time.perf_counter() - s)*1000)
 
+        data = {'quality': '50', 'format': 'jpeg', 'optimizeForSpeed': 'true', 'skipNetworkIdleEvent': 'true'}
+
         s = time.perf_counter()
-        res = await self.session.post("http://localhost:3000/forms/chromium/screenshot/html", files=files, data={'skipNetworkIdleEvent': 'true'})
+        res = await self.session.post("http://localhost:3000/forms/chromium/screenshot/html", files=files, data=data)
         b = io.BytesIO(res.read())
         log.info('image generation took %sms', (time.perf_counter() - s)*1000)
         return b
+
 
 class SyncBoards:
     def __init__(self, bot, start_loop=False, pool=None, session=None, coc_client=None, fake_clan_guilds=None):
@@ -678,6 +682,7 @@ class SyncBoards:
                 self.get_next_per_page(config.page, config.per_page),
                 offset
             )
+        log.info("query took %sms", (time.perf_counter() - start)*1000)
 
         if not fetch:
             return  # nothing to do/add
@@ -706,7 +711,7 @@ class SyncBoards:
         if divert_to:
             log.info('diverting board to %s channel_id', divert_to)
             try:
-                params = discord.http.handle_message_parameters(file=discord.File(render, f'{config.type}board.png'))
+                params = discord.http.handle_message_parameters(file=discord.File(render, f'{config.type}board.jpeg'))
                 await self.bot.http.send_message(channel_id=divert_to, params=params)
             except Exception as e:
                 log.info('failed to send legend log to channel %s: %s', config.channel_id, e)
