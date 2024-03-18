@@ -721,7 +721,7 @@ class SyncBoards:
 
         log.info(perf_log)
         logged_board_message = await next(self.webhooks).send(
-            perf_log, file=discord.File(render, f'{config.type}board.png'), wait=True
+            perf_log, file=discord.File(render, f'{config.type}board.jpeg'), wait=True
         )
         embed = discord.Embed(timestamp=discord.utils.utcnow())
         embed.set_image(url=logged_board_message.attachments[0].url)
