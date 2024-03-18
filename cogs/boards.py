@@ -312,14 +312,14 @@ class BoardCreateConfirmation(discord.ui.View):
 
     async def stop_and_set_response(self, interaction: discord.Interaction["DonationBot"], value: str):
         self.value = value
-        await interaction.defer()
+        await interaction.response.defer()
         await interaction.delete_original_response()
         self.stop()
 
     @discord.ui.button(label="Create New Channel", style=discord.ButtonStyle.green)
     async def new_channel(self, interaction: discord.Interaction, button: discord.ui.Button):
         self.value = "new_channel"
-        await interaction.defer()
+        await interaction.response.defer()
         await interaction.delete_original_response()
         self.stop()
 
