@@ -375,20 +375,16 @@ font-weight: bold;
         self.end_html()
         log.debug((time.perf_counter() - s)*1000)
 
-        html = io.BytesIO(self.html.encode("utf-8"))
-        html.seek(0)
-        files = {
-            "index.html": html,
-            "badge.png": open("assets/reddit badge.png", "rb"),
-            **{k: io.BytesIO(v) for k, v in self.emoji_data.items()}
-        }
+        files = [
+            ("index.html", io.BytesIo(self.html.encode("utf-8"))),
+            ("badge.png", open("assets/reddit badge.png", "rb")),
+            *[(k, io.BytesIO(v)) for k, v in self.emoji_data.items()]
+        ]
         if not self.image:
-            files["background.png"] = open(backgrounds.get(self.board_type, backgrounds["donation"]), "rb")
+            files.append(("background.png", open(backgrounds.get(self.board_type, backgrounds["donation"]), "rb")))
 
         res = await self.session.post("http://localhost:3000/forms/chromium/screenshot/html", files=files, data={'skipNetworkIdleEvent': 'true'})
-        b = io.BytesIO(res.read())
-        b.seek(0)
-        return b
+        return io.BytesIO(res.read())
 
 
 class SyncBoards:
