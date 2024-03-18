@@ -170,7 +170,7 @@ width: 2500px;
             body = """
 body {
 width: 1200px;
-background: linear-gradient(rgba(255,255,255,.2), rgba(255,255,255,.2)), url(""" + (self.image or 'background.png') + """}) no-repeat;
+background: linear-gradient(rgba(255,255,255,.2), rgba(255,255,255,.2)), url(\"""" + (self.image or 'background.png') + """\"}) no-repeat;
 background-size: cover;
 }
 """
@@ -373,21 +373,23 @@ font-weight: bold;
         if not self.board_type == 'legend':
             self.add_footer()
         self.end_html()
-        log.debug((time.perf_counter() - s)*1000)
 
         files = [
             ('file', ("index.html", io.BytesIO(self.html.encode("utf-8")))),
             ('file', ("badge.png", open("assets/reddit badge.png", "rb"))),
-            *[('file', (k, io.BytesIO(v))) for k, v in self.emoji_data.items()]
+            *[('file', (k + ".png", io.BytesIO(v))) for k, v in self.emoji_data.items()]
         ]
         if not self.image:
             files.append(('file', ("background.png", open(backgrounds.get(self.board_type, backgrounds["donation"]), "rb"))))
 
         print(files)
+        log.info('construction time took %sms', (time.perf_counter() - s)*1000)
 
+        s = time.perf_counter()
         res = await self.session.post("http://localhost:3000/forms/chromium/screenshot/html", files=files, data={'skipNetworkIdleEvent': 'true'})
-        return io.BytesIO(res.read())
-
+        b = io.BytesIO(res.read())
+        log.info('image generation took %sms', (time.perf_counter() - s)*1000)
+        return b
 
 class SyncBoards:
     def __init__(self, bot, start_loop=False, pool=None, session=None, coc_client=None, fake_clan_guilds=None):
