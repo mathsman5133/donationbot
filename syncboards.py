@@ -141,7 +141,7 @@ class HTMLImages:
                         return b and (await self.load_or_save_custom_emoji(emoji_or_clan_id, clan_tag)) or False
                 else:
                     resp = await self.session.get(f"{discord.Asset.BASE}/emojis/{emoji_or_clan_id}.png")
-                    if resp.status == 200:
+                    if resp.status_code == 200:
                         data = resp.read()
                         with open(f'assets/board_icons/{emoji_or_clan_id}.png', 'wb') as f:
                             f.write(data)
