@@ -394,7 +394,7 @@ class SyncBoards:
         self.pool = pool or bot.pool
         self.coc_client = coc_client or bot.coc
 
-        self.aiohttp_session = session or aiohttp.ClientSession()
+        self.aiohttp_session = aiohttp.ClientSession()
         self.session = httpx.AsyncClient()
 
         self.season_id = 17
