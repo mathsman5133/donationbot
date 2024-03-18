@@ -296,7 +296,6 @@ font-weight: bold;
         else:
             return ''
 
-        print(uri)
         return uri and f'<img id="icon_clsii" src="{uri}.png">' or ''
 
     async def parse_players(self):
