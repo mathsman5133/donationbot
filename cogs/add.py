@@ -84,7 +84,7 @@ class Add(commands.Cog, name="add"):
             try:
                 clan = await self.bot.coc.get_clan(real_clan_tag)
             except coc.NotFound:
-                return await intr.response.edit_original_response(f'Clan not found with `{real_clan_tag}` tag.')
+                return await intr.response.edit_original_response(content=f'Clan not found with `{real_clan_tag}` tag.')
 
             fetch = await self.bot.pool.fetch("SELECT player_tag FROM players WHERE user_id = $1 AND verified = True", intr.user.id)
             members = [n for n in (clan.get_member(m['player_tag']) for m in fetch) if n]
@@ -312,7 +312,7 @@ class Add(commands.Cog, name="add"):
         :warning: Manage Server
         """
         await self.do_log_add(intr, channel or intr.channel, "donation")
-        await intr.response.send_message("Want a detailed donation log? Try the `+edit donationlog style` command.")
+        await intr.followup.send("Want a detailed donation log? Try the `+edit donationlog style` command.")
 
     @add_group.command(name='trophylog', description="Create a trophy log for your server.")
     @app_commands.describe(channel="The #channel to add the log to.")

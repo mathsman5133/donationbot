@@ -434,10 +434,10 @@ class Syncer:
 
         log.debug(f"clan tags: {clan_tags}")
         fetch = await self.pool.fetch(query, clan_tags)
-        fetch2 = await self.pool.fetch(query2, player_tags)
+        # fetch2 = await self.pool.fetch(query2, player_tags)
 
         clan_tag_to_channel_data = {}
-        for row in itertools.chain(fetch, fetch2):
+        for row in fetch:
             try:
                 clan_tag_to_channel_data[row['clan_tag']].append(LogConfig(bot=None, record=row))
             except KeyError:

@@ -798,7 +798,7 @@ class DonationBoard(commands.Cog):
             else:
                 await view.set_new_channel_selected(confirm.channel)
 
-            msg = await interaction.edit_original_response(message, view=view)
+            msg = await interaction.edit_original_response(content=message, view=view)
         else:
             msg = await interaction.response.send_message(message, view=view)
 
