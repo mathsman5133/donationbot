@@ -336,10 +336,10 @@ class Syncer:
         player_tags = list(set(p['player_tag'] for p in data))
 
         fetch = await self.pool.fetch(query, clan_tags)
-        fetch2 = await self.pool.fetch(query2, player_tags)
+        # fetch2 = await self.pool.fetch(query2, player_tags)
 
         clan_tag_to_channel_data = {}
-        for row in itertools.chain(fetch, fetch2):
+        for row in fetch:
             try:
                 clan_tag_to_channel_data[row['clan_tag']].append(LogConfig(bot=None, record=row))
             except KeyError:
@@ -654,14 +654,14 @@ class Syncer:
                 async with self.last_updated_batch_lock:
                     tags = set(tag for (tag, counter) in self.boards_counter.items() if counter > EVENTS_BEFORE_REFRESHING_BOARD)
                     response = await self.pool.execute(query3, list(tags), ['donation', 'trophy'])
-                    response = await self.pool.execute(query4, list(tags), ['donation', 'trophy'])
+                    # response = await self.pool.execute(query4, list(tags), ['donation', 'trophy'])
                     for k in tags:
                         self.boards_counter.pop(k, None)
 
                 async with self.legend_data_lock:
                     tags = set(tag for (tag, counter) in self.legend_counter.items() if counter > EVENTS_BEFORE_REFRESHING_LEGEND_BOARD)
                     response2 = await self.pool.execute(query3, list(tags), ['legend'])
-                    response2 = await self.pool.execute(query4, list(tags), ['legend'])
+                    # response2 = await self.pool.execute(query4, list(tags), ['legend'])
                     for k in tags:
                         self.legend_counter.pop(k, None)
 

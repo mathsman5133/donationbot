@@ -383,15 +383,10 @@ font-weight: bold;
         if not self.image:
             files.append(('file', ("background.png", open(backgrounds.get(self.board_type, backgrounds["donation"]), "rb"))))
 
-        log.info('construction time took %sms', (time.perf_counter() - s)*1000)
-
         data = {'optimizeForSpeed': 'true', 'skipNetworkIdleEvent': 'true'}
 
-        s = time.perf_counter()
         res = await self.session.post("http://localhost:3000/forms/chromium/screenshot/html", files=files, data=data)
-        b = io.BytesIO(res.read())
-        log.info('image generation took %sms', (time.perf_counter() - s)*1000)
-        return b
+        return io.BytesIO(res.read())
 
 
 class SyncBoards:
@@ -539,10 +534,10 @@ class SyncBoards:
         for i in range(1, config.page):
             offset += self.get_next_per_page(i, config.per_page)
 
-        fake_clan_in_server = config.guild_id in self.fake_clan_guilds
-        join = "(clans.clan_tag = players.clan_tag OR " \
-               "(players.fake_clan_tag IS NOT NULL AND clans.clan_tag = players.fake_clan_tag))" \
-            if fake_clan_in_server else "clans.clan_tag = players.clan_tag"
+        # fake_clan_in_server = config.guild_id in self.fake_clan_guilds
+        # join = "(clans.clan_tag = players.clan_tag OR " \
+        #        "(players.fake_clan_tag IS NOT NULL AND clans.clan_tag = players.fake_clan_tag))" \
+        #     if fake_clan_in_server else "clans.clan_tag = players.clan_tag"
 
         if config.channel_id == GLOBAL_BOARDS_CHANNEL_ID:
             query = f"""SELECT DISTINCT player_name,
@@ -558,7 +553,7 @@ class SyncBoards:
                                         trophies - start_trophies AS "gain"
                        FROM players
                        INNER JOIN clans
-                       ON {join}
+                       ON clans.clan_tag = players.clan_tag
                        WHERE season_id = $1
                        ORDER BY {'donations' if config.sort_by == 'donation' else config.sort_by} DESC
                        NULLS LAST
@@ -577,7 +572,7 @@ class SyncBoards:
                             SELECT DISTINCT player_tag, player_name 
                             FROM players 
                             INNER JOIN clans 
-                            ON {join}
+                            ON clans.clan_tag = players.clan_tag
                             WHERE clans.channel_id = $1
                             AND season_id = $5
                         ),
@@ -610,7 +605,7 @@ class SyncBoards:
                             SELECT DISTINCT player_tag, player_name 
                             FROM players 
                             INNER JOIN clans 
-                            ON {join}
+                            ON clans.clan_tag = players.clan_tag
                             WHERE clans.channel_id = $1
                             AND players.season_id = $2
                     ),
@@ -666,7 +661,7 @@ class SyncBoards:
                                         trophies - start_trophies AS "gain"
                        FROM players
                        INNER JOIN clans
-                       ON {join}
+                       ON clans.clan_tag = players.clan_tag
                        WHERE clans.channel_id = $1
                        AND season_id = $2
                        ORDER BY {'donations' if config.sort_by == 'donation' else config.sort_by} DESC
@@ -681,7 +676,6 @@ class SyncBoards:
                 self.get_next_per_page(config.page, config.per_page),
                 offset
             )
-        log.info("query took %sms", (time.perf_counter() - start)*1000)
 
         if not fetch:
             return  # nothing to do/add
