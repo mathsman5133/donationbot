@@ -16,6 +16,8 @@ import coc
 import discord
 
 from discord.ext import tasks
+from prometheus_async.aio.web import start_http_server
+from prometheus_client import Histogram, Counter
 
 import creds
 
@@ -70,6 +72,10 @@ If a board doesn't appear, please make sure you have `+add clan #clantag #dt-boa
 GLOBAL_BOARDS_CHANNEL_ID = 663683345108172830
 
 log = logging.getLogger(__name__)
+
+counter = Counter("donbot_boards_processed", "The number of boards processed.")
+render_histo = Histogram("donbot_boards_render_latency_seconds", "Latency of board processing.")
+overall_histo = Histogram("donbot_boards_overall_latency_seconds", "Latency of board processing.")
 
 
 class HTMLImages:
@@ -695,10 +701,11 @@ class SyncBoards:
             coc_client=self.coc_client,
         )
         render = await table.make()
-        s2 = time.perf_counter() - s1
+        s2 = (time.perf_counter() - s1)*1000
+        overall = (time.perf_counter() - start)*1000
 
-        perf_log = f"Perf: {(time.perf_counter() - start) * 1000}ms\n" \
-                   f"Build Image Perf: {s2 * 1000}ms\n" \
+        perf_log = f"Perf: {overall}ms\n" \
+                   f"Build Image Perf: {s2}ms\n" \
                    f"Channel: {config.channel_id}\n" \
                    f"Guild: {config.guild_id}"
         if divert_to:
@@ -711,6 +718,10 @@ class SyncBoards:
             return
 
         log.info(perf_log)
+
+        counter.inc()
+        render_histo.observe(s2*1000)
+
         logged_board_message = await next(self.webhooks).send(
             perf_log, file=discord.File(render, f'{config.type}board.png'), wait=True
         )
@@ -739,6 +750,8 @@ class SyncBoards:
             )
         except:
             log.exception('trying to send board for %s', config.channel_id)
+
+        overall_histo.observe((time.perf_counter() - start)*1000_000)
 
     @tasks.loop(hours=1.0)
     async def flush_saved_board_icons(self):
@@ -810,6 +823,8 @@ async def main():
     stateless_bot = discord.Client(intents=intents)
 
     # async with stateless_bot:
+
+    await start_http_server(addr="localhost", port=8001)
 
     client = coc.Client(key_names="donbot_syncer")
     await client.login(creds.email, creds.password)
