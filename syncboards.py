@@ -824,7 +824,7 @@ async def main():
 
     # async with stateless_bot:
 
-    await start_http_server(addr="localhost", port=8001)
+    await start_http_server(port=8001)
 
     client = coc.Client(key_names="donbot_syncer")
     await client.login(creds.email, creds.password)
