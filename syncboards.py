@@ -77,7 +77,6 @@ counter = Counter("donbot_boards_processed", "The number of boards processed.")
 render_histo = Histogram("donbot_boards_render_latency_seconds", "Latency of board processing.")
 overall_histo = Histogram("donbot_boards_overall_latency_seconds", "Latency of board processing.")
 
-
 class HTMLImages:
     def __init__(self, players, title=None, image=None, sort_by=None, footer=None, offset=None, board_type='donation', fonts=None, session=None, coc_client=None):
         self.players = players
@@ -720,7 +719,7 @@ class SyncBoards:
         log.info(perf_log)
 
         counter.inc()
-        render_histo.observe(s2*1000)
+        render_histo.observe(s2/1000)
 
         logged_board_message = await next(self.webhooks).send(
             perf_log, file=discord.File(render, f'{config.type}board.png'), wait=True
@@ -751,7 +750,7 @@ class SyncBoards:
         except:
             log.exception('trying to send board for %s', config.channel_id)
 
-        overall_histo.observe((time.perf_counter() - start)*1000_000)
+        overall_histo.observe(time.perf_counter() - start)
 
     @tasks.loop(hours=1.0)
     async def flush_saved_board_icons(self):
