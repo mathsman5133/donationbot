@@ -74,8 +74,8 @@ GLOBAL_BOARDS_CHANNEL_ID = 663683345108172830
 log = logging.getLogger(__name__)
 
 counter = Counter("donbot_boards_processed", "The number of boards processed.")
-render_histo = Histogram("donbot_boards_render_latency_seconds", "Latency of board processing.")
-overall_histo = Histogram("donbot_boards_overall_latency_seconds", "Latency of board processing.")
+render_histo = Histogram("donbot_boards_render_latency_seconds", "Latency of board processing.", buckets=(0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.2, 1.5, 2.0, 3.0, 5.0, 10.0))
+overall_histo = Histogram("donbot_boards_overall_latency_seconds", "Latency of board processing.", buckets=(0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.2, 1.5, 2.0, 3.0, 5.0, 10.0))
 
 class HTMLImages:
     def __init__(self, players, title=None, image=None, sort_by=None, footer=None, offset=None, board_type='donation', fonts=None, session=None, coc_client=None):
