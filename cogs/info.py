@@ -565,6 +565,8 @@ class Info(commands.Cog, name='\u200bInfo'):
         if not argument:
             return await ctx.send("Couldn't find any players - try adding a clan?")
 
+        await ctx.trigger_typing()
+
         # fetch = await self.bot.pool.fetch("SELECT DISTINCT clan_tag FROM clans WHERE guild_id=$1", intr.guild_id)
         # if not fetch:
         #     return await intr.response.send_message(
