@@ -546,31 +546,35 @@ class Edit(commands.Cog):
 
         await intr.response.defer(thinking=True)
 
-        query = """UPDATE players SET donations   = public.get_don_rec_max(x.donations, x.donations, players.donations),
-                                      received    = public.get_don_rec_max(x.received, x.received, players.received),
-                                      trophies    = x.trophies,
-                                      player_name = x.player_name,
-                                      clan_tag    = x.clan_tag,
-                                      best_trophies = x.best_trophies,
-                                      legend_trophies = x.legend_trophies
-                   FROM (
-                      SELECT x.player_tag, x.donations, x.received, x.trophies, x.player_name, x.clan_tag, x.best_trophies, x.legend_trophies
-                      FROM jsonb_to_recordset($1::jsonb)
-                      AS x(
-                         player_tag TEXT,
-                         donations INTEGER,
-                         received INTEGER,
-                         trophies INTEGER,
-                         player_name TEXT,
-                         clan_tag TEXT,
-                         best_trophies INTEGER,
-                         legend_trophies INTEGER
-                      )
-                   )
-                   AS x
-                   WHERE players.player_tag = x.player_tag
-                   AND players.season_id = $2                      
+        query = """
+                INSERT INTO players (
+                    player_tag, donations, received, trophies, start_trophies, season_id, 
+                    clan_tag, player_name, best_trophies, legend_trophies
+                )
+                  SELECT x.player_tag, x.donations, x.received, x.trophies, x.trophies, $2, 
+                         x.clan_tag, x.player_name, x.best_trophies, x.legend_trophies
+                  FROM jsonb_to_recordset($1::jsonb)
+                  AS x(
+                     player_tag TEXT,
+                     donations INTEGER,
+                     received INTEGER,
+                     trophies INTEGER,
+                     player_name TEXT,
+                     clan_tag TEXT,
+                     best_trophies INTEGER,
+                     legend_trophies INTEGER
+                  )
+               ON CONFLICT (player_tag, season_id)
+               DO UPDATE SET
+                    donations = public.get_don_rec_max(excluded.donations, excluded.donations, players.donations),
+                    received = public.get_don_rec_max(excluded.received, excluded.received, players.received),
+                    trophies = excluded.trophies,
+                    player_name = excluded.player_name,
+                    clan_tag = excluded.clan_tag,
+                    best_trophies = excluded.best_trophies,
+                    legend_trophies = excluded.legend_trophies
                 """
+
         clan_tags = [row['clan_tag'] for row in fetch]
 
         log.info('running +refresh for %s', clan_tags)

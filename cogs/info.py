@@ -527,8 +527,12 @@ class Info(commands.Cog, name='\u200bInfo'):
         #
         # return io.BytesIO(csv.encode("utf-8"))
 
-    @commands.group(invoke_without_command=True)
-    async def dump(self, ctx, *, argument: ConvertToPlayers = None):
+    @app_commands.command(
+        name="dump", description="Get a .csv of all player data the bot has stored for a clan/players."
+    )
+    @app_commands.checks.cooldown(1, 60 * 60, key=lambda i: i.guild_id)
+    async def dump(self, intr: discord.Interaction):
+    # async def dump(self, ctx, *, argument: ConvertToPlayers = None):
         """Get a .csv of all player data the bot has stored for a clan/players.
 
         Use `+dump legends` to get a .csv of recent legend data, as seen on the legend boards.
@@ -555,10 +559,19 @@ class Info(commands.Cog, name='\u200bInfo'):
         :white_check_mark: `+dump #donation-log`
         :white_check_mark: `+dump all`
         """
-        if not argument:
-            argument = await ConvertToPlayers().convert(ctx, "all")
-        if not argument:
-            return await ctx.send("Couldn't find any players - try adding a clan?")
+        # if not argument:
+        #     argument = await ConvertToPlayers().convert(ctx, "all")
+        # if not argument:
+        #     return await ctx.send("Couldn't find any players - try adding a clan?")
+
+        fetch = await self.bot.pool.fetch("SELECT DISTINCT clan_tag FROM clans WHERE guild_id=$1", intr.guild_id)
+        if not fetch:
+            return await intr.response.send_message(
+                "Uh oh, it seems you don't have any clans added. Please add a clan and try again."
+            )
+
+        await intr.response.defer(thinking=True)
+
         query = """SELECT player_tag, 
                           player_name, 
                           donations, 
@@ -570,163 +583,160 @@ class Info(commands.Cog, name='\u200bInfo'):
                           user_id,
                           season_id
                     FROM players
-                    WHERE player_tag = ANY($1::TEXT[])
-                    AND clan_tag = ANY($2::TEXT[])
+                    WHERE clan_tag = ANY($1::TEXT[])
                     ORDER BY season_id DESC
                     """
-        fetch = await ctx.db.fetch(query, [p['player_tag'] for p in argument], list({p['clan_tag'] for p in argument}))
+        fetch = await self.bot.pool.fetch(query, list({p['clan_tag'] for p in fetch}))
         if not fetch:
-            return await ctx.send(
-                "Sorry, I have not collected enough data yet. Please try again later, or try changing your query."
-            )
+            return await intr.edit_original_response(content="Sorry, I have not collected enough data yet.")
 
         rows = [{k: v for k, v in row.items()} for row in fetch]
-        await ctx.send(file=discord.File(filename="donation-tracker-player-export.csv", fp=self.convert_rows_to_bytes(rows)))
+        await intr.edit_original_response(content="Please find a .csv file attached.", attachments=[discord.File(filename="donation-tracker-player-export.csv", fp=self.convert_rows_to_bytes(rows))])
 
-    @dump.command(name="legend", aliases=["legends", "leg"])
-    async def dump_legends(self, ctx, *, argument: ConvertToPlayers = None):
-        """Get a .csv of all legend data the bot has stored for a clan/players.
-
-        **Parameters**
-        :key: The argument: Can be a clan tag, name, player tag, name, channel #mention, user @mention or `server` for all clans linked to the server.
-
-        **Format**
-        :information_source: `+dump legends`
-        :information_source: `+dump legends #CLAN_TAG`
-        :information_source: `+dump legends CLAN NAME`
-        :information_source: `+dump legends #PLAYER_TAG`
-        :information_source: `+dump legends Player Name`
-        :information_source: `+dump legends #channel`
-        :information_source: `+dump legends @user`
-        :information_source: `+dump legends all`
-
-        **Example**
-        :white_check_mark: `+dump legends`
-        :white_check_mark: `+dump legends #JY9J2Y99`
-        :white_check_mark: `+dump legends Reddit`
-        :white_check_mark: `+dump legends Mathsman`
-        :white_check_mark: `+dump legends @mathsman#1208`
-        :white_check_mark: `+dump legends #donation-log`
-        :white_check_mark: `+dump legends all`
-        """
-        if not argument:
-            argument = await ConvertToPlayers().convert(ctx, "all")
-        if not argument:
-            return await ctx.send("Couldn't find any players - try adding a clan?")
-
-        query = """SELECT player_tag, 
-                          player_name, 
-                          clan_tag,
-                          starting,
-                          finishing,
-                          gain,
-                          loss,
-                          attacks,
-                          defenses,
-                          day 
-                    FROM legend_days
-                    WHERE player_tag = ANY($1::TEXT[])
-                    AND clan_tag = ANY($2::TEXT[])
-                    ORDER BY day DESC
-                    """
-        fetch = await ctx.db.fetch(query, [p['player_tag'] for p in argument], list({p['clan_tag'] for p in argument}))
-        if not fetch:
-            return await ctx.send(
-                "Sorry, I have not collected enough data yet. Please try again later, or try changing your query."
-            )
-
-        rows = [{k: v for k, v in row.items()} for row in fetch]
-        await ctx.send(file=discord.File(filename="donation-tracker-legends-export.csv", fp=self.convert_rows_to_bytes(rows)))
-
-    @dump.command(name="war")
-    async def dump_war(self, ctx, *, argument: ConvertToPlayers = None):
-        """Get a .csv of all war data the bot has stored for a clan/players.
-
-        **Parameters**
-        :key: The argument: Can be a clan tag, name, player tag, name, channel #mention, user @mention or `server` for all clans linked to the server.
-
-        **Format**
-        :information_source: `+dump war`
-        :information_source: `+dump war #CLAN_TAG`
-        :information_source: `+dump war CLAN NAME`
-        :information_source: `+dump war #PLAYER_TAG`
-        :information_source: `+dump war Player Name`
-        :information_source: `+dump war #channel`
-        :information_source: `+dump war @user`
-        :information_source: `+dump war all`
-
-        **Example**
-        :white_check_mark: `+dump war`
-        :white_check_mark: `+dump war #JY9J2Y99`
-        :white_check_mark: `+dump war Reddit`
-        :white_check_mark: `+dump war Mathsman`
-        :white_check_mark: `+dump war @mathsman#1208`
-        :white_check_mark: `+dump war #donation-log`
-        :white_check_mark: `+dump war all`
-        """
-        if not argument:
-            argument = await ConvertToPlayers().convert(ctx, "all")
-        if not argument:
-            return await ctx.send("Couldn't find any players - try adding a clan?")
-
-        query = """
-        WITH cte AS (
-                SELECT DISTINCT player_tag, player_name 
-                FROM players 
-                WHERE (player_tag = ANY($1::TEXT[])
-                OR clan_tag = ANY($2::TEXT[])
-                OR fake_clan_tag = ANY($2::TEXT[]))
-                AND season_id = $3                
-        )
-        SELECT COUNT(*) as star_count, SUM(destruction) as destruction_count, cte.player_tag, cte.player_name, stars, seasons.id as season_id
-        FROM war_attacks 
-        INNER JOIN cte 
-        ON cte.player_tag = war_attacks.player_tag 
-        INNER JOIN seasons 
-        ON start < load_time 
-        AND load_time < finish
-        GROUP BY season_id, cte.player_tag, cte.player_name, stars
-        UNION ALL
-        SELECT SUM(attacks_missed) as star_count, 0 as destruction_count, cte.player_tag, cte.player_name, -1 as stars, seasons.id as season_id
-        FROM war_missed_attacks
-        INNER JOIN cte 
-        ON cte.player_tag = war_missed_attacks.player_tag
-        INNER JOIN seasons 
-        ON start < load_time 
-        AND load_time < finish
-        GROUP BY season_id, cte.player_tag, cte.player_name, stars
-        ORDER BY season_id DESC, star_count DESC, destruction_count DESC
-        """
-        fetch = await ctx.db.fetch(query, [p['player_tag'] for p in argument], list({p['clan_tag'] for p in argument}), await self.bot.seasonconfig.get_season_id())
-        if not fetch:
-            return await ctx.send("Sorry, I have not collected enough data yet. Please try again later.")
-
-        to_send = []
-        for (player_tag, season_id), rows in itertools.groupby(fetch, key=lambda r: (r['player_tag'], r['season_id'])):
-            rows = list(rows)
-            by_star = {r['stars']: r for r in rows}
-
-            to_send.append({
-                "player_tag": player_tag,
-                "player_name": rows[0]['player_name'],
-                "season_id": season_id,
-                "total_stars": sum(r['stars'] * r['star_count'] for r in rows if r['stars'] >= 0),
-                "total_destruction": sum(r['destruction_count'] for r in rows),
-                "three_star_count": by_star.get(3, {}).get('star_count', 0),
-                "two_star_count": by_star.get(2, {}).get('star_count', 0),
-                "one_star_count": by_star.get(1, {}).get('stars', 0),
-                "zero_star_count": by_star.get(0, {}).get('stars', 0),
-                "missed_attack_count": by_star.get(-1, {}).get('star_count', 0),
-            })
-
-        await ctx.send(file=discord.File(filename="donation-tracker-war-export.csv", fp=self.convert_rows_to_bytes(to_send)))
-
-    @dump.before_invoke
-    @dump_legends.before_invoke
-    @dump_war.before_invoke
-    async def before_dump(self, ctx):
-        await ctx.trigger_typing()
-
+    # @dump.command(name="legend", aliases=["legends", "leg"])
+    # async def dump_legends(self, ctx, *, argument: ConvertToPlayers = None):
+    #     """Get a .csv of all legend data the bot has stored for a clan/players.
+    #
+    #     **Parameters**
+    #     :key: The argument: Can be a clan tag, name, player tag, name, channel #mention, user @mention or `server` for all clans linked to the server.
+    #
+    #     **Format**
+    #     :information_source: `+dump legends`
+    #     :information_source: `+dump legends #CLAN_TAG`
+    #     :information_source: `+dump legends CLAN NAME`
+    #     :information_source: `+dump legends #PLAYER_TAG`
+    #     :information_source: `+dump legends Player Name`
+    #     :information_source: `+dump legends #channel`
+    #     :information_source: `+dump legends @user`
+    #     :information_source: `+dump legends all`
+    #
+    #     **Example**
+    #     :white_check_mark: `+dump legends`
+    #     :white_check_mark: `+dump legends #JY9J2Y99`
+    #     :white_check_mark: `+dump legends Reddit`
+    #     :white_check_mark: `+dump legends Mathsman`
+    #     :white_check_mark: `+dump legends @mathsman#1208`
+    #     :white_check_mark: `+dump legends #donation-log`
+    #     :white_check_mark: `+dump legends all`
+    #     """
+    #     if not argument:
+    #         argument = await ConvertToPlayers().convert(ctx, "all")
+    #     if not argument:
+    #         return await ctx.send("Couldn't find any players - try adding a clan?")
+    #
+    #     query = """SELECT player_tag,
+    #                       player_name,
+    #                       clan_tag,
+    #                       starting,
+    #                       finishing,
+    #                       gain,
+    #                       loss,
+    #                       attacks,
+    #                       defenses,
+    #                       day
+    #                 FROM legend_days
+    #                 WHERE player_tag = ANY($1::TEXT[])
+    #                 AND clan_tag = ANY($2::TEXT[])
+    #                 ORDER BY day DESC
+    #                 """
+    #     fetch = await ctx.db.fetch(query, [p['player_tag'] for p in argument], list({p['clan_tag'] for p in argument}))
+    #     if not fetch:
+    #         return await ctx.send(
+    #             "Sorry, I have not collected enough data yet. Please try again later, or try changing your query."
+    #         )
+    #
+    #     rows = [{k: v for k, v in row.items()} for row in fetch]
+    #     await ctx.send(file=discord.File(filename="donation-tracker-legends-export.csv", fp=self.convert_rows_to_bytes(rows)))
+    #
+    # @dump.command(name="war")
+    # async def dump_war(self, ctx, *, argument: ConvertToPlayers = None):
+    #     """Get a .csv of all war data the bot has stored for a clan/players.
+    #
+    #     **Parameters**
+    #     :key: The argument: Can be a clan tag, name, player tag, name, channel #mention, user @mention or `server` for all clans linked to the server.
+    #
+    #     **Format**
+    #     :information_source: `+dump war`
+    #     :information_source: `+dump war #CLAN_TAG`
+    #     :information_source: `+dump war CLAN NAME`
+    #     :information_source: `+dump war #PLAYER_TAG`
+    #     :information_source: `+dump war Player Name`
+    #     :information_source: `+dump war #channel`
+    #     :information_source: `+dump war @user`
+    #     :information_source: `+dump war all`
+    #
+    #     **Example**
+    #     :white_check_mark: `+dump war`
+    #     :white_check_mark: `+dump war #JY9J2Y99`
+    #     :white_check_mark: `+dump war Reddit`
+    #     :white_check_mark: `+dump war Mathsman`
+    #     :white_check_mark: `+dump war @mathsman#1208`
+    #     :white_check_mark: `+dump war #donation-log`
+    #     :white_check_mark: `+dump war all`
+    #     """
+    #     if not argument:
+    #         argument = await ConvertToPlayers().convert(ctx, "all")
+    #     if not argument:
+    #         return await ctx.send("Couldn't find any players - try adding a clan?")
+    #
+    #     query = """
+    #     WITH cte AS (
+    #             SELECT DISTINCT player_tag, player_name
+    #             FROM players
+    #             WHERE (player_tag = ANY($1::TEXT[])
+    #             OR clan_tag = ANY($2::TEXT[])
+    #             OR fake_clan_tag = ANY($2::TEXT[]))
+    #             AND season_id = $3
+    #     )
+    #     SELECT COUNT(*) as star_count, SUM(destruction) as destruction_count, cte.player_tag, cte.player_name, stars, seasons.id as season_id
+    #     FROM war_attacks
+    #     INNER JOIN cte
+    #     ON cte.player_tag = war_attacks.player_tag
+    #     INNER JOIN seasons
+    #     ON start < load_time
+    #     AND load_time < finish
+    #     GROUP BY season_id, cte.player_tag, cte.player_name, stars
+    #     UNION ALL
+    #     SELECT SUM(attacks_missed) as star_count, 0 as destruction_count, cte.player_tag, cte.player_name, -1 as stars, seasons.id as season_id
+    #     FROM war_missed_attacks
+    #     INNER JOIN cte
+    #     ON cte.player_tag = war_missed_attacks.player_tag
+    #     INNER JOIN seasons
+    #     ON start < load_time
+    #     AND load_time < finish
+    #     GROUP BY season_id, cte.player_tag, cte.player_name, stars
+    #     ORDER BY season_id DESC, star_count DESC, destruction_count DESC
+    #     """
+    #     fetch = await ctx.db.fetch(query, [p['player_tag'] for p in argument], list({p['clan_tag'] for p in argument}), await self.bot.seasonconfig.get_season_id())
+    #     if not fetch:
+    #         return await ctx.send("Sorry, I have not collected enough data yet. Please try again later.")
+    #
+    #     to_send = []
+    #     for (player_tag, season_id), rows in itertools.groupby(fetch, key=lambda r: (r['player_tag'], r['season_id'])):
+    #         rows = list(rows)
+    #         by_star = {r['stars']: r for r in rows}
+    #
+    #         to_send.append({
+    #             "player_tag": player_tag,
+    #             "player_name": rows[0]['player_name'],
+    #             "season_id": season_id,
+    #             "total_stars": sum(r['stars'] * r['star_count'] for r in rows if r['stars'] >= 0),
+    #             "total_destruction": sum(r['destruction_count'] for r in rows),
+    #             "three_star_count": by_star.get(3, {}).get('star_count', 0),
+    #             "two_star_count": by_star.get(2, {}).get('star_count', 0),
+    #             "one_star_count": by_star.get(1, {}).get('stars', 0),
+    #             "zero_star_count": by_star.get(0, {}).get('stars', 0),
+    #             "missed_attack_count": by_star.get(-1, {}).get('star_count', 0),
+    #         })
+    #
+    #     await ctx.send(file=discord.File(filename="donation-tracker-war-export.csv", fp=self.convert_rows_to_bytes(to_send)))
+    #
+    # @dump.before_invoke
+    # @dump_legends.before_invoke
+    # @dump_war.before_invoke
+    # async def before_dump(self, ctx):
+    #     await ctx.trigger_typing()
+    #
 
 async def setup(bot):
     if not hasattr(bot, 'command_stats'):
