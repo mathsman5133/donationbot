@@ -193,7 +193,9 @@ class DonationBot(commands.AutoShardedBot):
 
         if ctx.command is None:
             if self.user in message.mentions and message.channel.permissions_for(ctx.me).send_messages:
-                await ctx.send(f"My prefix for this guild is {self.prefixes.get(message.guild.id, '+')}")
+                await ctx.send(f"Hi! I'm Alive! If you want to invoke a command, see the slash command menu with `/`."
+                               f"\n\nIf you want to use a legacy command, run `@{ctx.me.display_name} command`, "
+                               f"for example `@{ctx.me.display_name} ping`.")
 
             return  # if there's no command invoked return
 
@@ -201,7 +203,7 @@ class DonationBot(commands.AutoShardedBot):
             await self.invoke(ctx)
 
     async def on_ready(self):
-        await self.change_presence(activity=discord.Game('+help for commands'))
+        await self.change_presence(activity=discord.Game("Creator Code: Sidekick"))
         await self.init_prefixes()
         self.error_webhooks = itertools.cycle(n for n in await self.get_channel(625160612791451661).webhooks())
         self.fake_clan_guilds = {row['guild_id'] for row in await self.pool.fetch("SELECT DISTINCT guild_id FROM clans WHERE fake_clan=True")}
