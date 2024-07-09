@@ -527,12 +527,13 @@ class Info(commands.Cog, name='\u200bInfo'):
         #
         # return io.BytesIO(csv.encode("utf-8"))
 
-    @app_commands.command(
-        name="dump", description="Get a .csv of all player data the bot has stored for a clan/players."
-    )
-    @app_commands.checks.cooldown(1, 60 * 60, key=lambda i: i.guild_id)
-    async def dump(self, intr: discord.Interaction):
-    # async def dump(self, ctx, *, argument: ConvertToPlayers = None):
+    # @app_commands.command(
+    #     name="dump", description="Get a .csv of all player data the bot has stored for a clan/players."
+    # )
+    # @app_commands.checks.cooldown(1, 60 * 60, key=lambda i: i.guild_id)
+    # async def dump(self, intr: discord.Interaction):
+    @commands.group(invoke_without_command=True)
+    async def dump(self, ctx, *, argument: ConvertToPlayers = None):
         """Get a .csv of all player data the bot has stored for a clan/players.
 
         Use `+dump legends` to get a .csv of recent legend data, as seen on the legend boards.
@@ -559,18 +560,18 @@ class Info(commands.Cog, name='\u200bInfo'):
         :white_check_mark: `+dump #donation-log`
         :white_check_mark: `+dump all`
         """
-        # if not argument:
-        #     argument = await ConvertToPlayers().convert(ctx, "all")
-        # if not argument:
-        #     return await ctx.send("Couldn't find any players - try adding a clan?")
+        if not argument:
+            argument = await ConvertToPlayers().convert(ctx, "all")
+        if not argument:
+            return await ctx.send("Couldn't find any players - try adding a clan?")
 
-        fetch = await self.bot.pool.fetch("SELECT DISTINCT clan_tag FROM clans WHERE guild_id=$1", intr.guild_id)
-        if not fetch:
-            return await intr.response.send_message(
-                "Uh oh, it seems you don't have any clans added. Please add a clan and try again."
-            )
+        # fetch = await self.bot.pool.fetch("SELECT DISTINCT clan_tag FROM clans WHERE guild_id=$1", intr.guild_id)
+        # if not fetch:
+        #     return await intr.response.send_message(
+        #         "Uh oh, it seems you don't have any clans added. Please add a clan and try again."
+        #     )
 
-        await intr.response.defer(thinking=True)
+        # await intr.response.defer(thinking=True)
 
         query = """SELECT player_tag, 
                           player_name, 
@@ -586,12 +587,12 @@ class Info(commands.Cog, name='\u200bInfo'):
                     WHERE clan_tag = ANY($1::TEXT[])
                     ORDER BY season_id DESC
                     """
-        fetch = await self.bot.pool.fetch(query, list({p['clan_tag'] for p in fetch}))
+        fetch = await self.bot.pool.fetch(query, list({p['clan_tag'] for p in argument}))
         if not fetch:
-            return await intr.edit_original_response(content="Sorry, I have not collected enough data yet.")
+            return await ctx.send(content="Sorry, I have not collected enough data yet.")
 
         rows = [{k: v for k, v in row.items()} for row in fetch]
-        await intr.edit_original_response(content="Please find a .csv file attached.", attachments=[discord.File(filename="donation-tracker-player-export.csv", fp=self.convert_rows_to_bytes(rows))])
+        await ctx.send(content="Please find a .csv file attached.", file=discord.File(filename="donation-tracker-player-export.csv", fp=self.convert_rows_to_bytes(rows)))
 
     # @dump.command(name="legend", aliases=["legends", "leg"])
     # async def dump_legends(self, ctx, *, argument: ConvertToPlayers = None):
