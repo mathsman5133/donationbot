@@ -265,6 +265,7 @@ class BoardChannelSelectView(discord.ui.View):
         super().__init__()
         self.author_id = author_id
         self.message = None
+        self.channel = None
 
     @discord.ui.select(
         cls=discord.ui.ChannelSelect, placeholder="Choose a channel...", channel_types=[discord.ChannelType.text]
@@ -509,10 +510,20 @@ class BoardSetupMenu(discord.ui.View):
         self.channel = channel
 
         self.configs = await self.get_all_boards_config(channel.id)
-        types_enabled = [c.type for c in self.configs]
 
-        for option in self.channel_select_action.options:
-            option.default = int(option.value) == channel.id
+        if str(channel.id) not in [o.value for o in self.channel_select_action.options]:
+            self.channel_select_action.options.append(
+                discord.SelectOption(
+                    label=f"#{channel.name}{channel.category and f' ({channel.category} category)' or ''}",
+                    value=str(channel.id),
+                    default=True
+                )
+            )
+        else:
+            for option in self.channel_select_action.options:
+                option.default = int(option.value) == channel.id
+
+        types_enabled = [c.type for c in self.configs]
 
         for option in self.board_type_select_action.options:
             option.default = option.value in types_enabled
