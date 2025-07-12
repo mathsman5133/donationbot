@@ -84,7 +84,7 @@ class Add(commands.Cog, name="add"):
             try:
                 clan = await self.bot.coc.get_clan(real_clan_tag)
             except coc.NotFound:
-                return await intr.response.edit_original_response(content=f'Clan not found with `{real_clan_tag}` tag.')
+                return await intr.edit_original_response(content=f'Clan not found with `{real_clan_tag}` tag.')
 
             fetch = await self.bot.pool.fetch("SELECT player_tag FROM players WHERE user_id = $1 AND verified = True", intr.user.id)
             members = [n for n in (clan.get_member(m['player_tag']) for m in fetch) if n]
