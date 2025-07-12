@@ -13,3 +13,5 @@ pytz
 emoji==1.5.0
 fuzzywuzzy
 seaborn
+httpx
+prometheus_async
