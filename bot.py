@@ -115,7 +115,7 @@ class DonationBot(commands.AutoShardedBot):
         self.client_id = creds.client_id
         self.owner_ids = {230214242618441728, 251150854571163648, 275020657312530434}  # maths, tuba
         self.locked_guilds = set()
-        self.session = aiohttp.ClientSession()
+        self.session: aiohttp.ClientSession = None
 
         add_hooks(self)
         self.before_invoke(self.before_command_invoke)
@@ -129,6 +129,7 @@ class DonationBot(commands.AutoShardedBot):
 
     async def setup_hook(self):
         setup_logging(bot)
+        self.session = aiohttp.ClientSession()
 
         coc_client = coc.EventsClient(
             key_names=key_names,
