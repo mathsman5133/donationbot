@@ -692,7 +692,7 @@ class Syncer:
                     'old_rec': player.received,
                     'new_rec': player.received,
                     'trophies': player.trophies,
-                    'league_id': player.league_id,
+                    'league_id': player.league.id,
                     'townhall': player.town_hall,
                     'clan_tag': player.clan and player.clan.tag,
                     'player_name': player.name,
@@ -702,7 +702,7 @@ class Syncer:
 
     # @coc_client.event
     @coc.ClanEvents.member_received()
-    async def on_clan_member_received(self, old_player, player):
+    async def on_clan_member_received(self, old_player: coc.ClanMember, player: coc.ClanMember):
         old_received = old_player.received
         new_received = player.received
 
@@ -735,7 +735,7 @@ class Syncer:
                     'old_rec': old_received,
                     'new_rec': new_received,
                     'trophies': player.trophies,
-                    'league_id': player.league_id,
+                    'league_id': player.league.id,
                     'townhall': player.town_hall,
                     'clan_tag': player.clan and player.clan.tag,
                     'player_name': player.name,
@@ -746,7 +746,7 @@ class Syncer:
 
     # @coc_client.event
     @coc.ClanEvents.member_trophies()
-    async def on_clan_member_trophies_change(self, old_player, player):
+    async def on_clan_member_trophies_change(self, old_player: coc.ClanMember, player: coc.ClanMember):
         old_trophies = old_player.trophies
         new_trophies = player.trophies
         log.debug(f'Received on_clan_member_trophy_change event for player {player} of clan {player.clan}')
@@ -758,7 +758,7 @@ class Syncer:
                 'player_name': player.name,
                 'clan_tag': player.clan and player.clan.tag,
                 'trophy_change': change,
-                'league_id': player.league_id,
+                'league_id': player.league.id,
                 'time': datetime.datetime.utcnow().isoformat(),
                 'season_id': self.season_id,
                 'clan_name': player.clan and player.clan.name
@@ -775,13 +775,13 @@ class Syncer:
                     'old_rec': player.received,
                     'new_rec': player.received,
                     'trophies': new_trophies,
-                    'league_id': player.league_id,
+                    'league_id': player.league.id,
                     'townhall': player.town_hall,
                     'clan_tag': player.clan and player.clan.tag,
                     'player_name': player.name
                 }
 
-        if player.league_id == 29000022:
+        if player.league.id == 29000022:
             async with self.legend_data_lock:
                 try:
                     if change > 0:
