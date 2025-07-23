@@ -1169,6 +1169,7 @@ class Syncer:
 
     @tasks.loop(hours=12.0)
     async def load_wars(self):
+        return
         try:
             while not self.coc_client._clan_updates:
                 log.info('sleeping until we have some clan tags to run for')
