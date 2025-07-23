@@ -30,22 +30,10 @@ log.setLevel(logging.DEBUG)
 sentry_sdk.init(creds.SENTRY_KEY)
 
 
-class CustomClanMember(coc.ClanMember):
-    def _from_data(self, data: dict) -> None:
-        data_get = data.get
-        self.exp_level = data_get("expLevel")
-        self.trophies = data_get("trophies")
-        self.versus_trophies = data_get("versusTrophies")
-        self.donations = data_get("donations")
-        self.received = data_get("donationsReceived")
-        self.league_id = data_get("league", {}).get("id", None)
-        self.town_hall = data_get("townHallLevel")
-
-
 class CustomClan(coc.Clan):
     def _from_data(self, data: dict) -> None:
         client = self._client
-        self._iter_members = (CustomClanMember(data=m, client=client) for m in data.get("memberList", []))
+        self._iter_members = (coc.ClanMember(data=m, client=client) for m in data.get("memberList", []))
 
 
 intents = discord.Intents.none()
@@ -674,7 +662,7 @@ class Syncer:
 
     # @coc_client.event
     @coc.ClanEvents.member_donations()
-    async def on_clan_member_donation(self, old_player: CustomClanMember, player: CustomClanMember):
+    async def on_clan_member_donation(self, old_player: coc.ClanMember, player: coc.ClanMember):
         log.debug(f'Received on_clan_member_donation event for player {player} of clan {player.clan}')
         if old_player.donations > player.donations:
             donations = player.donations
