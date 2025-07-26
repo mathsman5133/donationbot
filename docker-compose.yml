@@ -19,3 +19,9 @@ services:
     network_mode: host
 
     command: "python /app/syncboards.py"
+
+  gotenberg:
+    image: gotenberg/gotenberg:8
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
