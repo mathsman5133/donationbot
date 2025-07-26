@@ -285,6 +285,38 @@ class Edit(commands.Cog):
         """
         await self.do_edit_log_toggle(ctx, channel or ctx.channel, 'trophy')
 
+    @edit_trophylog.command(name='threshold')
+    async def edit_trophylog_threshold(self, ctx, channel: typing.Optional[TextChannel], threshold: int):
+        """Set the trophy threshold for the trophy log.
+
+        **Parameters**
+        :key: Trophy log channel
+        :key: Trophy threshold
+
+        **Format**
+        :information_source: `+edit trophylog threshold NUMBER`
+
+        **Example**
+        :white_check_mark: `+edit trophylog threshold 5000`
+
+        **Required Permissions**
+        :warning: Manage Server
+        """
+        query = """UPDATE logs
+                   SET threshold = $2
+                   WHERE channel_id=$1
+                   AND type = 'trophy'
+                   RETURNING threshold
+                """
+        channel = channel or ctx.channel
+        fetch = await ctx.db.fetchrow(query, channel.id, threshold)
+        if not fetch:
+            await ctx.send(f":x: I couldn't find a trophylog setup in {channel.mention}. "
+                           f"Either #mention a valid log channel, or set one up with `+help add trophylog`.")
+        else:
+            await ctx.send(f"👌 Logs for {channel.mention} have been set to a minimum of {threshold} trophies.")
+
+
     @edit.command(name='event')
     @manage_guild()
     @requires_config('event')

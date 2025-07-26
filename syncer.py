@@ -294,7 +294,8 @@ class Syncer:
                           "interval", 
                           toggle,
                           type,
-                          detailed 
+                          detailed, 
+                          threshold
                    FROM logs 
                    INNER JOIN clans 
                    ON logs.channel_id = clans.channel_id 
@@ -308,7 +309,8 @@ class Syncer:
                           "interval", 
                           toggle,
                           type,
-                          detailed  
+                          detailed,
+                          threshold
                     FROM logs 
                     INNER JOIN clans 
                     ON clans.channel_id = logs.channel_id
@@ -370,8 +372,8 @@ class Syncer:
 
         for config, events in itertools.groupby(events, key=lambda n: n.log_config):
             log.debug(f"running {config.channel_id}")
-            events = list(events)
-            messages = [format_trophy_log_message(x) for x in events]
+            events: list[SlimTrophyEvent] = list(events)
+            messages = [format_trophy_log_message(x) for x in events if x.trophies > config.threshold]
 
             group_batch = []
             for i in range(math.ceil(len(messages) / 20)):

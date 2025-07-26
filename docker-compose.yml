@@ -1,0 +1,21 @@
+services:
+  bot:
+    build: .
+    restart: unless-stopped
+    network_mode: host
+
+    command: "python /app/bot.py"
+
+  syncer:
+    build: .
+    restart: unless-stopped
+    network_mode: host
+
+    command: "python /app/syncer.py"
+
+  boards:
+    build: .
+    restart: unless-stopped
+    network_mode: host
+
+    command: "python /app/syncboards.py"

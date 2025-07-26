@@ -158,6 +158,7 @@ create table clans (
     in_event boolean default false
 );
 alter table clans add unique (clan_tag, channel_id);
+alter table logs add column threshold integer default 0;
 
 create index donevents_interval_idx on clans (donevents_interval);
 create index donevents_toggle_idx on clans (donevents_toggle);

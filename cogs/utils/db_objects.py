@@ -30,7 +30,7 @@ class DatabasePlayer:
 
 
 class LogConfig:
-    __slots__ = ('bot', 'guild_id', 'channel_id', 'interval', 'toggle', 'type', 'detailed')
+    __slots__ = ('bot', 'guild_id', 'channel_id', 'interval', 'toggle', 'type', 'detailed', 'threshold')
 
     def __eq__(self, other):
         return isinstance(other, self.__class__) and self.channel_id == other.channel_id and self.type == other.type
@@ -44,6 +44,7 @@ class LogConfig:
         self.toggle: bool = record['toggle']
         self.type: str = record['type']
         self.detailed: bool = record['detailed']
+        self.threshold: int = record['threshold']
 
     @property
     def guild(self) -> discord.Guild:
