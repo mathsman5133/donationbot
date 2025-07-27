@@ -330,7 +330,7 @@ class Edit(commands.Cog):
             (4700, 29000021),
             (5000, 29000022),
         ]
-        entry = bisect.bisect_right(lookup, threshold)
+        entry = bisect.bisect_right([n[0] for n in lookup], threshold)
         if not entry:
             await ctx.send("That trophy threshold is not quite right. Try something between 0-5000.")
             return
