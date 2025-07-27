@@ -1,3 +1,5 @@
+import bisect
+
 import discord
 import asyncio
 import secrets
@@ -14,6 +16,7 @@ from cogs.utils.checks import requires_config, manage_guild
 from cogs.utils.formatters import CLYTable
 from cogs.utils.converters import ClanConverter, DateConverter, TextChannel
 from cogs.utils import checks
+from cogs.utils.emoji_lookup import emojis
 
 log = logging.getLogger(__name__)
 
@@ -302,6 +305,37 @@ class Edit(commands.Cog):
         **Required Permissions**
         :warning: Manage Server
         """
+        lookup = [
+            (0, 29000000),
+            (400, 29000001),
+            (500, 29000002),
+            (600, 29000003),
+            (800, 29000004),
+            (1000, 29000005),
+            (1200, 29000006),
+            (1400, 29000007),
+            (1600, 29000008),
+            (1800, 29000009),
+            (2000, 29000010),
+            (2200, 29000011),
+            (2400, 29000012),
+            (2600, 29000013),
+            (2800, 29000014),
+            (3000, 29000015),
+            (3200, 29000016),
+            (3500, 29000017),
+            (3800, 29000018),
+            (4100, 29000019),
+            (4400, 29000020),
+            (4700, 29000021),
+            (5000, 29000022),
+        ]
+        entry = bisect.bisect_right(lookup, threshold)
+        if not entry:
+            await ctx.send("That trophy threshold is not quite right. Try something between 0-5000.")
+            return
+
+        league = lookup[entry - 1][1]
         query = """UPDATE logs
                    SET threshold = $2
                    WHERE channel_id=$1
@@ -309,12 +343,12 @@ class Edit(commands.Cog):
                    RETURNING threshold
                 """
         channel = channel or ctx.channel
-        fetch = await ctx.db.fetchrow(query, channel.id, threshold)
+        fetch = await ctx.db.fetchrow(query, channel.id, league)
         if not fetch:
             await ctx.send(f":x: I couldn't find a trophylog setup in {channel.mention}. "
                            f"Either #mention a valid log channel, or set one up with `+help add trophylog`.")
         else:
-            await ctx.send(f"👌 Logs for {channel.mention} have been set to a minimum of {threshold} trophies.")
+            await ctx.send(f"👌 Logs for {channel.mention} have been set to a minimum league of {emojis[league]} ({lookup[entry - 1][0]} trophies).")
 
 
     @edit.command(name='event')
