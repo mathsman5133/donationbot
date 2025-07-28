@@ -44,7 +44,7 @@ class LogConfig:
         self.toggle: bool = record['toggle']
         self.type: str = record['type']
         self.detailed: bool = record['detailed']
-        self.threshold: int = record['threshold']
+        self.threshold: int = record.get('threshold', 0)
 
     @property
     def guild(self) -> discord.Guild:
